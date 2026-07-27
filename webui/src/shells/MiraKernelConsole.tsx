@@ -541,7 +541,7 @@ export function MiraKernelConsole({
                       runOperatorCommand();
                     }
                   }}
-                  placeholder="runtime health | scheduler status | worker show | board attach /dev/ttyUSB0 serial"
+                  placeholder="runtime health | native replay runtime pause operator-ping | board attach /dev/ttyUSB0 serial"
                   className="flex-1 bg-transparent text-slate-100 outline-none placeholder:text-slate-500"
                 />
                 <button
