@@ -8,7 +8,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { deriveTitle, visibleSessionPreview } from "@/lib/format";
+import { visibleSessionPreview } from "@/lib/format";
 import { displayExecutionTitle } from "@/lib/chat-groups";
 import { cn } from "@/lib/utils";
 import type { ExecutionSummary } from "@/lib/types";

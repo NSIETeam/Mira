@@ -9,10 +9,6 @@ import {
   toolTraceLinesFromEvents,
 } from "@/lib/tool-traces";
 import { hasPendingAgentActivity } from "@/lib/activity-timeline";
-import {
-  isKernelToolCallEvent,
-  kernelEventExtendsModelActivity,
-} from "@/lib/kernel-events";
 import type { StreamError } from "@/lib/nanobot-client";
 import { formatQuotedUserMessage } from "@/lib/user-message-quote";
 import type {
@@ -498,10 +494,6 @@ export interface SubmittedTurn {
   turnId: string;
   userMessageId: string;
   sideChannel: boolean;
-}
-
-function eventExtendsModelActivity(ev: InboundEvent): boolean {
-  return kernelEventExtendsModelActivity(ev);
 }
 
 function finalizeStreamedTurn(

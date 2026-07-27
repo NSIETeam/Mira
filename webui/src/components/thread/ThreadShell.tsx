@@ -414,8 +414,6 @@ export function ThreadShell({
   execution = null,
   title,
   onToggleSidebar,
-  onNewExecution,
-  onNewChat,
   onCreateExecution,
   onCreateChat,
   onForkExecution,
@@ -445,7 +443,6 @@ export function ThreadShell({
   skills = [],
 }: ThreadShellProps) {
   const activeExecution = execution ?? session;
-  const handleNewExecution = onNewExecution ?? onNewChat;
   const handleCreateExecution = onCreateExecution ?? onCreateChat;
   const handleForkExecution = onForkExecution ?? onForkChat;
   const { t } = useTranslation();
