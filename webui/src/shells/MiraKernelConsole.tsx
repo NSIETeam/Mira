@@ -1049,33 +1049,44 @@ export function MiraKernelConsole({
           <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-3">
             <div className="flex flex-wrap gap-2">
               {runtimeModules.length ? runtimeModules.map((module) => (
-                <button
-                  key={module.name}
-                  type="button"
-                  onClick={() => onSelectModule(module.name)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
-                    selectedModule?.name === module.name
-                      ? "border-slate-900 bg-slate-900 text-white"
-                      : "border-slate-300/80 bg-slate-100 text-slate-700 hover:bg-slate-50",
-                  )}
-                >
-                  <span>{module.display_name}</span>
+                <div key={module.name} className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onSelectModule(module.name)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+                      selectedModule?.name === module.name
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-300/80 bg-slate-100 text-slate-700 hover:bg-slate-50",
+                    )}
+                  >
+                    <span>{module.display_name}</span>
+                    {"native_status" in module ? (
+                      <span
+                        className={cn(
+                          "ml-2 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em]",
+                          module.native_status === "fault"
+                            ? "bg-rose-100 text-rose-700"
+                            : module.native_status === "busy"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-fuchsia-100 text-fuchsia-700",
+                        )}
+                      >
+                        {String(module.native_status)}
+                      </span>
+                    ) : null}
+                  </button>
                   {"native_status" in module ? (
-                    <span
-                      className={cn(
-                        "ml-2 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em]",
-                        module.native_status === "fault"
-                          ? "bg-rose-100 text-rose-700"
-                          : module.native_status === "busy"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-fuchsia-100 text-fuchsia-700",
-                      )}
+                    <button
+                      type="button"
+                      onClick={() => runQuickCommand(`native inspect ${module.name}`)}
+                      disabled={operatorPending}
+                      className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                     >
-                      {String(module.native_status)}
-                    </span>
+                      inspect
+                    </button>
                   ) : null}
-                </button>
+                </div>
               )) : featureRows.map((feature) => (
                 <span
                   key={feature}
