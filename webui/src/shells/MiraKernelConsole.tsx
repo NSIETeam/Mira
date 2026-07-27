@@ -1836,7 +1836,7 @@ export function MiraKernelConsole({
                   <button
                     key={name}
                     type="button"
-                    onClick={() => runTopologyCommand("modules", `module show ${name}`)}
+                    onClick={() => runTopologyCommand("modules", `native inspect ${name}`)}
                     disabled={operatorPending}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
