@@ -1123,6 +1123,16 @@ export function MiraKernelConsole({
                       >
                         inspect native
                       </button>
+                      {nativeLastCommand?.target === selectedModule.name ? (
+                        <button
+                          type="button"
+                          onClick={() => runQuickCommand("native replay-last")}
+                          disabled={operatorPending}
+                          className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                        >
+                          replay native
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => runQuickCommand(`module show ${selectedModule.name}`)}
