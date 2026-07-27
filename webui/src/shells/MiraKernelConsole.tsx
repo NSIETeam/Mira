@@ -1063,6 +1063,22 @@ export function MiraKernelConsole({
                 <div className="mt-1 text-xs text-muted-foreground">
                   {selectedModule.category} · {selectedModule.summary}
                 </div>
+                {"native_status" in selectedModule ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <ConsoleBadge
+                      label="native"
+                      value={String(selectedModule.native_status ?? "unknown")}
+                      tone="fuchsia"
+                    />
+                    {"native_last_code" in selectedModule ? (
+                      <ConsoleBadge
+                        label="code"
+                        value={String(selectedModule.native_last_code ?? 0)}
+                        tone="amber"
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
                 {runtimeControl?.module_focus ? (
                   <div className="mt-3 rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2 text-[11px] uppercase tracking-[0.12em] text-slate-500">
                     Focus pointer: <span className="font-semibold text-slate-900">{runtimeControl.module_focus}</span>
@@ -1075,6 +1091,26 @@ export function MiraKernelConsole({
                       binding={resolveActionBinding(action)}
                     />
                   ))}
+                  {"native_status" in selectedModule ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => runQuickCommand("native last-command")}
+                        disabled={operatorPending}
+                        className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                      >
+                        inspect native
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runQuickCommand(`module show ${selectedModule.name}`)}
+                        disabled={operatorPending}
+                        className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                      >
+                        replay module
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             ) : (
