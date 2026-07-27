@@ -2026,6 +2026,11 @@ export function MiraKernelConsole({
                         waiting on {diagPendingToolCalls} tool call(s)
                       </div>
                     ) : null}
+                    {lane.id === "interactive" && (diagnostics?.snapshot.native_command_depth ?? 0) > 0 ? (
+                      <div className="mt-1 text-[11px] text-fuchsia-700">
+                        native queue pressure: {diagnostics?.snapshot.native_command_depth ?? 0} command(s)
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
