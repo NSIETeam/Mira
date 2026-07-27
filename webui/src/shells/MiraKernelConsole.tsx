@@ -569,6 +569,17 @@ export function MiraKernelConsole({
                   Clear
                 </button>
               </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
+                <span>try native injection:</span>
+                <button
+                  type="button"
+                  onClick={() => setOperatorCommand("native replay runtime pause operator-ping")}
+                  disabled={operatorPending}
+                  className="rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
+                >
+                  native replay runtime pause operator-ping
+                </button>
+              </div>
               <div className="mt-3 space-y-2">
                 {quickCommandGroups.map((group) => (
                   <div key={group.label} className="space-y-1">
