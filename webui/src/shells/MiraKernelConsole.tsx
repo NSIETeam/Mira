@@ -724,6 +724,14 @@ export function MiraKernelConsole({
                           >
                             replay last
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => runQuickCommand("native last-command")}
+                            disabled={operatorPending}
+                            className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                          >
+                            inspect last
+                          </button>
                           {"target" in entry.details && entry.details.target ? (
                             <button
                               type="button"
