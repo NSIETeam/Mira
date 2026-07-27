@@ -528,7 +528,24 @@ class KernelApp:
         return [dict(adapter) for adapter in self._runtime_adapters]
 
     def runtime_modules_snapshot(self) -> list[dict[str, Any]]:
-        return [dict(module) for module in self._runtime_modules]
+        rows: list[dict[str, Any]] = []
+        for module in self._runtime_modules:
+            row = dict(module)
+            native_state = self._native_module_states.get(str(row.get("name") or ""))
+            if native_state:
+                status = str(native_state.get("status") or row.get("status") or "ready")
+                row["status"] = status
+                row["native_status"] = status
+                row["native_status_code"] = native_state.get("status_code")
+                row["native_last_code"] = native_state.get("last_code")
+                row["native_updated_at_ms"] = native_state.get("updated_at_ms")
+                summary = str(row.get("summary") or "").strip()
+                native_summary = f"native bridge {status}"
+                if native_state.get("last_code") not in (None, 0):
+                    native_summary += f" · code {native_state.get('last_code')}"
+                row["summary"] = f"{summary} · {native_summary}" if summary else native_summary
+            rows.append(row)
+        return rows
 
     def runtime_bridges_snapshot(self) -> list[dict[str, Any]]:
         return self.runtime_bridges
@@ -2308,6 +2325,7 @@ class KernelApp:
         snapshot["snapshot"]["board_bridge_artifact"] = board.get("bridge_artifact")
         snapshot["snapshot"]["native_bridge_artifact"] = self._native_bridge_artifact
         snapshot["snapshot"]["native_module_count"] = len(self._native_module_states)
+        snapshot["snapshot"]["native_modules"] = dict(self._native_module_states)
         return snapshot
 
     def diagnostics_snapshot_payload(self) -> dict[str, Any]:
