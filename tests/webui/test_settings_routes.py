@@ -7,8 +7,8 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 from websockets.datastructures import Headers
 
-from nanobot.webui.http_utils import http_json_response
-from nanobot.webui.settings_routes import WebUISettingsRouter
+from mira.webui.http_utils import http_json_response
+from mira.webui.settings_routes import WebUISettingsRouter
 
 
 def _router(*, authorized: bool = True) -> WebUISettingsRouter:
@@ -39,7 +39,7 @@ async def test_xai_oauth_completion_reads_code_from_private_header(monkeypatch) 
             "flow_id": "flow-123",
         }
 
-    monkeypatch.setattr("nanobot.webui.settings_routes.complete_oauth_provider", complete)
+    monkeypatch.setattr("mira.webui.settings_routes.complete_oauth_provider", complete)
     router = _router()
     request = SimpleNamespace(
         path=(
@@ -49,7 +49,7 @@ async def test_xai_oauth_completion_reads_code_from_private_header(monkeypatch) 
         headers=Headers(
             [
                 (
-                    "X-Nanobot-OAuth-Code",
+                    "X-mira-OAuth-Code",
                     "secret",
                 )
             ]
@@ -113,7 +113,7 @@ async def test_model_preset_mutation_routes(
         captured["query"] = query
         return {"routed": function_name}
 
-    monkeypatch.setattr(f"nanobot.webui.settings_routes.{function_name}", mutate)
+    monkeypatch.setattr(f"mira.webui.settings_routes.{function_name}", mutate)
     request = SimpleNamespace(path=request_path, headers=Headers())
 
     response = await _router().dispatch(None, request, route_path)

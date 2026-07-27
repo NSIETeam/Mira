@@ -1,6 +1,6 @@
 # Mira Delivery Readiness
 
-This checklist is for packaging the current repository as a Mira-branded execution kernel workbench rather than the original nanobot-first surface.
+This checklist is for packaging the current repository as a Mira-branded execution kernel workbench rather than the original mira-first surface.
 
 Date baseline: July 27, 2026.
 
@@ -58,10 +58,10 @@ The current codebase already includes the following Mira-facing delivery surface
 
 These remain intentionally retained and should not be mistaken for incomplete migration by themselves:
 
-- published package name `nanobot-ai`
-- config and workspace home under `~/.nanobot/`
-- legacy `nanobot` launcher
-- internal Python package path `nanobot/...`
+- published package name `mira`
+- config and workspace home under `~/.mira/`
+- legacy `mira` launcher
+- internal Python package path `mira/...`
 - namespace-forwarding compatibility shims under `mira/`
 
 ## Compatibility boundary matrix
@@ -70,29 +70,29 @@ This is the practical line between "intentional compatibility" and "still-visibl
 
 | Surface | Current state | Keep for now | Delivery expectation |
 | --- | --- | --- | --- |
-| Runtime entrypoint | `mira` primary, `nanobot` legacy | Yes | New usage should default to `mira` |
-| Published package | `nanobot-ai` | Yes | Accept until package migration is planned separately |
-| Config home | `~/.nanobot/` | Yes | Accept as compatibility storage root |
-| Internal Python modules | `nanobot/...` | Yes | Internal-only until a deeper package migration is justified |
+| Runtime entrypoint | `mira` primary, `mira` legacy | Yes | New usage should default to `mira` |
+| Published package | `mira` | Yes | Accept until package migration is planned separately |
+| Config home | `~/.mira/` | Yes | Accept as compatibility storage root |
+| Internal Python modules | `mira/...` | Yes | Internal-only until a deeper package migration is justified |
 | Forwarding namespace | `mira/...` shims | Yes | Keep as the public-facing migration bridge |
 | WebUI visible shell/workbench copy | Mostly Mira-first | No | Should read as Mira to an operator |
 | WebUI visible storage keys | Mixed, partly Mira-first | No | New front-facing keys should prefer `mira.*` when safe |
 | README positioning | Mira-first with compatibility notes | No | Should present Mira as the default product identity |
-| Release-critical docs landing pages | Mira-first | No | Should not feel nanobot-first to a new user |
+| Release-critical docs landing pages | Mira-first | No | Should not feel mira-first to a new user |
 | Repo metadata and remote URLs | Mostly Mira-aligned in local source, still requires hosted verification | No | Must be aligned and checked manually at release time |
 
 ### Treat as compatibility, not a blocker by itself
 
-- package/install naming that still depends on `nanobot-ai`
-- filesystem/config roots under `~/.nanobot/`
-- internal imports and code organization under `nanobot/...`
+- package/install naming that still depends on `mira`
+- filesystem/config roots under `~/.mira/`
+- internal imports and code organization under `mira/...`
 - legacy launcher support for existing operators
 
 ### Treat as remaining product-facing cleanup
 
-- user-visible WebUI copy that still says `nanobot`
+- user-visible WebUI copy that still says `mira`
 - old front-end storage keys where migration risk is acceptable
-- release-facing README phrasing that still centers nanobot instead of Mira
+- release-facing README phrasing that still centers mira instead of Mira
 - repository naming, remote metadata, and public-facing URLs
 
 ## What still requires explicit verification
@@ -110,9 +110,9 @@ These items are not proven by code edits alone and still require explicit delive
 ### Branding checks
 
 - no broken asset references in WebUI branding surfaces
-- no unacceptable outward-facing `nanobot` strings remain in release-critical surfaces
+- no unacceptable outward-facing `mira` strings remain in release-critical surfaces
 - repo metadata and remote URLs are aligned with the intended Mira repository
-- package metadata points to `NSIETeam/Mira` rather than the upstream nanobot repository
+- package metadata points to `NSIETeam/Mira` rather than the upstream mira repository
 
 ## Repository rename execution
 
@@ -123,7 +123,7 @@ Required platform steps:
 1. rename the GitHub repository to `Mira`
 2. confirm the default branch, release pages, and badges now resolve under `NSIETeam/Mira`
 3. update any remaining repository description, social preview, homepage, and topic metadata to match Mira
-4. confirm local remotes point at `NSIETeam/Mira` instead of the upstream nanobot repository
+4. confirm local remotes point at `NSIETeam/Mira` instead of the upstream mira repository
 5. only after that treat the repository-name migration as complete
 
 Until those steps are performed, "Mira" is true for the local product surface but not yet fully true for the hosted repository identity.
@@ -150,4 +150,4 @@ The migration should be considered truly complete only when all three are true:
 
 1. the Mira engineering workbench is the primary visible runtime surface
 2. the orchestration chain is observable from shell to queue to worker to lane
-3. the remaining `nanobot` surfaces are compatibility-bound rather than accidental product-facing leftovers
+3. the remaining `mira` surfaces are compatibility-bound rather than accidental product-facing leftovers

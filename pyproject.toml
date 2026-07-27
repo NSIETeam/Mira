@@ -1,5 +1,5 @@
 [project]
-name = "nanobot-ai"
+name = "mira"
 version = "0.3.0"
 description = "Mira: a lightweight execution kernel and personal AI agent framework"
 readme = { file = "README.md", content-type = "text/markdown" }
@@ -10,7 +10,7 @@ authors = [
     {name = "the Mira contributors"}
 ]
 keywords = ["ai", "agent", "chatbot"]
-urls = { Homepage = "https://github.com/NSIETeam/Mira", Documentation = "https://nanobot.wiki/docs/latest/getting-started/nanobot-overview" }
+urls = { Homepage = "https://github.com/NSIETeam/Mira", Documentation = "https://mira.wiki/docs/latest/getting-started/mira-overview" }
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -103,17 +103,17 @@ dev = [
 ]
 
 [project.scripts]
-nanobot = "nanobot.cli.commands:app"
+mira = "mira.cli.commands:app"
 mira = "mira.cli.commands:app"
 
 # Distribution compatibility note:
-# - published package name stays `nanobot-ai` for now
+# - published package name stays `mira` for now
 # - primary user-facing runtime entrypoint is `mira`
-# - legacy `nanobot` launcher remains for compatibility
+# - legacy `mira` launcher remains for compatibility
 
 # Third-party tool plugins register here.  Built-in tools are discovered
 # automatically via pkgutil scanning in ToolLoader.discover().
-# [project.entry-points."nanobot.tools"]
+# [project.entry-points."mira.tools"]
 # my_plugin = "my_package.plugins:MyTool"
 
 [build-system]
@@ -128,40 +128,40 @@ allow-direct-references = true
 
 [tool.hatch.build]
 include = [
-    "nanobot/**/*.py",
-    "nanobot/templates/**/*.md",
-    "nanobot/skills/**/*.md",
-    "nanobot/skills/**/*.sh",
-    "nanobot/channels/*/webui/**/*",
-    "nanobot/web/dist/**/*",
+    "mira/**/*.py",
+    "mira/templates/**/*.md",
+    "mira/skills/**/*.md",
+    "mira/skills/**/*.sh",
+    "mira/channels/*/webui/**/*",
+    "mira/web/dist/**/*",
 ]
-# nanobot/web/dist/ is produced by `cd webui && bun run build` and is
+# mira/web/dist/ is produced by `cd webui && bun run build` and is
 # git-ignored. List it as an artifact so hatch ships it in both wheel and
 # sdist even though VCS does not track it.
 artifacts = [
-    "nanobot/web/dist/**/*",
+    "mira/web/dist/**/*",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["nanobot", "mira"]
-exclude = ["nanobot/channels/*/tests/**"]
+packages = ["mira", "mira"]
+exclude = ["mira/channels/*/tests/**"]
 
 [tool.hatch.build.targets.wheel.sources]
-"nanobot" = "nanobot"
+"mira" = "mira"
 "mira" = "mira"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "nanobot/",
     "mira/",
-    "nanobot/web/dist/",
+    "mira/",
+    "mira/web/dist/",
     "hatch_build.py",
     "README.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "pyproject.toml",
 ]
-exclude = ["nanobot/channels/*/tests/**"]
+exclude = ["mira/channels/*/tests/**"]
 
 [tool.ruff]
 line-length = 100
@@ -173,10 +173,10 @@ ignore = ["E501"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests", "nanobot/channels"]
+testpaths = ["tests", "mira/channels"]
 
 [tool.coverage.run]
-source = ["nanobot"]
+source = ["mira"]
 omit = ["tests/*", "**/tests/*"]
 
 [tool.coverage.report]

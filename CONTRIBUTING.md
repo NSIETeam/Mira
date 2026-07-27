@@ -46,7 +46,7 @@ git pull --ff-only upstream main
 git switch -c your-topic-branch
 ```
 
-Use your primary HKUDS/nanobot remote in place of `upstream` if your checkout
+Use your primary HKUDS/mira remote in place of `upstream` if your checkout
 uses a different remote name.
 
 Keep unrelated local changes out of the topic branch. If your checkout already has
@@ -59,8 +59,8 @@ Keep setup boring and reliable. The goal is to get you into the code quickly:
 
 ```bash
 # Clone the repository
-git clone https://github.com/HKUDS/nanobot.git
-cd nanobot
+git clone https://github.com/HKUDS/mira.git
+cd mira
 
 # Install with dev dependencies
 pip install -e ".[dev]"
@@ -69,7 +69,7 @@ pip install -e ".[dev]"
 pytest
 
 # Lint code
-ruff check nanobot/
+ruff check mira/
 
 # Format code — optional. The existing tree predates `ruff format`,
 # so running it broadly produces large unrelated diffs.
@@ -81,7 +81,7 @@ ruff format <files-you-changed>
 CLI compatibility note:
 
 - `mira` is the Mira-branded launcher alias
-- `nanobot` remains supported as the compatibility command
+- `mira` remains supported as the compatibility command
 
 ## Contribution License
 
@@ -131,7 +131,7 @@ explicitly in the PR description so it can be discussed before merge.
 
 If you have questions, ideas, or half-formed insights, you are warmly welcome here.
 
-Please feel free to open an [issue](https://github.com/HKUDS/nanobot/issues), join the community, or simply reach out:
+Please feel free to open an [issue](https://github.com/HKUDS/mira/issues), join the community, or simply reach out:
 
 - [Discord](https://discord.gg/MnCvHqpUGB)
 - [Feishu/WeChat](./COMMUNICATION.md)

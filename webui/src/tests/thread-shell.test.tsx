@@ -99,7 +99,7 @@ function makeClient() {
 function wrap(client: ReturnType<typeof makeClient>, children: ReactNode, modelName?: string | null) {
   return (
     <ClientProvider
-      client={client as unknown as import("@/lib/nanobot-client").NanobotClient}
+      client={client as unknown as import("@/lib/mira-client").miraClient}
       token="tok"
       modelName={modelName ?? null}
     >
@@ -199,7 +199,7 @@ function modelSettings(model: string, provider: string): SettingsPayload {
       temperature: 0.7,
       reasoning_effort: null,
       timezone: "UTC",
-      bot_name: "nanobot",
+      bot_name: "mira",
       bot_icon: "",
       tool_hint_max_length: 40,
     },
@@ -799,7 +799,7 @@ describe("ThreadShell", () => {
           client,
           <ThreadShell
             session={null}
-            title="nanobot"
+            title="mira"
             onToggleSidebar={() => {}}
             onGoHome={() => {}}
             onNewChat={onNewChat}
@@ -824,7 +824,7 @@ describe("ThreadShell", () => {
         client,
         <ThreadShell
           session={null}
-          title="nanobot"
+          title="mira"
           onToggleSidebar={() => {}}
           onGoHome={() => {}}
           onNewChat={onNewChat}
@@ -857,7 +857,7 @@ describe("ThreadShell", () => {
     const view = (currentSession: ReturnType<typeof session> | null) => wrap(client, (
       <ThreadShell
         session={currentSession}
-        title={currentSession ? "New chat" : "nanobot"}
+        title={currentSession ? "New chat" : "mira"}
         onToggleSidebar={() => {}}
         onCreateChat={onCreateChat}
         settingsSnapshot={settings}
@@ -905,7 +905,7 @@ describe("ThreadShell", () => {
         client,
         <ThreadShell
           session={null}
-          title="nanobot"
+          title="mira"
           onToggleSidebar={() => {}}
           onCreateChat={onCreateChat}
         />,
@@ -975,7 +975,7 @@ describe("ThreadShell", () => {
         client,
         <ThreadShell
           session={null}
-          title="nanobot"
+          title="mira"
           onToggleSidebar={() => {}}
           onCreateChat={onCreateChat}
         />,
@@ -1040,7 +1040,7 @@ describe("ThreadShell", () => {
         client,
         <ThreadShell
           session={null}
-          title="nanobot"
+          title="mira"
           onToggleSidebar={() => {}}
           onCreateChat={onCreateChat}
         />,
@@ -1108,7 +1108,7 @@ describe("ThreadShell", () => {
         client,
         <ThreadShell
           session={null}
-          title="nanobot"
+          title="mira"
           onToggleSidebar={() => {}}
           onGoHome={() => {}}
           onNewChat={() => {}}
@@ -1367,7 +1367,7 @@ describe("ThreadShell", () => {
           client,
           <ThreadShell
             session={null}
-            title="nanobot"
+            title="mira"
             onToggleSidebar={() => {}}
             onNewChat={() => {}}
           />,
@@ -1796,7 +1796,7 @@ describe("ThreadShell", () => {
         client,
         <ThreadShell
           session={null}
-          title="nanobot"
+          title="mira"
           onToggleSidebar={() => {}}
           onNewChat={() => {}}
         />,
@@ -1865,7 +1865,7 @@ describe("ThreadShell", () => {
         client,
         <ThreadShell
           session={null}
-          title="nanobot"
+          title="mira"
           onToggleSidebar={() => {}}
           onNewChat={() => {}}
         />,
@@ -1895,7 +1895,7 @@ describe("ThreadShell", () => {
         client,
         <ThreadShell
           session={null}
-          title="nanobot"
+          title="mira"
           onToggleSidebar={() => {}}
           onNewChat={() => {}}
           settingsSnapshot={{

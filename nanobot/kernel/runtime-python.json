@@ -1,9 +1,0 @@
-{
-  "runtime": "python-inprocess",
-  "status": "ready",
-  "abi": "python",
-  "mode": "in_process",
-  "entrypoint": "nanobot.agent.loop.AgentLoop",
-  "kernel_surface": "mira",
-  "notes": "Primary in-process execution kernel hosted by the current Python runtime."
-}

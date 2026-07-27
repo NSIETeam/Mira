@@ -2,15 +2,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nanobot.agent.runner import AgentRunner, AgentRunSpec
-from nanobot.config.schema import AgentDefaults
-from nanobot.providers.base import (
+from mira.agent.runner import AgentRunner, AgentRunSpec
+from mira.config.schema import AgentDefaults
+from mira.providers.base import (
     GenerationSettings,
     LLMProvider,
     LLMResponse,
     ToolCallRequest,
 )
-from nanobot.utils.llm_runtime import LLMRuntime
+from mira.utils.llm_runtime import LLMRuntime
 
 
 @pytest.mark.asyncio

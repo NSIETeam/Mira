@@ -6,9 +6,9 @@ import {
   channelStatusLabel,
   channelToggleChecked,
 } from "@/components/settings/channels/ChannelIdentity";
-import type { NanobotFeatureInfo } from "@/lib/types";
+import type { miraFeatureInfo } from "@/lib/types";
 
-function feature(overrides: Partial<NanobotFeatureInfo>): NanobotFeatureInfo {
+function feature(overrides: Partial<miraFeatureInfo>): miraFeatureInfo {
   return {
     name: "plugin-chat",
     display_name: "Plugin Chat",

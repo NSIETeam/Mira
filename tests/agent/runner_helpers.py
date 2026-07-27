@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from nanobot.agent.runner import AgentRunSpec
-from nanobot.config.schema import AgentDefaults
-from nanobot.providers.base import GenerationSettings, LLMProvider
-from nanobot.utils.llm_runtime import LLMRuntime
+from mira.agent.runner import AgentRunSpec
+from mira.config.schema import AgentDefaults
+from mira.providers.base import GenerationSettings, LLMProvider
+from mira.utils.llm_runtime import LLMRuntime
 
 
 def make_run_spec(provider: LLMProvider, **kwargs: Any) -> AgentRunSpec:

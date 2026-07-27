@@ -16,7 +16,7 @@ Mira should evolve toward:
 
 ## What changed in this first cut
 
-The first code change introduces `nanobot/kernel/` as the stable product
+The first code change introduces `mira/kernel/` as the stable product
 boundary:
 
 - `KernelApp` wraps the existing runtime without rewriting it;
@@ -33,7 +33,7 @@ This preserves current behavior while making later simplification possible.
 
 ## Refactor order
 
-1. Move GUI code to depend only on `nanobot.kernel`.
+1. Move GUI code to depend only on `mira.kernel`.
 2. Collapse overlapping runtime entry surfaces behind `KernelApp`.
 3. Reduce tool/UI coupling by keeping GUI on normalized events only.
 4. Audit approvals, file edits, and shell execution as kernel-owned policy.

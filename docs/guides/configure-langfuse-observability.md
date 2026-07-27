@@ -1,13 +1,13 @@
-# How to Configure Langfuse Observability for nanobot
+# How to Configure Langfuse Observability for mira
 
-nanobot can trace supported OpenAI-compatible provider calls through Langfuse's
+mira can trace supported OpenAI-compatible provider calls through Langfuse's
 OpenAI SDK wrapper.
 
 ## What you will build
 
-- Langfuse installed in the same Python environment as nanobot
+- Langfuse installed in the same Python environment as mira
 - Langfuse environment variables set before startup
-- one traced nanobot model call
+- one traced mira model call
 
 ## When to use this
 
@@ -16,12 +16,12 @@ cost, or prompt behavior during development or production operation.
 
 ## Install
 
-Install nanobot and prove the agent works:
+Install mira and prove the agent works:
 
 ```bash
-python -m pip install nanobot-ai
-nanobot onboard --wizard
-nanobot agent -m "Hello!"
+python -m pip install mira
+mira onboard --wizard
+mira agent -m "Hello!"
 ```
 
 Install Langfuse:
@@ -32,13 +32,13 @@ python -m pip install langfuse
 
 ## Minimal working example
 
-Set credentials before starting nanobot:
+Set credentials before starting mira:
 
 ```bash
 export LANGFUSE_SECRET_KEY="sk-lf-..."
 export LANGFUSE_PUBLIC_KEY="pk-lf-..."
 export LANGFUSE_BASE_URL="https://cloud.langfuse.com"
-nanobot agent -m "Hello!"
+mira agent -m "Hello!"
 ```
 
 PowerShell:
@@ -47,7 +47,7 @@ PowerShell:
 $env:LANGFUSE_SECRET_KEY = "sk-lf-..."
 $env:LANGFUSE_PUBLIC_KEY = "pk-lf-..."
 $env:LANGFUSE_BASE_URL = "https://cloud.langfuse.com"
-nanobot agent -m "Hello!"
+mira agent -m "Hello!"
 ```
 
 ## Production notes
@@ -70,9 +70,9 @@ nanobot agent -m "Hello!"
 - If no traces appear, confirm the service process sees the environment
   variables.
 - Confirm the provider path is OpenAI-compatible.
-- Run one local `nanobot agent -m "Hello!"` call before debugging service logs.
+- Run one local `mira agent -m "Hello!"` call before debugging service logs.
 
-## Related nanobot docs
+## Related mira docs
 
 - [Configuration: Langfuse Observability](../configuration.md#langfuse-observability)
 - [Provider Cookbook: Langfuse Tracing](../provider-cookbook.md#recipe-langfuse-tracing)

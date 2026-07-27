@@ -3,8 +3,8 @@ notebook JSON editing, and create-file semantics."""
 
 import pytest
 
-from nanobot.agent.tools import file_state
-from nanobot.agent.tools.filesystem import EditFileTool, ReadFileTool
+from mira.agent.tools import file_state
+from mira.agent.tools.filesystem import EditFileTool, ReadFileTool
 
 # ---------------------------------------------------------------------------
 # Helpers

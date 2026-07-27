@@ -1,7 +1,7 @@
 import pytest
 
-from nanobot.bus.events import InboundMessage
-from nanobot.bus.runtime_events import (
+from mira.bus.events import InboundMessage
+from mira.bus.runtime_events import (
     RuntimeEventBus,
     RuntimeEventContext,
     RuntimeEventPublisher,

@@ -10,14 +10,14 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nanobot.agent.loop import AgentLoop
-from nanobot.agent.subagent import SubagentManager, SubagentStatus
-from nanobot.agent.tools.search import FindFilesTool, GrepTool
-from nanobot.agent.tools.web import WebSearchTool
-from nanobot.bus.queue import MessageBus
-from nanobot.config.schema import WebSearchConfig
-from nanobot.providers.base import GenerationSettings
-from nanobot.utils.llm_runtime import LLMRuntime
+from mira.agent.loop import AgentLoop
+from mira.agent.subagent import SubagentManager, SubagentStatus
+from mira.agent.tools.search import FindFilesTool, GrepTool
+from mira.agent.tools.web import WebSearchTool
+from mira.bus.queue import MessageBus
+from mira.config.schema import WebSearchConfig
+from mira.providers.base import GenerationSettings
+from mira.utils.llm_runtime import LLMRuntime
 
 
 @pytest.mark.asyncio
@@ -32,7 +32,7 @@ async def test_web_search_tool_refreshes_dynamic_config_loader(monkeypatch) -> N
 
     monkeypatch.setattr(WebSearchTool, "_search_duckduckgo", fake_duckduckgo)
 
-    assert await tool.execute("nanobot") == "duckduckgo:nanobot:3"
+    assert await tool.execute("mira") == "duckduckgo:mira:3"
 
 
 @pytest.mark.asyncio

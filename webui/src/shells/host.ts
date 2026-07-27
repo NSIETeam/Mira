@@ -1,12 +1,12 @@
 import type { SettingsSectionKey } from "@/components/settings/SettingsView";
 import type { KernelManifestPayload, ShellDescriptorPayload } from "@/lib/types";
 
-export const SIDEBAR_STORAGE_KEY = "nanobot-webui.sidebar";
-export const SESSION_UPDATES_STORAGE_KEY = "nanobot-webui.sidebar.session-updates.v1";
-export const LEGACY_COMPLETED_RUNS_STORAGE_KEY = "nanobot-webui.sidebar.completed-runs.v1";
-export const SHELL_SELECTION_STORAGE_KEY = "nanobot-webui.shell-selection.v1";
-export const RESTART_STARTED_KEY = "nanobot-webui.restartStartedAt";
-export const RESTART_ROUTE_KEY = "nanobot-webui.restartRoute";
+export const SIDEBAR_STORAGE_KEY = "mira-webui.sidebar";
+export const SESSION_UPDATES_STORAGE_KEY = "mira-webui.sidebar.session-updates.v1";
+export const LEGACY_COMPLETED_RUNS_STORAGE_KEY = "mira-webui.sidebar.completed-runs.v1";
+export const SHELL_SELECTION_STORAGE_KEY = "mira-webui.shell-selection.v1";
+export const RESTART_STARTED_KEY = "mira-webui.restartStartedAt";
+export const RESTART_ROUTE_KEY = "mira-webui.restartRoute";
 export const RESTART_ROUTE_TTL_MS = 5 * 60 * 1000;
 export const SIDEBAR_WIDTH = 272;
 export const SIDEBAR_RAIL_WIDTH = 56;

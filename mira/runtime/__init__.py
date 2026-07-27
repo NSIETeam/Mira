@@ -1,9 +1,9 @@
 """Mira runtime namespace for stable external imports."""
 
-from nanobot import Nanobot, RunResult, RunStream, SessionInfo, SessionSnapshot
+from mira import mira, RunResult, RunStream, SessionInfo, SessionSnapshot
 
 __all__ = [
-    "Nanobot",
+    "mira",
     "RunResult",
     "RunStream",
     "SessionInfo",

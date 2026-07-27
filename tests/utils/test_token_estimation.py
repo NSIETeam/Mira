@@ -1,7 +1,7 @@
 import json
 
-from nanobot.utils import helpers
-from nanobot.utils.helpers import (
+from mira.utils import helpers
+from mira.utils.helpers import (
     estimate_message_tokens,
     estimate_prompt_tokens,
     estimate_prompt_tokens_chain,
@@ -71,7 +71,7 @@ def test_estimate_message_tokens_uses_utf8_byte_fallback(monkeypatch) -> None:
         "_get_token_encoding",
         lambda: (_ for _ in ()).throw(RuntimeError("encoding unavailable")),
     )
-    content = "🙂你" * 100
+    content = "你" * 100
 
     assert estimate_message_tokens({"role": "user", "content": content}) == (
         len(content.encode("utf-8")) + 4
@@ -85,7 +85,7 @@ def test_truncate_text_to_tokens_uses_utf8_byte_budget_fallback(monkeypatch) -> 
         lambda: (_ for _ in ()).throw(RuntimeError("encoding unavailable")),
     )
 
-    result = truncate_text_to_tokens("🙂你" * 100, 40)
+    result = truncate_text_to_tokens("你" * 100, 40)
 
     assert result.endswith("\n... (truncated)")
     assert len(result.encode("utf-8")) <= 40

@@ -11,7 +11,7 @@ import type {
   ImageGenerationSettingsUpdate,
   KernelManifestPayload,
   McpPresetsPayload,
-  NanobotFeaturesPayload,
+  miraFeaturesPayload,
   ModelConfigurationCreate,
   ModelConfigurationUpdate,
   NetworkSafetySettingsUpdate,
@@ -53,10 +53,10 @@ function isSlashCommandLifecycle(value: unknown): value is SlashCommandLifecycle
     && SLASH_COMMAND_LIFECYCLES.has(value as SlashCommandLifecycle)
   );
 }
-const CHANNEL_VALUES_HEADER = "X-Nanobot-Channel-Values";
-const API_SERVICE_VALUES_HEADER = "X-Nanobot-API-Service-Values";
-const OAUTH_CODE_HEADER = "X-Nanobot-OAuth-Code";
-const PROVIDER_VALUES_HEADER = "X-Nanobot-Provider-Values";
+const CHANNEL_VALUES_HEADER = "X-mira-Channel-Values";
+const API_SERVICE_VALUES_HEADER = "X-mira-API-Service-Values";
+const OAUTH_CODE_HEADER = "X-mira-OAuth-Code";
+const PROVIDER_VALUES_HEADER = "X-mira-Provider-Values";
 
 export class ApiError extends Error {
   status: number;
@@ -96,7 +96,7 @@ async function request<T>(
     throw new ApiError(
       res.status,
       isHtml
-        ? "Gateway returned WebUI HTML instead of JSON. Restart nanobot gateway and try again."
+        ? "Gateway returned WebUI HTML instead of JSON. Restart mira gateway and try again."
         : "Gateway returned a non-JSON response.",
     );
   }
@@ -115,11 +115,11 @@ function mcpValuesHeader(values: Record<string, unknown>): HeadersInit | undefin
     payload[key] = value;
   });
   if (!Object.keys(payload).length) return undefined;
-  return { "X-Nanobot-MCP-Values": JSON.stringify(payload) };
+  return { "X-mira-MCP-Values": JSON.stringify(payload) };
 }
 
 function automationValuesHeader(values: AutomationUpdatePayload): HeadersInit {
-  return { "X-Nanobot-Automation-Values": encodeURIComponent(JSON.stringify(values)) };
+  return { "X-mira-Automation-Values": encodeURIComponent(JSON.stringify(values)) };
 }
 
 function splitKey(key: string): { channel: string; chatId: string } {
@@ -596,12 +596,12 @@ export async function fetchInstalledCliApps(
   );
 }
 
-export async function fetchNanobotFeatures(
+export async function fetchmiraFeatures(
   token: string,
   base: string = "",
-): Promise<NanobotFeaturesPayload> {
-  return request<NanobotFeaturesPayload>(
-    `${base}/api/settings/nanobot-features`,
+): Promise<miraFeaturesPayload> {
+  return request<miraFeaturesPayload>(
+    `${base}/api/settings/mira-features`,
     token,
     undefined,
     API_READ_TIMEOUT_MS,
@@ -636,32 +636,32 @@ export async function stopApiService(token: string, base: string = ""): Promise<
   return request<ApiServicePayload>(`${base}/api/settings/api-service/stop`, token);
 }
 
-export async function enableNanobotFeature(
+export async function enablemiraFeature(
   token: string,
   name: string,
   options: { instanceId?: string } = {},
   base: string = "",
-): Promise<NanobotFeaturesPayload> {
+): Promise<miraFeaturesPayload> {
   const query = new URLSearchParams();
   query.set("name", name);
   if (options.instanceId) query.set("instance_id", options.instanceId);
-  return request<NanobotFeaturesPayload>(
-    `${base}/api/settings/nanobot-features/enable?${query}`,
+  return request<miraFeaturesPayload>(
+    `${base}/api/settings/mira-features/enable?${query}`,
     token,
   );
 }
 
-export async function disableNanobotFeature(
+export async function disablemiraFeature(
   token: string,
   name: string,
   options: { instanceId?: string } = {},
   base: string = "",
-): Promise<NanobotFeaturesPayload> {
+): Promise<miraFeaturesPayload> {
   const query = new URLSearchParams();
   query.set("name", name);
   if (options.instanceId) query.set("instance_id", options.instanceId);
-  return request<NanobotFeaturesPayload>(
-    `${base}/api/settings/nanobot-features/disable?${query}`,
+  return request<miraFeaturesPayload>(
+    `${base}/api/settings/mira-features/disable?${query}`,
     token,
   );
 }

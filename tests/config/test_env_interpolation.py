@@ -2,13 +2,13 @@ import json
 
 import pytest
 
-from nanobot.config.loader import (
+from mira.config.loader import (
     _resolve_env_vars,
     load_config,
     resolve_config_env_vars,
     save_config,
 )
-from nanobot.config.schema import Config
+from mira.config.schema import Config
 
 
 class TestResolveEnvVars:

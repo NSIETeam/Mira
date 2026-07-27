@@ -1,4 +1,6 @@
-"""Entry point for running Mira as a module: python -m mira."""
+"""
+Entry point for running mira as a module: python -m mira
+"""
 
 from mira.cli.commands import app
 

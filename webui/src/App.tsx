@@ -81,7 +81,7 @@ import {
 } from "@/lib/bootstrap";
 import { displayTitle } from "@/lib/chat-groups";
 import { deriveTitle } from "@/lib/format";
-import { NanobotClient } from "@/lib/nanobot-client";
+import { miraClient } from "@/lib/mira-client";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
 import type {
   BootstrapResponse,
@@ -111,7 +111,7 @@ type BootState =
   | { status: "auth"; failed?: boolean }
   | {
       status: "ready";
-      client: NanobotClient;
+      client: miraClient;
       token: string;
       tokenExpiresAt: number;
       modelName: string | null;
@@ -237,7 +237,7 @@ export default function App() {
   const bootstrapSecretRef = useRef("");
 
   const refreshReadyClient = useCallback(
-    async (client: NanobotClient, fallbackSurface: KernelGuiSurface) => {
+    async (client: miraClient, fallbackSurface: KernelGuiSurface) => {
       const boot = await fetchBootstrap("", bootstrapSecretRef.current);
       const url = deriveWsUrl(boot.ws_path, boot.token, boot.ws_url);
       const kernelManifest = boot.kernel;
@@ -287,7 +287,7 @@ export default function App() {
           const runtimeCapabilities = kernelManifest?.capabilities ?? boot.runtime_capabilities;
           const guiSurface = toKernelGuiSurface(boot.runtime_surface);
           const runtimeHost = createKernelHost(guiSurface, runtimeCapabilities);
-          const client = new NanobotClient({
+          const client = new miraClient({
             url,
             socketFactory: runtimeHost.socketFactory,
             onReauth: async () => {

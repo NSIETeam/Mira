@@ -2,7 +2,7 @@
 
 These lock down two behaviors:
 
-1. ``nanobot.utils.helpers.sanitize_surrogates`` / ``sanitize_surrogates_deep``
+1. ``mira.utils.helpers.sanitize_surrogates`` / ``sanitize_surrogates_deep``
    produce strings that can round-trip through ``str.encode('utf-8')`` even
    when the input contains unpaired surrogates.
 
@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import pytest
 
-from nanobot.providers.base import LLMProvider
-from nanobot.utils.helpers import (
+from mira.providers.base import LLMProvider
+from mira.utils.helpers import (
     sanitize_surrogates,
     sanitize_surrogates_deep,
 )
@@ -27,10 +27,10 @@ from nanobot.utils.helpers import (
 
 class TestSanitizeSurrogates:
     def test_paired_surrogates_reconstructed_to_emoji(self):
-        # \uD83E\uDD16 is the UTF-16 surrogate pair for 🤖 (U+1F916).
+        # \uD83E\uDD16 is the UTF-16 surrogate pair for  (U+1F916).
         raw = "hello \ud83e\udd16 world"
         cleaned = sanitize_surrogates(raw)
-        assert cleaned == "hello 🤖 world"
+        assert cleaned == "hello  world"
         cleaned.encode("utf-8")  # must not raise
 
     def test_lone_surrogate_replaced_with_fffd(self):
@@ -42,7 +42,7 @@ class TestSanitizeSurrogates:
         cleaned.encode("utf-8")  # must not raise
 
     def test_normal_text_returned_unchanged_identity(self):
-        raw = "plain ascii + 中文 + 🤖"
+        raw = "plain ascii + 中文 + "
         assert sanitize_surrogates(raw) == raw
 
     def test_non_string_returned_as_is(self):
@@ -52,7 +52,7 @@ class TestSanitizeSurrogates:
 
 class TestSanitizeSurrogatesDeep:
     def test_clean_input_returns_same_object(self):
-        payload = {"role": "user", "content": [{"type": "text", "text": "hi 🤖"}]}
+        payload = {"role": "user", "content": [{"type": "text", "text": "hi "}]}
         result = sanitize_surrogates_deep(payload)
         # No allocation on clean input: same object identity.
         assert result is payload
@@ -77,7 +77,7 @@ class TestSanitizeSurrogatesDeep:
     def test_paired_surrogates_in_list_collapse_to_emoji(self):
         dirty = ["a", "b \ud83e\udd16", "c"]
         cleaned = sanitize_surrogates_deep(dirty)
-        assert cleaned == ["a", "b 🤖", "c"]
+        assert cleaned == ["a", "b ", "c"]
 
     def test_deep_recursion_on_tuple_and_dict(self):
         dirty = (
@@ -89,7 +89,7 @@ class TestSanitizeSurrogatesDeep:
         # tuple preserved as tuple
         assert isinstance(cleaned, tuple)
         assert "\ud83e" not in cleaned[0]["k"]
-        assert cleaned[1][1] == "🤖"
+        assert cleaned[1][1] == ""
 
 
 class TestProviderSanitizeEmptyContent:
@@ -128,15 +128,15 @@ class TestProviderSanitizeEmptyContent:
             {"role": "user", "content": "robot \ud83e\udd16 hello"},
         ]
         result = LLMProvider._sanitize_empty_content(messages)
-        assert result[0]["content"] == "robot 🤖 hello"
+        assert result[0]["content"] == "robot  hello"
 
     def test_clean_input_semantics_unchanged(self):
         messages = [
-            {"role": "user", "content": "plain 🤖 content"},
+            {"role": "user", "content": "plain  content"},
             {"role": "assistant", "content": [{"type": "text", "text": "ok"}]},
         ]
         result = LLMProvider._sanitize_empty_content(messages)
-        assert result[0]["content"] == "plain 🤖 content"
+        assert result[0]["content"] == "plain  content"
         assert result[1]["content"][0]["text"] == "ok"
 
     def test_full_request_body_is_utf8_encodable_after_sanitize(self):
@@ -145,8 +145,8 @@ class TestProviderSanitizeEmptyContent:
         import json
 
         messages = [
-            {"role": "system", "content": "You are a 🐱 assistant."},
-            {"role": "user", "content": "🤖 fixed?"},
+            {"role": "system", "content": "You are a  assistant."},
+            {"role": "user", "content": " fixed?"},
             {
                 "role": "assistant",
                 "content": [
@@ -164,10 +164,10 @@ class TestBackwardCompatReExport:
         """The CLI module continues to expose ``_sanitize_surrogates`` as a
         thin alias so existing imports (e.g. ``SafeFileHistory`` in the
         legacy tests) keep working."""
-        from nanobot.cli.commands import _sanitize_surrogates as cli_alias
+        from mira.cli.commands import _sanitize_surrogates as cli_alias
 
         assert cli_alias is sanitize_surrogates
-        assert cli_alias("hello \ud83e\udd16") == "hello 🤖"
+        assert cli_alias("hello \ud83e\udd16") == "hello "
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ Use this page when you know what you want to run and need the command shape. For
 | Goal | Command | Notes |
 |---|---|---|
 | Check the install | `mira --version` | If this fails, try `python -m mira --version` |
-| Create or refresh config | `mira onboard` | Creates `~/.nanobot/config.json` and `~/.nanobot/workspace/` |
+| Create or refresh config | `mira onboard` | Creates `~/.mira/config.json` and `~/.mira/workspace/` |
 | Refresh config non-interactively | `mira onboard --refresh` | Preserves existing values and adds missing default fields without prompting |
 | Use guided setup | `mira onboard --wizard` | Best when you prefer prompts over hand-editing JSON |
 | Open the browser workbench | `mira webui` | Prepares local WebUI settings, starts the gateway, and opens the browser |
@@ -67,8 +67,8 @@ Default paths:
 
 | Path | Default |
 |---|---|
-| Config | `~/.nanobot/config.json` |
-| Workspace | `~/.nanobot/workspace/` |
+| Config | `~/.mira/config.json` |
+| Workspace | `~/.mira/workspace/` |
 
 ## Agent CLI
 

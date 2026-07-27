@@ -1,6 +1,6 @@
 # Execution Layer Direction
 
-Nanobot is being refactored into a reusable execution layer with a thin, replaceable workbench shell.
+mira is being refactored into a reusable execution layer with a thin, replaceable workbench shell.
 
 ## Target split
 

@@ -5,12 +5,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nanobot.agent.loop import AgentLoop, TurnContext, TurnKind, TurnState
-from nanobot.bus.events import InboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.config.schema import ChannelsConfig
-from nanobot.providers.base import LLMResponse
-from nanobot.utils.document import reference_non_image_attachments
+from mira.agent.loop import AgentLoop, TurnContext, TurnKind, TurnState
+from mira.bus.events import InboundMessage
+from mira.bus.queue import MessageBus
+from mira.config.schema import ChannelsConfig
+from mira.providers.base import LLMResponse
+from mira.utils.document import reference_non_image_attachments
 
 
 def _make_loop(tmp_path: Path, channels_config: ChannelsConfig | None = None) -> AgentLoop:
@@ -40,7 +40,7 @@ async def test_state_restore_extracts_documents_by_default(
         calls.append((content, media))
         return f"{content}\n\n[File: report.txt]\nQuarterly revenue is $5M", []
 
-    monkeypatch.setattr("nanobot.agent.loop.extract_documents", fake_extract_documents)
+    monkeypatch.setattr("mira.agent.loop.extract_documents", fake_extract_documents)
 
     msg = InboundMessage(
         channel="cli",
@@ -78,7 +78,7 @@ async def test_state_restore_references_documents_when_extraction_disabled(
     def fail_extract_documents(content: str, media: list[str]) -> tuple[str, list[str]]:
         raise AssertionError("document extraction should be disabled")
 
-    monkeypatch.setattr("nanobot.agent.loop.extract_documents", fail_extract_documents)
+    monkeypatch.setattr("mira.agent.loop.extract_documents", fail_extract_documents)
 
     msg = InboundMessage(
         channel="cli",
@@ -126,7 +126,7 @@ async def test_pending_followup_references_documents_when_extraction_disabled(
     def fail_extract_documents(content: str, media: list[str]) -> tuple[str, list[str]]:
         raise AssertionError("document extraction should be disabled")
 
-    monkeypatch.setattr("nanobot.agent.loop.extract_documents", fail_extract_documents)
+    monkeypatch.setattr("mira.agent.loop.extract_documents", fail_extract_documents)
 
     pending_queue: asyncio.Queue[InboundMessage] = asyncio.Queue()
     await pending_queue.put(

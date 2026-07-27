@@ -75,14 +75,14 @@ const LOCALIZED_SETTINGS_COPY_KEYS = [
   "settings.apps.description",
   "settings.apps.caption",
   "settings.apps.restartRequired",
-  "settings.nanobotFeatures.disable",
-  "settings.nanobotFeatures.ready",
-  "settings.nanobotFeatures.missingDependency",
-  "settings.nanobotFeatures.installConfirmTitle",
-  "settings.nanobotFeatures.installConfirmDescription",
-  "settings.nanobotFeatures.installConfirmAction",
-  "settings.nanobotFeatures.channelDisabled",
-  "settings.nanobotFeatures.notEnabled",
+  "settings.miraFeatures.disable",
+  "settings.miraFeatures.ready",
+  "settings.miraFeatures.missingDependency",
+  "settings.miraFeatures.installConfirmTitle",
+  "settings.miraFeatures.installConfirmDescription",
+  "settings.miraFeatures.installConfirmAction",
+  "settings.miraFeatures.channelDisabled",
+  "settings.miraFeatures.notEnabled",
   "settings.sections.about",
   "settings.rows.theme",
   "settings.rows.language",
@@ -180,9 +180,9 @@ const LOCALIZED_CHANNEL_SHELL_KEYS = [
 ];
 const INDEX_HTML = readFileSync(resolve(process.cwd(), "index.html"), "utf8");
 const PREBOOT_SCRIPT = INDEX_HTML.match(
-  /<script>\s*(\(function \(\) \{\s*var localeKey = "nanobot\.locale";[\s\S]*?\}\)\(\);)\s*<\/script>/,
+  /<script>\s*(\(function \(\) \{\s*var localeKey = "mira\.locale";[\s\S]*?\}\)\(\);)\s*<\/script>/,
 )?.[1];
-const BOOT_COPY_MARKUP = '<span data-boot-copy>Loading nanobot…</span>';
+const BOOT_COPY_MARKUP = '<span data-boot-copy>Loading mira…</span>';
 
 function runPrebootLocale(storedLocale: string) {
   if (!PREBOOT_SCRIPT) throw new Error("Could not find the preboot locale script in index.html");
@@ -308,7 +308,7 @@ describe("webui i18n", () => {
     await waitFor(() => {
       expect(document.documentElement.lang).toBe("zh-CN");
     });
-    expect(localStorage.getItem("nanobot.locale")).toBe("zh-CN");
+    expect(localStorage.getItem("mira.locale")).toBe("zh-CN");
     expect(screen.getByPlaceholderText("输入消息…")).toBeInTheDocument();
   });
 

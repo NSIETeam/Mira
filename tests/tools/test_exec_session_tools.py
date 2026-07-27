@@ -12,16 +12,16 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from nanobot.agent import context as agent_context
-from nanobot.agent.loop import AgentLoop
-from nanobot.agent.tools.context import RequestContext, bind_request_context, reset_request_context
-from nanobot.agent.tools.exec_session import (
+from mira.agent import context as agent_context
+from mira.agent.loop import AgentLoop
+from mira.agent.tools.context import RequestContext, bind_request_context, reset_request_context
+from mira.agent.tools.exec_session import (
     ExecSessionManager,
     ListExecSessionsTool,
     WriteStdinTool,
 )
-from nanobot.agent.tools.registry import is_tool_error_result
-from nanobot.agent.tools.shell import ExecTool
+from mira.agent.tools.registry import is_tool_error_result
+from mira.agent.tools.shell import ExecTool
 
 
 def _python_command(code: str) -> str:

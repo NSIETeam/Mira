@@ -5,36 +5,36 @@
 
 <div align="center">
   <p>
-    <a href="https://nanobot.wiki/docs/latest/getting-started/nanobot-overview">English</a> |
-    <a href="https://nanobot.wiki/cn/docs/latest/getting-started/nanobot-overview">简体中文</a> |
-    <a href="https://nanobot.wiki/zh-Hant/docs/latest/getting-started/nanobot-overview">繁體中文</a> |
-    <a href="https://nanobot.wiki/es/docs/latest/getting-started/nanobot-overview">Español</a> |
-    <a href="https://nanobot.wiki/fr/docs/latest/getting-started/nanobot-overview">Français</a> |
-    <a href="https://nanobot.wiki/id/docs/latest/getting-started/nanobot-overview">Bahasa Indonesia</a> |
-    <a href="https://nanobot.wiki/ja/docs/latest/getting-started/nanobot-overview">日本語</a> |
-    <a href="https://nanobot.wiki/ko/docs/latest/getting-started/nanobot-overview">한국어</a> |
-    <a href="https://nanobot.wiki/ru/docs/latest/getting-started/nanobot-overview">Русский</a> |
-    <a href="https://nanobot.wiki/vi/docs/latest/getting-started/nanobot-overview">Tiếng Việt</a>
+    <a href="https://mira.wiki/docs/latest/getting-started/mira-overview">English</a> |
+    <a href="https://mira.wiki/cn/docs/latest/getting-started/mira-overview">简体中文</a> |
+    <a href="https://mira.wiki/zh-Hant/docs/latest/getting-started/mira-overview">繁體中文</a> |
+    <a href="https://mira.wiki/es/docs/latest/getting-started/mira-overview">Español</a> |
+    <a href="https://mira.wiki/fr/docs/latest/getting-started/mira-overview">Français</a> |
+    <a href="https://mira.wiki/id/docs/latest/getting-started/mira-overview">Bahasa Indonesia</a> |
+    <a href="https://mira.wiki/ja/docs/latest/getting-started/mira-overview">日本語</a> |
+    <a href="https://mira.wiki/ko/docs/latest/getting-started/mira-overview">한국어</a> |
+    <a href="https://mira.wiki/ru/docs/latest/getting-started/mira-overview">Русский</a> |
+    <a href="https://mira.wiki/vi/docs/latest/getting-started/mira-overview">Tiếng Việt</a>
   </p>
   <p>
-    <a href="https://pypi.org/project/nanobot-ai/"><img src="https://img.shields.io/pypi/v/nanobot-ai" alt="PyPI"></a>
-    <a href="https://pepy.tech/project/nanobot-ai"><img src="https://static.pepy.tech/badge/nanobot-ai" alt="Downloads"></a>
+    <a href="https://pypi.org/project/mira/"><img src="https://img.shields.io/pypi/v/mira" alt="PyPI"></a>
+    <a href="https://pepy.tech/project/mira"><img src="https://static.pepy.tech/badge/mira" alt="Downloads"></a>
     <img src="https://img.shields.io/badge/python-≥3.11-blue" alt="Python">
     <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
     <a href="https://github.com/NSIETeam/Mira/graphs/commit-activity" target="_blank">
         <img alt="Commits last month" src="https://img.shields.io/github/commit-activity/m/NSIETeam/Mira?labelColor=%20%2332b583&color=%20%2312b76a"></a>
     <a href="https://github.com/NSIETeam/Mira/issues?q=is%3Aissue%20is%3Aclosed" target="_blank">
         <img alt="Issues closed" src="https://img.shields.io/github/issues-search?query=repo%3ANSIETeam%2FMira%20is%3Aissue%20is%3Aclosed&label=issues%20closed&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
-    <a href="https://twitter.com/intent/follow?screen_name=nanobot_project" target="_blank">
-        <img src="https://img.shields.io/twitter/follow/nanobot_project?logo=X&color=%20%23f5f5f5" alt="follow on X(Twitter)"></a>
-    <a href="https://nanobot.wiki/docs/latest/getting-started/nanobot-overview"><img src="https://img.shields.io/badge/Docs-nanobot.wiki-blue?style=flat&logo=readthedocs&logoColor=white" alt="Docs"></a>
+    <a href="https://twitter.com/intent/follow?screen_name=mira_project" target="_blank">
+        <img src="https://img.shields.io/twitter/follow/mira_project?logo=X&color=%20%23f5f5f5" alt="follow on X(Twitter)"></a>
+    <a href="https://mira.wiki/docs/latest/getting-started/mira-overview"><img src="https://img.shields.io/badge/Docs-mira.wiki-blue?style=flat&logo=readthedocs&logoColor=white" alt="Docs"></a>
     <a href="./COMMUNICATION.md"><img src="https://img.shields.io/badge/Feishu-Group-E9DBFC?style=flat&logo=feishu&logoColor=white" alt="Feishu"></a>
     <a href="./COMMUNICATION.md"><img src="https://img.shields.io/badge/WeChat-Group-C5EAB4?style=flat&logo=wechat&logoColor=white" alt="WeChat"></a>
     <a href="https://discord.gg/MnCvHqpUGB"><img src="https://img.shields.io/badge/Discord-Community-5865F2?style=flat&logo=discord&logoColor=white" alt="Discord"></a>
   </p>
 </div>
 
-🐈 **Mira** is an open-source, ultra-lightweight execution kernel and personal AI agent you can truly own. It keeps the runtime core small and readable while giving you the practical pieces for real long-running work: WebUI, chat channels, tools, memory, MCP, model routing, automation, and deployment.
+ **Mira** is an open-source, ultra-lightweight execution kernel and personal AI agent you can truly own. It keeps the runtime core small and readable while giving you the practical pieces for real long-running work: WebUI, chat channels, tools, memory, MCP, model routing, automation, and deployment.
 
 ## Start Here
 
@@ -78,7 +78,7 @@ The Agency Release turns Mira from a durable workbench into an execution runtime
 ## Open Source Partners
 
 <p align="center">
-  <a href="https://platform.kimi.com?aff=nanobot"><picture><source media="(prefers-color-scheme: dark)" srcset="https://kimi-file.moonshot.cn/prod-chat-kimi/kfs/4/1/2026-06-05/1d8h69mt3v89kkekg24gg"><img alt="Kimi Open Source Friends" height="44" src="https://kimi-file.moonshot.cn/prod-chat-kimi/kfs/4/1/2026-06-05/1d8h69fudcmosb3pipls0"></picture></a>
+  <a href="https://platform.kimi.com?aff=mira"><picture><source media="(prefers-color-scheme: dark)" srcset="https://kimi-file.moonshot.cn/prod-chat-kimi/kfs/4/1/2026-06-05/1d8h69mt3v89kkekg24gg"><img alt="Kimi Open Source Friends" height="44" src="https://kimi-file.moonshot.cn/prod-chat-kimi/kfs/4/1/2026-06-05/1d8h69fudcmosb3pipls0"></picture></a>
   <a href="https://platform.minimaxi.com/subscribe/token-plan?code=GILTJpMTqZ&source=link"><img alt="MiniMax" height="40" src="https://mintcdn.com/minimax-zh/1UjvBcdoC6r0UeyA/logo/light.svg?fit=max&auto=format&n=1UjvBcdoC6r0UeyA&q=85&s=672d724b639b2d88d0702fae329ea4f8"></a>
 </p>
 
@@ -92,7 +92,7 @@ The Agency Release turns Mira from a durable workbench into an execution runtime
 
 For older updates, see the [release archive](./docs/release-archive.md) or [GitHub releases](https://github.com/NSIETeam/Mira/releases).
 
-## 💡 Why Mira
+##  Why Mira
 
 - **Persistent workflows**: goals, memory, tools, and chat context survive long-running work.
 - **Chat-native reach**: WebUI, API, Telegram, Feishu, Slack, Discord, Teams, email, and Mattermost.
@@ -102,7 +102,7 @@ For older updates, see the [release archive](./docs/release-archive.md) or [GitH
 
 If you want the current engineering surface instead of the generic getting-started path, start with [Mira Kernel Workbench](./docs/mira-kernel-workbench.md). If you want the current release-prep checklist, use [Mira Delivery Readiness](./docs/mira-delivery-readiness.md).
 
-## 📦 Install
+##  Install
 
 > [!IMPORTANT]
 > If you want the newest features and experiments, install from source.
@@ -129,7 +129,7 @@ Windows PowerShell:
 irm https://raw.githubusercontent.com/NSIETeam/Mira/main/scripts/install.ps1 | iex
 ```
 
-The default command installs or upgrades the current PyPI distribution, `nanobot-ai`, and then launches the Mira entrypoint. On a fresh local desktop, it starts `mira webui` so you can configure the first provider and model in **Settings → Models**. SSH, headless, existing-config, and older-release paths keep the terminal setup wizard. The installer avoids system-wide pip installs by using an active virtual environment, `uv`, `pipx`, or a managed venv under `~/.nanobot/venv`. It also prints the exact command it used to run Mira; reuse that full command below if `mira` is not on `PATH`.
+The default command installs or upgrades the current PyPI distribution, `mira`, and then launches the Mira entrypoint. On a fresh local desktop, it starts `mira webui` so you can configure the first provider and model in **Settings → Models**. SSH, headless, existing-config, and older-release paths keep the terminal setup wizard. The installer avoids system-wide pip installs by using an active virtual environment, `uv`, `pipx`, or a managed venv under `~/.mira/venv`. It also prints the exact command it used to run Mira; reuse that full command below if `mira` is not on `PATH`.
 
 To preview the plan without changing your environment, pass `--dry-run`; combine it with `--dev` when you want to preview the main-branch install.
 
@@ -156,16 +156,16 @@ If you prefer to inspect the script first, open [`scripts/install.sh`](./scripts
 **Install with `uv`**
 
 ```bash
-uv tool install nanobot-ai
+uv tool install mira
 ```
 
 **Install from PyPI with pip**
 
 ```bash
-python -m pip install nanobot-ai
+python -m pip install mira
 ```
 
-If pip reports `externally-managed-environment` on macOS or Linux, use the one-command installer, `uv tool install nanobot-ai`, `pipx install nanobot-ai`, or install inside a virtual environment.
+If pip reports `externally-managed-environment` on macOS or Linux, use the one-command installer, `uv tool install mira`, `pipx install mira`, or install inside a virtual environment.
 
 **Install from source**
 
@@ -185,9 +185,9 @@ Verify the install:
 mira --version
 ```
 
-If `mira` is not on `PATH`, invoke it through the method that installed it: reuse the recommended installer's command, use `uv tool run --from nanobot-ai mira ...` or `pipx run --spec nanobot-ai mira ...`, or use the Python executable from the environment where pip installed the package. The current published distribution name remains `nanobot-ai`, while the primary runtime entrypoint is `mira`. The legacy `nanobot` command remains supported for compatibility.
+If `mira` is not on `PATH`, invoke it through the method that installed it: reuse the recommended installer's command, use `uv tool run --from mira mira ...` or `pipx run --spec mira mira ...`, or use the Python executable from the environment where pip installed the package. The current published distribution name remains `mira`, while the primary runtime entrypoint is `mira`. The legacy `mira` command remains supported for compatibility.
 
-## 🚀 Quick Start
+##  Quick Start
 
 **Open Mira in your browser**
 
@@ -196,7 +196,7 @@ mira webui
 ```
 
 Compatibility note: this runtime now exposes the same launcher as both `mira`
-and legacy `nanobot`. Existing setups can keep using `nanobot`; the primary entry point for new usage is `mira`:
+and legacy `mira`. Existing setups can keep using `mira`; the primary entry point for new usage is `mira`:
 
 ```bash
 mira webui
@@ -262,12 +262,12 @@ Need manual JSON, another device on your LAN, or help with provider/model matchi
 - Want to run Mira in chat apps like Telegram, Discord, WeChat or Feishu? See [Chat Apps](./docs/chat-apps.md)
 - Want Docker or Linux service deployment? See [Deployment](./docs/deployment.md)
 
-## 🌐 WebUI
+##  WebUI
 
 The WebUI ships **inside the published wheel** with no separate frontend build. It is the browser workbench for persistent topics, visible agent activity, workspace controls, Apps, Skills, Automations, and settings.
 
 <p align="center">
-  <img src="images/nanobot_webui.png" alt="Mira WebUI preview" width="900">
+  <img src="images/mira_webui.png" alt="Mira WebUI preview" width="900">
 </p>
 
 Use it to:
@@ -279,22 +279,22 @@ Use it to:
 
 See the [WebUI guide](./docs/webui.md) for LAN access, background operation, workspace controls, and the full feature tour. Working on the frontend itself? Use [`webui/README.md`](./webui/README.md).
 
-## 🏗️ Architecture
+## ️ Architecture
 
 <p align="center">
-  <img src="images/nanobot_arch.png" alt="Mira architecture" width="800">
+  <img src="images/mira_arch.png" alt="Mira architecture" width="800">
 </p>
 
-🐈 Mira stays lightweight by centering everything around a small agent loop: messages come in from chat apps, the LLM decides when tools are needed, and memory or skills are pulled in only as context instead of becoming a heavy orchestration layer. That keeps the core path readable and easy to extend, while still letting you add channels, tools, memory, and deployment options without turning the system into a monolith.
+ Mira stays lightweight by centering everything around a small agent loop: messages come in from chat apps, the LLM decides when tools are needed, and memory or skills are pulled in only as context instead of becoming a heavy orchestration layer. That keeps the core path readable and easy to extend, while still letting you add channels, tools, memory, and deployment options without turning the system into a monolith.
 
-## ✨ Features
+##  Features
 
 <table align="center">
   <tr align="center">
-    <th><p align="center">📈 24/7 Real-Time Market Analysis</p></th>
-    <th><p align="center">🚀 Full-Stack Software Engineer</p></th>
-    <th><p align="center">📅 Smart Daily Routine Manager</p></th>
-    <th><p align="center">📚 Personal Knowledge Assistant</p></th>
+    <th><p align="center"> 24/7 Real-Time Market Analysis</p></th>
+    <th><p align="center"> Full-Stack Software Engineer</p></th>
+    <th><p align="center"> Smart Daily Routine Manager</p></th>
+    <th><p align="center"> Personal Knowledge Assistant</p></th>
   </tr>
   <tr>
     <td align="center"><p align="center"><img src="case/search.gif" width="180" height="400"></p></td>
@@ -310,9 +310,9 @@ See the [WebUI guide](./docs/webui.md) for LAN access, background operation, wor
   </tr>
 </table>
 
-## 📚 Docs
+##  Docs
 
-Browse the [repo docs](./docs/README.md) for the latest features and GitHub development version, or visit the current hosted docs at [nanobot.wiki](https://nanobot.wiki/docs/latest/getting-started/nanobot-overview) for the stable release documentation. The docs domain remains compatibility-bound for now.
+Browse the [repo docs](./docs/README.md) for the latest features and GitHub development version, or visit the current hosted docs at [mira.wiki](https://mira.wiki/docs/latest/getting-started/mira-overview) for the stable release documentation. The docs domain remains compatibility-bound for now.
 
 - Use task-oriented guides: [Guides](./docs/guides/README.md)
 - Start with no technical background: [Start Without Technical Background](./docs/start-without-technical-background.md)
@@ -328,9 +328,9 @@ Browse the [repo docs](./docs/README.md) for the latest features and GitHub deve
 - Integrate Mira with local tools and automations: [OpenAI-Compatible API](./docs/openai-api.md) · [Python SDK](./docs/python-sdk.md)
 - Run Mira with Docker or as a Linux service: [Deployment](./docs/deployment.md)
 
-## 🤝 Contribute & Roadmap
+##  Contribute & Roadmap
 
-PRs welcome! The codebase is intentionally small and readable. 🤗
+PRs welcome! The codebase is intentionally small and readable. 
 
 ### Contribution Flow
 
@@ -346,7 +346,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, review, and contribution gui
 
 ## Contact
 
-Mira started from the original nanobot codebase by [Xubin Ren](https://github.com/re-bin) and is now maintained collaboratively with contributors from the open-source community. Feel free to contact [xubinrencs@gmail.com](mailto:xubinrencs@gmail.com) for questions, ideas, or collaboration.
+Mira started from the original mira codebase by [Xubin Ren](https://github.com/re-bin) and is now maintained collaboratively with contributors from the open-source community. Feel free to contact [xubinrencs@gmail.com](mailto:xubinrencs@gmail.com) for questions, ideas, or collaboration.
 
 ### Contributors
 

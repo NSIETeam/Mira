@@ -2,26 +2,26 @@ import type { ComponentType } from "react";
 
 import type { ChannelPresentation } from "@/components/settings/channels/catalog";
 import type {
-  NanobotFeatureInfo,
-  NanobotFeaturesPayload,
+  miraFeatureInfo,
+  miraFeaturesPayload,
 } from "@/lib/types";
 
 export type ChannelPluginPanelProps = {
   token: string;
-  feature: NanobotFeatureInfo;
+  feature: miraFeatureInfo;
   actionKey: string | null;
   chatAppsDocsUrl?: string;
   showBrandLogos: boolean;
   onAction: (action: "enable" | "disable", name: string) => void;
-  onFeaturesUpdate: (payload: NanobotFeaturesPayload) => void;
+  onFeaturesUpdate: (payload: miraFeaturesPayload) => void;
 };
 
 export type ChannelPluginConnectFlowProps = {
   token: string;
-  feature: NanobotFeatureInfo;
+  feature: miraFeatureInfo;
   idleLabel?: string;
   connectRequestId?: number;
-  onFeaturesUpdate: (payload: NanobotFeaturesPayload) => void;
+  onFeaturesUpdate: (payload: miraFeaturesPayload) => void;
 };
 
 export type ChannelUiContribution = {

@@ -20,7 +20,7 @@ want in-process access to sessions, memory, runtime helpers, and hooks.
 ## Install
 
 ```bash
-python -m pip install nanobot-ai
+python -m pip install mira-ai
 mira plugins enable api
 mira onboard --wizard
 mira agent -m "Hello!"

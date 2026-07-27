@@ -14,7 +14,7 @@ import {
   fetchCliApps,
   fetchInstalledCliApps,
   fetchMcpPresets,
-  fetchNanobotFeatures,
+  fetchmiraFeatures,
   fetchProviderModels,
   fetchSessionAutomations,
   fetchSettingsUsage,
@@ -29,8 +29,8 @@ import {
   loginProviderOAuth,
   logoutProviderOAuth,
   migrateModelConfigurations,
-  disableNanobotFeature,
-  enableNanobotFeature,
+  disablemiraFeature,
+  enablemiraFeature,
   runAutomationAction,
   runCliAppAction,
   runMcpPresetAction,
@@ -169,7 +169,7 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer tok",
-          "X-Nanobot-Channel-Values": JSON.stringify({
+          "X-mira-Channel-Values": JSON.stringify({
             "channels.slack.botToken": "xoxb-test",
           }),
         }),
@@ -194,7 +194,7 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer tok",
-          "X-Nanobot-Channel-Values": JSON.stringify({
+          "X-mira-Channel-Values": JSON.stringify({
             "channels.discord.token": "saved-secret",
           }),
         }),
@@ -256,12 +256,12 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: {
           Authorization: "Bearer tok",
-          "X-Nanobot-Automation-Values": encodeURIComponent(JSON.stringify(values)),
+          "X-mira-Automation-Values": encodeURIComponent(JSON.stringify(values)),
         },
       }),
     );
     const header = vi.mocked(fetch).mock.calls[0][1]?.headers as Record<string, string>;
-    expect(header["X-Nanobot-Automation-Values"]).not.toContain("每日");
+    expect(header["X-mira-Automation-Values"]).not.toContain("每日");
   });
 
   it("fetches the WebUI skill summary", async () => {
@@ -315,13 +315,13 @@ describe("webui API helpers", () => {
       provider: "openrouter",
       contextWindowTokens: 262144,
       timezone: "Asia/Shanghai",
-      botName: "nanobot",
+      botName: "mira",
       botIcon: "nb",
       toolHintMaxLength: 120,
     });
 
     expect(fetch).toHaveBeenCalledWith(
-      "/api/settings/update?model_preset=default&model=openrouter%2Ftest&provider=openrouter&context_window_tokens=262144&timezone=Asia%2FShanghai&bot_name=nanobot&bot_icon=nb&tool_hint_max_length=120",
+      "/api/settings/update?model_preset=default&model=openrouter%2Ftest&provider=openrouter&context_window_tokens=262144&timezone=Asia%2FShanghai&bot_name=mira&bot_icon=nb&tool_hint_max_length=120",
       expect.objectContaining({
         headers: { Authorization: "Bearer tok" },
       }),
@@ -427,7 +427,7 @@ describe("webui API helpers", () => {
       }),
     ).rejects.toMatchObject({
       status: 200,
-      message: "Gateway returned WebUI HTML instead of JSON. Restart nanobot gateway and try again.",
+      message: "Gateway returned WebUI HTML instead of JSON. Restart mira gateway and try again.",
     });
   });
 
@@ -471,7 +471,7 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: {
           Authorization: "Bearer tok",
-          "X-Nanobot-Provider-Values": encodeURIComponent(JSON.stringify({
+          "X-mira-Provider-Values": encodeURIComponent(JSON.stringify({
             apiKey: "sk-or-test",
             apiBase: "https://openrouter.ai/api/v1",
           })),
@@ -492,7 +492,7 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: {
           Authorization: "Bearer tok",
-          "X-Nanobot-Provider-Values": encodeURIComponent(JSON.stringify({
+          "X-mira-Provider-Values": encodeURIComponent(JSON.stringify({
             proxy: "http://127.0.0.1:7890",
             extraBody: '{"service_tier":"priority"}',
           })),
@@ -518,7 +518,7 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: {
           Authorization: "Bearer tok",
-          "X-Nanobot-Provider-Values": encodeURIComponent(JSON.stringify({
+          "X-mira-Provider-Values": encodeURIComponent(JSON.stringify({
             name: "Company Gateway",
             apiKey: "sk-company",
             apiBase: "https://gateway.example/v1",
@@ -572,7 +572,7 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: {
           Authorization: "Bearer tok",
-          "X-Nanobot-OAuth-Code": "secret",
+          "X-mira-OAuth-Code": "secret",
         },
       }),
     );
@@ -681,7 +681,7 @@ describe("webui API helpers", () => {
     );
   });
 
-  it("reads and toggles nanobot optional features", async () => {
+  it("reads and toggles mira optional features", async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -690,25 +690,25 @@ describe("webui API helpers", () => {
       }),
     } as Response);
 
-    await expect(fetchNanobotFeatures("tok")).resolves.toMatchObject({ features: [] });
+    await expect(fetchmiraFeatures("tok")).resolves.toMatchObject({ features: [] });
     expect(fetch).toHaveBeenCalledWith(
-      "/api/settings/nanobot-features",
+      "/api/settings/mira-features",
       expect.objectContaining({
         headers: { Authorization: "Bearer tok" },
       }),
     );
 
-    await enableNanobotFeature("tok", "matrix");
+    await enablemiraFeature("tok", "matrix");
     expect(fetch).toHaveBeenCalledWith(
-      "/api/settings/nanobot-features/enable?name=matrix",
+      "/api/settings/mira-features/enable?name=matrix",
       expect.objectContaining({
         headers: { Authorization: "Bearer tok" },
       }),
     );
 
-    await disableNanobotFeature("tok", "matrix");
+    await disablemiraFeature("tok", "matrix");
     expect(fetch).toHaveBeenCalledWith(
-      "/api/settings/nanobot-features/disable?name=matrix",
+      "/api/settings/mira-features/disable?name=matrix",
       expect.objectContaining({
         headers: { Authorization: "Bearer tok" },
       }),
@@ -737,7 +737,7 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: {
           Authorization: "Bearer tok",
-          "X-Nanobot-API-Service-Values": JSON.stringify({ api_key: "secret-token" }),
+          "X-mira-API-Service-Values": JSON.stringify({ api_key: "secret-token" }),
         },
       }),
     );
@@ -778,7 +778,7 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer tok",
-          "X-Nanobot-MCP-Values": JSON.stringify({
+          "X-mira-MCP-Values": JSON.stringify({
             browserbase_api_key: "bb_live_test",
           }),
         }),
@@ -799,7 +799,7 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer tok",
-          "X-Nanobot-MCP-Values": JSON.stringify({
+          "X-mira-MCP-Values": JSON.stringify({
             name: "docs",
             transport: "stdio",
             command: "npx",
@@ -816,7 +816,7 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer tok",
-          "X-Nanobot-MCP-Values": JSON.stringify({
+          "X-mira-MCP-Values": JSON.stringify({
             config: '{"mcpServers":{"docs":{"command":"npx"}}}',
           }),
         }),
@@ -829,7 +829,7 @@ describe("webui API helpers", () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer tok",
-          "X-Nanobot-MCP-Values": JSON.stringify({
+          "X-mira-MCP-Values": JSON.stringify({
             name: "docs",
             enabled_tools: ["search", "fetch"],
           }),
@@ -844,7 +844,7 @@ describe("webui API helpers", () => {
       pinned_keys: ["websocket:chat-1"],
       archived_keys: ["websocket:old"],
       title_overrides: { "websocket:chat-1": "Release" },
-      project_name_overrides: { "/Users/me/nanobot": "Core" },
+      project_name_overrides: { "/Users/me/mira": "Core" },
       tags_by_key: {},
       collapsed_groups: {},
       view: {
@@ -880,7 +880,7 @@ describe("webui API helpers", () => {
     expect(JSON.parse(encodedState ?? "{}")).toMatchObject({
       pinned_keys: ["websocket:chat-1"],
       title_overrides: { "websocket:chat-1": "Release" },
-      project_name_overrides: { "/Users/me/nanobot": "Core" },
+      project_name_overrides: { "/Users/me/mira": "Core" },
     });
   });
 
@@ -956,7 +956,7 @@ describe("webui API helpers", () => {
           },
           {
             command: "/restart",
-            title: "Restart nanobot",
+            title: "Restart mira",
             description: "Restart the bot process.",
             icon: "rotate-cw",
             lifecycle: "side_channel",
@@ -993,7 +993,7 @@ describe("webui API helpers", () => {
       },
       {
         command: "/restart",
-        title: "Restart nanobot",
+        title: "Restart mira",
         description: "Restart the bot process.",
         icon: "rotate-cw",
         argHint: "",

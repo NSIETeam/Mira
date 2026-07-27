@@ -18,11 +18,11 @@ This separation keeps the backend stable while allowing multiple shells to be sw
 
 Primary backend files:
 
-- `nanobot/kernel/app.py`
-- `nanobot/kernel/profile.py`
-- `nanobot/kernel/shell.py`
-- `nanobot/webui/settings_api.py`
-- `nanobot/webui/ws_http.py`
+- `mira/kernel/app.py`
+- `mira/kernel/profile.py`
+- `mira/kernel/shell.py`
+- `mira/webui/settings_api.py`
+- `mira/webui/ws_http.py`
 
 Kernel responsibilities:
 
@@ -81,7 +81,7 @@ Shells should be thin.
 
 Backend source of truth:
 
-- `nanobot/kernel/shell.py`
+- `mira/kernel/shell.py`
 
 Frontend payload/type surface:
 
@@ -179,7 +179,7 @@ This allows the backend to evolve descriptor naming without breaking layout reso
 
 When adding a new shell:
 
-1. Add a backend shell descriptor factory in `nanobot/kernel/shell.py`.
+1. Add a backend shell descriptor factory in `mira/kernel/shell.py`.
 2. Give it a stable `mode`.
 3. Emit grouped `host_contract` capabilities.
 4. Add or map a frontend layout in `webui/src/shells/registry.ts`.

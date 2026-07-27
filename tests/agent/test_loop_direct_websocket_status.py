@@ -3,12 +3,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nanobot.agent.loop import AgentLoop
-from nanobot.bus.events import OutboundMessage
-from nanobot.bus.outbound_events import GoalStatusEvent
-from nanobot.bus.queue import MessageBus
-from nanobot.providers.base import GenerationSettings, LLMResponse
-from nanobot.session.webui_turns import WebuiTurnCoordinator
+from mira.agent.loop import AgentLoop
+from mira.bus.events import OutboundMessage
+from mira.bus.outbound_events import GoalStatusEvent
+from mira.bus.queue import MessageBus
+from mira.providers.base import GenerationSettings, LLMResponse
+from mira.session.webui_turns import WebuiTurnCoordinator
 
 
 def _make_loop(tmp_path):
@@ -100,7 +100,7 @@ async def test_process_direct_reuses_existing_session_lock(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_process_direct_applies_per_run_hooks(tmp_path) -> None:
-    from nanobot.agent.hook import AgentHook, AgentRunHookContext
+    from mira.agent.hook import AgentHook, AgentRunHookContext
 
     loop = _make_loop(tmp_path)
     events: list[tuple[str, str | None]] = []

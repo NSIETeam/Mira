@@ -1,7 +1,7 @@
-"""Reproduction test for HKUDS/nanobot#4302.
+"""Reproduction test for HKUDS/mira#4302.
 
 This test starts a real FastMCP streamable-http server in a child process,
-lets its idle timeout kill the session, and then exercises nanobot's MCP
+lets its idle timeout kill the session, and then exercises mira's MCP
 reconnect path.  The bug being reproduced is a gateway crash caused by
 improper cleanup of the old ``streamable_http_client`` async generator during
 reconnect / shutdown.
@@ -20,12 +20,12 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from nanobot.agent.loop import AgentLoop
-from nanobot.agent.tools import mcp as mcp_module
-from nanobot.agent.tools.mcp import MCPToolWrapper
-from nanobot.bus.queue import MessageBus
-from nanobot.config.schema import MCPServerConfig
-from nanobot.security import network as security_network
+from mira.agent.loop import AgentLoop
+from mira.agent.tools import mcp as mcp_module
+from mira.agent.tools.mcp import MCPToolWrapper
+from mira.bus.queue import MessageBus
+from mira.config.schema import MCPServerConfig
+from mira.security import network as security_network
 
 _IDLE_TIMEOUT_SECONDS = 0.25
 _IDLE_EXPIRY_GRACE_SECONDS = 0.25
@@ -127,7 +127,7 @@ def _make_loop(tmp_path, *, mcp_servers: dict) -> AgentLoop:
 
 @pytest.fixture(autouse=True)
 def allow_loopback_mcp_urls(monkeypatch: pytest.MonkeyPatch):
-    """The repro server runs on 127.0.0.1; allow nanobot to talk to it."""
+    """The repro server runs on 127.0.0.1; allow mira to talk to it."""
     class TestPinnedDNSAsyncTransport(security_network.PinnedDNSAsyncTransport):
         _resolver_lock = asyncio.Lock()
 

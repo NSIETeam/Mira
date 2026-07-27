@@ -12,7 +12,7 @@ import {
 } from "@/lib/api";
 import type {
   ChannelConnectPayload,
-  NanobotFeaturesPayload,
+  miraFeaturesPayload,
 } from "@/lib/types";
 
 export type ChannelQrConnectLabels = {
@@ -51,7 +51,7 @@ export function ChannelQrConnectFlow({
   connectRequestId?: number;
   forceOnRepeat?: boolean;
   labels: ChannelQrConnectLabels;
-  onFeaturesUpdate: (payload: NanobotFeaturesPayload) => void;
+  onFeaturesUpdate: (payload: miraFeaturesPayload) => void;
 }) {
   const pageVisible = usePageVisibility();
   const { t } = useTranslation();
@@ -107,8 +107,8 @@ export function ChannelQrConnectFlow({
           ...payload,
           qr_url: payload.qr_url ?? current?.qr_url,
         }));
-        if (payload.nanobot_features) {
-          onFeaturesUpdate(payload.nanobot_features);
+        if (payload.mira_features) {
+          onFeaturesUpdate(payload.mira_features);
         }
         if (payload.status !== "pending") {
           setError(null);

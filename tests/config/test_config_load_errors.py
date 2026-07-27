@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from nanobot.config.loader import load_config
-from nanobot.config.schema import ApiConfig
+from mira.config.loader import load_config
+from mira.config.schema import ApiConfig
 
 
 def test_load_config_missing_file_uses_defaults(tmp_path) -> None:

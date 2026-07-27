@@ -8,10 +8,10 @@ import httpx
 import pytest
 from loguru import logger
 
-import nanobot.providers.base as provider_base
-from nanobot.config.schema import Config
-from nanobot.providers.factory import make_provider
-from nanobot.providers.openai_codex_provider import (
+import mira.providers.base as provider_base
+from mira.config.schema import Config
+from mira.providers.factory import make_provider
+from mira.providers.openai_codex_provider import (
     OpenAICodexProvider,
     _build_reasoning_options,
     _codex_error_response,
@@ -20,7 +20,7 @@ from nanobot.providers.openai_codex_provider import (
     _request_codex,
     _should_retry_status,
 )
-from nanobot.providers.registry import find_by_name
+from mira.providers.registry import find_by_name
 
 
 def _mock_codex_token(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -28,7 +28,7 @@ def _mock_codex_token(monkeypatch: pytest.MonkeyPatch) -> None:
         return SimpleNamespace(account_id="acct", access="token")
 
     monkeypatch.setattr(
-        "nanobot.providers.openai_codex_provider.get_codex_token",
+        "mira.providers.openai_codex_provider.get_codex_token",
         fake_token,
     )
 
@@ -54,7 +54,7 @@ class _WarningCaptureLogger:
 
 def _capture_codex_warnings(monkeypatch: pytest.MonkeyPatch) -> _WarningCaptureLogger:
     capture = _WarningCaptureLogger()
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider.logger", capture)
+    monkeypatch.setattr("mira.providers.openai_codex_provider.logger", capture)
     return capture
 
 
@@ -101,7 +101,7 @@ async def test_codex_request_non_200_populates_http_metadata(monkeypatch) -> Non
         assert verify is True
         return original_client(transport=httpx.MockTransport(handler), timeout=timeout)
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider.httpx.AsyncClient", fake_client)
+    monkeypatch.setattr("mira.providers.openai_codex_provider.httpx.AsyncClient", fake_client)
 
     with pytest.raises(_CodexHTTPError) as caught:
         await _request_codex("https://codex.example/responses", {}, {"input": []}, verify=True)
@@ -117,8 +117,8 @@ async def test_codex_request_non_200_populates_http_metadata(monkeypatch) -> Non
 
 @pytest.mark.asyncio
 async def test_codex_request_honors_stream_idle_timeout_env(monkeypatch) -> None:
-    """NANOBOT_STREAM_IDLE_TIMEOUT_S overrides the default Codex stream timeout."""
-    monkeypatch.setenv("NANOBOT_STREAM_IDLE_TIMEOUT_S", "5")
+    """mira_STREAM_IDLE_TIMEOUT_S overrides the default Codex stream timeout."""
+    monkeypatch.setenv("mira_STREAM_IDLE_TIMEOUT_S", "5")
     original_client = httpx.AsyncClient
     seen: dict[str, int] = {}
 
@@ -134,7 +134,7 @@ async def test_codex_request_honors_stream_idle_timeout_env(monkeypatch) -> None
         seen["timeout"] = timeout
         return original_client(transport=httpx.MockTransport(handler), timeout=timeout)
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider.httpx.AsyncClient", fake_client)
+    monkeypatch.setattr("mira.providers.openai_codex_provider.httpx.AsyncClient", fake_client)
 
     await _request_codex("https://codex.example/responses", {}, {"input": []}, verify=True)
 
@@ -161,7 +161,7 @@ async def test_codex_request_uses_configured_proxy(monkeypatch) -> None:
         seen["trust_env"] = trust_env
         return original_client(transport=httpx.MockTransport(handler), timeout=timeout)
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider.httpx.AsyncClient", fake_client)
+    monkeypatch.setattr("mira.providers.openai_codex_provider.httpx.AsyncClient", fake_client)
 
     await _request_codex(
         "https://codex.example/responses",
@@ -194,19 +194,19 @@ async def test_codex_prompt_cache_key_uses_stable_conversation_prefix(monkeypatc
         bodies.append(body)
         return "ok", [], "stop", {}, None
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider._request_codex", fake_request)
+    monkeypatch.setattr("mira.providers.openai_codex_provider._request_codex", fake_request)
 
     provider = OpenAICodexProvider()
     await provider.chat(
         [
-            {"role": "system", "content": "You are nanobot."},
+            {"role": "system", "content": "You are mira."},
             {"role": "user", "content": "first request"},
             {"role": "assistant", "content": "first answer"},
         ],
     )
     await provider.chat(
         [
-            {"role": "system", "content": "You are nanobot."},
+            {"role": "system", "content": "You are mira."},
             {"role": "user", "content": "first request"},
             {"role": "assistant", "content": "first answer"},
             {"role": "user", "content": "follow up"},
@@ -214,7 +214,7 @@ async def test_codex_prompt_cache_key_uses_stable_conversation_prefix(monkeypatc
     )
     await provider.chat(
         [
-            {"role": "system", "content": "You are nanobot."},
+            {"role": "system", "content": "You are mira."},
             {"role": "user", "content": "different request"},
             {"role": "assistant", "content": "first answer"},
         ],
@@ -234,7 +234,7 @@ async def test_codex_provider_applies_extra_body_from_config(monkeypatch) -> Non
         bodies.append(body)
         return "ok", [], "stop", {}, None
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider._request_codex", fake_request)
+    monkeypatch.setattr("mira.providers.openai_codex_provider._request_codex", fake_request)
     config = Config.model_validate({
         "agents": {
             "defaults": {
@@ -263,7 +263,7 @@ async def test_codex_timeout_error_is_typed_and_retryable(monkeypatch) -> None:
     async def fake_request(*args, **kwargs):
         raise httpx.ReadTimeout("")
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider._request_codex", fake_request)
+    monkeypatch.setattr("mira.providers.openai_codex_provider._request_codex", fake_request)
 
     provider = OpenAICodexProvider()
     response = await provider.chat([{"role": "user", "content": "hello"}])
@@ -299,8 +299,8 @@ async def test_codex_provider_passes_proxy_to_oauth_and_response_request(monkeyp
         seen["request_proxy"] = proxy
         return "ok", [], "stop", {}, None
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider.get_codex_token", fake_token)
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider._request_codex", fake_request)
+    monkeypatch.setattr("mira.providers.openai_codex_provider.get_codex_token", fake_token)
+    monkeypatch.setattr("mira.providers.openai_codex_provider._request_codex", fake_request)
 
     provider = OpenAICodexProvider(proxy=proxy)
     response = await provider.chat([{"role": "user", "content": "hello"}])
@@ -318,7 +318,7 @@ async def test_codex_timeout_error_writes_diagnostic_log(monkeypatch) -> None:
     async def fake_request(*args: Any, **kwargs: Any):
         raise httpx.ReadTimeout("")
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider._request_codex", fake_request)
+    monkeypatch.setattr("mira.providers.openai_codex_provider._request_codex", fake_request)
 
     provider = OpenAICodexProvider()
     response = await provider.chat([{"role": "user", "content": "hello"}])
@@ -348,7 +348,7 @@ async def test_codex_timeout_error_writes_diagnostic_log(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_codex_diagnostic_log_omits_prompt_content(monkeypatch) -> None:
     sink = io.StringIO()
-    logger.enable("nanobot")
+    logger.enable("mira")
     handler_id = logger.add(sink, format="{message}", backtrace=True, diagnose=True)
     try:
         _mock_codex_token(monkeypatch)
@@ -356,7 +356,7 @@ async def test_codex_diagnostic_log_omits_prompt_content(monkeypatch) -> None:
         async def fake_request(*args: Any, **kwargs: Any):
             raise httpx.ReadTimeout("")
 
-        monkeypatch.setattr("nanobot.providers.openai_codex_provider._request_codex", fake_request)
+        monkeypatch.setattr("mira.providers.openai_codex_provider._request_codex", fake_request)
 
         provider = OpenAICodexProvider()
         response = await provider.chat(
@@ -389,7 +389,7 @@ async def test_codex_retry_uses_structured_timeout_metadata(monkeypatch) -> None
     async def fake_sleep(delay: float) -> None:
         delays.append(delay)
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider._request_codex", fake_request)
+    monkeypatch.setattr("mira.providers.openai_codex_provider._request_codex", fake_request)
     monkeypatch.setattr(provider_base.asyncio, "sleep", fake_sleep)
 
     provider = OpenAICodexProvider()
@@ -413,7 +413,7 @@ async def test_codex_http_error_preserves_status_and_retry_after(monkeypatch) ->
             error_code="overloaded",
         )
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider._request_codex", fake_request)
+    monkeypatch.setattr("mira.providers.openai_codex_provider._request_codex", fake_request)
 
     provider = OpenAICodexProvider()
     response = await provider.chat([{"role": "user", "content": "hello"}])
@@ -441,7 +441,7 @@ async def test_codex_http_diagnostic_log_omits_raw_body(monkeypatch) -> None:
             error_code="overloaded",
         )
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider._request_codex", fake_request)
+    monkeypatch.setattr("mira.providers.openai_codex_provider._request_codex", fake_request)
 
     provider = OpenAICodexProvider()
     response = await provider.chat([{"role": "user", "content": "hello"}])
@@ -491,7 +491,7 @@ async def test_codex_429_preserves_retry_semantics(
             should_retry=expected_retry,
         )
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider._request_codex", fake_request)
+    monkeypatch.setattr("mira.providers.openai_codex_provider._request_codex", fake_request)
 
     provider = OpenAICodexProvider()
     response = await provider.chat([{"role": "user", "content": "hello"}])
@@ -539,7 +539,7 @@ async def test_codex_stream_surfaces_reasoning_summary(monkeypatch) -> None:
         return SimpleNamespace(account_id="acct", access="token")
 
     monkeypatch.setattr(
-        "nanobot.providers.openai_codex_provider.get_codex_token",
+        "mira.providers.openai_codex_provider.get_codex_token",
         fake_token,
     )
 
@@ -561,7 +561,7 @@ async def test_codex_stream_surfaces_reasoning_summary(monkeypatch) -> None:
             await on_thinking_delta("summary")
         return "answer", [], "stop", {"prompt_tokens": 10, "completion_tokens": 5}, "summary"
 
-    monkeypatch.setattr("nanobot.providers.openai_codex_provider._request_codex", fake_request)
+    monkeypatch.setattr("mira.providers.openai_codex_provider._request_codex", fake_request)
 
     provider = OpenAICodexProvider()
     content_deltas: list[str] = []

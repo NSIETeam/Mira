@@ -104,15 +104,15 @@ import {
   createModelConfiguration,
   createProviderSettings,
   deleteModelConfiguration,
-  disableNanobotFeature,
-  enableNanobotFeature,
+  disablemiraFeature,
+  enablemiraFeature,
   fetchApiService,
   fetchAutomations,
   fetchSettings,
   fetchSettingsUsage,
   fetchCliApps,
   fetchMcpPresets,
-  fetchNanobotFeatures,
+  fetchmiraFeatures,
   fetchProviderModels,
   importMcpConfig,
   loginProviderOAuth,
@@ -170,8 +170,8 @@ import type {
   KernelManifestPayload,
   McpPresetInfo,
   McpPresetsPayload,
-  NanobotFeatureInfo,
-  NanobotFeaturesPayload,
+  miraFeatureInfo,
+  miraFeaturesPayload,
   NetworkSafetySettingsUpdate,
   ProviderModelsPayload,
   ProviderOAuthAuthorizationRequired,
@@ -646,13 +646,13 @@ export function SettingsView({
     typeof window !== "undefined" && !isLoopbackHost(window.location.hostname);
   const [settings, setSettings] = useState<SettingsPayload | null>(() => initialSettings);
   const [cliApps, setCliApps] = useState<CliAppsPayload | null>(null);
-  const [nanobotFeatures, setNanobotFeatures] = useState<NanobotFeaturesPayload | null>(null);
-  const featureCatalog = nanobotFeatures?.features ?? [];
+  const [miraFeatures, setmiraFeatures] = useState<miraFeaturesPayload | null>(null);
+  const featureCatalog = miraFeatures?.features ?? [];
   const [mcpPresets, setMcpPresets] = useState<McpPresetsPayload | null>(null);
   const [automations, setAutomations] = useState<AutomationsPayload | null>(null);
   const [loading, setLoading] = useState(() => initialSettings === null);
   const [cliAppsLoading, setCliAppsLoading] = useState(true);
-  const [nanobotFeaturesLoading, setNanobotFeaturesLoading] = useState(true);
+  const [miraFeaturesLoading, setmiraFeaturesLoading] = useState(true);
   const [mcpPresetsLoading, setMcpPresetsLoading] = useState(true);
   const [automationsLoading, setAutomationsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -664,8 +664,8 @@ export function SettingsView({
     useState<SettingsPayload["model_presets"][number] | null>(null);
   const modelPresetBeforeCreateRef = useRef<string | null>(null);
   const [cliAppsAction, setCliAppsAction] = useState<string | null>(null);
-  const [nanobotFeatureAction, setNanobotFeatureAction] = useState<string | null>(null);
-  const [nanobotFeatureConfirm, setNanobotFeatureConfirm] = useState<NanobotFeatureInfo | null>(null);
+  const [miraFeatureAction, setmiraFeatureAction] = useState<string | null>(null);
+  const [miraFeatureConfirm, setmiraFeatureConfirm] = useState<miraFeatureInfo | null>(null);
   const [mcpPresetAction, setMcpPresetAction] = useState<string | null>(null);
   const [providerSaving, setProviderSaving] = useState<string | null>(null);
   const [xaiOAuthFlow, setXaiOAuthFlow] =
@@ -692,7 +692,7 @@ export function SettingsView({
   const [automationsSort, setAutomationsSort] = useState<AutomationSort>("next");
   const [cliAppsMessage, setCliAppsMessage] = useState<string | null>(null);
   const [cliAppsError, setCliAppsError] = useState<string | null>(null);
-  const [nanobotFeaturesError, setNanobotFeaturesError] = useState<string | null>(null);
+  const [miraFeaturesError, setmiraFeaturesError] = useState<string | null>(null);
   const [cliAppsFocusName, setCliAppsFocusName] = useState<string | null>(null);
   const [appsKindFilter, setAppsKindFilter] = useState<AppsKindFilter>("cli");
   const [mcpMessage, setMcpMessage] = useState<string | null>(null);
@@ -902,18 +902,18 @@ export function SettingsView({
     if (!["channels", "models", "browser", "runtime"].includes(activeSection)) return;
     let cancelled = false;
     const refresh = async (showLoading = false) => {
-      if (showLoading) setNanobotFeaturesLoading(true);
+      if (showLoading) setmiraFeaturesLoading(true);
       try {
-        const payload = await fetchNanobotFeatures(token);
+        const payload = await fetchmiraFeatures(token);
         if (!cancelled) {
-          setNanobotFeatures(payload);
-          setNanobotFeaturesError(null);
+          setmiraFeatures(payload);
+          setmiraFeaturesError(null);
         }
       } catch (err) {
         const message = (err as Error).message;
-        if (!cancelled && message !== "HTTP 404") setNanobotFeaturesError(message);
+        if (!cancelled && message !== "HTTP 404") setmiraFeaturesError(message);
       } finally {
-        if (!cancelled && showLoading) setNanobotFeaturesLoading(false);
+        if (!cancelled && showLoading) setmiraFeaturesLoading(false);
       }
     };
     void refresh(true);
@@ -1458,23 +1458,23 @@ export function SettingsView({
       (name) => !featureCatalog.find((feature) => feature.name === name)?.installed,
     );
     if (!missing.length) return true;
-    setNanobotFeatureAction(`enable:${names.join("+")}`);
-    setNanobotFeaturesError(null);
+    setmiraFeatureAction(`enable:${names.join("+")}`);
+    setmiraFeaturesError(null);
     try {
-      let latest = nanobotFeatures;
+      let latest = miraFeatures;
       for (const name of missing) {
-        latest = await enableNanobotFeature(token, name);
+        latest = await enablemiraFeature(token, name);
         if (latest.requires_restart) {
           setPendingRestartSections((prev) => ({ ...prev, runtime: true }));
         }
       }
-      if (latest) setNanobotFeatures(latest);
+      if (latest) setmiraFeatures(latest);
       return true;
     } catch (err) {
-      setNanobotFeaturesError((err as Error).message);
+      setmiraFeaturesError((err as Error).message);
       return false;
     } finally {
-      setNanobotFeatureAction(null);
+      setmiraFeatureAction(null);
     }
   };
 
@@ -1490,8 +1490,8 @@ export function SettingsView({
         ? await startApiService(token, values!)
         : await stopApiService(token);
       setApiService(payload);
-      const refreshed = await fetchNanobotFeatures(token);
-      setNanobotFeatures(refreshed);
+      const refreshed = await fetchmiraFeatures(token);
+      setmiraFeatures(refreshed);
       const nextSettings = await fetchSettings(token);
       applyPayload(nextSettings);
     } catch (err) {
@@ -1826,33 +1826,33 @@ export function SettingsView({
     }
   };
 
-  const handleNanobotFeatureAction = async (
+  const handlemiraFeatureAction = async (
     action: "enable" | "disable",
     name: string,
     confirmed = false,
   ) => {
     const feature = featureCatalog.find((item) => item.name === name);
     if (action === "enable" && !confirmed && feature && !feature.installed && feature.install_supported) {
-      setNanobotFeaturesError(null);
-      setNanobotFeatureConfirm(feature);
+      setmiraFeaturesError(null);
+      setmiraFeatureConfirm(feature);
       return;
     }
     const key = `${action}:${name}`;
-    setNanobotFeatureAction(key);
-    setNanobotFeatureConfirm(null);
-    setNanobotFeaturesError(null);
+    setmiraFeatureAction(key);
+    setmiraFeatureConfirm(null);
+    setmiraFeaturesError(null);
     try {
       const payload = action === "enable"
-        ? await enableNanobotFeature(token, name)
-        : await disableNanobotFeature(token, name);
-      setNanobotFeatures(payload);
+        ? await enablemiraFeature(token, name)
+        : await disablemiraFeature(token, name);
+      setmiraFeatures(payload);
       if (payload.requires_restart) {
         setPendingRestartSections((prev) => ({ ...prev, runtime: true }));
       }
     } catch (err) {
-      setNanobotFeaturesError((err as Error).message);
+      setmiraFeaturesError((err as Error).message);
     } finally {
-      setNanobotFeatureAction(null);
+      setmiraFeatureAction(null);
     }
   };
 
@@ -2054,9 +2054,9 @@ export function SettingsView({
             />
             <ProvidersSettings
               settings={settings}
-              nanobotFeatures={nanobotFeatures}
-              featureAction={nanobotFeatureAction}
-              capabilityError={nanobotFeaturesError}
+              miraFeatures={miraFeatures}
+              featureAction={miraFeatureAction}
+              capabilityError={miraFeaturesError}
               expandedProvider={expandedProvider}
               providerForms={providerForms}
               visibleProviderKeys={visibleProviderKeys}
@@ -2148,27 +2148,27 @@ export function SettingsView({
             isRestarting={isRestarting || hostEngineApplying}
             requiresRestartPending={pendingRestartSections.browser}
             olostepFeature={featureCatalog.find((feature) => feature.name === "olostep")}
-            olostepInstalling={nanobotFeatureAction === "enable:olostep"}
-            capabilityError={nanobotFeaturesError}
+            olostepInstalling={miraFeatureAction === "enable:olostep"}
+            capabilityError={miraFeaturesError}
           />
         );
       case "channels":
         return (
           <ChannelsSettings
             token={token}
-            nanobotFeatures={nanobotFeatures}
-            loading={nanobotFeaturesLoading}
+            miraFeatures={miraFeatures}
+            loading={miraFeaturesLoading}
             query={channelsQuery}
-            actionKey={nanobotFeatureAction}
+            actionKey={miraFeatureAction}
             chatAppsDocsUrl={settings.docs?.chat_apps_url}
             showBrandLogos={localPrefs.brandLogos}
-            error={nanobotFeaturesError}
+            error={miraFeaturesError}
             requiresRestartPending={pendingRestartSections.runtime}
             onQueryChange={setChannelsQuery}
-            onAction={handleNanobotFeatureAction}
-            onFeaturesUpdate={setNanobotFeatures}
+            onAction={handlemiraFeatureAction}
+            onFeaturesUpdate={setmiraFeatures}
             onDismissStatus={() => {
-              setNanobotFeaturesError(null);
+              setmiraFeaturesError(null);
             }}
             onRestart={restartViaSettingsSurface}
             isRestarting={isRestarting || hostEngineApplying}
@@ -2261,9 +2261,9 @@ export function SettingsView({
             apiServiceAction={apiServiceAction}
             apiServiceError={apiServiceError}
             langfuseFeature={featureCatalog.find((feature) => feature.name === "langfuse")}
-            capabilitiesLoading={nanobotFeaturesLoading}
-            capabilityAction={nanobotFeatureAction}
-            capabilityError={nanobotFeaturesError}
+            capabilitiesLoading={miraFeaturesLoading}
+            capabilityAction={miraFeatureAction}
+            capabilityError={miraFeaturesError}
             onApiServiceAction={handleApiServiceAction}
             onInstallCapability={(name) => void installCapabilities([name])}
           />
@@ -2323,13 +2323,13 @@ export function SettingsView({
         onClose={closeXaiOAuthFlow}
       />
 
-      <NanobotFeatureInstallDialog
-        feature={nanobotFeatureConfirm}
-        installing={nanobotFeatureAction === `enable:${nanobotFeatureConfirm?.name ?? ""}`}
+      <miraFeatureInstallDialog
+        feature={miraFeatureConfirm}
+        installing={miraFeatureAction === `enable:${miraFeatureConfirm?.name ?? ""}`}
         onOpenChange={(open) => {
-          if (!open) setNanobotFeatureConfirm(null);
+          if (!open) setmiraFeatureConfirm(null);
         }}
-        onConfirm={(feature) => handleNanobotFeatureAction("enable", feature.name, true)}
+        onConfirm={(feature) => handlemiraFeatureAction("enable", feature.name, true)}
       />
 
       <AutomationDeleteDialog
@@ -4193,7 +4193,7 @@ function ProviderAdvancedOptions({
 
 function ProvidersSettings({
   settings,
-  nanobotFeatures,
+  miraFeatures,
   featureAction,
   capabilityError,
   expandedProvider,
@@ -4216,7 +4216,7 @@ function ProvidersSettings({
   isRestarting,
 }: {
   settings: SettingsPayload;
-  nanobotFeatures: NanobotFeaturesPayload | null;
+  miraFeatures: miraFeaturesPayload | null;
   featureAction: string | null;
   capabilityError: string | null;
   expandedProvider: string | null;
@@ -4321,7 +4321,7 @@ function ProvidersSettings({
         ? "azure"
         : null;
     const supportFeature = supportName
-      ? (nanobotFeatures?.features ?? []).find((feature) => feature.name === supportName)
+      ? (miraFeatures?.features ?? []).find((feature) => feature.name === supportName)
       : null;
     return (
       <div key={provider.name} className="divide-y divide-border/45">
@@ -5191,7 +5191,7 @@ function WebSettings({
   onRestart?: () => void;
   isRestarting?: boolean;
   requiresRestartPending: boolean;
-  olostepFeature?: NanobotFeatureInfo;
+  olostepFeature?: miraFeatureInfo;
   olostepInstalling: boolean;
   capabilityError: string | null;
 }) {
@@ -6303,16 +6303,16 @@ function AutomationDeleteDialog({
   );
 }
 
-function NanobotFeatureInstallDialog({
+function miraFeatureInstallDialog({
   feature,
   installing,
   onOpenChange,
   onConfirm,
 }: {
-  feature: NanobotFeatureInfo | null;
+  feature: miraFeatureInfo | null;
   installing: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (feature: NanobotFeatureInfo) => void | Promise<void>;
+  onConfirm: (feature: miraFeatureInfo) => void | Promise<void>;
 }) {
   const { t } = useTranslation();
   const tx = (key: string, fallback: string, values?: Record<string, unknown>) =>
@@ -6326,11 +6326,11 @@ function NanobotFeatureInstallDialog({
       >
         <DialogHeader className="items-center space-y-0 text-center">
           <DialogTitle className="text-center text-[20px] font-semibold leading-tight tracking-[-0.02em] text-foreground">
-            {tx("settings.nanobotFeatures.installConfirmTitle", "Install support for {{name}}?", { name })}
+            {tx("settings.miraFeatures.installConfirmTitle", "Install support for {{name}}?", { name })}
           </DialogTitle>
           <DialogDescription className="mt-3 max-w-[20rem] text-center text-[14px] leading-6 text-muted-foreground">
             {tx(
-              "settings.nanobotFeatures.installConfirmDescription",
+              "settings.miraFeatures.installConfirmDescription",
               "Mira will add what {{name}} needs, then turn it on. Continue?",
               { name },
             )}
@@ -6353,7 +6353,7 @@ function NanobotFeatureInstallDialog({
             className="h-11 w-full min-w-0 !whitespace-normal rounded-full px-5 text-center text-[15px] font-semibold"
           >
             {installing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
-            {tx("settings.nanobotFeatures.installConfirmAction", "Install and enable")}
+            {tx("settings.miraFeatures.installConfirmAction", "Install and enable")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -6992,7 +6992,7 @@ function RestartRequiredNotice({
 
 function ChannelsSettings({
   token,
-  nanobotFeatures,
+  miraFeatures,
   loading,
   query,
   actionKey,
@@ -7008,7 +7008,7 @@ function ChannelsSettings({
   isRestarting,
 }: {
   token: string;
-  nanobotFeatures: NanobotFeaturesPayload | null;
+  miraFeatures: miraFeaturesPayload | null;
   loading: boolean;
   query: string;
   actionKey: string | null;
@@ -7018,7 +7018,7 @@ function ChannelsSettings({
   requiresRestartPending: boolean;
   onQueryChange: (value: string) => void;
   onAction: (action: "enable" | "disable", name: string) => void;
-  onFeaturesUpdate: (payload: NanobotFeaturesPayload) => void;
+  onFeaturesUpdate: (payload: miraFeaturesPayload) => void;
   onDismissStatus: () => void;
   onRestart?: () => void;
   isRestarting?: boolean;
@@ -7031,7 +7031,7 @@ function ChannelsSettings({
   const containerRef = useRef<HTMLDivElement>(null);
   const compactDetailTopRef = useRef<HTMLButtonElement>(null);
   const [compactDetailOpen, setCompactDetailOpen] = useState(false);
-  const allChannels = (nanobotFeatures?.features ?? [])
+  const allChannels = (miraFeatures?.features ?? [])
     .filter((feature) => feature.type === "channel")
     .filter((feature) => feature.settings_visible !== false)
     .filter((feature) => !normalizedQuery || channelSearchText(feature, t).includes(normalizedQuery))
@@ -7188,7 +7188,7 @@ function ChannelsSettings({
           splitLayout && "min-h-0 overflow-hidden",
         )}
       >
-        {loading && !nanobotFeatures ? (
+        {loading && !miraFeatures ? (
           <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
             {tx("settings.channels.loading", "Loading Channels...")}
@@ -8358,7 +8358,7 @@ function RuntimeSettings({
   apiServiceLoading: boolean;
   apiServiceAction: "start" | "stop" | null;
   apiServiceError: string | null;
-  langfuseFeature?: NanobotFeatureInfo;
+  langfuseFeature?: miraFeatureInfo;
   capabilitiesLoading: boolean;
   capabilityAction: string | null;
   capabilityError: string | null;

@@ -4,10 +4,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nanobot.agent.tools.context import RequestContext, request_context
-from nanobot.bus.events import InboundMessage
-from nanobot.bus.outbound_events import GoalStatusEvent, TurnModelUpdatedEvent
-from nanobot.session import webui_turns as wth
+from mira.agent.tools.context import RequestContext, request_context
+from mira.bus.events import InboundMessage
+from mira.bus.outbound_events import GoalStatusEvent, TurnModelUpdatedEvent
+from mira.session import webui_turns as wth
 
 
 @pytest.fixture(autouse=True)

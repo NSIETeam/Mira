@@ -30,7 +30,7 @@ function settingsPayload(): SettingsPayload {
       temperature: 0.1,
       reasoning_effort: null,
       timezone: "UTC",
-      bot_name: "nanobot",
+      bot_name: "mira",
       bot_icon: "nb",
       tool_hint_max_length: 40,
     },
@@ -120,9 +120,9 @@ function settingsPayload(): SettingsPayload {
     },
     docs: {
       version: "0.2.2",
-      base_url: "https://nanobot.wiki/docs/0.2.2",
-      chat_apps_url: "https://nanobot.wiki/docs/0.2.2/getting-started/chat-apps",
-      latest_url: "https://nanobot.wiki/docs/latest",
+      base_url: "https://mira.wiki/docs/0.2.2",
+      chat_apps_url: "https://mira.wiki/docs/0.2.2/getting-started/chat-apps",
+      latest_url: "https://mira.wiki/docs/latest",
     },
   };
 }
@@ -399,7 +399,7 @@ describe("SettingsView Apps catalog", () => {
   });
 
   afterEach(() => {
-    localStorage.removeItem("nanobot-webui.settings-preferences");
+    localStorage.removeItem("mira-webui.settings-preferences");
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
@@ -415,7 +415,7 @@ describe("SettingsView Apps catalog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Diff" }));
 
     await waitFor(() => {
-      const saved = JSON.parse(localStorage.getItem("nanobot-webui.settings-preferences") || "{}");
+      const saved = JSON.parse(localStorage.getItem("mira-webui.settings-preferences") || "{}");
       expect(saved.fileEditDisplayMode).toBe("diff");
     });
   });
@@ -450,13 +450,13 @@ describe("SettingsView Apps catalog", () => {
       timeout: 120,
       api_key_hint: null,
       endpoint: "http://127.0.0.1:8900/v1",
-      command: "nanobot serve",
+      command: "mira serve",
     };
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === "/api/settings") return jsonResponse(base);
       if (url === "/api/settings/api-service") return jsonResponse(stopped);
-      if (url === "/api/settings/nanobot-features") {
+      if (url === "/api/settings/mira-features") {
         return jsonResponse({ features: [], enabled_count: 0 });
       }
       if (url === "/api/settings/api-service/start?host=127.0.0.1&port=8900&timeout=120") {
@@ -546,7 +546,7 @@ describe("SettingsView Apps catalog", () => {
       if (url === "/api/settings/mcp-presets") {
         return jsonResponse({ presets: [], installed_count: 0 });
       }
-      if (url === "/api/settings/nanobot-features") {
+      if (url === "/api/settings/mira-features") {
         return jsonResponse({
           features: [
             {
@@ -569,7 +569,7 @@ describe("SettingsView Apps catalog", () => {
 
     renderSettingsView({ initialSection: "apps" });
 
-    expect(await screen.findByText("Add tools to nanobot, then @ them in chat.")).toBeInTheDocument();
+    expect(await screen.findByText("Add tools to mira, then @ them in chat.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ready" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "Apps" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Integrations" })).toBeInTheDocument();
@@ -579,13 +579,13 @@ describe("SettingsView Apps catalog", () => {
     expect(screen.getByText("0 ready")).toBeInTheDocument();
   });
 
-  it("shows nanobot optional features and enables one", async () => {
+  it("shows mira optional features and enables one", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === "/api/settings") return jsonResponse(settingsPayload());
       if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
       if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-      if (url === "/api/settings/nanobot-features") {
+      if (url === "/api/settings/mira-features") {
         return jsonResponse({
           features: [{
             name: "matrix",
@@ -602,7 +602,7 @@ describe("SettingsView Apps catalog", () => {
           enabled_count: 0,
         });
       }
-      if (url === "/api/settings/nanobot-features/enable?name=matrix") {
+      if (url === "/api/settings/mira-features/enable?name=matrix") {
         return jsonResponse({
           features: [{
             name: "matrix",
@@ -622,7 +622,7 @@ describe("SettingsView Apps catalog", () => {
           last_action: { ok: true, message: "Enabled channel 'matrix'", enabled: true },
         });
       }
-      if (url === "/api/settings/nanobot-features/disable?name=matrix") {
+      if (url === "/api/settings/mira-features/disable?name=matrix") {
         return jsonResponse({
           features: [{
             name: "matrix",
@@ -650,20 +650,20 @@ describe("SettingsView Apps catalog", () => {
     const matrixRow = await screen.findByRole("button", { name: "View Matrix settings" });
     expect(matrixRow).toHaveAttribute("aria-pressed", "true");
     expect(screen.getAllByText("Matrix")).toHaveLength(2);
-    expect(screen.getAllByText("Use nanobot from Matrix rooms.")).toHaveLength(2);
-    expect(screen.queryByText(/Enabling Nanobot features may install Python packages/)).not.toBeInTheDocument();
+    expect(screen.getAllByText("Use mira from Matrix rooms.")).toHaveLength(2);
+    expect(screen.queryByText(/Enabling mira features may install Python packages/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("switch", { name: "Matrix channel" }));
     expect(screen.getByRole("dialog", { name: "Install support for Matrix?" })).toBeInTheDocument();
-    expect(screen.getByText("nanobot will add what Matrix needs, then turn it on. Continue?")).toBeInTheDocument();
+    expect(screen.getByText("mira will add what Matrix needs, then turn it on. Continue?")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalledWith(
-      "/api/settings/nanobot-features/enable?name=matrix",
+      "/api/settings/mira-features/enable?name=matrix",
       expect.anything(),
     );
     fireEvent.click(screen.getByRole("button", { name: "Install and enable" }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/settings/nanobot-features/enable?name=matrix",
+        "/api/settings/mira-features/enable?name=matrix",
         expect.objectContaining({
           headers: { Authorization: "Bearer tok" },
         }),
@@ -673,7 +673,7 @@ describe("SettingsView Apps catalog", () => {
       expect(screen.getByRole("switch", { name: "Matrix channel" })).toHaveAttribute("aria-checked", "true"),
     );
     expect(screen.queryByText("Enabled channel 'matrix'")).not.toBeInTheDocument();
-    expect(screen.queryByText("Restart nanobot to apply updated channel support.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Restart mira to apply updated channel support.")).not.toBeInTheDocument();
     expect(screen.getAllByText("On").length).toBeGreaterThan(0);
 
     expect(screen.getByLabelText("Homeserver")).toBeInTheDocument();
@@ -685,7 +685,7 @@ describe("SettingsView Apps catalog", () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/settings/nanobot-features/disable?name=matrix",
+        "/api/settings/mira-features/disable?name=matrix",
         expect.objectContaining({
           headers: { Authorization: "Bearer tok" },
         }),
@@ -703,7 +703,7 @@ describe("SettingsView Apps catalog", () => {
       if (url === "/api/settings") return jsonResponse(settingsPayload());
       if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
       if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-      if (url === "/api/settings/nanobot-features") {
+      if (url === "/api/settings/mira-features") {
         return jsonResponse({
           features: [{
             name: "matrix",
@@ -722,7 +722,7 @@ describe("SettingsView Apps catalog", () => {
           enabled_count: 1,
         });
       }
-      if (url === "/api/settings/nanobot-features/enable?name=matrix") {
+      if (url === "/api/settings/mira-features/enable?name=matrix") {
         return jsonResponse({
           features: [{
             name: "matrix",
@@ -756,7 +756,7 @@ describe("SettingsView Apps catalog", () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/settings/nanobot-features/enable?name=matrix",
+        "/api/settings/mira-features/enable?name=matrix",
         expect.objectContaining({
           headers: { Authorization: "Bearer tok" },
         }),
@@ -773,7 +773,7 @@ describe("SettingsView Apps catalog", () => {
         if (url === "/api/settings") return jsonResponse(settingsPayload());
         if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
         if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-        if (url === "/api/settings/nanobot-features") {
+        if (url === "/api/settings/mira-features") {
           return jsonResponse({
             features: [{
               name: "matrix",
@@ -815,7 +815,7 @@ describe("SettingsView Apps catalog", () => {
       if (url === "/api/settings") return jsonResponse(settingsPayload());
       if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
       if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-      if (url === "/api/settings/nanobot-features") {
+      if (url === "/api/settings/mira-features") {
         return jsonResponse({
           features: [{
             name: "feishu",
@@ -851,8 +851,8 @@ describe("SettingsView Apps catalog", () => {
     renderSettingsView({ initialSection: "channels" });
 
     expect(await screen.findByRole("button", { name: "View Feishu settings" })).toBeInTheDocument();
-    expect(screen.queryByText("nanobot channels login feishu")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "nanobot" }));
+    expect(screen.queryByText("mira channels login feishu")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "mira" }));
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     await waitFor(() =>
@@ -873,7 +873,7 @@ describe("SettingsView Apps catalog", () => {
       if (url === "/api/settings") return jsonResponse(settingsPayload());
       if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
       if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-      if (url === "/api/settings/nanobot-features") {
+      if (url === "/api/settings/mira-features") {
         return jsonResponse({
           features: [{
             name: "feishu",
@@ -909,7 +909,7 @@ describe("SettingsView Apps catalog", () => {
     renderSettingsView({ initialSection: "channels" });
 
     expect(await screen.findByRole("button", { name: "View Feishu settings" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "nanobot" }));
+    fireEvent.click(screen.getByRole("button", { name: "mira" }));
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     await waitFor(() =>
@@ -929,7 +929,7 @@ describe("SettingsView Apps catalog", () => {
       if (url === "/api/settings") return jsonResponse(settingsPayload());
       if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
       if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-      if (url === "/api/settings/nanobot-features") {
+      if (url === "/api/settings/mira-features") {
         return jsonResponse({
           features: [{
             name: "feishu",
@@ -947,7 +947,7 @@ describe("SettingsView Apps catalog", () => {
           enabled_count: 0,
         });
       }
-      if (url === "/api/settings/nanobot-features/enable?name=feishu&instance_id=default") {
+      if (url === "/api/settings/mira-features/enable?name=feishu&instance_id=default") {
         return jsonResponse({
           features: [{
             name: "feishu",
@@ -960,7 +960,7 @@ describe("SettingsView Apps catalog", () => {
             configured: true,
             instances: [{
               id: "default",
-              name: "nanobot",
+              name: "mira",
               enabled: true,
               running: true,
               runtime_status: "running",
@@ -991,12 +991,12 @@ describe("SettingsView Apps catalog", () => {
 
     renderSettingsView({ initialSection: "channels" });
 
-    fireEvent.click(await screen.findByRole("button", { name: "nanobot" }));
-    fireEvent.click(await screen.findByRole("switch", { name: "nanobot assistant" }));
+    fireEvent.click(await screen.findByRole("button", { name: "mira" }));
+    fireEvent.click(await screen.findByRole("switch", { name: "mira assistant" }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/settings/nanobot-features/enable?name=feishu&instance_id=default",
+        "/api/settings/mira-features/enable?name=feishu&instance_id=default",
         expect.objectContaining({
           headers: { Authorization: "Bearer tok" },
         }),
@@ -1005,7 +1005,7 @@ describe("SettingsView Apps catalog", () => {
     expect(fetchMock.mock.calls.some(([input]) =>
       String(input) === "/api/settings/channels/feishu/connect/start?domain=feishu&instance_id=default&mode=replace",
     )).toBe(false);
-    expect(screen.getByRole("switch", { name: "nanobot assistant" })).toHaveAttribute(
+    expect(screen.getByRole("switch", { name: "mira assistant" })).toHaveAttribute(
       "aria-checked",
       "true",
     );
@@ -1019,7 +1019,7 @@ describe("SettingsView Apps catalog", () => {
         if (url === "/api/settings") return jsonResponse(settingsPayload());
         if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
         if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-        if (url === "/api/settings/nanobot-features") {
+        if (url === "/api/settings/mira-features") {
           return jsonResponse({
             features: [{
               name: "feishu",
@@ -1037,7 +1037,7 @@ describe("SettingsView Apps catalog", () => {
               instances: [
                 {
                   id: "default",
-                  name: "nanobot",
+                  name: "mira",
                   display_name: "Support Bot",
                   avatar_url: "https://example.com/support.png",
                   enabled: true,
@@ -1121,7 +1121,7 @@ describe("SettingsView Apps catalog", () => {
       if (url === "/api/settings") return jsonResponse(settingsPayload());
       if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
       if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-      if (url === "/api/settings/nanobot-features") {
+      if (url === "/api/settings/mira-features") {
         return jsonResponse({
           features: [{
             name: "multiplugin",
@@ -1211,7 +1211,7 @@ describe("SettingsView Apps catalog", () => {
         requires_restart: true,
         instances: [{
           id: "default",
-          name: "nanobot",
+          name: "mira",
           display_name: "Support Bot",
           avatar_url: "https://example.com/support.png",
           enabled: true,
@@ -1234,8 +1234,8 @@ describe("SettingsView Apps catalog", () => {
         if (url === "/api/settings") return jsonResponse(settingsPayload());
         if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
         if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-        if (url === "/api/settings/nanobot-features") return jsonResponse(feishuPayload);
-        if (url === "/api/settings/nanobot-features/enable?name=feishu&instance_id=default") {
+        if (url === "/api/settings/mira-features") return jsonResponse(feishuPayload);
+        if (url === "/api/settings/mira-features/enable?name=feishu&instance_id=default") {
           reconnectUrls.push(url);
           return jsonResponse(feishuPayload);
         }
@@ -1270,7 +1270,7 @@ describe("SettingsView Apps catalog", () => {
         if (url === "/api/settings") return jsonResponse(settingsPayload());
         if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
         if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-        if (url === "/api/settings/nanobot-features") {
+        if (url === "/api/settings/mira-features") {
           return jsonResponse({
             features: [{
               name: "feishu",
@@ -1330,7 +1330,7 @@ describe("SettingsView Apps catalog", () => {
         if (url === "/api/settings") return jsonResponse(settingsPayload());
         if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
         if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-        if (url === "/api/settings/nanobot-features") {
+        if (url === "/api/settings/mira-features") {
           return jsonResponse({
             features: [{
               name: "discord",
@@ -1394,7 +1394,7 @@ describe("SettingsView Apps catalog", () => {
         if (url === "/api/settings") return jsonResponse(settingsPayload());
         if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
         if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-        if (url === "/api/settings/nanobot-features") {
+        if (url === "/api/settings/mira-features") {
           return jsonResponse({
             features: [{
               name: "email",
@@ -1441,7 +1441,7 @@ describe("SettingsView Apps catalog", () => {
       if (url === "/api/settings") return jsonResponse(settingsPayload());
       if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
       if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-      if (url === "/api/settings/nanobot-features") {
+      if (url === "/api/settings/mira-features") {
         return jsonResponse({
           features: [{
             name: "discord",
@@ -1469,7 +1469,7 @@ describe("SettingsView Apps catalog", () => {
             "channels.discord.allowChannels",
             "channels.discord.groupPolicy",
           ],
-          nanobot_features: {
+          mira_features: {
             features: [{
               name: "discord",
               display_name: "Discord",
@@ -1496,7 +1496,7 @@ describe("SettingsView Apps catalog", () => {
           name: "discord",
           status: "configured",
           checks: [{ id: "bot_token", label: "Bot token", status: "pass" }],
-          identity: { name: "nanobot-test", account: "123" },
+          identity: { name: "mira-test", account: "123" },
           missing_fields: [],
           can_enable: true,
           requires_restart: false,
@@ -1512,7 +1512,7 @@ describe("SettingsView Apps catalog", () => {
     expect(await screen.findByRole("button", { name: "View Discord settings" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Discord setup" })).toHaveAttribute(
       "href",
-      "https://nanobot.wiki/docs/0.2.2/getting-started/chat-apps#discord",
+      "https://mira.wiki/docs/0.2.2/getting-started/chat-apps#discord",
     );
     expect(screen.getByRole("switch", { name: "Discord channel" })).toBeDisabled();
     fireEvent.change(screen.getByPlaceholderText("Discord bot token"), {
@@ -1540,7 +1540,7 @@ describe("SettingsView Apps catalog", () => {
     );
     expect((configureCall?.[1] as RequestInit | undefined)?.method).toBeUndefined();
     const headers = (configureCall?.[1] as RequestInit | undefined)?.headers as Record<string, string>;
-    expect(JSON.parse(headers["X-Nanobot-Channel-Values"])).toEqual({
+    expect(JSON.parse(headers["X-mira-Channel-Values"])).toEqual({
       "channels.discord.token": "discord-token",
       "channels.discord.allowChannels": "123, 456",
       "channels.discord.groupPolicy": "open",
@@ -1558,7 +1558,7 @@ describe("SettingsView Apps catalog", () => {
       if (url === "/api/settings") return jsonResponse(settingsPayload());
       if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
       if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-      if (url === "/api/settings/nanobot-features") {
+      if (url === "/api/settings/mira-features") {
         return jsonResponse({
           features: [{
             name: "discord",
@@ -1586,7 +1586,7 @@ describe("SettingsView Apps catalog", () => {
           enabled_count: 0,
         });
       }
-      if (url === "/api/settings/nanobot-features/enable?name=discord") {
+      if (url === "/api/settings/mira-features/enable?name=discord") {
         return jsonResponse({
           features: [{
             name: "discord",
@@ -1636,7 +1636,7 @@ describe("SettingsView Apps catalog", () => {
     fireEvent.click(screen.getByRole("switch", { name: "Discord channel" }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/settings/nanobot-features/enable?name=discord",
+        "/api/settings/mira-features/enable?name=discord",
         expect.objectContaining({ headers: { Authorization: "Bearer tok" } }),
       ),
     );
@@ -1650,7 +1650,7 @@ describe("SettingsView Apps catalog", () => {
         if (url === "/api/settings") return jsonResponse(settingsPayload());
         if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
         if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-        if (url === "/api/settings/nanobot-features") {
+        if (url === "/api/settings/mira-features") {
           return jsonResponse({
             features: [{
               name: "telegram",
@@ -1676,7 +1676,7 @@ describe("SettingsView Apps catalog", () => {
     expect(await screen.findByRole("button", { name: "View Telegram settings" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Telegram setup" })).toHaveAttribute(
       "href",
-      "https://nanobot.wiki/docs/0.2.2/getting-started/chat-apps#telegram",
+      "https://mira.wiki/docs/0.2.2/getting-started/chat-apps#telegram",
     );
   });
 
@@ -1707,7 +1707,7 @@ describe("SettingsView Apps catalog", () => {
         if (url === "/api/settings") return jsonResponse(settingsPayload());
         if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
         if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-        if (url === "/api/settings/nanobot-features") {
+        if (url === "/api/settings/mira-features") {
           return jsonResponse({
             features: channels.map(([name, displayName]) => ({
               name,
@@ -1744,7 +1744,7 @@ describe("SettingsView Apps catalog", () => {
     for (const [, displayName, guideLabel] of channels) {
       fireEvent.click(await screen.findByRole("button", { name: `View ${displayName} settings` }));
       if (displayName === "Feishu") {
-        fireEvent.click(screen.getByRole("button", { name: "nanobot" }));
+        fireEvent.click(screen.getByRole("button", { name: "mira" }));
       }
       const guide = screen.getByRole("link", { name: guideLabel });
       expect(guide).toHaveAttribute("href", expect.stringMatching(/^https:\/\//));
@@ -1761,7 +1761,7 @@ describe("SettingsView Apps catalog", () => {
         if (url === "/api/settings") return jsonResponse(settingsPayload());
         if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
         if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-        if (url === "/api/settings/nanobot-features") {
+        if (url === "/api/settings/mira-features") {
           return jsonResponse({
             features: ["email", "feishu", "matrix", "qq"].map((name) => ({
               name,
@@ -1795,7 +1795,7 @@ describe("SettingsView Apps catalog", () => {
     expect(screen.queryByPlaceholderText("true")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "View Feishu settings" }));
-    fireEvent.click(screen.getByRole("button", { name: "nanobot" }));
+    fireEvent.click(screen.getByRole("button", { name: "mira" }));
     fireEvent.click(screen.getByText("Advanced"));
     const region = screen.getByRole("radiogroup", { name: "Region" });
     expect(within(region).getByRole("radio", { name: "Feishu" })).toHaveAttribute(
@@ -1829,7 +1829,7 @@ describe("SettingsView Apps catalog", () => {
       if (url === "/api/settings") return jsonResponse(settingsPayload());
       if (url === "/api/settings/cli-apps") return jsonResponse({ apps: [], installed_count: 0 });
       if (url === "/api/settings/mcp-presets") return jsonResponse({ presets: [], installed_count: 0 });
-      if (url === "/api/settings/nanobot-features") {
+      if (url === "/api/settings/mira-features") {
         return jsonResponse({
           features: [{
             name: "websocket",
@@ -1864,7 +1864,7 @@ describe("SettingsView Apps catalog", () => {
     expect(websocketSwitch).toBeDisabled();
     expect(websocketSwitch).toHaveAttribute("aria-checked", "true");
     expect(fetchMock).not.toHaveBeenCalledWith(
-      "/api/settings/nanobot-features/disable?name=websocket",
+      "/api/settings/mira-features/disable?name=websocket",
       expect.anything(),
     );
   });
@@ -2113,7 +2113,7 @@ describe("SettingsView Apps catalog", () => {
         String(input).startsWith("/api/settings/model-call-order/update?"),
       );
       expect(saveCall).toBeDefined();
-      const url = new URL(String(saveCall?.[0]), "http://nanobot.test");
+      const url = new URL(String(saveCall?.[0]), "http://mira.test");
       expect(JSON.parse(url.searchParams.get("order") ?? "[]")).toEqual([
         "backup",
         "primary",
@@ -2230,7 +2230,7 @@ describe("SettingsView Apps catalog", () => {
         String(input).startsWith("/api/settings/model-call-order/update?"),
       );
       expect(orderCall).toBeDefined();
-      const url = new URL(String(orderCall?.[0]), "http://nanobot.test");
+      const url = new URL(String(orderCall?.[0]), "http://mira.test");
       expect(JSON.parse(url.searchParams.get("order") ?? "[]")).toEqual([
         "primary",
         "backup",
@@ -2323,7 +2323,7 @@ describe("SettingsView Apps catalog", () => {
         String(input).startsWith("/api/settings/model-call-order/update?"),
       );
       expect(orderCall).toBeDefined();
-      const url = new URL(String(orderCall?.[0]), "http://nanobot.test");
+      const url = new URL(String(orderCall?.[0]), "http://mira.test");
       expect(JSON.parse(url.searchParams.get("order") ?? "[]")).toEqual([
         "primary",
         "backup",
@@ -2432,7 +2432,7 @@ describe("SettingsView Apps catalog", () => {
         "/api/settings/provider/oauth-login/complete?provider=xai_grok&flow_id=flow-123"
       ) {
         expect(init?.headers).toMatchObject({
-          "X-Nanobot-OAuth-Code": "secret",
+          "X-mira-OAuth-Code": "secret",
         });
         return jsonResponse(signedIn);
       }
@@ -2469,7 +2469,7 @@ describe("SettingsView Apps catalog", () => {
 
     expect(
       screen.getByText(
-        "Complete sign-in in your browser. Nanobot usually finishes automatically; if it does not, paste the authorization code below.",
+        "Complete sign-in in your browser. mira usually finishes automatically; if it does not, paste the authorization code below.",
       ),
     ).toBeInTheDocument();
     const callbackInput = await screen.findByRole("textbox", {
@@ -2485,7 +2485,7 @@ describe("SettingsView Apps catalog", () => {
         "/api/settings/provider/oauth-login/complete?provider=xai_grok&flow_id=flow-123",
         expect.objectContaining({
           headers: expect.objectContaining({
-            "X-Nanobot-OAuth-Code": "secret",
+            "X-mira-OAuth-Code": "secret",
           }),
         }),
       ),
@@ -2644,7 +2644,7 @@ describe("SettingsView Apps catalog", () => {
         const providerName = query.get("provider");
         const headers = init?.headers as Record<string, string>;
         const values = JSON.parse(decodeURIComponent(
-          headers["X-Nanobot-Provider-Values"],
+          headers["X-mira-Provider-Values"],
         )) as {
           proxy?: string;
           extraBody?: string;
@@ -2693,7 +2693,7 @@ describe("SettingsView Apps catalog", () => {
         expect.objectContaining({
           headers: {
             Authorization: "Bearer tok",
-            "X-Nanobot-Provider-Values": encodeURIComponent(JSON.stringify({
+            "X-mira-Provider-Values": encodeURIComponent(JSON.stringify({
               extraBody: "",
               proxy: "http://127.0.0.1:7890",
             })),
@@ -2717,7 +2717,7 @@ describe("SettingsView Apps catalog", () => {
         expect.objectContaining({
           headers: {
             Authorization: "Bearer tok",
-            "X-Nanobot-Provider-Values": encodeURIComponent(JSON.stringify({
+            "X-mira-Provider-Values": encodeURIComponent(JSON.stringify({
               extraBody: "",
               proxy: "http://proxy.example:8080",
             })),
@@ -2757,7 +2757,7 @@ describe("SettingsView Apps catalog", () => {
       if (url === "/api/settings/provider/create") {
         const headers = init?.headers as Record<string, string>;
         const values = JSON.parse(decodeURIComponent(
-          headers["X-Nanobot-Provider-Values"],
+          headers["X-mira-Provider-Values"],
         )) as Record<string, string>;
         payload = {
           ...payload,
@@ -2849,7 +2849,7 @@ describe("SettingsView Apps catalog", () => {
       expect(createCall).toBeTruthy();
       const headers = createCall?.[1]?.headers as Record<string, string>;
       expect(JSON.parse(decodeURIComponent(
-        headers["X-Nanobot-Provider-Values"],
+        headers["X-mira-Provider-Values"],
       ))).toEqual({
         name: "Company Gateway",
         apiKey: "sk-company",
@@ -3558,7 +3558,7 @@ describe("SettingsView Apps catalog", () => {
         String(input).startsWith("/api/settings/model-configurations/update?"),
       );
       expect(saveCall).toBeDefined();
-      const url = new URL(String(saveCall?.[0]), "http://nanobot.test");
+      const url = new URL(String(saveCall?.[0]), "http://mira.test");
       expect(Object.fromEntries(url.searchParams)).toEqual({
         name: "primary",
         model: "deepseek-reasoner",

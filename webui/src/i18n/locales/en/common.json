@@ -626,7 +626,7 @@
         "unsupported": "Manual setup"
       }
     },
-    "nanobotFeatures": {
+    "miraFeatures": {
       "enabled": "Enabled",
       "enable": "Enable",
       "disable": "Disable",

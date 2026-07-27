@@ -18,8 +18,8 @@ describe("tool trace identity", () => {
   });
 
   it("keeps genuinely different calls separate", () => {
-    const first = 'web_search({"query":"nanobot"})';
-    const second = 'web_search({"query":"nanobot cloud"})';
+    const first = 'web_search({"query":"mira"})';
+    const second = 'web_search({"query":"mira cloud"})';
 
     expect(mergeUniqueToolTraceLines([first], [second])).toEqual({
       traces: [first, second],

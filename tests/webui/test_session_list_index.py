@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 
-import nanobot.webui.session_list_index as session_list_index
-from nanobot.cron.session_turns import CRON_HISTORY_META
-from nanobot.session.automation_turns import AUTOMATION_HISTORY_META
-from nanobot.session.history_visibility import HIDDEN_HISTORY_META
-from nanobot.session.manager import SessionManager
-from nanobot.session.model_selection import SESSION_MODEL_PRESET_METADATA_KEY
+import mira.webui.session_list_index as session_list_index
+from mira.cron.session_turns import CRON_HISTORY_META
+from mira.session.automation_turns import AUTOMATION_HISTORY_META
+from mira.session.history_visibility import HIDDEN_HISTORY_META
+from mira.session.manager import SessionManager
+from mira.session.model_selection import SESSION_MODEL_PRESET_METADATA_KEY
 
 
 def test_webui_session_list_reuses_valid_index_without_scanning_files(

@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from nanobot.security.workspace_access import WorkspaceScopeError, default_workspace_scope
-from nanobot.session.manager import SessionManager
-from nanobot.webui.workspaces import (
+from mira.security.workspace_access import WorkspaceScopeError, default_workspace_scope
+from mira.session.manager import SessionManager
+from mira.webui.workspaces import (
     WebUIWorkspaceController,
     read_webui_default_access_mode,
     read_webui_workspace_state,
@@ -15,7 +15,7 @@ from nanobot.webui.workspaces import (
 
 
 def test_workspace_state_defaults_when_file_missing(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    monkeypatch.setattr("mira.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
 
     state = read_webui_workspace_state()
 
@@ -24,7 +24,7 @@ def test_workspace_state_defaults_when_file_missing(tmp_path, monkeypatch) -> No
 
 
 def test_workspace_state_ignores_legacy_project_history(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    monkeypatch.setattr("mira.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
     project = tmp_path / "project"
     project.mkdir()
     path = webui_workspace_state_path()
@@ -53,7 +53,7 @@ def test_workspace_state_ignores_legacy_project_history(tmp_path, monkeypatch) -
 
 
 def test_workspace_payload_is_config_data_dir_scoped(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    monkeypatch.setattr("mira.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
     default = tmp_path / "default"
     default.mkdir()
 
@@ -73,7 +73,7 @@ def test_workspace_payload_hides_mutable_state_when_controls_unavailable(
     tmp_path,
     monkeypatch,
 ) -> None:
-    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    monkeypatch.setattr("mira.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
     default = tmp_path / "default"
     default.mkdir()
 
@@ -89,7 +89,7 @@ def test_workspace_payload_hides_mutable_state_when_controls_unavailable(
 
 
 def test_workspace_payload_uses_webui_default_access_mode(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    monkeypatch.setattr("mira.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
     default = tmp_path / "default"
     default.mkdir()
 
@@ -108,14 +108,14 @@ def test_workspace_payload_uses_webui_default_access_mode(tmp_path, monkeypatch)
 
 
 def test_legacy_restricted_webui_default_access_mode_maps_to_default(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    monkeypatch.setattr("mira.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
 
     assert write_webui_default_access_mode("restricted") is False
     assert read_webui_default_access_mode() == "default"
 
 
 def test_webui_default_access_applies_to_unscoped_old_sessions(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    monkeypatch.setattr("mira.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
     default = tmp_path / "default"
     default.mkdir()
     sessions = SessionManager(tmp_path / "sessions")
@@ -136,7 +136,7 @@ def test_webui_default_access_applies_to_unscoped_old_sessions(tmp_path, monkeyp
 
 
 def test_webui_default_access_does_not_override_explicit_session_scope(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    monkeypatch.setattr("mira.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
     default = tmp_path / "default"
     project = tmp_path / "project"
     default.mkdir()
@@ -160,7 +160,7 @@ def test_scope_for_session_key_reads_metadata_without_full_history(
     tmp_path,
     monkeypatch,
 ) -> None:
-    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    monkeypatch.setattr("mira.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
     default = tmp_path / "default"
     project = tmp_path / "project"
     default.mkdir()
@@ -186,7 +186,7 @@ def test_scope_for_session_key_reads_metadata_without_full_history(
 
 
 def test_remote_existing_chat_can_reduce_its_workspace_access(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    monkeypatch.setattr("mira.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
     default = tmp_path / "default"
     project = tmp_path / "project"
     default.mkdir()
@@ -234,7 +234,7 @@ def test_remote_new_chat_only_allows_non_escalating_scope_change(
     access_mode: str,
     allowed: bool,
 ) -> None:
-    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    monkeypatch.setattr("mira.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
     default = tmp_path / "default"
     other = tmp_path / "other"
     default.mkdir()

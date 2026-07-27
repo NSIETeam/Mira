@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from nanobot.bus.events import OutboundMessage
-from nanobot.bus.outbound_events import (
+from mira.bus.events import OutboundMessage
+from mira.bus.outbound_events import (
     ProgressEvent,
     RetryWaitEvent,
     StreamDeltaEvent,
@@ -14,10 +14,10 @@ from nanobot.bus.outbound_events import (
     outbound_event_from_message,
     outbound_message_for_event,
 )
-from nanobot.bus.queue import MessageBus
-from nanobot.channels.base import BaseChannel
-from nanobot.channels.manager import ChannelManager
-from nanobot.config.schema import Config
+from mira.bus.queue import MessageBus
+from mira.channels.base import BaseChannel
+from mira.channels.manager import ChannelManager
+from mira.config.schema import Config
 
 
 class MockChannel(BaseChannel):

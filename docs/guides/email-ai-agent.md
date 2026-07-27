@@ -1,37 +1,37 @@
-# Build an Email AI Agent with nanobot
+# Build an Email AI Agent with mira
 
-This guide turns nanobot into an email AI agent that polls IMAP for accepted
+This guide turns mira into an email AI agent that polls IMAP for accepted
 messages and replies through SMTP.
 
 ## What this guide builds
 
-- a dedicated mailbox for nanobot
+- a dedicated mailbox for mira
 - IMAP and SMTP credentials in `config.json`
 - an allowed sender list
 - a gateway process that polls and replies
 
 ## Prerequisites
 
-- A working local nanobot reply:
+- A working local mira reply:
 
 ```bash
-nanobot agent -m "Hello!"
+mira agent -m "Hello!"
 ```
 
 - A mailbox for the bot.
 - IMAP and SMTP access. For Gmail, use an app password rather than your account
   password.
 
-## Install nanobot
+## Install mira
 
 ```bash
-python -m pip install nanobot-ai
-nanobot onboard --wizard
+python -m pip install mira
+mira onboard --wizard
 ```
 
 ## Enable the Email channel
 
-Merge this snippet into `~/.nanobot/config.json` and replace the addresses and
+Merge this snippet into `~/.mira/config.json` and replace the addresses and
 passwords:
 
 ```json
@@ -42,13 +42,13 @@ passwords:
       "consentGranted": true,
       "imapHost": "imap.gmail.com",
       "imapPort": 993,
-      "imapUsername": "my-nanobot@gmail.com",
+      "imapUsername": "my-mira@gmail.com",
       "imapPassword": "your-app-password",
       "smtpHost": "smtp.gmail.com",
       "smtpPort": 587,
-      "smtpUsername": "my-nanobot@gmail.com",
+      "smtpUsername": "my-mira@gmail.com",
       "smtpPassword": "your-app-password",
-      "fromAddress": "my-nanobot@gmail.com",
+      "fromAddress": "my-mira@gmail.com",
       "allowFrom": ["your-real-email@gmail.com"],
       "autoReplyEnabled": true
     }
@@ -56,11 +56,11 @@ passwords:
 }
 ```
 
-## Run nanobot gateway
+## Run mira gateway
 
 ```bash
-nanobot channels status
-nanobot gateway
+mira channels status
+mira gateway
 ```
 
 ## Test a message

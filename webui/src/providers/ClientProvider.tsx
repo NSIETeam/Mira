@@ -1,10 +1,10 @@
 import { createContext, useContext, type ReactNode } from "react";
 
-import type { NanobotClient } from "@/lib/nanobot-client";
+import type { miraClient } from "@/lib/mira-client";
 import type { WebUIIngressLimits } from "@/lib/types";
 
 interface ClientContextValue {
-  client: NanobotClient;
+  client: miraClient;
   token: string;
   modelName: string | null;
   ingressLimits: WebUIIngressLimits | null;
@@ -19,7 +19,7 @@ export function ClientProvider({
   ingressLimits = null,
   children,
 }: {
-  client: NanobotClient;
+  client: miraClient;
   token: string;
   modelName?: string | null;
   ingressLimits?: WebUIIngressLimits | null;

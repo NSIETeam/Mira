@@ -1,6 +1,6 @@
 # Customer Kernel Target
 
-This repository started from upstream Mira/nanobot, but the customer-delivery target
+This repository started from upstream Mira/mira, but the customer-delivery target
 is narrower than the upstream product surface.
 
 ## Target
@@ -34,7 +34,7 @@ The GUI should only own:
 Customer delivery should not start from "all features on". It should start from
 a profile.
 
-Current kernel profiles live in `nanobot/kernel/profile.py`:
+Current kernel profiles live in `mira/kernel/profile.py`:
 
 - `lite_customer_profile()`
 - `desktop_customer_profile()`
@@ -59,7 +59,7 @@ understand, and customize than the full upstream surface.
 
 As of `2026-07-27`, publishing is blocked by external GitHub state:
 
-- local checkout only has `upstream = HKUDS/nanobot`
+- local checkout only has `upstream = HKUDS/mira`
 - GitHub CLI reports the `NSIETeam` token is invalid
 - the target repository name/url has not yet been identified in this checkout
 

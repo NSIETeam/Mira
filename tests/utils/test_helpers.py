@@ -4,8 +4,8 @@ from zoneinfo import ZoneInfoNotFoundError
 import pytest
 import tiktoken
 
-from nanobot.utils import helpers
-from nanobot.utils.helpers import (
+from mira.utils import helpers
+from mira.utils.helpers import (
     _write_text_atomic,
     current_time_str,
     split_message,

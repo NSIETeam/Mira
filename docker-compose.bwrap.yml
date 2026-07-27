@@ -6,11 +6,11 @@ x-bwrap-security: &bwrap-security
     - seccomp=unconfined
 
 services:
-  nanobot-gateway:
+  mira-gateway:
     <<: *bwrap-security
 
-  nanobot-api:
+  mira-api:
     <<: *bwrap-security
 
-  nanobot-cli:
+  mira-cli:
     <<: *bwrap-security

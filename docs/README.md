@@ -2,7 +2,7 @@
 
 Use these docs to get a working agent first, then open a task guide only when you need the next capability. Source-level design and extension details are kept in the contributor section.
 
-Repository docs follow the current source tree and can be newer than the latest package release. For published release docs, visit the current Mira docs site at [nanobot.wiki](https://nanobot.wiki/docs/latest/getting-started/nanobot-overview). The hosted docs domain remains compatibility-bound for now.
+Repository docs follow the current source tree and can be newer than the latest package release. For published release docs, visit the current Mira docs site at [mira.wiki](https://mira.wiki/docs/latest/getting-started/mira-overview). The hosted docs domain remains compatibility-bound for now.
 
 ## Start Here
 
@@ -71,7 +71,7 @@ Use reference pages to look up an exact option after you know what you are tryin
 | OpenAI-compatible HTTP routes and payloads | [OpenAI-Compatible API](./openai-api.md) |
 | Runtime self-inspection and tuning | [My Tool](./my-tool.md) |
 
-Configuration examples are usually snippets to merge into `~/.nanobot/config.json`, not complete replacement files. The docs use camelCase because Mira writes config that way. Keep real API keys, bot tokens, and passwords out of issues and public logs.
+Configuration examples are usually snippets to merge into `~/.mira/config.json`, not complete replacement files. The docs use camelCase because Mira writes config that way. Keep real API keys, bot tokens, and passwords out of issues and public logs.
 
 ## Extend or Contribute
 

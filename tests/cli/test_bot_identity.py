@@ -2,26 +2,26 @@
 
 from __future__ import annotations
 
-from nanobot.cli.stream import StreamRenderer, ThinkingSpinner
-from nanobot.config.schema import AgentDefaults, Config
+from mira.cli.stream import StreamRenderer, ThinkingSpinner
+from mira.config.schema import AgentDefaults, Config
 
 
 def test_bot_name_and_icon_defaults_preserve_current_branding() -> None:
-    """Default values keep the existing 'nanobot' name and cat icon."""
+    """Default values keep the existing 'mira' name and cat icon."""
     defaults = AgentDefaults()
 
-    assert defaults.bot_name == "nanobot"
-    assert defaults.bot_icon == "🐈"
+    assert defaults.bot_name == "mira"
+    assert defaults.bot_icon == ""
 
 
 def test_bot_name_and_icon_can_be_overridden_via_config() -> None:
     """camelCase keys (as used in config.json) bind to the new fields."""
     config = Config.model_validate(
-        {"agents": {"defaults": {"botName": "mybot", "botIcon": "🤖"}}}
+        {"agents": {"defaults": {"botName": "mybot", "botIcon": ""}}}
     )
 
     assert config.agents.defaults.bot_name == "mybot"
-    assert config.agents.defaults.bot_icon == "🤖"
+    assert config.agents.defaults.bot_icon == ""
 
 
 def test_bot_icon_accepts_empty_string_to_omit() -> None:
@@ -45,12 +45,12 @@ def test_stream_renderer_propagates_bot_name_to_spinner_text(capsys) -> None:
 
 def test_stream_renderer_header_combines_icon_and_name() -> None:
     """When bot_icon is non-empty, the header is '<icon> <name>'."""
-    renderer = StreamRenderer(show_spinner=False, bot_name="mybot", bot_icon="🤖")
+    renderer = StreamRenderer(show_spinner=False, bot_name="mybot", bot_icon="")
 
     # The header is built inline in on_delta; verify the stored fields
     # so we don't depend on Live console output.
     assert renderer._bot_name == "mybot"
-    assert renderer._bot_icon == "🤖"
+    assert renderer._bot_icon == ""
 
 
 def test_stream_renderer_empty_icon_omits_leading_space() -> None:

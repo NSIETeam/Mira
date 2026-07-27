@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 import pytest
 from prompt_toolkit.formatted_text import HTML
 
-from nanobot.cli import commands
-from nanobot.cli import stream as stream_mod
+from mira.cli import commands
+from mira.cli import stream as stream_mod
 
 
 @pytest.fixture
@@ -14,8 +14,8 @@ def mock_prompt_session():
     """Mock the global prompt session."""
     mock_session = MagicMock()
     mock_session.prompt_async = AsyncMock()
-    with patch("nanobot.cli.commands._PROMPT_SESSION", mock_session), \
-         patch("nanobot.cli.commands.patch_stdout"):
+    with patch("mira.cli.commands._PROMPT_SESSION", mock_session), \
+         patch("mira.cli.commands.patch_stdout"):
         yield mock_session
 
 
@@ -46,8 +46,8 @@ def test_init_prompt_session_creates_session():
     # Ensure global is None before test
     commands._PROMPT_SESSION = None
 
-    with patch("nanobot.cli.commands.PromptSession") as mock_session_cls, \
-         patch("nanobot.cli.commands.FileHistory"), \
+    with patch("mira.cli.commands.PromptSession") as mock_session_cls, \
+         patch("mira.cli.commands.FileHistory"), \
          patch("pathlib.Path.home") as mock_home:
 
         mock_home.return_value = MagicMock()
@@ -254,7 +254,7 @@ async def test_print_interactive_progress_line_pauses_spinner_before_printing():
     async def fake_print(_text: str) -> None:
         order.append("print")
 
-    with patch("nanobot.cli.commands._print_interactive_line", side_effect=fake_print):
+    with patch("mira.cli.commands._print_interactive_line", side_effect=fake_print):
         thinking = stream_mod.ThinkingSpinner(console=mock_console)
         with thinking:
             await commands._print_interactive_progress_line("tool running", thinking)
@@ -264,9 +264,9 @@ async def test_print_interactive_progress_line_pauses_spinner_before_printing():
 
 def test_response_renderable_uses_text_for_explicit_plain_rendering():
     status = (
-        "🐈 nanobot v0.1.4.post5\n"
-        "🧠 Model: MiniMax-M2.7\n"
-        "📊 Tokens: 20639 in / 29 out"
+        " mira v0.1.4.post5\n"
+        " Model: MiniMax-M2.7\n"
+        " Tokens: 20639 in / 29 out"
     )
 
     renderable = commands._response_renderable(
@@ -285,7 +285,7 @@ def test_response_renderable_preserves_normal_markdown_rendering():
 
 
 def test_response_renderable_without_metadata_keeps_markdown_path():
-    help_text = "🐈 nanobot commands:\n/status — Show bot status\n/help — Show available commands"
+    help_text = " mira commands:\n/status — Show bot status\n/help — Show available commands"
 
     renderable = commands._response_renderable(help_text, render_markdown=True)
 

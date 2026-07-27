@@ -3,20 +3,20 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from nanobot.agent.goal_permission import goal_mutation_allowed
-from nanobot.agent.loop import AgentLoop
-from nanobot.bus.events import InboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.command.builtin import (
+from mira.agent.goal_permission import goal_mutation_allowed
+from mira.agent.loop import AgentLoop
+from mira.bus.events import InboundMessage
+from mira.bus.queue import MessageBus
+from mira.command.builtin import (
     build_help_text,
     builtin_command_palette,
     cmd_goal,
     cmd_model,
     register_builtin_commands,
 )
-from nanobot.command.router import CommandContext, CommandRouter
-from nanobot.config.schema import ModelPresetConfig
-from nanobot.session.model_selection import (
+from mira.command.router import CommandContext, CommandRouter
+from mira.config.schema import ModelPresetConfig
+from mira.session.model_selection import (
     SESSION_MODEL_PRESET_METADATA_KEY,
     model_preset_from_metadata,
 )

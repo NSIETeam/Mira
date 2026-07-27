@@ -7,13 +7,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from nanobot.bus.events import InboundMessage
-from nanobot.session.goal_state import (
+from mira.bus.events import InboundMessage
+from mira.session.goal_state import (
     GOAL_STATE_KEY,
     explicit_goal_requested,
     sustained_goal_turn,
 )
-from nanobot.session.turn_continuation import (
+from mira.session.turn_continuation import (
     INTERNAL_CONTINUATION_KIND_META,
     INTERNAL_CONTINUATION_META,
     INTERNAL_CONTINUATION_PENDING_META,

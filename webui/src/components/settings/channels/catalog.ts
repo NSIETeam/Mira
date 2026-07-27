@@ -77,7 +77,7 @@ export type ChannelConfigOption = {
   label: string;
 };
 
-const MIRA_DOCS_URL = "https://nanobot.wiki/docs/latest";
+const MIRA_DOCS_URL = "https://mira.wiki/docs/latest";
 const CHAT_APPS_DOCS_URL = `${MIRA_DOCS_URL}/getting-started/chat-apps`;
 
 export function chatAppGuideUrl(sectionId: string): string {

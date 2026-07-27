@@ -1,1 +1,1 @@
-"""Mira CLI namespace."""
+"""CLI module for mira."""

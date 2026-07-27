@@ -462,7 +462,7 @@ export function MiraKernelConsole({
             </div>
             <Row label="App" value={kernelManifest?.identity?.app_name ?? "Mira"} />
             <Row label="CLI" value={kernelManifest?.identity?.cli_name ?? "mira"} />
-            <Row label="Legacy" value={kernelManifest?.identity?.legacy_cli_name ?? "nanobot"} />
+            <Row label="Legacy" value={kernelManifest?.identity?.legacy_cli_name ?? "mira"} />
             <Row label="Profile" value={profile?.name ?? "unknown"} />
             <Row label="GUI" value={runtimeCapabilities?.gui ? "enabled" : "off"} />
             <Row label="API" value={runtimeCapabilities?.api ? "enabled" : "off"} />

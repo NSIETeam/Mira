@@ -3,14 +3,14 @@
 Surrogate characters in CLI input must not crash history file writes.
 """
 
-from nanobot.cli.commands import SafeFileHistory, _sanitize_surrogates
+from mira.cli.commands import SafeFileHistory, _sanitize_surrogates
 
 
 class TestSanitizeSurrogates:
     def test_paired_surrogates_reconstructed(self):
         """Windows console produces \\ud83d\\udc08 for U+1F408 — must be restored."""
-        result = _sanitize_surrogates("你为什么会用 🐈")
-        assert result == "你为什么会用 🐈"
+        result = _sanitize_surrogates("你为什么会用 ")
+        assert result == "你为什么会用 "
 
     def test_lone_surrogates_replaced(self):
         result = _sanitize_surrogates("hello \udce9 world")
@@ -23,10 +23,10 @@ class TestSanitizeSurrogates:
 
     def test_emoji_already_correct(self):
         """Properly encoded emoji should pass through unchanged."""
-        assert _sanitize_surrogates("hello 🐈 nanobot") == "hello 🐈 nanobot"
+        assert _sanitize_surrogates("hello  mira") == "hello  mira"
 
     def test_mixed_unicode_preserved(self):
-        assert _sanitize_surrogates("你好 hello こんにちは 🎉") == "你好 hello こんにちは 🎉"
+        assert _sanitize_surrogates("你好 hello こんにちは ") == "你好 hello こんにちは "
 
     def test_multiple_lone_surrogates(self):
         result = _sanitize_surrogates("\udce9\udcf1\udcff")
@@ -53,16 +53,16 @@ class TestSafeFileHistory:
 
     def test_emoji_preserved(self, tmp_path):
         hist = SafeFileHistory(str(tmp_path / "history"))
-        hist.store_string("hello 🐈 nanobot")
+        hist.store_string("hello  mira")
         entries = list(hist.load_history_strings())
-        assert entries[0] == "hello 🐈 nanobot"
+        assert entries[0] == "hello  mira"
 
     def test_mixed_unicode_preserved(self, tmp_path):
         """CJK + emoji + latin should all pass through cleanly."""
         hist = SafeFileHistory(str(tmp_path / "history"))
-        hist.store_string("你好 hello こんにちは 🎉")
+        hist.store_string("你好 hello こんにちは ")
         entries = list(hist.load_history_strings())
-        assert entries[0] == "你好 hello こんにちは 🎉"
+        assert entries[0] == "你好 hello こんにちは "
 
     def test_multiple_surrogates(self, tmp_path):
         hist = SafeFileHistory(str(tmp_path / "history"))

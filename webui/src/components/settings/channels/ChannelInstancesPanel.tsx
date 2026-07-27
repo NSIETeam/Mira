@@ -28,24 +28,24 @@ import { Button } from "@/components/ui/button";
 import { useLogoFallback } from "@/hooks/useLogoFallback";
 import {
   configureChannel,
-  disableNanobotFeature,
-  enableNanobotFeature,
+  disablemiraFeature,
+  enablemiraFeature,
 } from "@/lib/api";
 import { logoFallbackUrls } from "@/lib/provider-brand";
 import type {
-  NanobotChannelInstanceInfo,
-  NanobotFeatureInfo,
-  NanobotFeaturesPayload,
+  miraChannelInstanceInfo,
+  miraFeatureInfo,
+  miraFeaturesPayload,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export type ChannelInstancesPanelCustomization = {
   countLabel?: (runningCount: number) => string;
-  toggleAriaLabel?: (instance: NanobotChannelInstanceInfo) => string;
+  toggleAriaLabel?: (instance: miraChannelInstanceInfo) => string;
   configuredLabel?: string;
   needsSetupLabel?: string;
-  renderInstanceSummary?: (instance: NanobotChannelInstanceInfo) => ReactNode;
-  renderInstanceAction?: (instance: NanobotChannelInstanceInfo) => ReactNode;
+  renderInstanceSummary?: (instance: miraChannelInstanceInfo) => ReactNode;
+  renderInstanceAction?: (instance: miraChannelInstanceInfo) => ReactNode;
   footer?: ReactNode;
 };
 
@@ -59,11 +59,11 @@ export function ChannelInstancesPanel({
   customization = {},
 }: {
   token: string;
-  feature: NanobotFeatureInfo;
+  feature: miraFeatureInfo;
   showBrandLogos: boolean;
   chatAppsDocsUrl?: string;
-  instances?: NanobotChannelInstanceInfo[];
-  onFeaturesUpdate: (payload: NanobotFeaturesPayload) => void;
+  instances?: miraChannelInstanceInfo[];
+  onFeaturesUpdate: (payload: miraFeaturesPayload) => void;
   customization?: ChannelInstancesPanelCustomization;
 }) {
   const { t, i18n } = useTranslation();
@@ -106,13 +106,13 @@ export function ChannelInstancesPanel({
     setVisibleSecrets({});
   }, [instanceFields, selected?.id, selectedValuesKey]);
 
-  const toggleInstance = async (instance: NanobotChannelInstanceInfo, checked: boolean) => {
+  const toggleInstance = async (instance: miraChannelInstanceInfo, checked: boolean) => {
     setBusyInstanceId(instance.id);
     setNotice(null);
     try {
       const payload = checked
-        ? await enableNanobotFeature(token, feature.name, { instanceId: instance.id })
-        : await disableNanobotFeature(token, feature.name, { instanceId: instance.id });
+        ? await enablemiraFeature(token, feature.name, { instanceId: instance.id })
+        : await disablemiraFeature(token, feature.name, { instanceId: instance.id });
       onFeaturesUpdate(payload);
     } catch (err) {
       setNotice((err as Error).message);
@@ -132,8 +132,8 @@ export function ChannelInstancesPanel({
         channelValuesForSave(instanceFields, fieldValues),
         { enable: selected.enabled, instanceId: selected.id },
       );
-      if (payload.nanobot_features) {
-        onFeaturesUpdate(payload.nanobot_features);
+      if (payload.mira_features) {
+        onFeaturesUpdate(payload.mira_features);
       }
       setNotice(tx("settings.channels.savedSettings", "Saved settings."));
     } catch (err) {
@@ -321,7 +321,7 @@ export function ChannelInstancesPanel({
   );
 }
 
-function channelInstanceDisplayName(instance: NanobotChannelInstanceInfo): string {
+function channelInstanceDisplayName(instance: miraChannelInstanceInfo): string {
   const displayName = instance.display_name?.trim();
   if (displayName) return displayName;
   const localName = instance.name?.trim();
@@ -329,7 +329,7 @@ function channelInstanceDisplayName(instance: NanobotChannelInstanceInfo): strin
   return instance.id;
 }
 
-function instanceToggleChecked(instance: NanobotChannelInstanceInfo): boolean {
+function instanceToggleChecked(instance: miraChannelInstanceInfo): boolean {
   return instance.runtime_status === "running" || instance.runtime_status === "starting";
 }
 
@@ -338,7 +338,7 @@ function ChannelInstanceStatusBadge({
   configuredLabel,
   needsSetupLabel,
 }: {
-  instance: NanobotChannelInstanceInfo;
+  instance: miraChannelInstanceInfo;
   configuredLabel?: string;
   needsSetupLabel?: string;
 }) {
@@ -377,8 +377,8 @@ function ChannelInstanceAvatar({
   instance,
   showBrandLogos,
 }: {
-  feature: NanobotFeatureInfo;
-  instance: NanobotChannelInstanceInfo;
+  feature: miraFeatureInfo;
+  instance: miraChannelInstanceInfo;
   showBrandLogos: boolean;
 }) {
   const presentation = channelUiPresentation(feature.name, feature.webui);
@@ -430,7 +430,7 @@ function ChannelInstanceAvatar({
 }
 
 function channelInstanceFields(
-  feature: NanobotFeatureInfo,
+  feature: miraFeatureInfo,
   fields: ChannelConfigField[] | undefined,
   manualFields: ChannelConfigField[] | undefined,
 ): ChannelConfigField[] {

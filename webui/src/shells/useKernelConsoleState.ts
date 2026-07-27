@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { StreamError } from "@/lib/nanobot-client";
+import type { StreamError } from "@/lib/mira-client";
 
 export interface KernelConsoleErrorEntry {
   id: string;

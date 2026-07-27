@@ -10,8 +10,8 @@ from types import ModuleType, SimpleNamespace
 import httpx
 import pytest
 
-import nanobot.agent.tools.mcp as mcp_mod
-from nanobot.agent.tools.mcp import (
+import mira.agent.tools.mcp as mcp_mod
+from mira.agent.tools.mcp import (
     MCPPromptWrapper,
     MCPResourceWrapper,
     MCPToolWrapper,
@@ -20,8 +20,8 @@ from nanobot.agent.tools.mcp import (
     _sanitize_name,
     connect_mcp_servers,
 )
-from nanobot.agent.tools.registry import ToolRegistry, is_tool_error_result
-from nanobot.config.schema import MCPServerConfig
+from mira.agent.tools.registry import ToolRegistry, is_tool_error_result
+from mira.config.schema import MCPServerConfig
 
 _PROXY_ENV_VARS = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy")
 
@@ -506,7 +506,7 @@ _PNG_B64 = (
 
 @pytest.mark.asyncio
 async def test_execute_persists_image_block_as_artifact(tmp_path: Path) -> None:
-    from nanobot.config.loader import set_config_path
+    from mira.config.loader import set_config_path
 
     set_config_path(tmp_path / "config.json")
 
@@ -537,7 +537,7 @@ async def test_execute_persists_image_block_as_artifact(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_execute_notes_unstorable_image_block(tmp_path: Path) -> None:
-    from nanobot.config.loader import set_config_path
+    from mira.config.loader import set_config_path
 
     set_config_path(tmp_path / "config.json")
 
@@ -796,7 +796,7 @@ async def test_connect_mcp_servers_enabled_tools_warns_on_unknown_entries(
     def _warning(message: str, *args: object) -> None:
         warnings.append(message.format(*args))
 
-    monkeypatch.setattr("nanobot.agent.tools.mcp.logger.warning", _warning)
+    monkeypatch.setattr("mira.agent.tools.mcp.logger.warning", _warning)
 
     stacks = await connect_mcp_servers(
         {"test": MCPServerConfig(command="fake", enabled_tools=["unknown"])},
@@ -827,7 +827,7 @@ async def test_connect_mcp_servers_logs_stdio_pollution_hint(
         yield  # pragma: no cover
 
     monkeypatch.setattr(sys.modules["mcp.client.stdio"], "stdio_client", _broken_stdio_client)
-    monkeypatch.setattr("nanobot.agent.tools.mcp.logger.exception", _error)
+    monkeypatch.setattr("mira.agent.tools.mcp.logger.exception", _error)
 
     registry = ToolRegistry()
     stacks = await connect_mcp_servers({"gh": MCPServerConfig(command="github-mcp")}, registry)
@@ -864,7 +864,7 @@ async def test_connect_mcp_servers_rejects_unsafe_http_urls_before_probe(
         warnings.append(message.format(*args))
 
     monkeypatch.setattr(mcp_mod.asyncio, "open_connection", _open_connection)
-    monkeypatch.setattr("nanobot.agent.tools.mcp.logger.warning", _warning)
+    monkeypatch.setattr("mira.agent.tools.mcp.logger.warning", _warning)
 
     registry = ToolRegistry()
     stacks = await connect_mcp_servers({"local": config}, registry)
@@ -877,7 +877,7 @@ async def test_connect_mcp_servers_rejects_unsafe_http_urls_before_probe(
 
 @pytest.mark.asyncio
 async def test_validate_mcp_request_url_rejects_loopback_without_whitelist() -> None:
-    from nanobot.security.network import configure_ssrf_whitelist
+    from mira.security.network import configure_ssrf_whitelist
 
     configure_ssrf_whitelist([])
     request = httpx.Request("GET", "http://127.0.0.1/private")
@@ -940,7 +940,7 @@ async def test_connect_mcp_servers_env_proxy_adds_proxy_mounts_and_keeps_pinned_
         lambda: httpx.MockTransport(lambda request: httpx.Response(200, request=request)),
     )
     monkeypatch.setattr(
-        "nanobot.security.network.httpx.AsyncHTTPTransport",
+        "mira.security.network.httpx.AsyncHTTPTransport",
         lambda **_kwargs: httpx.MockTransport(
             lambda request: httpx.Response(200, request=request)
         ),
@@ -972,7 +972,7 @@ def test_mcp_http_clients_no_proxy_env_keeps_pinned_direct_route(monkeypatch):
         lambda: httpx.MockTransport(lambda request: httpx.Response(200, request=request)),
     )
     monkeypatch.setattr(
-        "nanobot.security.network.httpx.AsyncHTTPTransport",
+        "mira.security.network.httpx.AsyncHTTPTransport",
         lambda **_kwargs: httpx.MockTransport(
             lambda request: httpx.Response(200, request=request)
         ),
@@ -1219,13 +1219,13 @@ async def test_connect_mcp_servers_passes_stdio_cwd(
 
     registry = ToolRegistry()
     stacks = await connect_mcp_servers(
-        {"test": MCPServerConfig(command="fake", cwd="/tmp/nanobot-mcp-test")},
+        {"test": MCPServerConfig(command="fake", cwd="/tmp/mira-mcp-test")},
         registry,
     )
     for stack in stacks.values():
         await stack.aclose()
 
-    assert captured["cwd"] == "/tmp/nanobot-mcp-test"
+    assert captured["cwd"] == "/tmp/mira-mcp-test"
 
 
 # ---------------------------------------------------------------------------

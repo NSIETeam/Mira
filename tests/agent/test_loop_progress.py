@@ -6,12 +6,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nanobot.agent.hooks import create_file_edit_activity_hook
-from nanobot.agent.loop import AgentLoop
-from nanobot.agent.tools.context import current_request_context
-from nanobot.agent.tools.filesystem import WriteFileTool
-from nanobot.bus.events import InboundMessage
-from nanobot.bus.outbound_events import (
+from mira.agent.hooks import create_file_edit_activity_hook
+from mira.agent.loop import AgentLoop
+from mira.agent.tools.context import current_request_context
+from mira.agent.tools.filesystem import WriteFileTool
+from mira.bus.events import InboundMessage
+from mira.bus.outbound_events import (
     GoalStatusEvent,
     ProgressEvent,
     SessionUpdatedEvent,
@@ -20,15 +20,15 @@ from nanobot.bus.outbound_events import (
     StreamEndEvent,
     TurnEndEvent,
 )
-from nanobot.bus.queue import MessageBus
-from nanobot.providers.base import LLMResponse, ToolCallRequest
-from nanobot.providers.factory import ProviderSnapshot
-from nanobot.session.webui_turns import WebuiTurnCoordinator, WebuiTurnRoutePolicy
-from nanobot.utils.progress_events import (
+from mira.bus.queue import MessageBus
+from mira.providers.base import LLMResponse, ToolCallRequest
+from mira.providers.factory import ProviderSnapshot
+from mira.session.webui_turns import WebuiTurnCoordinator, WebuiTurnRoutePolicy
+from mira.utils.progress_events import (
     invoke_file_edit_progress,
     on_progress_accepts_file_edit_events,
 )
-from nanobot.webui.metadata import WEBUI_TURN_METADATA_KEY
+from mira.webui.metadata import WEBUI_TURN_METADATA_KEY
 
 
 def _make_loop(tmp_path: Path) -> AgentLoop:
@@ -217,7 +217,7 @@ class TestToolEventProgress:
             pass
 
         monkeypatch.setattr(
-            "nanobot.agent.hooks.file_edit_activity.prepare_file_edit_trackers",
+            "mira.agent.hooks.file_edit_activity.prepare_file_edit_trackers",
             prepare_file_edit_trackers,
         )
 
@@ -1181,7 +1181,7 @@ class TestToolEventProgress:
             return False
 
         monkeypatch.setattr(
-            "nanobot.session.webui_turns.maybe_generate_webui_title_after_turn",
+            "mira.session.webui_turns.maybe_generate_webui_title_after_turn",
             fake_title_after_turn,
         )
         scheduled_title: list[object] = []
@@ -1235,7 +1235,7 @@ class TestToolEventProgress:
             raise AssertionError("command-only turns should not generate titles")
 
         monkeypatch.setattr(
-            "nanobot.session.webui_turns.maybe_generate_webui_title_after_turn",
+            "mira.session.webui_turns.maybe_generate_webui_title_after_turn",
             fake_title_after_turn,
         )
         scheduled: list[object] = []

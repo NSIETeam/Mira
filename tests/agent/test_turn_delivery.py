@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from nanobot.agent.turn_delivery import TurnDeliveryFactory
-from nanobot.bus.events import InboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.bus.runtime_events import RuntimeEventBus
-from nanobot.session.manager import SessionManager
-from nanobot.session.webui_turns import WebuiTurnRoutePolicy
-from nanobot.webui.metadata import WEBUI_TURN_METADATA_KEY
+from mira.agent.turn_delivery import TurnDeliveryFactory
+from mira.bus.events import InboundMessage
+from mira.bus.queue import MessageBus
+from mira.bus.runtime_events import RuntimeEventBus
+from mira.session.manager import SessionManager
+from mira.session.webui_turns import WebuiTurnRoutePolicy
+from mira.webui.metadata import WEBUI_TURN_METADATA_KEY
 
 
 def test_late_subagent_route_requires_webui_owned_session(tmp_path: Path) -> None:

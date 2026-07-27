@@ -5,20 +5,20 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nanobot.agent.memory import (
+from mira.agent.memory import (
     _ARCHIVE_SUMMARY_MAX_CHARS,
     Consolidator,
     MemoryStore,
 )
-from nanobot.providers.base import GenerationSettings, LLMResponse
-from nanobot.runtime_context import (
+from mira.providers.base import GenerationSettings, LLMResponse
+from mira.runtime_context import (
     RUNTIME_CONTEXT_HISTORY_META,
     RuntimeContextBlock,
     append_runtime_context,
 )
-from nanobot.session.manager import Session
-from nanobot.utils.llm_runtime import LLMRuntime
-from nanobot.utils.prompt_templates import render_template
+from mira.session.manager import Session
+from mira.utils.llm_runtime import LLMRuntime
+from mira.utils.prompt_templates import render_template
 
 
 @pytest.fixture
@@ -220,7 +220,7 @@ class TestConsolidatorPromptContract:
 class TestConsolidatorArchiveErrorHandling:
     """archive() must fall back to raw_archive when the LLM returns an error
     response (finish_reason == 'error'), e.g. overloaded / quota exceeded.
-    See https://github.com/HKUDS/nanobot/issues/3244
+    See https://github.com/HKUDS/mira/issues/3244
     """
 
     async def test_archive_falls_back_on_error_finish_reason(
@@ -283,7 +283,7 @@ class TestConsolidatorArchiveErrorHandling:
     ):
         consolidator.store.raw_archive = MagicMock()
         monkeypatch.setattr(
-            "nanobot.agent.memory.render_template",
+            "mira.agent.memory.render_template",
             MagicMock(side_effect=RuntimeError("template failed")),
         )
 
@@ -556,7 +556,7 @@ class TestCompactIdleSession:
     @pytest.fixture
     def real_consolidator(self, store, mock_provider):
         """Create a Consolidator with a real SessionManager (not a mock)."""
-        from nanobot.session.manager import SessionManager
+        from mira.session.manager import SessionManager
 
         sessions = SessionManager(store.workspace)
         return Consolidator(
@@ -871,8 +871,8 @@ class TestConsolidatorSessionRefresh:
     @pytest.mark.asyncio
     async def test_reloads_before_empty_session_guard(self, tmp_path):
         """A stale empty reference must not skip a non-empty cached session."""
-        from nanobot.agent.memory import Consolidator, MemoryStore
-        from nanobot.session.manager import Session, SessionManager
+        from mira.agent.memory import Consolidator, MemoryStore
+        from mira.session.manager import Session, SessionManager
 
         store = MemoryStore(tmp_path)
         provider = MagicMock()
@@ -919,8 +919,8 @@ class TestConsolidatorSessionRefresh:
         """After compact_idle_session replaces the session, a concurrent
         maybe_consolidate_by_tokens with the old reference should use the
         fresh session from cache instead of overwriting."""
-        from nanobot.agent.memory import Consolidator, MemoryStore
-        from nanobot.session.manager import SessionManager
+        from mira.agent.memory import Consolidator, MemoryStore
+        from mira.session.manager import SessionManager
 
         store = MemoryStore(tmp_path)
         provider = MagicMock()

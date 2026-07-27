@@ -6,40 +6,40 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from loguru import logger
 
-from nanobot.agent.context import ContextBuilder
-from nanobot.agent.loop import AgentLoop, TurnState
-from nanobot.agent.tools.context import RequestContext, request_context
-from nanobot.bus.events import InboundMessage
-from nanobot.bus.outbound_events import (
+from mira.agent.context import ContextBuilder
+from mira.agent.loop import AgentLoop, TurnState
+from mira.agent.tools.context import RequestContext, request_context
+from mira.bus.events import InboundMessage
+from mira.bus.outbound_events import (
     GoalStatusEvent,
     StreamDeltaEvent,
     StreamedResponseEvent,
     StreamEndEvent,
     TurnEndEvent,
 )
-from nanobot.bus.queue import MessageBus
-from nanobot.cron.session_turns import CRON_HISTORY_META, CRON_TRIGGER_META
-from nanobot.providers.base import LLMResponse
-from nanobot.providers.factory import ProviderSnapshot
-from nanobot.runtime_context import (
+from mira.bus.queue import MessageBus
+from mira.cron.session_turns import CRON_HISTORY_META, CRON_TRIGGER_META
+from mira.providers.base import LLMResponse
+from mira.providers.factory import ProviderSnapshot
+from mira.runtime_context import (
     RUNTIME_CONTEXT_HISTORY_META,
     RUNTIME_CONTEXT_MESSAGE_META,
     RuntimeContextBlock,
     append_runtime_context,
     public_history_message,
 )
-from nanobot.session.automation_turns import AUTOMATION_HISTORY_META
-from nanobot.session.goal_state import GOAL_STATE_KEY
-from nanobot.session.keys import (
+from mira.session.automation_turns import AUTOMATION_HISTORY_META
+from mira.session.goal_state import GOAL_STATE_KEY
+from mira.session.keys import (
     LAST_CHANNEL_METADATA_KEY,
     UNIFIED_SESSION_KEY,
 )
-from nanobot.session.manager import Session, SessionManager
-from nanobot.session.turn_continuation import (
+from mira.session.manager import Session, SessionManager
+from mira.session.turn_continuation import (
     INTERNAL_CONTINUATION_META,
     INTERNAL_CONTINUATION_RUN_STARTED_AT_META,
 )
-from nanobot.session.webui_turns import (
+from mira.session.webui_turns import (
     TITLE_GENERATION_MAX_TOKENS,
     TITLE_GENERATION_REASONING_EFFORT,
     WEBUI_SESSION_METADATA_KEY,
@@ -48,13 +48,13 @@ from nanobot.session.webui_turns import (
     clean_generated_title,
     maybe_generate_webui_title,
 )
-from nanobot.triggers.local_session_turns import LOCAL_TRIGGER_META
-from nanobot.utils.llm_runtime import LLMRuntime
+from mira.triggers.local_session_turns import LOCAL_TRIGGER_META
+from mira.utils.llm_runtime import LLMRuntime
 
 
 def _mk_loop() -> AgentLoop:
     loop = AgentLoop.__new__(AgentLoop)
-    from nanobot.config.schema import AgentDefaults
+    from mira.config.schema import AgentDefaults
 
     loop.max_tool_result_chars = AgentDefaults().max_tool_result_chars
     return loop
@@ -198,7 +198,7 @@ async def test_new_with_bot_suffix_does_not_persist_command(tmp_path: Path) -> N
             channel="websocket",
             sender_id="user",
             chat_id="chat-1",
-            content="/new@nanobot_bot",
+            content="/new@mira_bot",
         )
     )
 
@@ -328,7 +328,7 @@ def test_webui_title_update_uses_captured_llm_runtime(
         return False
 
     monkeypatch.setattr(
-        "nanobot.session.webui_turns.maybe_generate_webui_title_after_turn",
+        "mira.session.webui_turns.maybe_generate_webui_title_after_turn",
         fake_title_after_turn,
     )
     coordinator = WebuiTurnCoordinator(
@@ -1195,7 +1195,7 @@ async def test_process_message_uses_explicit_session_metadata_for_goal_context(
 async def test_run_agent_loop_goal_continue_message_reads_latest_metadata(
     tmp_path: Path,
 ) -> None:
-    from nanobot.agent.runner import AgentRunResult
+    from mira.agent.runner import AgentRunResult
 
     loop = _make_full_loop(tmp_path)
     session = loop.sessions.get_or_create("websocket:late-goal")
@@ -1336,8 +1336,8 @@ async def test_next_turn_after_crash_closes_pending_user_turn_before_new_input(t
 
 @pytest.mark.asyncio
 async def test_stop_preserves_runtime_checkpoint_for_next_turn(tmp_path: Path) -> None:
-    from nanobot.command.builtin import cmd_stop
-    from nanobot.command.router import CommandContext
+    from mira.command.builtin import cmd_stop
+    from mira.command.router import CommandContext
 
     loop = _make_full_loop(tmp_path)
     loop.consolidator.maybe_consolidate_by_tokens = AsyncMock(return_value=False)  # type: ignore[method-assign]

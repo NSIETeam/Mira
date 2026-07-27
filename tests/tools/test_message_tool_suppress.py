@@ -6,11 +6,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nanobot.agent.loop import AgentLoop
-from nanobot.agent.tools.message import MessageTool
-from nanobot.bus.events import InboundMessage, OutboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.providers.base import LLMResponse, ToolCallRequest
+from mira.agent.loop import AgentLoop
+from mira.agent.tools.message import MessageTool
+from mira.bus.events import InboundMessage, OutboundMessage
+from mira.bus.queue import MessageBus
+from mira.providers.base import LLMResponse, ToolCallRequest
 
 
 def _make_loop(tmp_path: Path) -> AgentLoop:
@@ -158,7 +158,7 @@ class TestMessageToolTurnTracking:
 
     def test_sent_in_turn_tracks_same_target(self) -> None:
         tool = MessageTool()
-        from nanobot.agent.tools.context import RequestContext, request_context
+        from mira.agent.tools.context import RequestContext, request_context
 
         with request_context(RequestContext(channel="feishu", chat_id="chat1")):
             assert not tool._sent_in_turn

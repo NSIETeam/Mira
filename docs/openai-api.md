@@ -1,21 +1,21 @@
-# Nanobot OpenAI-Compatible API: Run a Local Agent Behind /v1/chat/completions
+# mira OpenAI-Compatible API: Run a Local Agent Behind /v1/chat/completions
 
-nanobot can expose a minimal OpenAI-compatible endpoint for local integrations:
+mira can expose a minimal OpenAI-compatible endpoint for local integrations:
 
 ```bash
-nanobot plugins enable api
-nanobot agent -m "Hello!"
-nanobot serve
+mira plugins enable api
+mira agent -m "Hello!"
+mira serve
 ```
 
-Run the CLI check first. If `nanobot agent -m "Hello!"` fails, fix provider or config setup before debugging the API server. By default, the API binds to `127.0.0.1:8900`. You can change this in `config.json`.
+Run the CLI check first. If `mira agent -m "Hello!"` fails, fix provider or config setup before debugging the API server. By default, the API binds to `127.0.0.1:8900`. You can change this in `config.json`.
 
 For setup help, see [`quick-start.md`](./quick-start.md), [`providers.md`](./providers.md), and [`troubleshooting.md`](./troubleshooting.md).
 
 ## Authentication
 
 Local-only `127.0.0.1` usage does not require an API key. If you bind the API
-server to all interfaces with `api.host: "0.0.0.0"` or `"::"`, nanobot requires
+server to all interfaces with `api.host: "0.0.0.0"` or `"::"`, mira requires
 `api.apiKey`; otherwise startup fails to avoid exposing an unauthenticated agent
 endpoint on the network.
 
@@ -24,7 +24,7 @@ endpoint on the network.
   "api": {
     "host": "0.0.0.0",
     "port": 8900,
-    "apiKey": "${NANOBOT_API_KEY}"
+    "apiKey": "${mira_API_KEY}"
   }
 }
 ```
@@ -35,7 +35,7 @@ check process health.
 
 ```bash
 curl http://127.0.0.1:8900/v1/models \
-  -H "Authorization: Bearer $NANOBOT_API_KEY"
+  -H "Authorization: Bearer $mira_API_KEY"
 ```
 
 ## Behavior
@@ -57,7 +57,7 @@ Example tool call for cross-channel delivery from an API session:
 }
 ```
 
-If `channel` points to a channel that is not enabled in your config, nanobot will queue the outbound event but no platform delivery will occur.
+If `channel` points to a channel that is not enabled in your config, mira will queue the outbound event but no platform delivery will occur.
 
 ## Endpoints
 

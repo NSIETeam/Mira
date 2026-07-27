@@ -3,12 +3,12 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from nanobot.session.manager import SessionManager
+from mira.session.manager import SessionManager
 
 
 def test_list_sessions_repairs_corrupt_legacy_stem(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(
-        "nanobot.session.manager.get_legacy_sessions_dir",
+        "mira.session.manager.get_legacy_sessions_dir",
         lambda: tmp_path / "legacy_sessions",
     )
     manager = SessionManager(tmp_path / "workspace")
@@ -45,7 +45,7 @@ def test_read_session_methods_fall_back_to_legacy_lossy_stem(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
-        "nanobot.session.manager.get_legacy_sessions_dir",
+        "mira.session.manager.get_legacy_sessions_dir",
         lambda: tmp_path / "legacy_sessions",
     )
     manager = SessionManager(tmp_path / "workspace")

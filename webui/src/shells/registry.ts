@@ -214,7 +214,7 @@ function shellRegistryKey(
   const shellName = shellDescriptor?.name?.trim() ?? "";
   if (shellName === "single-execution-shell") return "single-execution";
   if (shellName === "review-shell") return "review";
-  if (shellName === "engineering-shell" || shellName === "nanobot-shell") {
+  if (shellName === "engineering-shell" || shellName === "mira-shell") {
     return "engineering";
   }
   return shellName;

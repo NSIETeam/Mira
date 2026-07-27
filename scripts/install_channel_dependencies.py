@@ -5,8 +5,8 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
-from nanobot.channels.registry import discover_plugins
-from nanobot.optional_features import ensure_enabled_channel_dependencies
+from mira.channels.registry import discover_plugins
+from mira.optional_features import ensure_enabled_channel_dependencies
 
 
 def main(argv: Sequence[str] | None = None) -> int:

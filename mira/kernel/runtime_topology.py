@@ -1,6 +1,27 @@
-"""Mira runtime-topology namespace forwarding to nanobot.kernel.runtime_topology."""
+"""Stable runtime-topology contract for the Mira kernel surface."""
 
-from nanobot.kernel.runtime_topology import *  # noqa: F401,F403
-from nanobot.kernel.runtime_topology import build_runtime_topology
+from __future__ import annotations
 
-__all__ = ["build_runtime_topology"]
+from typing import Any
+
+
+def build_runtime_topology(
+    *,
+    adapters: list[dict[str, Any]],
+    modules: list[dict[str, Any]],
+    bridges: list[dict[str, Any]],
+    execution_lanes: list[dict[str, Any]],
+    scheduler: dict[str, Any],
+    workers: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "adapters": [dict(row) for row in adapters],
+        "modules": [dict(row) for row in modules],
+        "bridges": [dict(row) for row in bridges],
+        "execution_lanes": [dict(row) for row in execution_lanes],
+        "scheduler": {
+            **dict(scheduler),
+            "queues": [dict(row) for row in list(scheduler.get("queues", []))],
+        },
+        "workers": [dict(row) for row in workers],
+    }

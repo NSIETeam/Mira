@@ -4,17 +4,17 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nanobot.agent.loop import AgentLoop
-from nanobot.agent.tools.context import (
+from mira.agent.loop import AgentLoop
+from mira.agent.tools.context import (
     RequestContext,
     bind_request_context,
     current_request_context,
     reset_request_context,
 )
-from nanobot.bus.events import InboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.providers.base import LLMResponse, ToolCallRequest
-from nanobot.session.turn_continuation import INTERNAL_CONTINUATION_META
+from mira.bus.events import InboundMessage
+from mira.bus.queue import MessageBus
+from mira.providers.base import LLMResponse, ToolCallRequest
+from mira.session.turn_continuation import INTERNAL_CONTINUATION_META
 
 
 class _ContextRecordingTool:

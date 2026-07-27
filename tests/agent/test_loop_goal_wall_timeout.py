@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nanobot.agent.runner import AgentRunResult
-from nanobot.agent.subagent import SubagentManager, SubagentStatus
-from nanobot.bus.queue import MessageBus
-from nanobot.providers.base import GenerationSettings
-from nanobot.utils.llm_runtime import LLMRuntime
+from mira.agent.runner import AgentRunResult
+from mira.agent.subagent import SubagentManager, SubagentStatus
+from mira.bus.queue import MessageBus
+from mira.providers.base import GenerationSettings
+from mira.utils.llm_runtime import LLMRuntime
 
 
 @pytest.mark.asyncio
