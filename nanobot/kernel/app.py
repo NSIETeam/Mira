@@ -482,6 +482,7 @@ class KernelApp:
         self._native_module_states: dict[str, dict[str, Any]] = {}
         self._native_bridge_artifact: str | None = None
         self._native_queue_depth = 0
+        self._native_command_depth = 0
         self._dispatch_queue: list[dict[str, Any]] = []
         self._session_metadata: dict[str, dict[str, Any]] = {}
         self._session_status: dict[str, str] = {}
@@ -638,6 +639,7 @@ class KernelApp:
         native_snapshot = snapshot_native_bridge()
         if native_snapshot is not None:
             self._native_queue_depth = native_snapshot.queue_depth
+            self._native_command_depth = native_snapshot.command_depth
             self._native_bridge_artifact = native_snapshot.artifact
             if native_snapshot.module_states:
                 self._native_module_states.update(native_snapshot.module_states)
@@ -2325,6 +2327,7 @@ class KernelApp:
         snapshot["snapshot"]["board_bridge_artifact"] = board.get("bridge_artifact")
         snapshot["snapshot"]["native_bridge_artifact"] = self._native_bridge_artifact
         snapshot["snapshot"]["native_module_count"] = len(self._native_module_states)
+        snapshot["snapshot"]["native_command_depth"] = self._native_command_depth
         snapshot["snapshot"]["native_modules"] = dict(self._native_module_states)
         return snapshot
 

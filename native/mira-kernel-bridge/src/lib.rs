@@ -7,6 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const MESSAGE_CAPACITY: usize = 240;
 const MODULE_CAPACITY: usize = 64;
 const QUEUE_CAPACITY: usize = 512;
+const COMMAND_CAPACITY: usize = 96;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -50,9 +51,30 @@ impl MiraKernelModuleState {
     }
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct MiraKernelCommand {
+    pub issued_at_ms: u64,
+    pub target: [u8; MODULE_CAPACITY],
+    pub action: [u8; MODULE_CAPACITY],
+    pub value: [u8; COMMAND_CAPACITY],
+}
+
+impl MiraKernelCommand {
+    fn new(target: &str, action: &str, value: &str) -> Self {
+        Self {
+            issued_at_ms: now_ms(),
+            target: encode_fixed::<MODULE_CAPACITY>(target),
+            action: encode_fixed::<MODULE_CAPACITY>(action),
+            value: encode_fixed::<COMMAND_CAPACITY>(value),
+        }
+    }
+}
+
 #[derive(Default)]
 struct KernelBridge {
     queue: VecDeque<MiraKernelEvent>,
+    commands: VecDeque<MiraKernelCommand>,
     modules: HashMap<String, MiraKernelModuleState>,
 }
 
@@ -62,6 +84,13 @@ impl KernelBridge {
             self.queue.pop_front();
         }
         self.queue.push_back(event);
+    }
+
+    fn push_command(&mut self, command: MiraKernelCommand) {
+        if self.commands.len() >= QUEUE_CAPACITY {
+            self.commands.pop_front();
+        }
+        self.commands.push_back(command);
     }
 }
 
@@ -178,4 +207,59 @@ pub extern "C" fn mira_kernel_queue_depth() -> usize {
         return 0;
     };
     state.queue.len()
+}
+
+#[no_mangle]
+pub extern "C" fn mira_kernel_submit_command(
+    target: *const c_char,
+    action: *const c_char,
+    value: *const c_char,
+) -> i32 {
+    let Some(target_name) = decode_ptr(target) else {
+        return -1;
+    };
+    let Some(action_name) = decode_ptr(action) else {
+        return -2;
+    };
+    let value_text = decode_ptr(value).unwrap_or_default();
+    let Ok(mut state) = bridge().lock() else {
+        return -3;
+    };
+    state.push_command(MiraKernelCommand::new(&target_name, &action_name, &value_text));
+    state.modules.insert(
+        target_name.clone(),
+        MiraKernelModuleState::new(&target_name, 2, 0),
+    );
+    state.push_event(MiraKernelEvent::new(
+        2,
+        0,
+        &target_name,
+        &format!("command queued: {}", action_name),
+    ));
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn mira_kernel_poll_command(out_command: *mut MiraKernelCommand) -> i32 {
+    if out_command.is_null() {
+        return -1;
+    }
+    let Ok(mut state) = bridge().lock() else {
+        return -2;
+    };
+    let Some(command) = state.commands.pop_front() else {
+        return 1;
+    };
+    unsafe {
+        *out_command = command;
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn mira_kernel_command_depth() -> usize {
+    let Ok(state) = bridge().lock() else {
+        return 0;
+    };
+    state.commands.len()
 }

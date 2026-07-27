@@ -10,6 +10,7 @@ from typing import Any
 
 MODULE_CAPACITY = 64
 MESSAGE_CAPACITY = 240
+COMMAND_CAPACITY = 96
 
 
 class NativeKernelEvent(ctypes.Structure):
@@ -31,9 +32,19 @@ class NativeKernelModuleState(ctypes.Structure):
     ]
 
 
+class NativeKernelCommand(ctypes.Structure):
+    _fields_ = [
+        ("issued_at_ms", ctypes.c_uint64),
+        ("target", ctypes.c_uint8 * MODULE_CAPACITY),
+        ("action", ctypes.c_uint8 * MODULE_CAPACITY),
+        ("value", ctypes.c_uint8 * COMMAND_CAPACITY),
+    ]
+
+
 @dataclass(slots=True)
 class NativeBridgeSnapshot:
     queue_depth: int
+    command_depth: int
     events: list[dict[str, Any]]
     module_states: dict[str, dict[str, Any]]
     artifact: str | None
@@ -92,12 +103,19 @@ def snapshot_native_bridge() -> NativeBridgeSnapshot | None:
     if library is None:
         return None
     queue_depth_symbol = getattr(library, "mira_kernel_queue_depth", None)
+    command_depth_symbol = getattr(library, "mira_kernel_command_depth", None)
     poll_symbol = getattr(library, "mira_kernel_poll_event", None)
     read_module_symbol = getattr(library, "mira_kernel_read_module_state", None)
-    if queue_depth_symbol is None or poll_symbol is None or read_module_symbol is None:
+    if (
+        queue_depth_symbol is None
+        or command_depth_symbol is None
+        or poll_symbol is None
+        or read_module_symbol is None
+    ):
         return None
 
     queue_depth_symbol.restype = ctypes.c_size_t
+    command_depth_symbol.restype = ctypes.c_size_t
     poll_symbol.argtypes = [ctypes.POINTER(NativeKernelEvent)]
     poll_symbol.restype = ctypes.c_int32
     read_module_symbol.argtypes = [ctypes.c_char_p, ctypes.POINTER(NativeKernelModuleState)]
@@ -137,7 +155,56 @@ def snapshot_native_bridge() -> NativeBridgeSnapshot | None:
                 }
     return NativeBridgeSnapshot(
         queue_depth=int(queue_depth_symbol()),
+        command_depth=int(command_depth_symbol()),
         events=events,
         module_states=module_states,
         artifact=artifact,
     )
+
+
+def dispatch_native_bridge_command(
+    *,
+    target: str,
+    action: str,
+    value: str = "",
+) -> dict[str, Any]:
+    library, artifact = _load_library()
+    if library is None:
+        return {
+            "ok": False,
+            "artifact": None,
+            "target": target,
+            "action": action,
+            "value": value,
+            "error": "native bridge library not built",
+        }
+    submit_symbol = getattr(library, "mira_kernel_submit_command", None)
+    depth_symbol = getattr(library, "mira_kernel_command_depth", None)
+    if submit_symbol is None or depth_symbol is None:
+        return {
+            "ok": False,
+            "artifact": artifact,
+            "target": target,
+            "action": action,
+            "value": value,
+            "error": "native command surface unavailable",
+        }
+    submit_symbol.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+    submit_symbol.restype = ctypes.c_int32
+    depth_symbol.restype = ctypes.c_size_t
+    code = int(
+        submit_symbol(
+            target.encode("utf-8"),
+            action.encode("utf-8"),
+            value.encode("utf-8"),
+        )
+    )
+    return {
+        "ok": code == 0,
+        "artifact": artifact,
+        "target": target,
+        "action": action,
+        "value": value,
+        "queue_depth": int(depth_symbol()),
+        "error": None if code == 0 else f"native command failed with code {code}",
+    }
