@@ -29,6 +29,8 @@ function operatorPanelTone(subject: string | null | undefined): string {
       return "border-emerald-200/80 bg-emerald-50/60";
     case "board":
       return "border-amber-200/80 bg-amber-50/70";
+    case "native":
+      return "border-fuchsia-200/80 bg-fuchsia-50/60";
     case "fault":
     case "maintenance":
       return "border-rose-200/80 bg-rose-50/60";
@@ -673,12 +675,23 @@ export function MiraKernelConsole({
                                     .map((item) => item.trim())
                                     .filter(Boolean)
                                     .map((item) => (
-                                      <span
+                                      <button
                                         key={item}
-                                        className="rounded-full border border-slate-300/80 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-700"
+                                        type="button"
+                                        onClick={() => {
+                                          if (
+                                            entry.details?.subject === "native"
+                                            && entry.details?.action === "modules"
+                                            && item.includes(":")
+                                          ) {
+                                            runQuickCommand(`module show ${item.split(":")[0]}`);
+                                          }
+                                        }}
+                                        disabled={operatorPending}
+                                        className="rounded-full border border-slate-300/80 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-default disabled:hover:bg-slate-50"
                                       >
                                         {item}
-                                      </span>
+                                      </button>
                                     ))}
                                 </div>
                               </div>
