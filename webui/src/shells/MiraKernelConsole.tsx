@@ -363,7 +363,7 @@ export function MiraKernelConsole({
     {
       label: "native",
       tone: "border-fuchsia-700 bg-fuchsia-950 text-fuchsia-100",
-      commands: ["native status", "native last-command", "native replay-last", "native replay runtime pause operator-ping", "native modules"],
+      commands: ["native status", "native last-command", "native replay-last", "native inspect memory", "native replay runtime pause operator-ping", "native modules"],
     },
     {
       label: "fault",
@@ -1144,6 +1144,14 @@ export function MiraKernelConsole({
                           replay native
                         </button>
                       ) : null}
+                      <button
+                        type="button"
+                        onClick={() => runQuickCommand(`native inspect ${selectedModule.name}`)}
+                        disabled={operatorPending}
+                        className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                      >
+                        native inspect
+                      </button>
                       <button
                         type="button"
                         onClick={() => runQuickCommand(`module show ${selectedModule.name}`)}

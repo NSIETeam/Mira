@@ -991,6 +991,7 @@ class KernelApp:
                 ("native", "last-command"): ("native-last-command", tail),
                 ("native", "replay-last"): ("native-replay-last", tail),
                 ("native", "replay"): ("native-replay", tail),
+                ("native", "inspect"): ("native-inspect", tail),
                 ("native", "modules"): ("native-modules", tail),
                 ("repo", "status"): ("repo-status", tail),
                 ("repo", "root"): ("repo-root", tail),
@@ -1019,14 +1020,14 @@ class KernelApp:
                 "target_pane": "control_plane",
                 "output": (
                     "commands: help, pane <name>, switch-adapter [name], focus-module <name>, "
-                    "adapter-status [name], adapter-list, module-status [name], module-list, module-actions [name], board-status, board-ports, board-target, board-transport, board-mode, native-status, native-last-command, native-replay-last, native-replay <target> <action> [value], native-modules, bridge-status [name], bridge-list, bridge-fault [name], runtime-status, runtime-gate, runtime-health, runtime-orchestration, runtime-queues, runtime-adapters, runtime-bridges, fault-status, scheduler-status, lane-status, lane-list, maintenance-status, worker-status, worker-list, "
+                    "adapter-status [name], adapter-list, module-status [name], module-list, module-actions [name], board-status, board-ports, board-target, board-transport, board-mode, native-status, native-last-command, native-replay-last, native-replay <target> <action> [value], native-inspect <module>, native-modules, bridge-status [name], bridge-list, bridge-fault [name], runtime-status, runtime-gate, runtime-health, runtime-orchestration, runtime-queues, runtime-adapters, runtime-bridges, fault-status, scheduler-status, lane-status, lane-list, maintenance-status, worker-status, worker-list, "
                     "event-status, event-tail [count], session-status, session-goal, session-continuation, goal-reset, kernel-profile, kernel-manifest, runtime-topology, embedded-topology, workspace-status, workspace-scope, workspace-modules, workspace-focus-module <name>, repo-status, repo-root, repo-tools, repo-prepare-tool <name>, tool-inspect <name>, tool-dispatch <name>, tool-queue, tool-clear-queue, tool-prioritize, tool-drain, tool-delegate-goal, tool-delegate-subagent, tool-complete, tool-fail, tool-status, "
                     "attach-board [port] [transport], detach-board, restart-bridge [adapter], "
                     "clear-fault [adapter], record-fault [level] [adapter], pause-runtime [reason], "
                     "resume-runtime, degrade-runtime [reason], drain-background, "
                     "prioritize-goal-lane, enter-maintenance [reason], exit-maintenance; "
                     "aliases: adapter switch|status|list <name>, module focus|show|list|actions <name>, "
-                    "board attach|detach|status|ports|target|transport|mode [port] [transport], native status|last-command|replay-last|replay <target> <action> [value]|modules, bridge status|list|fault <name>, runtime pause|resume|degrade|drain|status|gate|health|orchestration|queues|adapters|bridges, fault clear|record|show, "
+                    "board attach|detach|status|ports|target|transport|mode [port] [transport], native status|last-command|replay-last|replay <target> <action> [value]|inspect <module>|modules, bridge status|list|fault <name>, runtime pause|resume|degrade|drain|status|gate|health|orchestration|queues|adapters|bridges, fault clear|record|show, "
                     "scheduler status, worker show|list, maintenance enter|exit|status, lane prioritize-goal|show|list, event show|tail [count], session status|goal|continuation, goal reset, kernel profile|manifest, topology runtime|embedded, workspace status|scope|modules|focus-module <name>, repo status|root|tools|prepare-tool <name>, tool inspect|dispatch <name>, tool queue|clear-queue|prioritize|drain|delegate-goal|delegate-subagent|complete|fail|status"
                 ),
                 "runtime_control": self.runtime_control_snapshot(),
@@ -1349,6 +1350,23 @@ class KernelApp:
                 "target": target,
                 "command": action,
                 "value": value,
+                "queue_depth": self._native_command_depth,
+                "artifact": self._native_bridge_artifact or "none",
+            }
+        elif command == "native-inspect":
+            module_name = str(args[0] if args else self._runtime_control.get("module_focus") or "").strip()
+            if not module_name:
+                raise ValueError("missing module")
+            self._dispatch_native_control(target=module_name, action="inspect", value="status")
+            target_pane = "modules"
+            state = self.runtime_control_snapshot()
+            output = f"native inspect module={module_name} depth={self._native_command_depth}"
+            details = {
+                "subject": "native",
+                "action": "inspect",
+                "target": module_name,
+                "command": "inspect",
+                "value": "status",
                 "queue_depth": self._native_command_depth,
                 "artifact": self._native_bridge_artifact or "none",
             }
