@@ -167,8 +167,12 @@ export class NanobotClient {
     return this.status_;
   }
 
-  get defaultChatId(): string | null {
+  get defaultExecutionId(): string | null {
     return this.readyChatId;
+  }
+
+  get defaultChatId(): string | null {
+    return this.defaultExecutionId;
   }
 
   /** Swap the URL (e.g. after fetching a fresh token) then reconnect. */
@@ -203,8 +207,8 @@ export class NanobotClient {
 
   onRunStatus(handler: RunStatusHandler): Unsubscribe {
     this.runStatusHandlers.add(handler);
-    for (const [chatId, startedAt] of this.runStartedAtByChatId) {
-      handler(chatId, startedAt);
+    for (const [executionId, startedAt] of this.runStartedAtByChatId) {
+      handler(executionId, startedAt);
     }
     return () => {
       this.runStatusHandlers.delete(handler);
@@ -219,76 +223,84 @@ export class NanobotClient {
     };
   }
 
-  /** Last ``goal_status`` ``started_at`` (unix sec) for *chatId*, if the turn is running. */
-  getRunStartedAt(chatId: string): number | null {
-    const v = this.runStartedAtByChatId.get(chatId);
+  /** Last ``goal_status`` ``started_at`` (unix sec) for *executionId*, if the turn is running. */
+  getRunStartedAt(executionId: string): number | null {
+    const v = this.runStartedAtByChatId.get(executionId);
     return v === undefined ? null : v;
   }
 
-  /** Last ``goal_state`` payload for *chatId*, if any frame has arrived this connection. */
-  getGoalState(chatId: string): GoalStateWsPayload | undefined {
-    return this.goalStateByChatId.get(chatId);
+  /** Last ``goal_state`` payload for *executionId*, if any frame has arrived this connection. */
+  getGoalState(executionId: string): GoalStateWsPayload | undefined {
+    return this.goalStateByChatId.get(executionId);
   }
 
-  private recordGoalStatusForRunStrip(chatId: string, ev: InboundEvent): void {
+  private recordGoalStatusForRunStrip(executionId: string, ev: InboundEvent): void {
     if (ev.event === "turn_end") {
-      if (this.runStartedAtByChatId.has(chatId)) {
-        this.runStartedAtByChatId.delete(chatId);
-        this.emitRunStatus(chatId, null);
+      if (this.runStartedAtByChatId.has(executionId)) {
+        this.runStartedAtByChatId.delete(executionId);
+        this.emitRunStatus(executionId, null);
       }
       return;
     }
     if (ev.event !== "goal_status") return;
     if (ev.status === "running" && typeof ev.started_at === "number") {
-      const previous = this.runStartedAtByChatId.get(chatId);
-      this.runStartedAtByChatId.set(chatId, ev.started_at);
-      if (previous !== ev.started_at) this.emitRunStatus(chatId, ev.started_at);
-    } else if (this.runStartedAtByChatId.has(chatId)) {
-      this.runStartedAtByChatId.delete(chatId);
-      this.emitRunStatus(chatId, null);
+      const previous = this.runStartedAtByChatId.get(executionId);
+      this.runStartedAtByChatId.set(executionId, ev.started_at);
+      if (previous !== ev.started_at) this.emitRunStatus(executionId, ev.started_at);
+    } else if (this.runStartedAtByChatId.has(executionId)) {
+      this.runStartedAtByChatId.delete(executionId);
+      this.emitRunStatus(executionId, null);
     }
   }
 
-  private recordGoalStateSnapshot(chatId: string, ev: InboundEvent): void {
+  private recordGoalStateSnapshot(executionId: string, ev: InboundEvent): void {
     if (ev.event === "goal_state") {
-      this.goalStateByChatId.set(chatId, ev.goal_state);
+      this.goalStateByChatId.set(executionId, ev.goal_state);
       return;
     }
     if (ev.event === "turn_end" && ev.goal_state != null && typeof ev.goal_state === "object") {
-      this.goalStateByChatId.set(chatId, ev.goal_state);
+      this.goalStateByChatId.set(executionId, ev.goal_state);
     }
   }
 
-  /** Subscribe to events for a given chat_id. Auto-attaches on the next open. */
-  onChat(chatId: string, handler: EventHandler): Unsubscribe {
-    let handlers = this.chatHandlers.get(chatId);
+  /** Subscribe to events for a given execution id. Auto-attaches on the next open. */
+  onExecution(executionId: string, handler: EventHandler): Unsubscribe {
+    let handlers = this.chatHandlers.get(executionId);
     if (!handlers) {
       handlers = new Set();
-      this.chatHandlers.set(chatId, handlers);
+      this.chatHandlers.set(executionId, handlers);
     }
     handlers.add(handler);
-    const pending = this.pendingInboundByChat.get(chatId);
+    const pending = this.pendingInboundByChat.get(executionId);
     if (pending !== undefined && pending.length > 0) {
       const flushed = pending.splice(0);
-      this.pendingInboundByChat.delete(chatId);
+      this.pendingInboundByChat.delete(executionId);
       for (const ev of flushed) {
         handler(ev);
       }
     }
-    this.attach(chatId);
+    this.attachExecution(executionId);
     return () => {
-      const current = this.chatHandlers.get(chatId);
+      const current = this.chatHandlers.get(executionId);
       if (!current) return;
       current.delete(handler);
-      if (current.size === 0) this.chatHandlers.delete(chatId);
+      if (current.size === 0) this.chatHandlers.delete(executionId);
     };
   }
 
+  onChat(chatId: string, handler: EventHandler): Unsubscribe {
+    return this.onExecution(chatId, handler);
+  }
+
   /** Subscribe through the stable kernel event envelope instead of raw transport frames. */
-  onKernelChat(chatId: string, handler: KernelEventHandler): Unsubscribe {
-    return this.onChat(chatId, (event) => {
+  onKernelExecution(executionId: string, handler: KernelEventHandler): Unsubscribe {
+    return this.onExecution(executionId, (event) => {
       handler(toKernelEventPayload(event));
     });
+  }
+
+  onKernelChat(chatId: string, handler: KernelEventHandler): Unsubscribe {
+    return this.onKernelExecution(chatId, handler);
   }
 
   connect(): void {
@@ -319,15 +331,18 @@ export class NanobotClient {
     this.setStatus("closed");
   }
 
-  /** Ask the server to provision a new chat_id; resolves with the assigned id. */
-  newChat(timeoutMs: number = 5_000, workspaceScope?: WorkspaceScopePayload | null): Promise<string> {
+  /** Ask the server to provision a new execution id; resolves with the assigned id. */
+  newExecution(
+    timeoutMs: number = 5_000,
+    workspaceScope?: WorkspaceScopePayload | null,
+  ): Promise<string> {
     if (this.pendingNewChat) {
-      return Promise.reject(new Error("newChat already in flight"));
+      return Promise.reject(new Error("newExecution already in flight"));
     }
     return new Promise<string>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendingNewChat = null;
-        reject(new Error("newChat timed out"));
+        reject(new Error("newExecution timed out"));
       }, timeoutMs);
       this.pendingNewChat = { resolve, reject, timer };
       this.queueSend({
@@ -335,6 +350,10 @@ export class NanobotClient {
         ...(workspaceScope ? { workspace_scope: workspaceScope } : {}),
       });
     });
+  }
+
+  newChat(timeoutMs: number = 5_000, workspaceScope?: WorkspaceScopePayload | null): Promise<string> {
+    return this.newExecution(timeoutMs, workspaceScope);
   }
 
   transcribeAudio(
@@ -359,19 +378,19 @@ export class NanobotClient {
   }
 
   /** Ask the server to create a non-destructive fork before a user-message index. */
-  forkChat(
+  forkExecution(
     sourceChatId: string,
     beforeUserIndex: number,
     title?: string,
     timeoutMs: number = 5_000,
   ): Promise<string> {
     if (this.pendingNewChat) {
-      return Promise.reject(new Error("newChat already in flight"));
+      return Promise.reject(new Error("newExecution already in flight"));
     }
     return new Promise<string>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendingNewChat = null;
-        reject(new Error("forkChat timed out"));
+        reject(new Error("forkExecution timed out"));
       }, timeoutMs);
       this.pendingNewChat = { resolve, reject, timer };
       this.queueSend({
@@ -383,15 +402,28 @@ export class NanobotClient {
     });
   }
 
-  attach(chatId: string): void {
-    this.knownChats.add(chatId);
+  forkChat(
+    sourceChatId: string,
+    beforeUserIndex: number,
+    title?: string,
+    timeoutMs: number = 5_000,
+  ): Promise<string> {
+    return this.forkExecution(sourceChatId, beforeUserIndex, title, timeoutMs);
+  }
+
+  attachExecution(executionId: string): void {
+    this.knownChats.add(executionId);
     if (this.socket?.readyState === WS_OPEN) {
-      this.queueSend({ type: "attach", chat_id: chatId });
+      this.queueSend({ type: "attach", chat_id: executionId });
     }
   }
 
+  attach(chatId: string): void {
+    this.attachExecution(chatId);
+  }
+
   sendMessage(
-    chatId: string,
+    executionId: string,
     content: string,
     media?: OutboundMedia[],
     options?: {
@@ -402,10 +434,10 @@ export class NanobotClient {
       turnId?: string;
     },
   ): void {
-    this.knownChats.add(chatId);
+    this.knownChats.add(executionId);
     const frame: Outbound = {
       type: "message",
-      chat_id: chatId,
+      chat_id: executionId,
       content,
       ...(media && media.length > 0 ? { media } : {}),
       ...(options?.cliApps?.length ? { cli_apps: options.cliApps } : {}),
@@ -418,7 +450,7 @@ export class NanobotClient {
     this.queueSend(frame);
   }
 
-  sendSystemCommand(chatId: string, command: string, timeoutMs = 5_000): Promise<void> {
+  sendSystemCommand(executionId: string, command: string, timeoutMs = 5_000): Promise<void> {
     const normalized = command.trim();
     const turnId = `${SYSTEM_COMMAND_TURN_PREFIX}${crypto.randomUUID()}`;
     return new Promise<void>((resolve, reject) => {
@@ -427,15 +459,15 @@ export class NanobotClient {
         reject(new Error("system command timed out"));
       }, timeoutMs);
       this.pendingSystemCommands.set(turnId, { resolve, reject, timer });
-      this.sendMessage(chatId, normalized, undefined, { turnId });
+      this.sendMessage(executionId, normalized, undefined, { turnId });
     });
   }
 
-  setWorkspaceScope(chatId: string, workspaceScope: WorkspaceScopePayload): void {
-    this.knownChats.add(chatId);
+  setWorkspaceScope(executionId: string, workspaceScope: WorkspaceScopePayload): void {
+    this.knownChats.add(executionId);
     this.queueSend({
       type: "set_workspace_scope",
-      chat_id: chatId,
+      chat_id: executionId,
       workspace_scope: workspaceScope,
     });
   }

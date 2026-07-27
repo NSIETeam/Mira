@@ -11,28 +11,35 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { ChatList } from "@/components/ChatList";
+import { ExecutionList } from "@/components/ExecutionList";
 import { ConnectionBadge } from "@/components/ConnectionBadge";
 import { Button } from "@/components/ui/button";
 import type {
-  ChatSummary,
+  ExecutionSummary,
   SidebarViewState,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
-  sessions: ChatSummary[];
-  activeKey: string | null;
+  appName?: string;
+  appTagline?: string;
+  sessions: ExecutionSummary[];
+  executions?: ExecutionSummary[];
+  activeKey?: string | null;
+  activeExecutionKey?: string | null;
   loading: boolean;
-  onNewChat: () => void;
+  onNewExecution: () => void;
+  onNewChat?: () => void;
   onSelect: (key: string) => void;
-  onRequestDelete: (key: string, label: string) => void;
+  onRequestDeleteExecution: (key: string, label: string) => void;
+  onRequestDelete?: (key: string, label: string) => void;
   onTogglePin: (key: string) => void;
   onRequestRename: (key: string, label: string) => void;
   onToggleArchive: (key: string) => void;
   onToggleGroup: (groupId: string) => void;
   onRequestRenameProject: (projectKey: string, label: string) => void;
-  onNewChatInProject: (projectPath: string, projectName: string) => void;
+  onNewExecutionInProject: (projectPath: string, projectName: string) => void;
+  onNewChatInProject?: (projectPath: string, projectName: string) => void;
   onOpenSettings: () => void;
   onOpenApps: () => void;
   onOpenSkills: () => void;
@@ -50,6 +57,8 @@ interface SidebarProps {
   titleOverrides?: Record<string, string>;
   projectNameOverrides?: Record<string, string>;
   collapsedGroups?: Record<string, boolean>;
+  runningExecutionIds?: string[];
+  updatedExecutionIds?: string[];
   runningChatIds?: string[];
   updatedChatIds?: string[];
   viewState?: SidebarViewState;
@@ -82,14 +91,22 @@ export function Sidebar(props: SidebarProps) {
   const collapsed = Boolean(props.collapsed);
   const toggleLabel = t("thread.header.toggleSidebar");
   const newChatShortcut = newChatShortcutLabel();
+  const executionItems = props.executions ?? props.sessions;
+  const resolvedActiveKey = props.activeExecutionKey ?? props.activeKey ?? null;
+  const runningExecutionIds = props.runningExecutionIds ?? props.runningChatIds;
+  const updatedExecutionIds = props.updatedExecutionIds ?? props.updatedChatIds;
+  const appName = props.appName ?? "Mira";
+  const appTagline = props.appTagline ?? "Execution kernel";
 
   return (
     <nav
       ref={props.containActionMenus ? setMenuPortalContainer : undefined}
       aria-label={t("sidebar.navigation")}
       className={cn(
-        "flex h-full w-full min-w-0 flex-col text-sidebar-foreground",
-        props.hostChromeInset ? "bg-transparent" : "bg-sidebar",
+        "flex h-full w-full min-w-0 flex-col border-r border-slate-200/70 text-sidebar-foreground",
+        props.hostChromeInset
+          ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.58)_0%,rgba(248,250,252,0.82)_100%)] backdrop-blur-xl"
+          : "bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.98)_100%)]",
       )}
     >
       <div
@@ -114,12 +131,22 @@ export function Sidebar(props: SidebarProps) {
           )}
         >
           <img
-            src="/brand/nanobot_mark.svg"
+            src="/brand/mira_mark.svg"
             alt=""
             className="h-8 w-8 select-none object-contain"
             draggable={false}
           />
         </button>
+        {!collapsed && (
+          <div className="ml-2 min-w-0 flex-1">
+            <div className="truncate text-[15px] font-semibold tracking-[-0.01em] text-sidebar-foreground">
+              {appName}
+            </div>
+            <div className="truncate text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              {appTagline}
+            </div>
+          </div>
+        )}
         {!collapsed && !props.hostChromeInset && (
           <Button
             variant="ghost"
@@ -135,14 +162,19 @@ export function Sidebar(props: SidebarProps) {
 
       <div
         className={cn(
-          "space-y-1.5 px-2 pb-2",
+          "space-y-1.5 border-b border-slate-200/70 px-2 pb-3",
           collapsed && "flex w-14 flex-col items-center px-0",
         )}
       >
+        {!collapsed ? (
+          <div className="px-2 pb-1 pt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Workbench
+          </div>
+        ) : null}
         <SidebarActionButton
           collapsed={collapsed}
           label={t("sidebar.newChat")}
-          onClick={props.onNewChat}
+          onClick={props.onNewExecution}
           icon={<SquarePen className="h-4 w-4" />}
           shortcut={newChatShortcut}
           ariaKeyShortcuts="Meta+Shift+O Control+Shift+O"
@@ -193,24 +225,29 @@ export function Sidebar(props: SidebarProps) {
         )}
       >
         {!collapsed && (
-          <ChatList
-            sessions={props.sessions}
-            activeKey={props.activeKey}
+          <ExecutionList
+            sessions={executionItems}
+            executions={executionItems}
+            activeExecutionKey={resolvedActiveKey}
             loading={props.loading}
             emptyLabel={t("chat.noSessions")}
             onSelect={props.onSelect}
-            onRequestDelete={props.onRequestDelete}
+            onRequestDelete={props.onRequestDeleteExecution}
+            onRequestDeleteExecution={props.onRequestDeleteExecution}
             onTogglePin={props.onTogglePin}
             onRequestRename={props.onRequestRename}
             onToggleArchive={props.onToggleArchive}
             onToggleGroup={props.onToggleGroup}
             onRequestRenameProject={props.onRequestRenameProject}
             onNewChatInProject={props.onNewChatInProject}
+            onNewExecutionInProject={props.onNewExecutionInProject}
             pinnedKeys={props.pinnedKeys}
             archivedKeys={props.archivedKeys}
             titleOverrides={props.titleOverrides}
             projectNameOverrides={props.projectNameOverrides}
             collapsedGroups={props.collapsedGroups}
+            runningExecutionIds={runningExecutionIds}
+            updatedExecutionIds={updatedExecutionIds}
             runningChatIds={props.runningChatIds}
             updatedChatIds={props.updatedChatIds}
             density={props.viewState?.density}
@@ -244,6 +281,8 @@ export function Sidebar(props: SidebarProps) {
     </nav>
   );
 }
+
+export const WorkbenchSidebar = Sidebar;
 
 function SidebarActionButton({
   collapsed,

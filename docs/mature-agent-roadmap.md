@@ -6,7 +6,7 @@ feature wave. It is a boundary cleanup.
 
 ## Target Shape
 
-Nanobot should evolve toward:
+Mira should evolve toward:
 
 - a small, explicit `kernel`;
 - a thin GUI that consumes kernel events;

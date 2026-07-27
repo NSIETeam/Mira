@@ -1,5 +1,5 @@
 """
-nanobot - A lightweight AI agent framework
+Mira - A lightweight execution kernel and AI agent framework
 """
 
 import tomllib
@@ -27,11 +27,18 @@ def _resolve_version() -> str:
 
 __version__ = _resolve_version()
 __logo__ = "🐈"
+__app_name__ = "Mira"
+__cli_name__ = "mira"
+__legacy_cli_name__ = "nanobot"
 
 _LAZY_EXPORTS = {
+    "ExecutionKernel": ".kernel",
     "KernelApp": ".kernel",
     "KernelEvent": ".kernel",
     "KernelEventType": ".kernel",
+    "KernelProfile": ".kernel",
+    "ShellDescriptor": ".kernel",
+    "default_engineering_shell": ".kernel",
     "normalize_stream_event": ".kernel",
     "Nanobot": ".nanobot",
     "RunStream": ".nanobot",
@@ -66,9 +73,16 @@ def __getattr__(name: str):
 
 
 __all__ = [
+    "__app_name__",
+    "__cli_name__",
+    "__legacy_cli_name__",
+    "ExecutionKernel",
     "KernelApp",
     "KernelEvent",
     "KernelEventType",
+    "KernelProfile",
+    "ShellDescriptor",
+    "default_engineering_shell",
     "normalize_stream_event",
     "Nanobot",
     "RunResult",

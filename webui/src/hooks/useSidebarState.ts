@@ -5,7 +5,7 @@ import {
   fetchSidebarState,
   updateSidebarState as persistSidebarState,
 } from "@/lib/api";
-import type { ChatSummary, SidebarStatePayload } from "@/lib/types";
+import type { ExecutionSummary, SidebarStatePayload } from "@/lib/types";
 
 export const DEFAULT_SIDEBAR_STATE: SidebarStatePayload = {
   schema_version: 1,
@@ -107,7 +107,7 @@ export function normalizeSidebarState(raw: unknown): SidebarStatePayload {
 
 function pruneMissingSessions(
   state: SidebarStatePayload,
-  sessions: ChatSummary[],
+  sessions: ExecutionSummary[],
 ): SidebarStatePayload {
   const valid = new Set(sessions.map((session) => session.key));
   const filterKeys = (keys: string[]) => keys.filter((key) => valid.has(key));
@@ -132,7 +132,7 @@ function sameState(a: SidebarStatePayload, b: SidebarStatePayload): boolean {
 }
 
 export function useSidebarState(
-  sessions: ChatSummary[],
+  sessions: ExecutionSummary[],
   sessionsLoaded: boolean,
 ): {
   state: SidebarStatePayload;
@@ -205,4 +205,11 @@ export function useSidebarState(
   }, [loading, pruned, sessionsLoaded, state, update]);
 
   return { state, loading, update };
+}
+
+export function useExecutionSidebarState(
+  executions: ExecutionSummary[],
+  executionsLoaded: boolean,
+): ReturnType<typeof useSidebarState> {
+  return useSidebarState(executions, executionsLoaded);
 }

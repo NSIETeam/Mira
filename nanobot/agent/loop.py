@@ -455,6 +455,12 @@ class AgentLoop:
         self._current_iteration: int = 0
         self.commands = CommandRouter()
         register_builtin_commands(self.commands)
+        try:
+            from nanobot.kernel.app import register_kernel_loop
+
+            register_kernel_loop(self)
+        except Exception:
+            logger.debug("kernel loop registration skipped", exc_info=True)
 
     @classmethod
     def from_config(
@@ -877,6 +883,8 @@ class AgentLoop:
             if session is None:
                 return
             self._set_runtime_checkpoint(session, payload)
+            runtime_snapshots = self._runtime_vars.setdefault("session_checkpoints", {})
+            runtime_snapshots[session.key] = dict(payload)
 
         async def _drain_pending(*, limit: int = _MAX_INJECTIONS_PER_TURN) -> list[dict[str, Any]]:
             """Drain follow-up messages from the pending queue.

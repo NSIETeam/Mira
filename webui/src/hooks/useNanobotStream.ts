@@ -17,6 +17,7 @@ import type { StreamError } from "@/lib/nanobot-client";
 import { formatQuotedUserMessage } from "@/lib/user-message-quote";
 import type {
   InboundEvent,
+  KernelEventPayload,
   OutboundCliAppMention,
   OutboundMcpPresetMention,
   OutboundMedia,
@@ -25,6 +26,7 @@ import type {
   UIMediaAttachment,
   UIFileEdit,
   UIMessage,
+  UIMessageSource,
   UITurnPhase,
   WorkspaceScopePayload,
 } from "@/lib/types";
@@ -880,184 +882,12 @@ export function useNanobotStream(
   useEffect(() => {
     if (!chatId) return;
 
-    const handle = (ev: InboundEvent) => {
-      const sideChannelEvent = isSideChannelEvent(ev);
-      if (
-        streamEndTimerRef.current !== null
-        && !sideChannelEvent
-        && eventExtendsModelActivity(ev)
-      ) cancelStreamEndTimer();
-
-      if (ev.event === "delta") {
-        if (suppressStreamUntilTurnEndRef.current) return;
-        const chunk = typeof ev.text === "string" ? ev.text : "";
-        if (!chunk) return;
-        clearActivitySegment();
-        setIsStreaming(true);
-        pendingStreamEventsRef.current.push({
-          kind: "delta",
-          text: chunk,
-          turn: turnFieldsFromEvent(ev, "answer"),
-        });
-        schedulePendingStreamFlush();
-        return;
-      }
-
-      if (ev.event === "reasoning_delta") {
-        if (suppressStreamUntilTurnEndRef.current) return;
-        const chunk = ev.text;
-        if (!chunk) return;
-        if (fileEditSegmentRef.current) clearActivitySegment();
-        setIsStreaming(true);
-        pendingStreamEventsRef.current.push({
-          kind: "reasoning",
-          text: chunk,
-          turn: turnFieldsFromEvent(ev, "reasoning"),
-        });
-        schedulePendingStreamFlush();
-        return;
-      }
-
-      if (ev.event === "stream_end") {
-        const turn = turnFieldsFromEvent(ev, "answer");
-        const mergeNext = ev.resuming === true && ev.merge_next === true;
-        flushPendingStreamEvents({
-          closeAnswerSegment: !mergeNext,
-          ...(typeof ev.text === "string" ? { finalAnswerText: ev.text } : {}),
-          turn,
-        });
-        if (suppressStreamUntilTurnEndRef.current) return;
-        if (ev.resuming) {
-          cancelStreamEndTimer();
-          setIsStreaming(true);
-          if (!mergeNext) {
-            setMessages((prev) => finalizeStreamedTurn(prev, turn));
-          }
-          return;
-        }
-        scheduleStreamEndTimer(turn);
-        return;
-      }
-
-      const shouldCloseAnswerBeforeEvent =
-        ev.event === "file_edit"
-        || isKernelToolCallEvent(ev);
-      flushPendingStreamEvents({ closeAnswerSegment: shouldCloseAnswerBeforeEvent });
-
-      if (ev.event === "reasoning_end") {
-        if (suppressStreamUntilTurnEndRef.current) return;
-        setMessages((prev) => closeReasoningStream(prev));
-        return;
-      }
-
-      if (ev.event === "message") {
-        if (
-          suppressStreamUntilTurnEndRef.current &&
-          (ev.kind === "tool_hint" || ev.kind === "progress" || ev.kind === "reasoning")
-        ) {
-          return;
-        }
-
-        const media = ev.media_urls?.length
-          ? ev.media_urls.map((m) => toMediaAttachment(m))
-          : ev.media?.map((url) => toMediaAttachment({ url }));
-        const hasMedia = !!media && media.length > 0;
-        if (sideChannelEvent) {
-          setMessages((prev) => absorbCompleteAssistantMessage(prev, {
-            content: ev.text,
-            ...(hasMedia ? { media } : {}),
-            ...(ev.source ? { source: ev.source } : {}),
-            ...turnFieldsFromEvent(ev, "answer"),
-          }));
-          if (typeof ev.turn_id === "string") sideChannelTurnIdsRef.current.delete(ev.turn_id);
-          return;
-        }
-
-        // A complete (non-streamed) assistant message. If a stream was in
-        // flight, drop the placeholder so we don't render the text twice.
-        // Streaming state is closed by ``stream_end`` when present, or by
-        // ``turn_end`` for non-streamed and tool-heavy turns.
-        clearActivitySegment();
-        setMessages((prev) => {
-          const activeId = buffer.current?.messageId;
-          buffer.current = null;
-          activeAssistantRef.current = null;
-          const filtered = activeId ? prev.filter((m) => m.id !== activeId) : prev;
-          const content = ev.text;
-          const lat =
-            typeof ev.latency_ms === "number" && ev.latency_ms >= 0
-              ? Math.round(ev.latency_ms)
-              : undefined;
-          return absorbCompleteAssistantMessage(filtered, {
-            content,
-            ...(hasMedia ? { media } : {}),
-            ...(lat !== undefined ? { latencyMs: lat } : {}),
-            ...(ev.source ? { source: ev.source } : {}),
-            ...turnFieldsFromEvent(ev, "answer"),
-          });
-        });
-        if (hasMedia) {
-          suppressStreamUntilTurnEndRef.current = true;
-        }
-        return;
-      }
-      if (ev.event === "file_edit") {
-        const edits = Array.isArray(ev.edits) ? ev.edits : [];
-        if (edits.length === 0) return;
-        const normalized = mergeFileEdits(undefined, edits);
-        if (normalized.length === 0) return;
-        const turn = turnFieldsFromEvent(ev, "activity");
-        const opensFileEditPhase = normalized.some(
-          (edit) => edit.status === "editing" || edit.phase === "start",
-        );
-        let eventSegmentId = fileEditSegmentRef.current;
-        if (!eventSegmentId && opensFileEditPhase) {
-          eventSegmentId = detachedActivitySegmentId();
-          fileEditSegmentRef.current = eventSegmentId;
-        }
-        setMessages((prev) => {
-          let segmentId = eventSegmentId;
-          const base = stripCoveredFileEditToolHintsFromMessages(prev, normalized, turn);
-          const targetIndex = findFileEditTraceIndex(base, segmentId, normalized);
-          if (targetIndex !== null) {
-            const target = base[targetIndex];
-            segmentId = target.activitySegmentId ?? segmentId ?? detachedActivitySegmentId();
-            if (opensFileEditPhase) fileEditSegmentRef.current = segmentId;
-            const merged: UIMessage = {
-              ...target,
-              fileEdits: mergeFileEdits(target.fileEdits, normalized),
-              activitySegmentId: segmentId,
-              ...turn,
-            };
-            return replaceMessageAt(base, targetIndex, merged);
-          }
-          segmentId = segmentId ?? detachedActivitySegmentId();
-          if (opensFileEditPhase) fileEditSegmentRef.current = segmentId;
-          return [
-            ...base,
-            {
-              id: crypto.randomUUID(),
-              role: "tool",
-              kind: "trace",
-              content: "",
-              traces: [],
-              fileEdits: normalized,
-              activitySegmentId: segmentId,
-              ...turn,
-              createdAt: Date.now(),
-            },
-          ];
-        });
-        return;
-      }
-      // ``attached`` / ``error`` frames aren't actionable here; the client
-      // shell handles them separately.
-    };
-
-    const handleKernelEvent = (event: { type: string; metadata?: Record<string, unknown> }) => {
-      const metadata = event.metadata;
-      if (!metadata || typeof metadata !== "object" || !("event" in metadata)) return;
-      const rawEvent = metadata.event;
+    const handleKernelEvent = (event: KernelEventPayload) => {
+      const metadata = event.metadata as Record<string, unknown> | undefined;
+      if (!metadata || typeof metadata !== "object") return;
+      const rawEvent = typeof metadata.event === "string" ? metadata.event : "";
+      const action = typeof event.action === "string" ? event.action : "";
+      const state = typeof event.state === "string" ? event.state : rawEvent;
       const turn = turnFieldsFromEvent({
         turn_id: typeof metadata.turn_id === "string" ? metadata.turn_id : undefined,
         turn_phase: typeof metadata.turn_phase === "string"
@@ -1065,8 +895,23 @@ export function useNanobotStream(
           : undefined,
         turn_seq: typeof metadata.turn_seq === "number" ? metadata.turn_seq : undefined,
       });
+      const sideChannelEvent =
+        turn.turnId !== undefined && sideChannelTurnIdsRef.current.has(turn.turnId);
 
-      if (event.type === "reasoning" && rawEvent === "message") {
+      if (
+        streamEndTimerRef.current !== null
+        && !sideChannelEvent
+        && (
+          event.type === "message"
+          || event.type === "reasoning"
+          || event.type === "tool_call"
+          || event.type === "tool_result"
+        )
+      ) {
+        cancelStreamEndTimer();
+      }
+
+      if (event.type === "reasoning" && action === "message") {
         const line = typeof metadata.text === "string" ? metadata.text : "";
         if (!line) return;
         if (fileEditSegmentRef.current) clearActivitySegment();
@@ -1079,7 +924,38 @@ export function useNanobotStream(
         return;
       }
 
-      if (event.type === "tool_call" && rawEvent === "message") {
+      if (event.type === "message" && action === "delta") {
+        if (suppressStreamUntilTurnEndRef.current) return;
+        const chunk = typeof event.text === "string" ? event.text : "";
+        if (!chunk) return;
+        clearActivitySegment();
+        setIsStreaming(true);
+        pendingStreamEventsRef.current.push({
+          kind: "delta",
+          text: chunk,
+          turn: { ...turn, turnPhase: turn.turnPhase ?? "answer" },
+        });
+        schedulePendingStreamFlush();
+        return;
+      }
+
+      if (event.type === "reasoning" && action === "delta") {
+        if (suppressStreamUntilTurnEndRef.current) return;
+        const chunk = typeof event.text === "string" ? event.text : "";
+        if (!chunk) return;
+        if (fileEditSegmentRef.current) clearActivitySegment();
+        setIsStreaming(true);
+        pendingStreamEventsRef.current.push({
+          kind: "reasoning",
+          text: chunk,
+          turn: { ...turn, turnPhase: turn.turnPhase ?? "reasoning" },
+        });
+        schedulePendingStreamFlush();
+        return;
+      }
+
+      if (event.type === "tool_call" && action === "trace") {
+        flushPendingStreamEvents({ closeAnswerSegment: true });
         const rawToolEvents = Array.isArray(metadata.tool_events)
           ? metadata.tool_events as ToolProgressEvent[]
           : undefined;
@@ -1145,14 +1021,157 @@ export function useNanobotStream(
         return;
       }
 
+      if (event.type === "tool_result" && action === "file_edit") {
+        flushPendingStreamEvents({ closeAnswerSegment: true });
+        const edits = Array.isArray(metadata.edits) ? metadata.edits : [];
+        if (edits.length === 0) return;
+        const normalized = mergeFileEdits(undefined, edits);
+        if (normalized.length === 0) return;
+        const opensFileEditPhase = normalized.some(
+          (edit) => edit.status === "editing" || edit.phase === "start",
+        );
+        let eventSegmentId = fileEditSegmentRef.current;
+        if (!eventSegmentId && opensFileEditPhase) {
+          eventSegmentId = detachedActivitySegmentId();
+          fileEditSegmentRef.current = eventSegmentId;
+        }
+        setMessages((prev) => {
+          let segmentId = eventSegmentId;
+          const base = stripCoveredFileEditToolHintsFromMessages(prev, normalized, {
+            ...turn,
+            turnPhase: turn.turnPhase ?? "activity",
+          });
+          const targetIndex = findFileEditTraceIndex(base, segmentId, normalized);
+          if (targetIndex !== null) {
+            const target = base[targetIndex];
+            segmentId = target.activitySegmentId ?? segmentId ?? detachedActivitySegmentId();
+            if (opensFileEditPhase) fileEditSegmentRef.current = segmentId;
+            const merged: UIMessage = {
+              ...target,
+              fileEdits: mergeFileEdits(target.fileEdits, normalized),
+              activitySegmentId: segmentId,
+              ...turn,
+              turnPhase: turn.turnPhase ?? "activity",
+            };
+            return replaceMessageAt(base, targetIndex, merged);
+          }
+          segmentId = segmentId ?? detachedActivitySegmentId();
+          if (opensFileEditPhase) fileEditSegmentRef.current = segmentId;
+          return [
+            ...base,
+            {
+              id: crypto.randomUUID(),
+              role: "tool",
+              kind: "trace",
+              content: "",
+              traces: [],
+              fileEdits: normalized,
+              activitySegmentId: segmentId,
+              ...turn,
+              turnPhase: turn.turnPhase ?? "activity",
+              createdAt: Date.now(),
+            },
+          ];
+        });
+        return;
+      }
+
+      if (event.type === "status" && state === "stream_end") {
+        const mergeNext = metadata.resuming === true && metadata.merge_next === true;
+        flushPendingStreamEvents({
+          closeAnswerSegment: !mergeNext,
+          ...(typeof metadata.text === "string" ? { finalAnswerText: metadata.text } : {}),
+          turn: { ...turn, turnPhase: turn.turnPhase ?? "answer" },
+        });
+        if (suppressStreamUntilTurnEndRef.current) return;
+        if (metadata.resuming === true) {
+          cancelStreamEndTimer();
+          setIsStreaming(true);
+          if (!mergeNext) {
+            setMessages((prev) => finalizeStreamedTurn(prev, {
+              ...turn,
+              turnPhase: turn.turnPhase ?? "answer",
+            }));
+          }
+          return;
+        }
+        scheduleStreamEndTimer({ ...turn, turnPhase: turn.turnPhase ?? "answer" });
+        return;
+      }
+
+      if (event.type === "message" && action === "complete") {
+        if (suppressStreamUntilTurnEndRef.current) return;
+        const mediaUrls = Array.isArray(metadata.media_urls)
+          ? metadata.media_urls as Array<{ url: string; name?: string }>
+          : undefined;
+        const mediaList = Array.isArray(metadata.media)
+          ? metadata.media as string[]
+          : undefined;
+        const media = mediaUrls?.length
+          ? mediaUrls.map((m) => toMediaAttachment(m))
+          : mediaList?.map((url) => toMediaAttachment({ url }));
+        const hasMedia = !!media && media.length > 0;
+        const source = metadata.source;
+        const normalizedSource = source && typeof source === "object"
+          ? source as UIMessageSource
+          : undefined;
+        if (turn.turnId && sideChannelTurnIdsRef.current.has(turn.turnId)) {
+          setMessages((prev) => absorbCompleteAssistantMessage(prev, {
+            content: event.text ?? "",
+            ...(hasMedia ? { media } : {}),
+            ...(normalizedSource ? { source: normalizedSource } : {}),
+            ...turnFieldsFromEvent({
+              turn_id: turn.turnId,
+              turn_phase: turn.turnPhase,
+              turn_seq: turn.turnSeq,
+            }, "answer"),
+          }));
+          sideChannelTurnIdsRef.current.delete(turn.turnId);
+          return;
+        }
+
+        clearActivitySegment();
+        setMessages((prev) => {
+          const activeId = buffer.current?.messageId;
+          buffer.current = null;
+          activeAssistantRef.current = null;
+          const filtered = activeId ? prev.filter((m) => m.id !== activeId) : prev;
+          const latencyMs =
+            typeof metadata.latency_ms === "number" && metadata.latency_ms >= 0
+              ? Math.round(metadata.latency_ms)
+              : undefined;
+          return absorbCompleteAssistantMessage(filtered, {
+            content: event.text ?? "",
+            ...(hasMedia ? { media } : {}),
+            ...(latencyMs !== undefined ? { latencyMs } : {}),
+            ...(normalizedSource ? { source: normalizedSource } : {}),
+            ...turnFieldsFromEvent({
+              turn_id: turn.turnId,
+              turn_phase: turn.turnPhase,
+              turn_seq: turn.turnSeq,
+            }, "answer"),
+          });
+        });
+        if (hasMedia) {
+          suppressStreamUntilTurnEndRef.current = true;
+        }
+        return;
+      }
+
+      if (event.type === "reasoning" && action === "complete") {
+        if (suppressStreamUntilTurnEndRef.current) return;
+        setMessages((prev) => closeReasoningStream(prev));
+        return;
+      }
+
       if (event.type !== "status") return;
 
-      if (rawEvent === "goal_state" && "goal_state" in metadata) {
+      if (state === "goal_state" && "goal_state" in metadata) {
         setGoalState(metadata.goal_state as GoalStateWsPayload);
         return;
       }
 
-      if (rawEvent === "goal_status") {
+      if (state === "goal_status") {
         const status = "status" in metadata ? metadata.status : undefined;
         const startedAt = "started_at" in metadata ? metadata.started_at : undefined;
         if (status === "running" && typeof startedAt === "number") {
@@ -1165,7 +1184,7 @@ export function useNanobotStream(
         return;
       }
 
-      if (rawEvent === "turn_end") {
+      if (state === "turn_end") {
         if ("goal_state" in metadata && metadata.goal_state && typeof metadata.goal_state === "object") {
           setGoalState(metadata.goal_state as GoalStateWsPayload);
         }
@@ -1199,10 +1218,8 @@ export function useNanobotStream(
       }
     };
 
-    const unsub = client.onChat(chatId, handle);
-    const unsubKernel = client.onKernelChat(chatId, handleKernelEvent);
+    const unsubKernel = client.onKernelExecution(chatId, handleKernelEvent);
     return () => {
-      unsub();
       unsubKernel();
       buffer.current = null;
       activeAssistantRef.current = null;

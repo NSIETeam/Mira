@@ -7,13 +7,15 @@ import { cn } from "@/lib/utils";
 
 interface ThreadHeaderProps {
   title: string;
-  onToggleSidebar: () => void;
+  onToggleSidebar?: () => void;
   theme: "light" | "dark";
   onToggleTheme: () => void;
   hideSidebarToggleForHostChrome?: boolean;
   hostChromeTitleInset?: boolean;
   hideThemeButton?: boolean;
   minimal?: boolean;
+  subtitle?: string | null;
+  capabilityBadges?: string[];
   promptNavigatorAction?: ReactNode;
   sessionInfoAction?: ReactNode;
 }
@@ -27,6 +29,8 @@ export function ThreadHeader({
   hostChromeTitleInset = false,
   hideThemeButton = false,
   minimal = false,
+  subtitle = null,
+  capabilityBadges = [],
   promptNavigatorAction,
   sessionInfoAction,
 }: ThreadHeaderProps) {
@@ -41,18 +45,20 @@ export function ThreadHeader({
       )}
     >
       <div className="relative flex min-w-0 items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t("thread.header.toggleSidebar")}
-          onClick={onToggleSidebar}
-          className={cn(
-            "h-7 w-7 rounded-md text-muted-foreground hover:bg-accent/35 hover:text-foreground",
-            hideSidebarToggleForHostChrome && "lg:hidden",
-          )}
-        >
-          <Menu className="h-3.5 w-3.5" />
-        </Button>
+        {onToggleSidebar ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t("thread.header.toggleSidebar")}
+            onClick={onToggleSidebar}
+            className={cn(
+              "h-7 w-7 rounded-md text-muted-foreground hover:bg-accent/35 hover:text-foreground",
+              hideSidebarToggleForHostChrome && "lg:hidden",
+            )}
+          >
+            <Menu className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
         {!minimal ? (
           <div className="flex min-w-0 items-center rounded-md px-1.5 py-1 text-[12px] font-medium text-muted-foreground">
             <span className="max-w-[min(60vw,32rem)] truncate">{title}</span>
@@ -61,6 +67,25 @@ export function ThreadHeader({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-1">
+        {!minimal && (subtitle || capabilityBadges.length > 0) ? (
+          <div className="hidden items-center gap-2 pr-1 text-[11px] text-muted-foreground lg:flex">
+            {subtitle ? (
+              <span className="max-w-[22rem] truncate">{subtitle}</span>
+            ) : null}
+            {capabilityBadges.length > 0 ? (
+              <div className="flex items-center gap-1">
+                {capabilityBadges.map((badge) => (
+                  <span
+                    key={badge}
+                    className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground/90"
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {sessionInfoAction}
         {promptNavigatorAction}
         {!hideThemeButton ? (

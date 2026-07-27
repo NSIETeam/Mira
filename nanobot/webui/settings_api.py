@@ -28,6 +28,9 @@ from nanobot.audio.transcription_registry import (
 )
 from nanobot.config.loader import get_config_path, load_config, resolve_config_env_vars, save_config
 from nanobot.config.schema import ModelPresetConfig, ProviderConfig
+from nanobot.kernel.app import build_kernel_manifest
+from nanobot.kernel.profile import get_profile
+from nanobot.kernel.shell import default_engineering_shell, get_shell
 from nanobot.providers.image_generation import (
     get_image_gen_provider,
     image_gen_provider_names,
@@ -74,6 +77,21 @@ def _docs_payload() -> dict[str, Any]:
         "chat_apps_url": f"{base_url}/getting-started/chat-apps",
         "latest_url": _DOCS_LATEST_URL,
     }
+
+
+def _settings_kernel_manifest(config: Any) -> dict[str, Any]:
+    try:
+        profile = get_profile(config.kernel.profile_name)
+    except KeyError:
+        profile = get_profile(None)
+    try:
+        shell = get_shell(config.kernel.shell_name)
+    except KeyError:
+        shell = default_engineering_shell()
+    return build_kernel_manifest(
+        profile=profile,
+        shell=shell,
+    )
 
 
 _RUNTIME_CAPABILITIES = {
@@ -1192,6 +1210,7 @@ def settings_payload(
         workspace=config.workspace_path,
     )
     payload = {
+        "kernel": _settings_kernel_manifest(config),
         "agent": {
             "model": effective_preset.model,
             "provider": selected_provider,
@@ -1271,6 +1290,8 @@ def settings_payload(
         "runtime": {
             "config_path": str(get_config_path().expanduser()),
             "workspace_path": str(config.workspace_path),
+            "profile_name": config.kernel.profile_name,
+            "shell_name": config.kernel.shell_name,
             "gateway_host": config.gateway.host,
             "gateway_port": config.gateway.port,
             "heartbeat": {
@@ -1360,6 +1381,32 @@ def update_agent_settings(query: QueryParams) -> dict[str, Any]:
     ):
         defaults.context_window_tokens = context_window_tokens
         changed = True
+
+    profile_name = _query_first_alias(query, "profile_name", "profileName")
+    if profile_name is not None:
+        profile_name = profile_name.strip()
+        if not profile_name:
+            raise WebUISettingsError("profile_name is required")
+        try:
+            get_profile(profile_name)
+        except KeyError:
+            raise WebUISettingsError("unknown profile_name") from None
+        if config.kernel.profile_name != profile_name:
+            config.kernel.profile_name = profile_name
+            changed = True
+
+    shell_name = _query_first_alias(query, "shell_name", "shellName")
+    if shell_name is not None:
+        shell_name = shell_name.strip()
+        if not shell_name:
+            raise WebUISettingsError("shell_name is required")
+        try:
+            get_shell(shell_name)
+        except KeyError:
+            raise WebUISettingsError("unknown shell_name") from None
+        if config.kernel.shell_name != shell_name:
+            config.kernel.shell_name = shell_name
+            changed = True
 
     timezone = _query_first(query, "timezone")
     if timezone is not None:

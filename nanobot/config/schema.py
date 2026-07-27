@@ -144,7 +144,7 @@ class AgentDefaults(Base):
     )  # Max characters for tool hint display (e.g. "$ cd …/project && npm test")
     reasoning_effort: str | None = None  # low / medium / high / adaptive / none — LLM thinking effort; None preserves the provider default
     timezone: str = "UTC"  # IANA timezone, e.g. "Asia/Shanghai", "America/New_York"
-    bot_name: str = "nanobot"  # Display name shown in CLI prompts (e.g. "{name} is thinking...")
+    bot_name: str = "Mira"  # Display name shown in CLI prompts (e.g. "{name} is thinking...")
     bot_icon: str = "🐈"  # Short icon (emoji or text) shown next to the bot name in CLI; "" to omit
     unified_session: bool = False  # Share one session across all channels (single-user multi-device)
     disabled_skills: list[str] = Field(default_factory=list)  # Skill names to exclude from loading (e.g. ["summarize", "skill-creator"])
@@ -353,6 +353,21 @@ class GatewayConfig(Base):
     heartbeat: HeartbeatConfig = Field(default_factory=HeartbeatConfig)
 
 
+class KernelConfig(Base):
+    """Execution-kernel presentation defaults."""
+
+    profile_name: str = Field(
+        default="mira-studio",
+        validation_alias=AliasChoices("profileName", "profile_name"),
+        serialization_alias="profileName",
+    )
+    shell_name: str = Field(
+        default="engineering",
+        validation_alias=AliasChoices("shellName", "shell_name"),
+        serialization_alias="shellName",
+    )
+
+
 class MCPServerConfig(Base):
     """MCP server connection configuration (stdio or HTTP)."""
 
@@ -420,6 +435,7 @@ class Config(BaseSettings):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     api: ApiConfig = Field(default_factory=ApiConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
+    kernel: KernelConfig = Field(default_factory=KernelConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     model_presets: dict[str, ModelPresetConfig] = Field(
         default_factory=dict,

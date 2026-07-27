@@ -1,0 +1,2281 @@
+import { useMemo, useState } from "react";
+
+import type {
+  ExecutionSummary,
+  KernelManifestPayload,
+  ShellDescriptorPayload,
+  WorkspaceScopePayload,
+} from "@/lib/types";
+import { cn } from "@/lib/utils";
+import type { KernelOperatorActionBinding } from "./useKernelOperatorActions";
+import type { KernelConsoleErrorEntry } from "./useKernelConsoleState";
+
+function chipTone(ok: boolean): string {
+  return ok
+    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700"
+    : "border-amber-500/20 bg-amber-500/10 text-amber-700";
+}
+
+function operatorPanelTone(subject: string | null | undefined): string {
+  switch (subject) {
+    case "runtime":
+    case "scheduler":
+    case "lane":
+    case "worker":
+      return "border-cyan-200/80 bg-cyan-50/70";
+    case "adapter":
+    case "module":
+    case "bridge":
+      return "border-emerald-200/80 bg-emerald-50/60";
+    case "board":
+      return "border-amber-200/80 bg-amber-50/70";
+    case "fault":
+    case "maintenance":
+      return "border-rose-200/80 bg-rose-50/60";
+    default:
+      return "border-slate-200/80 bg-slate-50/70";
+  }
+}
+
+export function MiraKernelConsole({
+  kernelManifest,
+  shellDescriptor,
+  activeExecution,
+  activeWorkspaceScope,
+  workspaceError,
+  runningExecutionCount,
+  connectionStatus,
+  runtimeModel,
+  recentErrors,
+  onOpenKernelSettings,
+  onRestartRuntime,
+  onRestartEngine,
+  embeddedTargetHint,
+  operatorActions,
+  selectedPane,
+  onSelectPane,
+  selectedAdapterName,
+  onSelectAdapter,
+  selectedModuleName,
+  onSelectModule,
+  boardAttachment,
+  selectedBoardTransport,
+  onSelectBoardTransport,
+  selectedBoardPort,
+  onSelectBoardPort,
+  onAttachBoard,
+  onDetachBoard,
+  onRunOperatorCommand,
+  onRestartBridgeAdapter,
+  onRecordBridgeFault,
+  onClearBridgeFault,
+}: {
+  kernelManifest: KernelManifestPayload | null;
+  shellDescriptor: ShellDescriptorPayload | null;
+  activeExecution: ExecutionSummary | null;
+  activeWorkspaceScope: WorkspaceScopePayload | null;
+  workspaceError: string | null;
+  runningExecutionCount: number;
+  connectionStatus: string;
+  runtimeModel: string | null;
+  recentErrors: KernelConsoleErrorEntry[];
+  onOpenKernelSettings?: () => void;
+  onRestartRuntime?: () => void;
+  onRestartEngine?: () => void;
+  embeddedTargetHint?: string | null;
+  operatorActions?: Record<string, KernelOperatorActionBinding>;
+  selectedPane: string;
+  onSelectPane: (pane: string) => void;
+  selectedAdapterName: string | null;
+  onSelectAdapter: (name: string | null) => void;
+  selectedModuleName: string | null;
+  onSelectModule: (name: string | null) => void;
+  boardAttachment: {
+    attached: boolean;
+    transport: string | null;
+    port: string | null;
+    target: string | null;
+    preferred_transport: string | null;
+    runtime_mode?: string | null;
+    bridge_artifact?: string | null;
+    last_error?: string | null;
+    available_ports?: string[];
+  };
+  selectedBoardTransport?: string | null;
+  onSelectBoardTransport?: (transport: string | null) => void;
+  selectedBoardPort?: string | null;
+  onSelectBoardPort?: (port: string | null) => void;
+  onAttachBoard?: (options?: { transport?: string | null; port?: string | null }) => void;
+  onDetachBoard?: () => void;
+  onRunOperatorCommand?: (command: string) => Promise<{
+    output?: string;
+    targetPane?: string | null;
+    details?: Record<string, string | number | boolean | null>;
+  } | void>;
+  onRestartBridgeAdapter?: (adapterName: string) => void;
+  onRecordBridgeFault?: (adapterName: string) => void;
+  onClearBridgeFault?: (adapterName: string) => void;
+}) {
+  const appIdentity = kernelManifest?.identity?.app_name ?? "Mira";
+  const shellMode = shellDescriptor?.host_contract?.mode ?? "engineering";
+  const profile = kernelManifest?.profile ?? null;
+  const featureRows = profile?.features.slice(0, 6) ?? [];
+  const toolRows = profile?.tools.slice(0, 6) ?? [];
+  const runtimeTargets = kernelManifest?.targets.runtime.slice(0, 4) ?? [];
+  const runtimeLanguages = kernelManifest?.targets.languages.slice(0, 4) ?? [];
+  const adapterContract = kernelManifest?.targets.adapter ?? null;
+  const adapterTransports = adapterContract?.transport_modes.slice(0, 5) ?? [];
+  const adapterControlPlane = adapterContract?.control_plane.slice(0, 5) ?? [];
+  const runtimeAdapters = kernelManifest?.runtime_adapters.slice(0, 3) ?? [];
+  const runtimeBridges = kernelManifest?.runtime_bridges.slice(0, 4) ?? [];
+  const runtimeModules = kernelManifest?.runtime_modules.slice(0, 6) ?? [];
+  const runtimeControl = kernelManifest?.runtime_control ?? null;
+  const operatorConsole = kernelManifest?.operator_console ?? null;
+  const operatorActionRegistry = operatorConsole?.action_registry ?? [];
+  const runtimeCapabilities = kernelManifest?.capabilities ?? null;
+  const executionContract = kernelManifest?.execution ?? null;
+  const diagnostics = kernelManifest?.diagnostics ?? null;
+  const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
+  const scheduler = kernelManifest?.scheduler ?? null;
+  const schedulerQueues = scheduler?.queues.slice(0, 4) ?? [];
+  const dispatchQueue = schedulerQueues.find((queue) => queue.id === "tool_dispatch") ?? null;
+  const dispatchQueueTasks = dispatchQueue?.active_tasks?.slice(0, 4) ?? [];
+  const workers = kernelManifest?.workers.slice(0, 4) ?? [];
+  const embeddedTopology = kernelManifest?.embedded_topology ?? null;
+  const runtimeTopology = kernelManifest?.runtime_topology ?? null;
+  const runtimeTopologyAdapters = runtimeTopology?.adapters?.slice(0, 4) ?? [];
+  const runtimeTopologyModules = runtimeTopology?.modules?.slice(0, 6) ?? [];
+  const runtimeTopologyLanes = runtimeTopology?.execution_lanes?.slice(0, 4) ?? [];
+  const embeddedPorts = embeddedTopology?.board?.available_ports?.slice(0, 6) ?? [];
+  const eventLog = kernelManifest?.event_log.slice(0, 8) ?? [];
+  const executionTimeline = eventLog.slice(0, 6).map((event, index) => ({
+    id: String(event.id ?? index + 1),
+    type: String(event.type ?? "event"),
+    state: String(event.state ?? "unknown"),
+    message: String(event.message ?? "no message"),
+  }));
+  const timelineRouteForEvent = (
+    eventType: string,
+  ): { pane: string; command: string } => {
+    if (eventType.includes("goal") || eventType.includes("subagent")) {
+      return { pane: "runtime", command: "session goal" };
+    }
+    if (eventType.includes("tool")) {
+      return { pane: "runtime", command: "scheduler status" };
+    }
+    if (eventType.includes("fault") || eventType.includes("maintenance")) {
+      return { pane: "faults", command: "fault show" };
+    }
+    if (eventType.includes("board") || eventType.includes("adapter") || eventType.includes("bridge")) {
+      return { pane: "adapters", command: "runtime health" };
+    }
+    if (eventType.includes("session") || eventType.includes("turn") || eventType.includes("execution")) {
+      return { pane: "runtime", command: "session status" };
+    }
+    return { pane: "workspace", command: "event show" };
+  };
+  const handleTimelineRoute = async (eventType: string) => {
+    const route = timelineRouteForEvent(eventType);
+    onSelectPane(route.pane);
+    if (!onRunOperatorCommand) return;
+    try {
+      const result = await onRunOperatorCommand(route.command);
+      if (result?.targetPane) onSelectPane(result.targetPane);
+      appendOperatorOutput(`$ ${route.command}`);
+      appendOperatorOutput(result?.output ?? "ok", result?.details);
+    } catch (error) {
+      appendOperatorOutput(error instanceof Error ? error.message : "timeline routing failed");
+    }
+  };
+  const diagPhase = diagnostics?.snapshot.phase ?? null;
+  const diagIteration = diagnostics?.snapshot.iteration ?? null;
+  const diagPendingToolCalls = diagnostics?.snapshot.pending_tool_calls ?? 0;
+  const diagSubagentWorkers = diagnostics?.snapshot.subagent_workers ?? 0;
+  const selectedAdapter = useMemo(
+    () =>
+      runtimeAdapters.find((adapter) => adapter.name === selectedAdapterName)
+      ?? runtimeAdapters[0]
+      ?? null,
+    [runtimeAdapters, selectedAdapterName],
+  );
+  const selectedBridge = useMemo(
+    () =>
+      runtimeBridges.find((bridge) => bridge.adapter === selectedAdapterName)
+      ?? runtimeBridges[0]
+      ?? null,
+    [runtimeBridges, selectedAdapterName],
+  );
+  const selectedModule = useMemo(
+    () =>
+      runtimeModules.find((module) => module.name === selectedModuleName)
+      ?? runtimeModules[0]
+      ?? null,
+    [runtimeModules, selectedModuleName],
+  );
+  const actionRegistryById = useMemo(
+    () => Object.fromEntries(operatorActionRegistry.map((action) => [action.id, action])),
+    [operatorActionRegistry],
+  );
+  const resolveActionBinding = (action: string): KernelOperatorActionBinding => {
+    const binding = operatorActions?.[action];
+    const registry = actionRegistryById[action];
+    const onTrigger = binding?.onTrigger;
+    return {
+      id: binding?.id ?? action,
+      label: binding?.label ?? registry?.label ?? action.replaceAll("_", " "),
+      kind: binding?.kind ?? registry?.kind,
+      availability: binding?.availability ?? registry?.availability,
+      targetPane: binding?.targetPane ?? registry?.target_pane ?? null,
+      enabled: binding?.enabled ?? typeof onTrigger === "function",
+      onTrigger,
+    };
+  };
+  const [operatorCommand, setOperatorCommand] = useState("");
+  const [operatorOutput, setOperatorOutput] = useState<Array<{
+    line: string;
+    details?: Record<string, string | number | boolean | null>;
+  }>>([
+    {
+      line: "mira-kernel shell ready. try `runtime health`, `scheduler status`, `worker show`, or `board mode`.",
+    },
+  ]);
+  const [operatorPending, setOperatorPending] = useState(false);
+  const [operatorActiveCommand, setOperatorActiveCommand] = useState<string | null>(null);
+  const appendOperatorOutput = (
+    line: string,
+    details?: Record<string, string | number | boolean | null>,
+  ) => {
+    setOperatorOutput((current) => [...current.slice(-5), { line, details }]);
+  };
+  const runOperatorCommand = async () => {
+    const raw = operatorCommand.trim();
+    if (!raw || operatorPending) return;
+    if (raw === "clear") {
+      setOperatorOutput([
+        {
+          line: "mira-kernel shell cleared.",
+        },
+      ]);
+      setOperatorCommand("");
+      return;
+    }
+    setOperatorPending(true);
+    setOperatorActiveCommand(raw);
+    appendOperatorOutput(`$ ${raw}`);
+    try {
+      if (!onRunOperatorCommand) throw new Error("operator command transport unavailable");
+      const result = await onRunOperatorCommand(raw);
+      if (result?.targetPane) onSelectPane(result.targetPane);
+      appendOperatorOutput(result?.output ?? "ok", result?.details);
+    } catch (error) {
+      appendOperatorOutput(error instanceof Error ? error.message : "operator command failed");
+    } finally {
+      setOperatorPending(false);
+      setOperatorActiveCommand(null);
+    }
+    setOperatorCommand("");
+  };
+  const runQuickCommand = (command: string) => {
+    if (operatorPending) return;
+    setOperatorCommand(command);
+    void Promise.resolve().then(async () => {
+      setOperatorPending(true);
+      setOperatorActiveCommand(command);
+      appendOperatorOutput(`$ ${command}`);
+      try {
+        if (!onRunOperatorCommand) throw new Error("operator command transport unavailable");
+        const result = await onRunOperatorCommand(command);
+        if (result?.targetPane) onSelectPane(result.targetPane);
+        appendOperatorOutput(result?.output ?? "ok", result?.details);
+      } catch (error) {
+        appendOperatorOutput(error instanceof Error ? error.message : "operator command failed");
+      } finally {
+        setOperatorPending(false);
+        setOperatorActiveCommand(null);
+      }
+      setOperatorCommand("");
+    });
+  };
+  const runTopologyCommand = (pane: string, command: string) => {
+    onSelectPane(pane);
+    runQuickCommand(command);
+  };
+  const quickCommandGroups = [
+    {
+      label: "shell",
+      tone: "border-zinc-700 bg-zinc-950 text-zinc-100",
+      commands: ["help", "clear"],
+    },
+    {
+      label: "runtime",
+      tone: "border-cyan-700 bg-cyan-950 text-cyan-100",
+      commands: ["runtime health", "runtime gate", "runtime orchestration", "runtime topology", "runtime queues", "runtime adapters", "runtime bridges"],
+    },
+    {
+      label: "kernel",
+      tone: "border-indigo-700 bg-indigo-950 text-indigo-100",
+      commands: ["kernel profile", "kernel manifest", "topology embedded"],
+    },
+    {
+      label: "execution",
+      tone: "border-sky-700 bg-sky-950 text-sky-100",
+      commands: ["scheduler status", "lane show", "worker show", "session status", "session goal", "session continuation"],
+    },
+    {
+      label: "events",
+      tone: "border-violet-700 bg-violet-950 text-violet-100",
+      commands: ["event show", "event tail", "event tail 8"],
+    },
+    {
+      label: "workspace",
+      tone: "border-stone-700 bg-stone-950 text-stone-100",
+      commands: ["workspace status", "workspace scope", "workspace modules", "workspace focus-module memory", "repo status", "repo root", "repo tools", "repo prepare-tool shell"],
+    },
+    {
+      label: "tools",
+      tone: "border-blue-700 bg-blue-950 text-blue-100",
+      commands: ["tool status", "tool inspect shell", "tool inspect filesystem", "tool inspect search", "tool dispatch shell", "tool queue", "tool prioritize", "tool delegate-goal", "tool delegate-subagent", "tool complete", "tool fail", "tool drain", "tool clear-queue"],
+    },
+    {
+      label: "bridge",
+      tone: "border-emerald-700 bg-emerald-950 text-emerald-100",
+      commands: ["bridge status", "bridge fault", "bridge list"],
+    },
+    {
+      label: "adapter",
+      tone: "border-slate-700 bg-slate-900 text-slate-200",
+      commands: ["adapter status", "adapter list", "adapter switch rust-ffi"],
+    },
+    {
+      label: "module",
+      tone: "border-lime-700 bg-lime-950 text-lime-100",
+      commands: ["module list", "module show", "module actions", "module focus memory"],
+    },
+    {
+      label: "board",
+      tone: "border-amber-700 bg-amber-950 text-amber-100",
+      commands: ["board status", "board mode", "board target", "board transport", "board ports"],
+    },
+    {
+      label: "fault",
+      tone: "border-rose-700 bg-rose-950 text-rose-100",
+      commands: ["fault show", "fault clear", "fault record", "bridge fault"],
+    },
+    {
+      label: "maintenance",
+      tone: "border-fuchsia-700 bg-fuchsia-950 text-fuchsia-100",
+      commands: ["maintenance status", "enter-maintenance", "exit-maintenance", "goal reset"],
+    },
+  ];
+  const paneClass = (pane: string) =>
+    selectedPane === pane ? "space-y-2" : "hidden";
+
+  return (
+    <aside className="hidden w-[320px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] xl:flex xl:flex-col">
+      <div className="border-b border-border/70 px-4 py-3">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          {appIdentity} Kernel Console
+        </div>
+        <div className="mt-1 text-sm font-semibold text-foreground">
+          Inspect runtime, modules, workspace, and shell posture
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <ConsoleBadge label="profile" value={profile?.name ?? "unknown"} tone="slate" />
+          <ConsoleBadge label="shell" value={shellMode} tone="slate" />
+          <ConsoleBadge label="status" value={connectionStatus} tone={connectionStatus === "connected" ? "emerald" : "amber"} />
+          <ConsoleBadge label="runs" value={`${runningExecutionCount}`} tone="slate" />
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 py-4 text-sm">
+        <section className="space-y-2">
+          <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Pane routing
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(operatorConsole?.panes ?? []).map((pane) => (
+              <button
+                key={pane}
+                type="button"
+                onClick={() => onSelectPane(pane)}
+                className={cn(
+                  "rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] transition-colors",
+                  selectedPane === pane
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-300/80 bg-white text-slate-700 hover:bg-slate-50",
+                )}
+              >
+                {pane}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className={paneClass("control_plane")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Control plane
+          </div>
+          <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
+            <Row label="Profile" value={profile?.name ?? "unknown"} />
+            <Row label="Shell" value={shellDescriptor?.display_name ?? "Mira"} />
+            <Row label="Mode" value={shellMode} />
+            <Row label="Status" value={connectionStatus} />
+            <Row label="Model" value={runtimeModel ?? "unresolved"} />
+            <Row label="Running" value={`${runningExecutionCount}`} />
+            <Row label="Gate" value={runtimeControl?.execution_gate?.state ?? "open"} />
+            <Row
+              label="Maintenance"
+              value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"}
+            />
+            <Row
+              label="Gate reason"
+              value={runtimeControl?.execution_gate?.reason ?? "operator-ready"}
+            />
+            <Row
+              label="Supervisor"
+              value={diagnostics?.supervisor ?? runtimeControl?.fault_posture.supervisor ?? "unknown"}
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <AdapterActionButton binding={resolveActionBinding("enter_maintenance")} />
+              <AdapterActionButton binding={resolveActionBinding("exit_maintenance")} />
+            </div>
+          </div>
+          <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Kernel identity
+            </div>
+            <Row label="App" value={kernelManifest?.identity?.app_name ?? "Mira"} />
+            <Row label="CLI" value={kernelManifest?.identity?.cli_name ?? "mira"} />
+            <Row label="Legacy" value={kernelManifest?.identity?.legacy_cli_name ?? "nanobot"} />
+            <Row label="Profile" value={profile?.name ?? "unknown"} />
+            <Row label="GUI" value={runtimeCapabilities?.gui ? "enabled" : "off"} />
+            <Row label="API" value={runtimeCapabilities?.api ? "enabled" : "off"} />
+            <Row label="Threads" value={runtimeCapabilities?.threads ? "enabled" : "off"} />
+            <Row label="Approvals" value={runtimeCapabilities?.approvals ? "enabled" : "off"} />
+            <Row
+              label="Contracts"
+              value={`m${kernelManifest?.contracts?.manifest_version ?? 0}/e${kernelManifest?.contracts?.event_version ?? 0}/s${kernelManifest?.contracts?.snapshot_version ?? 0}`}
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              {runtimeTargets.length ? runtimeTargets.map((target) => (
+                <span
+                  key={target}
+                  className="rounded-full border border-slate-300/80 bg-slate-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700"
+                >
+                  {target}
+                </span>
+              )) : null}
+              {runtimeLanguages.length ? runtimeLanguages.map((language) => (
+                <span
+                  key={language}
+                  className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700"
+                >
+                  {language}
+                </span>
+              )) : null}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("control_plane", "kernel profile")}
+                disabled={operatorPending}
+                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                profile
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("control_plane", "kernel manifest")}
+                disabled={operatorPending}
+                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                manifest
+              </button>
+            </div>
+          </div>
+          <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Operator shell
+            </div>
+            <div className="rounded-md border border-slate-300/80 bg-slate-950 px-3 py-2 font-mono text-[11px] text-slate-100">
+              <div className="mb-2 flex items-center justify-between gap-3 text-slate-400">
+                <span>mira-kernel@{shellMode}:{selectedPane}$</span>
+                <span className={cn(
+                  "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]",
+                  operatorPending
+                    ? "border-cyan-700 bg-cyan-950 text-cyan-100"
+                    : "border-slate-700 bg-slate-900 text-slate-300",
+                )}>
+                  {operatorPending ? "running" : "idle"}
+                </span>
+              </div>
+              {operatorActiveCommand ? (
+                <div className="mb-2 truncate text-[10px] text-cyan-200">
+                  active: {operatorActiveCommand}
+                </div>
+              ) : null}
+              <div className="flex gap-2">
+                <input
+                  value={operatorCommand}
+                  onChange={(event) => setOperatorCommand(event.target.value)}
+                  disabled={operatorPending}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      runOperatorCommand();
+                    }
+                  }}
+                  placeholder="runtime health | scheduler status | worker show | board attach /dev/ttyUSB0 serial"
+                  className="flex-1 bg-transparent text-slate-100 outline-none placeholder:text-slate-500"
+                />
+                <button
+                  type="button"
+                  onClick={runOperatorCommand}
+                  disabled={operatorPending}
+                  className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-slate-100 transition-colors hover:bg-slate-800"
+                >
+                  {operatorPending ? "Running" : "Run"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (operatorPending) return;
+                    setOperatorOutput([
+                      {
+                        line: "mira-kernel shell cleared.",
+                      },
+                    ]);
+                    setOperatorCommand("");
+                  }}
+                  disabled={operatorPending}
+                  className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-slate-100 transition-colors hover:bg-slate-800"
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="mt-3 space-y-2">
+                {quickCommandGroups.map((group) => (
+                  <div key={group.label} className="space-y-1">
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                      {group.label}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {group.commands.map((command) => (
+                        <button
+                          key={command}
+                          type="button"
+                          onClick={() => runQuickCommand(command)}
+                          disabled={operatorPending}
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] transition-colors",
+                            group.tone,
+                            operatorPending ? "opacity-60" : "",
+                          )}
+                        >
+                          {command}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => runQuickCommand("runtime health")}
+                  disabled={operatorPending}
+                  className="rounded-full border border-cyan-700 bg-cyan-950 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-100 transition-colors hover:bg-cyan-900"
+                >
+                  run probe
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2 rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2 font-mono text-[11px] text-slate-700">
+              {operatorOutput.map((entry, index) => (
+                <div
+                  key={`${entry.line}-${index}`}
+                  className={cn(
+                    "rounded-md border px-2.5 py-2",
+                    operatorPanelTone(
+                      entry.details && "subject" in entry.details
+                        ? String(entry.details.subject)
+                        : null,
+                    ),
+                  )}
+                >
+                  <div className="truncate text-slate-800">
+                    {entry.line}
+                  </div>
+                  {entry.details ? (
+                    <>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {"subject" in entry.details ? (
+                          <ConsoleBadge
+                            label="subject"
+                            value={String(entry.details.subject)}
+                            tone="slate"
+                          />
+                        ) : null}
+                        {"action" in entry.details ? (
+                          <ConsoleBadge
+                            label="action"
+                            value={String(entry.details.action)}
+                            tone="emerald"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="mt-2 grid gap-1.5 text-[10px] text-slate-500">
+                        {Object.entries(entry.details)
+                          .filter(([key]) => key !== "subject" && key !== "action")
+                          .map(([key, value]) => (
+                            key === "items" ? (
+                              <div
+                                key={key}
+                                className="rounded-sm border border-slate-200/80 bg-white/80 px-2 py-1"
+                              >
+                                <div className="mb-1 uppercase tracking-[0.12em]">{key}</div>
+                                <div className="flex flex-wrap gap-1">
+                                  {String(value)
+                                    .split(",")
+                                    .map((item) => item.trim())
+                                    .filter(Boolean)
+                                    .map((item) => (
+                                      <span
+                                        key={item}
+                                        className="rounded-full border border-slate-300/80 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-700"
+                                      >
+                                        {item}
+                                      </span>
+                                    ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                key={key}
+                                className="flex items-center justify-between gap-3 rounded-sm border border-slate-200/80 bg-white/80 px-2 py-1"
+                              >
+                                <span className="uppercase tracking-[0.12em]">{key}</span>
+                                <span className="truncate text-slate-700">{String(value)}</span>
+                              </div>
+                            )
+                          ))}
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className={paneClass("runtime")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Active execution
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="truncate font-medium text-foreground">
+              {activeExecution?.title || activeExecution?.preview || "No active execution"}
+            </div>
+            <div className="mt-1 truncate text-xs text-muted-foreground">
+              {activeExecution?.chatId ?? "Detached shell state"}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <ConsoleBadge label="streaming" value={executionContract?.supports_streaming ? "on" : "off"} tone="slate" />
+              <ConsoleBadge label="background" value={executionContract?.supports_background ? "on" : "off"} tone="slate" />
+              <ConsoleBadge label="engine" value={runtimeCapabilities?.can_restart_engine ? "restartable" : "fixed"} tone={runtimeCapabilities?.can_restart_engine ? "emerald" : "amber"} />
+              <ConsoleBadge
+                label="gate"
+                value={runtimeControl?.execution_gate?.state ?? "open"}
+                tone={runtimeControl?.execution_gate?.state === "open" ? "emerald" : "amber"}
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <AdapterActionButton binding={resolveActionBinding("pause_runtime")} />
+              <AdapterActionButton binding={resolveActionBinding("resume_runtime")} />
+              <AdapterActionButton binding={resolveActionBinding("degrade_runtime")} />
+              <AdapterActionButton binding={resolveActionBinding("drain_background")} />
+              <AdapterActionButton binding={resolveActionBinding("prioritize_goal_lane")} />
+            </div>
+          </div>
+        </section>
+
+        <section className={paneClass("runtime")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Task kernel
+          </div>
+          <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Session
+                </div>
+                <div className="mt-2 space-y-2">
+                  <Row label="Chat" value={activeExecution?.chatId ?? "detached"} />
+                  <Row label="Phase" value={diagPhase ?? "idle"} />
+                  <Row label="Iteration" value={`${diagIteration ?? 0}`} />
+                  <Row label="Pending tools" value={`${diagPendingToolCalls}`} />
+                  <Row label="Subagents" value={`${diagSubagentWorkers}`} />
+                  <Row
+                    label="Dispatch depth"
+                    value={`${diagnostics?.snapshot.dispatch_queue_depth ?? dispatchQueue?.depth ?? 0}`}
+                  />
+                </div>
+              </div>
+              <div className="rounded-lg border border-cyan-200/80 bg-cyan-50/70 p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700">
+                  Goal lane
+                </div>
+                <div className="mt-2 space-y-2">
+                  <Row
+                    label="Background"
+                    value={scheduler?.background_drain_requested ? "draining" : "idle"}
+                  />
+                  <Row label="Preferred lane" value={scheduler?.preferred_lane ?? "interactive"} />
+                  <Row
+                    label="Gate"
+                    value={runtimeControl?.execution_gate?.state ?? "open"}
+                  />
+                  <Row
+                    label="Reason"
+                    value={runtimeControl?.execution_gate?.reason ?? "operator-ready"}
+                  />
+                  <Row
+                    label="Dispatch handoff"
+                    value={diagnostics?.snapshot.dispatch_handoff_lane ?? "none"}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="rounded-lg border border-blue-200/80 bg-blue-50/60 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">
+                  Dispatch lifecycle
+                </div>
+                <ConsoleBadge
+                  label="queue"
+                  value={diagnostics?.snapshot.dispatch_queue_state ?? dispatchQueue?.state ?? "ready"}
+                  tone={dispatchQueue?.depth ? "amber" : "slate"}
+                />
+              </div>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                <Row label="Depth" value={`${dispatchQueue?.depth ?? 0}`} />
+                <Row label="Lane" value={dispatchQueue?.lane ?? "interactive"} />
+                <Row label="Class" value={dispatchQueue?.job_class ?? "tool_contract_dispatch"} />
+                <Row label="Handoff" value={diagnostics?.snapshot.dispatch_handoff_lane ?? "none"} />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {dispatchQueueTasks.length ? dispatchQueueTasks.map((task) => (
+                  <span
+                    key={task}
+                    className="rounded-full border border-blue-300/80 bg-white px-2 py-0.5 text-[11px] text-blue-700"
+                  >
+                    {task}
+                  </span>
+                )) : (
+                  <span className="text-xs text-muted-foreground">No queued dispatch tasks.</span>
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => runTopologyCommand("runtime", "tool status")}
+                  disabled={operatorPending}
+                  className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  inspect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runTopologyCommand("runtime", "tool prioritize")}
+                  disabled={operatorPending}
+                  className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
+                >
+                  prioritize
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runTopologyCommand("runtime", "tool delegate-goal")}
+                  disabled={operatorPending}
+                  className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
+                >
+                  goal lane
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runTopologyCommand("runtime", "tool delegate-subagent")}
+                  disabled={operatorPending}
+                  className="rounded-full border border-violet-300/80 bg-violet-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
+                >
+                  subagent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runTopologyCommand("runtime", "tool complete")}
+                  disabled={operatorPending}
+                  className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+                >
+                  complete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runTopologyCommand("faults", "tool fail")}
+                  disabled={operatorPending}
+                  className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+                >
+                  fail
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runTopologyCommand("runtime", "tool drain")}
+                  disabled={operatorPending}
+                  className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
+                >
+                  drain
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runTopologyCommand("runtime", "tool clear-queue")}
+                  disabled={operatorPending}
+                  className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
+                >
+                  clear
+                </button>
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Execution timeline
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <ConsoleBadge label="phase" value={diagPhase ?? "idle"} tone="slate" />
+                  <ConsoleBadge label="iter" value={`${diagIteration ?? 0}`} tone="slate" />
+                </div>
+              </div>
+              <div className="mt-3 space-y-0">
+                {executionTimeline.length ? executionTimeline.map((event, index) => (
+                  <div key={`${event.id}-${event.type}`} className="grid grid-cols-[28px_1fr] gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300/80 bg-white text-[10px] font-semibold text-slate-700">
+                        {event.id}
+                      </div>
+                      {index < executionTimeline.length - 1 ? (
+                        <div className="h-6 w-px bg-slate-300/80" />
+                      ) : null}
+                    </div>
+                    <div className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-slate-900">{event.type}</span>
+                        <span className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-600">
+                          {event.state}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void handleTimelineRoute(event.type)}
+                          className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
+                        >
+                          route
+                        </button>
+                      </div>
+                      <div className="mt-1 text-[11px] text-slate-600">
+                        {event.message}
+                      </div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-xs text-muted-foreground">No execution timeline available.</div>
+                )}
+              </div>
+            </div>
+            <div className="grid gap-3 xl:grid-cols-[1.2fr_0.8fr]">
+              <div className="rounded-lg border border-violet-200/80 bg-violet-50/60 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700">
+                    Kernel event stream
+                  </div>
+                  <ConsoleBadge label="events" value={`${eventLog.length}`} tone="slate" />
+                </div>
+                <div className="mt-3 space-y-2">
+                  {eventLog.length ? eventLog.slice(0, 5).map((event, index) => (
+                    <div
+                      key={`${event.id ?? "event"}-${index}`}
+                      className="rounded-md border border-violet-200/80 bg-white/80 px-2.5 py-2"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="truncate font-medium text-slate-900">
+                          {event.type ?? "event"}
+                        </span>
+                        <span className="rounded-full border border-violet-200/80 bg-violet-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700">
+                          {event.state ?? "unknown"}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[11px] text-slate-600">
+                        {event.message ?? "no message"}
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="text-xs text-muted-foreground">No kernel events captured.</div>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-lg border border-rose-200/80 bg-rose-50/60 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-700">
+                    Error signal
+                  </div>
+                  <ConsoleBadge label="recent" value={`${recentErrors.length}`} tone="amber" />
+                </div>
+                <div className="mt-3 space-y-2">
+                  {recentErrors.length ? recentErrors.slice(0, 3).map((entry, index) => (
+                    <div
+                      key={`${entry.id}-${index}`}
+                      className="rounded-md border border-rose-200/80 bg-white/85 px-2.5 py-2"
+                    >
+                      <div className="truncate font-medium text-slate-900">
+                        {entry.kind}
+                      </div>
+                      <div className="mt-1 text-[11px] text-slate-600">
+                        {entry.message}
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="text-xs text-muted-foreground">No recent shell errors.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className={paneClass("modules")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Modules
+          </div>
+          <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="flex flex-wrap gap-2">
+              {runtimeModules.length ? runtimeModules.map((module) => (
+                <button
+                  key={module.name}
+                  type="button"
+                  onClick={() => onSelectModule(module.name)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+                    selectedModule?.name === module.name
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-300/80 bg-slate-100 text-slate-700 hover:bg-slate-50",
+                  )}
+                >
+                  {module.display_name}
+                </button>
+              )) : featureRows.map((feature) => (
+                <span
+                  key={feature}
+                  className="rounded-full border border-slate-300/80 bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+                >
+                  {feature}
+                </span>
+              ))}
+            </div>
+            {selectedModule ? (
+              <div className="rounded-lg border border-slate-300/70 bg-slate-50/80 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-medium text-foreground">{selectedModule.display_name}</div>
+                  <span className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[11px] text-slate-600">
+                    {selectedModule.status}
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {selectedModule.category} · {selectedModule.summary}
+                </div>
+                {runtimeControl?.module_focus ? (
+                  <div className="mt-3 rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2 text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                    Focus pointer: <span className="font-semibold text-slate-900">{runtimeControl.module_focus}</span>
+                  </div>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectedModule.operator_actions.map((action) => (
+                    <AdapterActionButton
+                      key={action}
+                      binding={resolveActionBinding(action)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <span className="text-xs text-muted-foreground">No modules exposed</span>
+            )}
+          </div>
+        </section>
+
+        <section className={paneClass("runtime")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Targets
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Runtime targets
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {runtimeTargets.length ? runtimeTargets.map((target) => (
+                <span
+                  key={target}
+                  className="rounded-full border border-violet-300/80 bg-violet-50 px-2.5 py-1 text-xs text-violet-700"
+                >
+                  {target}
+                </span>
+              )) : (
+                <span className="text-xs text-muted-foreground">No runtime targets declared</span>
+              )}
+            </div>
+            <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Kernel languages
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {runtimeLanguages.length ? runtimeLanguages.map((language) => (
+                <span
+                  key={language}
+                  className="rounded-full border border-orange-300/80 bg-orange-50 px-2.5 py-1 text-xs text-orange-700"
+                >
+                  {language}
+                </span>
+              )) : (
+                <span className="text-xs text-muted-foreground">No implementation languages declared</span>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className={paneClass("adapters")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Bridge control
+          </div>
+          <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="grid gap-2 md:grid-cols-2">
+              <Row label="Adapter" value={selectedBridge?.adapter ?? runtimeControl?.active_adapter ?? "unset"} />
+              <Row label="Health" value={selectedBridge?.health ?? "unknown"} />
+              <Row label="Status" value={selectedBridge?.status ?? "unknown"} />
+              <Row label="Maintenance" value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"} />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("adapters", `bridge status ${selectedBridge?.adapter ?? runtimeControl?.active_adapter ?? ""}`.trim())}
+                disabled={operatorPending}
+                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                inspect
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("adapters", `restart-bridge ${selectedBridge?.adapter ?? runtimeControl?.active_adapter ?? ""}`.trim())}
+                disabled={operatorPending}
+                className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
+              >
+                restart
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("faults", `bridge fault ${selectedBridge?.adapter ?? runtimeControl?.active_adapter ?? ""}`.trim())}
+                disabled={operatorPending}
+                className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+              >
+                mark fault
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("faults", `clear-fault ${selectedBridge?.adapter ?? runtimeControl?.active_adapter ?? ""}`.trim())}
+                disabled={operatorPending}
+                className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+              >
+                clear fault
+              </button>
+            </div>
+          </div>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Runtime adapter
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Adapter API
+              </span>
+              <span className="font-medium text-foreground">
+                v{adapterContract?.api_version ?? 0}
+              </span>
+            </div>
+            <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Transport
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {adapterTransports.length ? adapterTransports.map((transport) => (
+                <span
+                  key={transport}
+                  className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700"
+                >
+                  {transport}
+                </span>
+              )) : (
+                <span className="text-xs text-muted-foreground">No adapter transport declared</span>
+              )}
+            </div>
+            <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Control plane
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {adapterControlPlane.length ? adapterControlPlane.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2.5 py-1 text-xs text-cyan-700"
+                >
+                  {item}
+                </span>
+              )) : (
+                <span className="text-xs text-muted-foreground">No control plane declared</span>
+              )}
+            </div>
+            <div className="mt-4 grid gap-2 rounded-lg border border-border/70 bg-slate-50/70 p-3">
+              <Row label="Default" value={adapterContract?.default_adapter ?? "unknown"} />
+              <Row
+                label="Hot swap"
+                value={adapterContract?.supports_hot_swap ? "supported" : "planned"}
+              />
+              <Row
+                label="Active"
+                value={runtimeControl?.active_adapter ?? selectedAdapterName ?? "unset"}
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className={paneClass("control_plane")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Operator console
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Console API
+              </span>
+              <span className="font-medium text-foreground">
+                v{operatorConsole?.api_version ?? 0}
+              </span>
+            </div>
+            <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Panes
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(operatorConsole?.panes ?? []).map((pane) => (
+                <span
+                  key={pane}
+                  className="rounded-full border border-slate-300/80 bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+                >
+                  {pane}
+                </span>
+              ))}
+            </div>
+            <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Telemetry
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(operatorConsole?.telemetry ?? []).map((signal) => (
+                <span
+                  key={signal}
+                  className="rounded-full border border-indigo-300/80 bg-indigo-50 px-2.5 py-1 text-xs text-indigo-700"
+                >
+                  {signal}
+                </span>
+              ))}
+            </div>
+            {runtimeControl?.adapter_failover_order?.length ? (
+              <>
+                <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Failover order
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {runtimeControl.adapter_failover_order.map((adapter) => (
+                    <span
+                      key={adapter}
+                      className="rounded-md border border-slate-300/80 bg-slate-950 px-2.5 py-1 text-[11px] text-slate-100"
+                    >
+                      {adapter}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : null}
+            <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Embedded transports
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(operatorConsole?.embedded_transports ?? []).map((transport) => (
+                <span
+                  key={transport}
+                  className="rounded-full border border-orange-300/80 bg-orange-50 px-2.5 py-1 text-xs text-orange-700"
+                >
+                  {transport}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className={paneClass("adapters")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Runtime bridges
+          </div>
+          <div className="space-y-2 rounded-xl border border-border/70 bg-background/80 p-3">
+            {runtimeBridges.length ? runtimeBridges.map((bridge) => (
+              <div
+                key={bridge.adapter}
+                className={cn(
+                  "rounded-md border px-3 py-2",
+                  selectedBridge?.adapter === bridge.adapter
+                    ? "border-slate-900/20 bg-slate-100/90"
+                    : "border-border/70 bg-slate-50/70",
+                )}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-medium text-foreground">{bridge.adapter}</div>
+                  <span
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[11px]",
+                      bridge.health === "ready"
+                        ? "border-emerald-300/80 bg-emerald-50 text-emerald-700"
+                        : bridge.health === "fault"
+                          ? "border-rose-300/80 bg-rose-50 text-rose-700"
+                          : "border-amber-300/80 bg-amber-50 text-amber-700",
+                    )}
+                  >
+                    {bridge.health}
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {bridge.backend_kind} · {bridge.entrypoint}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <ConsoleBadge
+                    label="status"
+                    value={bridge.status}
+                    tone={bridge.status === "active" ? "emerald" : "slate"}
+                  />
+                  <ConsoleBadge
+                    label="board"
+                    value={bridge.board_capable ? "capable" : "hosted"}
+                    tone={bridge.board_capable ? "amber" : "slate"}
+                  />
+                  {bridge.runtime_stage ? (
+                    <ConsoleBadge
+                      label="stage"
+                      value={bridge.runtime_stage}
+                      tone={bridge.runtime_stage === "manifested" ? "emerald" : "amber"}
+                    />
+                  ) : null}
+                  {bridge.abi ? (
+                    <ConsoleBadge label="abi" value={bridge.abi} tone="slate" />
+                  ) : null}
+                  {bridge.runtime_mode ? (
+                    <ConsoleBadge label="mode" value={bridge.runtime_mode} tone="slate" />
+                  ) : null}
+                </div>
+                {bridge.manifest || bridge.status_symbol || bridge.build_hint ? (
+                  <div className="mt-3 grid gap-2 rounded-md border border-slate-200/80 bg-white/80 p-3 text-xs">
+                    {bridge.manifest ? (
+                      <Row label="Manifest" value={bridge.manifest} />
+                    ) : null}
+                    {bridge.runtime_mode ? (
+                      <Row label="Runtime mode" value={bridge.runtime_mode} />
+                    ) : null}
+                    {bridge.status_symbol ? (
+                      <Row label="Status symbol" value={bridge.status_symbol} />
+                    ) : null}
+                    {bridge.build_hint ? (
+                      <Row label="Build hint" value={bridge.build_hint} />
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <AdapterActionButton
+                    binding={{
+                      ...resolveActionBinding("restart_bridge"),
+                      onTrigger: onRestartBridgeAdapter
+                        ? () => onRestartBridgeAdapter(bridge.adapter)
+                        : resolveActionBinding("restart_bridge").onTrigger,
+                    }}
+                  />
+                  <AdapterActionButton
+                    binding={{
+                      ...resolveActionBinding("record_fault"),
+                      onTrigger: onRecordBridgeFault
+                        ? () => onRecordBridgeFault(bridge.adapter)
+                        : resolveActionBinding("record_fault").onTrigger,
+                    }}
+                  />
+                  {bridge.health === "fault" ? (
+                    <AdapterActionButton
+                      binding={{
+                        ...resolveActionBinding("clear_fault"),
+                        onTrigger: onClearBridgeFault
+                          ? () => onClearBridgeFault(bridge.adapter)
+                          : resolveActionBinding("clear_fault").onTrigger,
+                      }}
+                    />
+                  ) : null}
+                </div>
+                {bridge.last_error ? (
+                  <div className="mt-2 rounded-md border border-rose-300/60 bg-rose-50 px-2.5 py-2 text-[11px] text-rose-800">
+                    {bridge.last_error}
+                  </div>
+                ) : null}
+              </div>
+            )) : (
+              <div className="text-xs text-muted-foreground">
+                No runtime bridges registered.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className={paneClass("adapters")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Board attachment
+          </div>
+          <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
+            <Row label="Target" value={boardAttachment.target ?? "unknown"} />
+            <Row label="Attach" value={boardAttachment.attached ? "attached" : "detached"} />
+            <Row
+              label="Transport"
+              value={boardAttachment.transport ?? boardAttachment.preferred_transport ?? "unset"}
+            />
+            <Row label="Port" value={boardAttachment.port ?? "not bound"} />
+            <Row
+              label="Supervisor"
+              value={runtimeControl?.fault_posture.supervisor ?? "unknown"}
+            />
+            <Row
+              label="Maintenance"
+              value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"}
+            />
+            <Row
+              label="Runtime mode"
+              value={boardAttachment.runtime_mode ?? "unprobed"}
+            />
+            <Row
+              label="Bridge artifact"
+              value={boardAttachment.bridge_artifact ?? "none"}
+            />
+            <div className="grid gap-2 rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Attach controls
+              </div>
+              <label className="grid gap-1 text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                <span>Transport</span>
+                <select
+                  value={selectedBoardTransport ?? ""}
+                  onChange={(event) => onSelectBoardTransport?.(event.target.value || null)}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900"
+                >
+                  <option value="">auto</option>
+                  {Array.from(new Set([
+                    ...(operatorConsole?.embedded_transports ?? []),
+                    ...([boardAttachment.preferred_transport].filter(Boolean) as string[]),
+                    ...([boardAttachment.transport].filter(Boolean) as string[]),
+                  ])).map((transport) => (
+                    <option key={transport} value={transport}>
+                      {transport}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                <span>Port</span>
+                <select
+                  value={selectedBoardPort ?? ""}
+                  onChange={(event) => onSelectBoardPort?.(event.target.value || null)}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900"
+                >
+                  <option value="">auto-detect</option>
+                  {(boardAttachment.available_ports ?? []).map((port) => (
+                    <option key={port} value={port}>
+                      {port}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => onAttachBoard?.({
+                    transport: selectedBoardTransport ?? null,
+                    port: selectedBoardPort ?? null,
+                  })}
+                  className="rounded-md border border-slate-900 bg-slate-900 px-2.5 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white transition-colors hover:bg-slate-800"
+                >
+                  Attach board
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDetachBoard?.()}
+                  className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[11px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  Detach board
+                </button>
+              </div>
+            </div>
+            {boardAttachment.available_ports?.length ? (
+              <div className="rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  Candidate ports
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {boardAttachment.available_ports.slice(0, 6).map((port) => (
+                    <button
+                      key={port}
+                      type="button"
+                      onClick={() => onSelectBoardPort?.(port)}
+                      className={cn(
+                        "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+                        selectedBoardPort === port
+                          ? "border-slate-900 bg-slate-900 text-white"
+                          : "border-slate-300/80 bg-slate-50 text-slate-700 hover:bg-slate-100",
+                      )}
+                    >
+                      {port}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {boardAttachment.last_error ? (
+              <div className="rounded-md border border-rose-300/60 bg-rose-50 px-2.5 py-2 text-[11px] text-rose-800">
+                {boardAttachment.last_error}
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className={paneClass("adapters")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Adapter registry
+          </div>
+          <div className="space-y-2 rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="flex flex-wrap gap-2">
+              {runtimeAdapters.map((adapter) => (
+                <button
+                  key={adapter.name}
+                  type="button"
+                  onClick={() => onSelectAdapter(adapter.name)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+                    selectedAdapter?.name === adapter.name
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-300/80 bg-white text-slate-700 hover:bg-slate-50",
+                  )}
+                >
+                  {adapter.name}
+                </button>
+              ))}
+            </div>
+            {runtimeAdapters.length ? runtimeAdapters.map((adapter) => (
+              <div
+                key={adapter.name}
+                className={cn(
+                  "rounded-xl border px-3 py-2",
+                  selectedAdapter?.name === adapter.name
+                    ? "border-slate-900/20 bg-slate-100/90"
+                    : "border-border/70 bg-slate-50/70",
+                )}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-medium text-foreground">{adapter.display_name}</div>
+                  <span className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[11px] text-slate-600">
+                    {adapter.maturity}
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {adapter.implementation_language} · {adapter.transport} · {adapter.target_class}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {adapter.capabilities.map((capability) => (
+                    <span
+                      key={capability}
+                      className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[11px] text-slate-700"
+                    >
+                      {capability}
+                    </span>
+                  ))}
+                </div>
+                {selectedAdapter?.name === adapter.name ? (
+                  <div className="mt-3 grid gap-2 rounded-md border border-slate-300/70 bg-white/80 p-3 text-xs">
+                    <Row label="Boot posture" value={adapter.enabled_by_default ? "auto" : "manual"} />
+                    <Row label="Operator path" value={adapter.notes || "No notes"} />
+                    <Row label="Active route" value={runtimeControl?.active_adapter === adapter.name ? "selected" : "standby"} />
+                    <Row label="Runtime stage" value={adapter.runtime_stage ?? "planned"} />
+                    <Row label="ABI" value={adapter.abi ?? "unspecified"} />
+                    <Row
+                      label="Bridge health"
+                      value={
+                        runtimeBridges.find((bridge) => bridge.adapter === adapter.name)?.health
+                        ?? "unknown"
+                      }
+                    />
+                    {adapter.runtime_manifest ? (
+                      <Row label="Manifest" value={adapter.runtime_manifest} />
+                    ) : null}
+                    {adapter.status_symbol ? (
+                      <Row label="Status symbol" value={adapter.status_symbol} />
+                    ) : null}
+                    {adapter.bootstrap_artifact ? (
+                      <Row label="Bootstrap" value={adapter.bootstrap_artifact} />
+                    ) : null}
+                    {adapter.build_hint ? (
+                      <Row label="Build hint" value={adapter.build_hint} />
+                    ) : null}
+                    <div className="mt-1">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        Suggested actions
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {adapter.operator_actions.map((action) => (
+                          <AdapterActionButton
+                            key={action}
+                            binding={resolveActionBinding(action)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )) : (
+              <div className="text-xs text-muted-foreground">
+                No runtime adapters registered.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className={paneClass("runtime")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Tools
+          </div>
+          <div className="flex flex-wrap gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
+            {toolRows.length ? toolRows.map((tool) => (
+              <span
+                key={tool}
+                className="rounded-full border border-sky-300/80 bg-sky-50 px-2.5 py-1 text-xs text-sky-700"
+              >
+                {tool}
+              </span>
+            )) : (
+              <span className="text-xs text-muted-foreground">No tool contract exposed</span>
+            )}
+          </div>
+        </section>
+
+        <section className={paneClass("runtime")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Runtime
+          </div>
+          <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
+            <Row
+              label="Streaming"
+              value={executionContract?.supports_streaming ? "enabled" : "off"}
+            />
+            <Row
+              label="Background"
+              value={executionContract?.supports_background ? "enabled" : "off"}
+            />
+            <Row
+              label="Engine restart"
+              value={runtimeCapabilities?.can_restart_engine ? "available" : "n/a"}
+            />
+            <Row
+              label="Open logs"
+              value={runtimeCapabilities?.can_open_logs ? "available" : "n/a"}
+            />
+            <Row
+              label="Diag modules"
+              value={`${diagnostics?.snapshot.module_count ?? runtimeModules.length}`}
+            />
+            <Row
+              label="Diag bridges"
+              value={`${diagnostics?.snapshot.bridge_count ?? runtimeBridges.length}`}
+            />
+            <Row
+              label="Diag gate"
+              value={diagnostics?.snapshot.execution_gate ?? runtimeControl?.execution_gate?.state ?? "open"}
+            />
+            <Row label="Diag phase" value={diagPhase ?? "idle"} />
+            <Row label="Diag iter" value={`${diagIteration ?? 0}`} />
+            <Row label="Tool wait" value={`${diagPendingToolCalls}`} />
+            <Row label="Subagents" value={`${diagSubagentWorkers}`} />
+            <Row
+              label="Board"
+              value={diagnostics?.snapshot.board_attached ? "attached" : "detached"}
+            />
+            <Row
+              label="Board mode"
+              value={diagnostics?.snapshot.board_runtime_mode ?? "unprobed"}
+            />
+          </div>
+          <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Runtime topology
+              </div>
+              <ConsoleBadge
+                label="lane"
+                value={runtimeTopology?.scheduler?.preferred_lane ?? scheduler?.preferred_lane ?? "interactive"}
+                tone="slate"
+              />
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <Row label="Adapters" value={`${runtimeTopologyAdapters.length}`} />
+              <Row label="Modules" value={`${runtimeTopologyModules.length}`} />
+              <Row label="Lanes" value={`${runtimeTopologyLanes.length}`} />
+              <Row label="Workers" value={`${runtimeTopology?.workers?.length ?? workers.length}`} />
+            </div>
+            <div className="space-y-2">
+              <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Adapters</div>
+              <div className="flex flex-wrap gap-2">
+                {runtimeTopologyAdapters.length ? runtimeTopologyAdapters.map((adapter) => (
+                  <button
+                    key={adapter.name}
+                    type="button"
+                    onClick={() => {
+                      onSelectAdapter(adapter.name);
+                      runTopologyCommand("adapters", `adapter status ${adapter.name}`);
+                    }}
+                    disabled={operatorPending}
+                    className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+                  >
+                    {adapter.name}
+                  </button>
+                )) : (
+                  <span className="text-xs text-muted-foreground">No adapter topology exposed.</span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Lanes</div>
+              <div className="flex flex-wrap gap-2">
+                {runtimeTopologyLanes.length ? runtimeTopologyLanes.map((lane) => (
+                  <button
+                    key={lane.id}
+                    type="button"
+                    onClick={() => runTopologyCommand("runtime", lane.id === "sustained_goal" ? "session goal" : lane.id === "subagent" ? "worker show" : "lane show")}
+                    disabled={operatorPending}
+                    className="rounded-full border border-blue-300/80 bg-blue-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-blue-700 transition-colors hover:bg-blue-100"
+                  >
+                    {lane.id}
+                  </button>
+                )) : (
+                  <span className="text-xs text-muted-foreground">No lane topology exposed.</span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Modules</div>
+              <div className="flex flex-wrap gap-2">
+                {runtimeTopologyModules.length ? runtimeTopologyModules.map((module) => (
+                  <button
+                    key={module.name}
+                    type="button"
+                    onClick={() => {
+                      onSelectModule(module.name);
+                      runTopologyCommand("modules", `module show ${module.name}`);
+                    }}
+                    disabled={operatorPending}
+                    className="rounded-full border border-slate-300/80 bg-slate-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-100"
+                  >
+                    {module.name}
+                  </button>
+                )) : (
+                  <span className="text-xs text-muted-foreground">No module topology exposed.</span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("runtime", "topology runtime")}
+                disabled={operatorPending}
+                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                inspect runtime
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("runtime", "runtime orchestration")}
+                disabled={operatorPending}
+                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                orchestration
+              </button>
+            </div>
+          </div>
+          <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Embedded topology
+              </div>
+              <ConsoleBadge
+                label="board"
+                value={embeddedTopology?.board?.attached ? "attached" : "detached"}
+                tone={embeddedTopology?.board?.attached ? "emerald" : "amber"}
+              />
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <Row label="Target" value={embeddedTopology?.board?.target ?? boardAttachment.target ?? embeddedTargetHint ?? "host"} />
+              <Row label="Transport" value={embeddedTopology?.board?.transport ?? embeddedTopology?.board?.preferred_transport ?? boardAttachment.transport ?? "unset"} />
+              <Row label="Runtime mode" value={embeddedTopology?.board?.runtime_mode ?? boardAttachment.runtime_mode ?? "userland"} />
+              <Row label="Port" value={embeddedTopology?.board?.port ?? boardAttachment.port ?? "none"} />
+            </div>
+            <div className="space-y-2">
+              <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Available ports</div>
+              <div className="flex flex-wrap gap-2">
+                {embeddedPorts.length ? embeddedPorts.map((port) => (
+                  <button
+                    key={port}
+                    type="button"
+                    onClick={() => {
+                      onSelectPane("adapters");
+                      onSelectBoardPort?.(port);
+                      runQuickCommand("board status");
+                    }}
+                    disabled={operatorPending}
+                    className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
+                  >
+                    {port}
+                  </button>
+                )) : (
+                  <span className="text-xs text-muted-foreground">No serial ports discovered.</span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("runtime", "topology embedded")}
+                disabled={operatorPending}
+                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                inspect embedded
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("adapters", "board ports")}
+                disabled={operatorPending}
+                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                refresh ports
+              </button>
+            </div>
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Execution lanes
+            </div>
+            {executionLanes.length ? (
+              <div className="space-y-2">
+                {executionLanes.map((lane) => (
+                  <div
+                    key={lane.id}
+                    className="rounded-md border border-slate-200/80 bg-slate-50/80 px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+                        {lane.label}
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {lane.mode} · {lane.state}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-800">{lane.summary}</div>
+                    {lane.id === "interactive" && diagPendingToolCalls > 0 ? (
+                      <div className="mt-2 text-[11px] text-slate-500">
+                        waiting on {diagPendingToolCalls} tool call(s)
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                No execution lanes exposed.
+              </div>
+            )}
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Runtime topology
+            </div>
+            <div className="mb-3 grid gap-2 rounded-md border border-slate-200/80 bg-white/80 p-3 text-xs">
+              <Row
+                label="Adapters"
+                value={`${runtimeTopology?.adapters.length ?? runtimeAdapters.length}`}
+              />
+              <Row
+                label="Modules"
+                value={`${runtimeTopology?.modules.length ?? runtimeModules.length}`}
+              />
+              <Row
+                label="Bridges"
+                value={`${runtimeTopology?.bridges.length ?? runtimeBridges.length}`}
+              />
+              <Row
+                label="Workers"
+                value={`${runtimeTopology?.workers.length ?? workers.length}`}
+              />
+              <Row
+                label="Queues"
+                value={`${runtimeTopology?.scheduler.queues.length ?? schedulerQueues.length}`}
+              />
+              <Row
+                label="Board"
+                value={embeddedTopology?.board.attached ? "attached" : "detached"}
+              />
+            </div>
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Scheduler
+            </div>
+            <div className="mb-3 text-[11px] text-slate-500">
+              {scheduler?.policy ?? "unspecified-policy"}
+            </div>
+            <div className="mb-3 grid gap-2 rounded-md border border-slate-200/80 bg-white/80 p-3 text-xs">
+              <Row label="Preferred lane" value={scheduler?.preferred_lane ?? "interactive"} />
+              <Row
+                label="Drain background"
+                value={scheduler?.background_drain_requested ? "requested" : "idle"}
+              />
+              <Row
+                label="Active runtime"
+                value={scheduler?.active_runtime?.adapter ?? "python-inprocess"}
+              />
+              <Row
+                label="Runtime health"
+                value={scheduler?.active_runtime?.health ?? "ready"}
+              />
+            </div>
+            {scheduler?.active_runtime ? (
+              <div className="mb-3 grid gap-2 rounded-md border border-slate-200/80 bg-slate-50/80 p-3 text-xs">
+                <Row label="Mode" value={scheduler.active_runtime.runtime_mode ?? "unknown"} />
+                <Row label="Stage" value={scheduler.active_runtime.runtime_stage ?? "unknown"} />
+                <Row label="Artifact" value={scheduler.active_runtime.artifact ?? "none"} />
+              </div>
+            ) : null}
+            {schedulerQueues.length ? (
+              <div className="space-y-2">
+                {schedulerQueues.map((queue) => (
+                  <div
+                    key={queue.id}
+                    className="rounded-md border border-slate-200/80 bg-slate-50/80 px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+                        {queue.label}
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        depth {queue.depth} · {queue.state}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-800">
+                      {queue.lane} · {queue.job_class}
+                    </div>
+                    {typeof queue.pending_tool_calls === "number" || typeof queue.completed_tool_results === "number" ? (
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                        {typeof queue.pending_tool_calls === "number" ? (
+                          <span>pending tools {queue.pending_tool_calls}</span>
+                        ) : null}
+                        {typeof queue.completed_tool_results === "number" ? (
+                          <span>completed tools {queue.completed_tool_results}</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {queue.active_tasks?.length ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {queue.active_tasks.map((task) => (
+                          <span
+                            key={task}
+                            className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[11px] text-slate-700"
+                          >
+                            {task}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                No scheduler queues exposed.
+              </div>
+            )}
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Workers
+            </div>
+            {workers.length ? (
+              <div className="space-y-2">
+                {workers.map((worker) => (
+                  <div
+                    key={worker.id}
+                    className="rounded-md border border-slate-200/80 bg-slate-50/80 px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+                        {worker.label}
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {worker.kind} · {worker.state}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-800">
+                      {worker.lane} · {worker.summary}
+                    </div>
+                    {worker.runtime_backend ? (
+                      <div className="mt-2 grid gap-2 rounded-md border border-slate-200/80 bg-white/80 p-3 text-xs">
+                        <Row label="Adapter" value={worker.runtime_backend.adapter ?? "unknown"} />
+                        <Row label="Health" value={worker.runtime_backend.health ?? "unknown"} />
+                        <Row label="Mode" value={worker.runtime_backend.runtime_mode ?? "unknown"} />
+                        <Row label="Stage" value={worker.runtime_backend.runtime_stage ?? "unknown"} />
+                      </div>
+                    ) : null}
+                    {worker.tasks?.length ? (
+                      <div className="mt-2 space-y-2">
+                        {worker.tasks.map((task) => (
+                          <div
+                            key={task.task_id}
+                            className="rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2"
+                          >
+                            <div className="flex items-center justify-between gap-3 text-[11px]">
+                              <span className="font-semibold uppercase tracking-[0.12em] text-slate-700">
+                                {task.label}
+                              </span>
+                              <span className="text-slate-500">
+                                {task.phase} · iter {task.iteration}
+                              </span>
+                            </div>
+                            <div className="mt-1 text-xs text-slate-600">
+                              {task.task_description}
+                            </div>
+                            {task.tool_events.length ? (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {task.tool_events.map((event, index) => (
+                                  <span
+                                    key={`${task.task_id}-${event.name ?? "tool"}-${index}`}
+                                    className="rounded-full border border-slate-300/80 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-700"
+                                  >
+                                    {(event.name ?? "tool")} · {(event.status ?? "unknown")}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                            {task.error ? (
+                              <div className="mt-2 text-[11px] text-rose-700">{task.error}</div>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                No workers exposed.
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {onOpenKernelSettings ? (
+              <ConsoleButton label="Kernel settings" onClick={onOpenKernelSettings} />
+            ) : null}
+            {onRestartRuntime ? (
+              <ConsoleButton label="Restart runtime" onClick={onRestartRuntime} />
+            ) : null}
+            {onRestartEngine ? (
+              <ConsoleButton label="Restart engine" onClick={onRestartEngine} />
+            ) : null}
+          </div>
+        </section>
+
+        <section className={paneClass("workspace")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Workspace
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="truncate font-medium text-foreground">
+              {activeWorkspaceScope?.project_name ?? "Default workspace"}
+            </div>
+            <div className="mt-1 break-all text-xs text-muted-foreground">
+              {activeWorkspaceScope?.project_path ?? "No explicit project attached"}
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <span
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-[11px] font-medium",
+                  chipTone(!workspaceError),
+                )}
+              >
+                {workspaceError ? "workspace warning" : "workspace healthy"}
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleTimelineRoute("workspace")}
+                className="rounded-full border border-slate-300/80 bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-200"
+              >
+                route from shell
+              </button>
+            </div>
+            {workspaceError ? (
+              <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {workspaceError}
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className={paneClass("faults")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Fault control
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="mb-3 grid gap-2 md:grid-cols-2">
+              <Row label="Supervisor" value={runtimeControl?.fault_posture.supervisor ?? diagnostics?.supervisor ?? "unknown"} />
+              <Row label="Fault level" value={runtimeControl?.fault_posture.last_level ?? "clear"} />
+              <Row label="Maintenance" value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"} />
+              <Row label="Gate" value={runtimeControl?.execution_gate?.state ?? "open"} />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("faults", "fault show")}
+                disabled={operatorPending}
+                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                inspect
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("faults", "fault clear")}
+                disabled={operatorPending}
+                className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+              >
+                clear
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("faults", "fault record")}
+                disabled={operatorPending}
+                className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+              >
+                record
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("control_plane", "enter-maintenance")}
+                disabled={operatorPending}
+                className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
+              >
+                maintenance on
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("control_plane", "exit-maintenance")}
+                disabled={operatorPending}
+                className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
+              >
+                maintenance off
+              </button>
+            </div>
+          </div>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Recent faults
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="mb-3 flex flex-wrap gap-2">
+              <AdapterActionButton binding={resolveActionBinding("record_fault")} />
+              <AdapterActionButton binding={resolveActionBinding("clear_fault")} />
+            </div>
+            {recentErrors.length ? (
+              <div className="space-y-2">
+                {recentErrors.map((error) => (
+                  <div
+                    key={error.id}
+                    className="rounded-md border border-rose-500/15 bg-rose-50 px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-700">
+                        {error.kind}
+                      </span>
+                      <span className="text-[11px] text-rose-500">
+                        {new Date(error.at).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-rose-900">{error.message}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                No kernel faults captured in this shell session.
+              </div>
+            )}
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Kernel event log
+            </div>
+            {eventLog.length ? (
+              <div className="space-y-2">
+                {eventLog.map((event) => (
+                  <div
+                    key={event.id}
+                    className="rounded-md border border-slate-200/80 bg-slate-50/80 px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+                        {event.action}
+                      </span>
+                      <span className="text-[11px] text-slate-500">{event.state}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-800">{event.message}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                No kernel events recorded.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className={paneClass("control_plane")}>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Target posture
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">
+            <div className="font-medium text-foreground">
+              {embeddedTargetHint ?? "Desktop execution kernel with room for embedded targets"}
+            </div>
+            {runtimeControl ? (
+              <div className="mt-2 grid gap-2 rounded-md border border-slate-300/70 bg-slate-50/80 p-3">
+                <Row label="Active adapter" value={runtimeControl.active_adapter ?? "unset"} />
+                <Row label="Execution gate" value={runtimeControl.execution_gate?.state ?? "open"} />
+                <Row
+                  label="Gate reason"
+                  value={runtimeControl.execution_gate?.reason ?? "operator-ready"}
+                />
+                <Row
+                  label="Maintenance"
+                  value={runtimeControl.maintenance_mode?.enabled ? "enabled" : "off"}
+                />
+                <Row label="Supervisor" value={runtimeControl.fault_posture.supervisor} />
+                <Row label="Restart policy" value={runtimeControl.fault_posture.restart_policy} />
+                <Row label="Fault level" value={runtimeControl.fault_posture.last_level} />
+                <Row
+                  label="Module count"
+                  value={`${diagnostics?.snapshot.module_count ?? runtimeModules.length}`}
+                />
+                <Row
+                  label="Bridge count"
+                  value={`${diagnostics?.snapshot.bridge_count ?? runtimeBridges.length}`}
+                />
+              </div>
+            ) : null}
+            <div className="mt-2">
+              Mira is being shaped as a reusable execution kernel, so the operator surface can eventually
+              supervise constrained runtimes, firmware workflows, and board-level automation instead of
+              only desktop chat sessions.
+            </div>
+          </div>
+        </section>
+      </div>
+    </aside>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+        {label}
+      </span>
+      <span className="truncate font-medium text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function ConsoleBadge({
+  label,
+  value,
+  tone = "slate",
+}: {
+  label: string;
+  value: string;
+  tone?: "slate" | "emerald" | "amber";
+}) {
+  const toneClass =
+    tone === "emerald"
+      ? "border-emerald-300/80 bg-emerald-50 text-emerald-700"
+      : tone === "amber"
+        ? "border-amber-300/80 bg-amber-50 text-amber-700"
+        : "border-slate-300/80 bg-slate-100 text-slate-700";
+  return (
+    <span className={cn("rounded-md border px-2 py-1 text-[10px] uppercase tracking-[0.14em]", toneClass)}>
+      {label}: <span className="font-semibold">{value}</span>
+    </span>
+  );
+}
+
+function ConsoleButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full border border-slate-300/80 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 transition-colors hover:bg-slate-50"
+    >
+      {label}
+    </button>
+  );
+}
+
+function AdapterActionButton({
+  binding,
+}: {
+  binding: KernelOperatorActionBinding;
+}) {
+  const resolved = binding;
+  return (
+    <button
+      type="button"
+      onClick={resolved.onTrigger}
+      disabled={!resolved.enabled}
+      className={cn(
+        "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+        resolved.enabled
+          ? "border-slate-300/80 bg-slate-900 text-white hover:bg-slate-800"
+          : "border-slate-300/80 bg-slate-100 text-slate-500",
+      )}
+      title={
+        resolved.availability === "planned"
+          ? "Planned kernel path"
+          : resolved.targetPane
+            ? `Focus ${resolved.targetPane}`
+            : undefined
+      }
+    >
+      {resolved.label}
+    </button>
+  );
+}

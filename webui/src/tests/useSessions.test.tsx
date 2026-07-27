@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { sessionTitle, useSessionHistory, useSessions } from "@/hooks/useSessions";
+import { sessionTitle, useSessionHistory, useSessions } from "@/hooks/useExecutions";
 import * as api from "@/lib/api";
 import { ClientProvider } from "@/providers/ClientProvider";
 

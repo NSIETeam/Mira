@@ -1,6 +1,6 @@
 # Customer Kernel Target
 
-This repository started from upstream nanobot, but the customer-delivery target
+This repository started from upstream Mira/nanobot, but the customer-delivery target
 is narrower than the upstream product surface.
 
 ## Target

@@ -1,5 +1,5 @@
 import { deriveTitle } from "@/lib/format";
-import type { ChatSummary, SidebarSortMode } from "@/lib/types";
+import type { ChatSummary, ExecutionSummary, SidebarSortMode } from "@/lib/types";
 import { normalizeWorkspacePath, projectNameFromPath, sameWorkspacePath } from "@/lib/workspace";
 
 export const COLLAPSED_CHATS_VISIBLE_COUNT = 8;
@@ -13,6 +13,8 @@ export interface SessionGroup {
   projectKey?: string;
   updatedAt?: string | null;
 }
+
+export type ExecutionGroup = SessionGroup;
 
 export interface ChatGroupLabels {
   pinned: string;
@@ -34,6 +36,8 @@ export interface ChatGroupingOptions {
   sort: SidebarSortMode;
   defaultWorkspacePath?: string | null;
 }
+
+export type ExecutionGroupingOptions = ChatGroupingOptions;
 
 export function groupSessions(
   sessions: ChatSummary[],
@@ -127,6 +131,14 @@ export function groupSessions(
   return groups;
 }
 
+export function groupExecutions(
+  executions: ExecutionSummary[],
+  labels: ChatGroupLabels,
+  options: ExecutionGroupingOptions,
+): ExecutionGroup[] {
+  return groupSessions(executions, labels, options);
+}
+
 export function limitGroups(
   groups: SessionGroup[],
   limit: number,
@@ -172,6 +184,15 @@ export function limitGroups(
   return out;
 }
 
+export function limitExecutionGroups(
+  groups: ExecutionGroup[],
+  limit: number,
+  activeKey: string | null,
+  collapsedGroups: Record<string, boolean>,
+): ExecutionGroup[] {
+  return limitGroups(groups, limit, activeKey, collapsedGroups);
+}
+
 export function isCollapsedProject(
   group: SessionGroup,
   collapsedGroups: Record<string, boolean>,
@@ -210,6 +231,14 @@ export function visibleSessionsForGroup(
   return active ? [...visible, active] : visible;
 }
 
+export function visibleExecutionsForGroup(
+  group: ExecutionGroup,
+  activeKey: string | null,
+  collapsedGroups: Record<string, boolean>,
+): ExecutionSummary[] {
+  return visibleSessionsForGroup(group, activeKey, collapsedGroups);
+}
+
 export function displayTitle(
   session: ChatSummary,
   titleOverrides: Record<string, string>,
@@ -220,6 +249,14 @@ export function displayTitle(
     || session.title?.trim()
     || deriveTitle(session.preview, fallbackTitle)
   );
+}
+
+export function displayExecutionTitle(
+  execution: ExecutionSummary,
+  titleOverrides: Record<string, string>,
+  fallbackTitle: string,
+): string {
+  return displayTitle(execution, titleOverrides, fallbackTitle);
 }
 
 function groupSessionsByProject(

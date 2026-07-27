@@ -179,6 +179,7 @@ interface ThreadComposerProps {
   modelNeedsSetup?: boolean;
   fallbackModelName?: string | null;
   onModelBadgeClick?: () => void;
+  showRuntimeControls?: boolean;
   variant?: "thread" | "hero";
   slashCommands?: SlashCommand[];
   cliApps?: CliAppInfo[];
@@ -819,6 +820,7 @@ export function ThreadComposer({
   modelNeedsSetup = false,
   fallbackModelName = null,
   onModelBadgeClick,
+  showRuntimeControls = true,
   variant = "thread",
   slashCommands = [],
   cliApps = [],
@@ -873,7 +875,8 @@ export function ThreadComposer({
     [pendingQueueKey],
   );
   const showProjectPicker =
-    isHero
+    showRuntimeControls
+    && isHero
     && !!workspaceDefaultScope
     && !!onWorkspaceScopeChange
     && workspaceControls?.can_change_project !== false;
@@ -984,7 +987,9 @@ export function ThreadComposer({
     && !encoding
     && !hasErrors
     && hasComposerContent;
-  const canOpenModelSettings = Boolean(modelNeedsSetup && onModelBadgeClick && !disabled);
+  const canOpenModelSettings = Boolean(
+    showRuntimeControls && modelNeedsSetup && onModelBadgeClick && !disabled,
+  );
   const canQueueGuidance =
     isStreaming
     && !disabled
@@ -2067,7 +2072,7 @@ export function ThreadComposer({
                 isHero={isHero}
                 levels={voiceRecorder.levels}
               />
-            ) : workspaceScope ? (
+            ) : showRuntimeControls && workspaceScope ? (
               <WorkspaceAccessMenu
                 scope={workspaceScope}
                 disabled={disabled || workspaceScopeDisabled}
@@ -2083,7 +2088,7 @@ export function ThreadComposer({
               isHero ? "gap-1.5" : "gap-2",
             )}
           >
-            {modelLabel && !voiceRecorder.isRecording ? (
+            {showRuntimeControls && modelLabel && !voiceRecorder.isRecording ? (
               <ModelPresetBadge
                 label={modelLabel}
                 modelDetail={modelDetail}
@@ -2178,15 +2183,17 @@ export function ThreadComposer({
             </Button>
           </div>
         </div>
-        <WorkspaceProjectPicker
-          isHero={isHero}
-          disabled={disabled || workspaceScopeDisabled}
-          scope={workspaceScope}
-          defaultScope={workspaceDefaultScope}
-          controls={workspaceControls}
-          error={workspaceError}
-          onChange={onWorkspaceScopeChange}
-        />
+        {showRuntimeControls ? (
+          <WorkspaceProjectPicker
+            isHero={isHero}
+            disabled={disabled || workspaceScopeDisabled}
+            scope={workspaceScope}
+            defaultScope={workspaceDefaultScope}
+            controls={workspaceControls}
+            error={workspaceError}
+            onChange={onWorkspaceScopeChange}
+          />
+        ) : null}
       </div>
     </form>
   );

@@ -254,6 +254,8 @@ export interface ChatSummary {
   workspaceScope?: WorkspaceScopePayload | null;
 }
 
+export type ExecutionSummary = ChatSummary;
+
 export type WorkspaceAccessMode = "restricted" | "full";
 export type WebuiDefaultAccessMode = "default" | "full";
 
@@ -316,6 +318,8 @@ export interface BootstrapResponse {
   model_name?: string | null;
   runtime_surface?: RuntimeSurface;
   runtime_capabilities?: RuntimeCapabilities;
+  shell?: ShellDescriptorPayload;
+  kernel?: KernelManifestPayload;
 }
 
 export interface WebUITransportLimits {
@@ -352,6 +356,24 @@ export type KernelEventType =
   | "tool_call"
   | "tool_result"
   | "error";
+export type KernelEventAction =
+  | "delta"
+  | "complete"
+  | "message"
+  | "trace"
+  | "file_edit"
+  | "transcription_error"
+  | "error";
+export type KernelEventState = "running" | "done" | "failed" | "unknown" | string;
+export type ExecutionLifecycleState =
+  | "idle"
+  | "foreground"
+  | "awaiting_input"
+  | "awaiting_approval"
+  | "background"
+  | "resuming"
+  | "completed"
+  | "failed";
 export type RestartBehavior = "none" | "nextTurn" | "engineRestart" | "appRestart";
 export type SettingsApplyStatus =
   | "idle"
@@ -367,6 +389,267 @@ export interface RuntimeCapabilities {
   can_export_diagnostics: boolean;
 }
 
+export interface KernelProfilePayload {
+  name: string;
+  description: string;
+  channels: string[];
+  tools: string[];
+  features: string[];
+  runtime_targets: string[];
+  implementation_languages: string[];
+  gui_enabled: boolean;
+  api_enabled: boolean;
+  automations_enabled: boolean;
+  memory_enabled: boolean;
+}
+
+export interface KernelManifestPayload {
+  identity: {
+    app_name: string;
+    cli_name: string;
+    legacy_cli_name: string;
+  };
+  contracts: {
+    manifest_version: number;
+    event_version: number;
+    snapshot_version: number;
+  };
+  profile: KernelProfilePayload;
+  profile_registry: Array<KernelProfilePayload & { registry_name: string }>;
+  shell: ShellDescriptorPayload;
+  shell_registry: Array<ShellDescriptorPayload & { registry_name: string }>;
+  execution: {
+    supports_streaming: boolean;
+    supports_snapshots: boolean;
+    supports_background: boolean;
+    supports_resumption: boolean;
+    event_types: KernelEventType[];
+    event_actions: KernelEventAction[];
+    event_states: KernelEventState[];
+    snapshot_statuses: string[];
+    lifecycle_states: ExecutionLifecycleState[];
+  };
+  capabilities: RuntimeCapabilities & {
+    gui: boolean;
+    api: boolean;
+    automations: boolean;
+    memory: boolean;
+    threads: boolean;
+    file_activity: boolean;
+    approvals: boolean;
+    runtime_controls: boolean;
+  };
+  targets: {
+    runtime: string[];
+    languages: string[];
+    adapter: {
+      api_version: number;
+      preferred_languages: string[];
+      transport_modes: string[];
+      control_plane: string[];
+      deployment_targets: string[];
+      default_adapter: string;
+      supports_hot_swap: boolean;
+    };
+  };
+  runtime_adapters: Array<{
+    name: string;
+    display_name: string;
+    implementation_language: string;
+    transport: string;
+    target_class: string;
+    maturity: string;
+    capabilities: string[];
+    operator_actions: string[];
+    notes: string;
+    enabled_by_default: boolean;
+    runtime_root?: string | null;
+    bootstrap_artifact?: string | null;
+    runtime_manifest?: string | null;
+    abi?: string | null;
+    status_symbol?: string | null;
+    runtime_stage?: string;
+    build_hint?: string | null;
+  }>;
+  runtime_bridges: Array<{
+    adapter: string;
+    backend_kind: string;
+    status: string;
+    health: string;
+    entrypoint: string;
+    manifest?: string | null;
+    abi?: string | null;
+    status_symbol?: string | null;
+    runtime_mode?: string | null;
+    runtime_stage?: string;
+    build_hint?: string | null;
+    board_capable: boolean;
+    last_error: string | null;
+  }>;
+  runtime_modules: Array<{
+    name: string;
+    display_name: string;
+    category: string;
+    status: string;
+    operator_actions: string[];
+    summary: string;
+  }>;
+  runtime_control: {
+    active_adapter: string | null;
+    adapter_failover_order: string[];
+    module_focus: string | null;
+    execution_gate: {
+      state: string;
+      reason: string | null;
+    };
+    maintenance_mode: {
+      enabled: boolean;
+      reason: string | null;
+    };
+    board: {
+      attached: boolean;
+      transport: string | null;
+      port: string | null;
+      target: string | null;
+      preferred_transport: string | null;
+      runtime_mode?: string | null;
+      bridge_artifact?: string | null;
+      last_error?: string | null;
+      available_ports?: string[];
+    };
+    fault_posture: {
+      supervisor: string;
+      restart_policy: string;
+      last_level: string;
+    };
+  };
+  operator_console: {
+    api_version: number;
+    panes: string[];
+    actions: string[];
+    action_registry: Array<{
+      id: string;
+      label: string;
+      kind: "host" | "console" | "planned" | string;
+      availability?: "available" | "planned" | "disabled" | string;
+      target_pane?: string | null;
+    }>;
+    telemetry: string[];
+    embedded_transports: string[];
+  };
+  diagnostics: {
+    supervisor: string;
+    snapshot: {
+      active_adapter: string | null;
+      module_count: number;
+      bridge_count: number;
+      fault_level: string;
+      execution_gate: string;
+      maintenance_mode: boolean;
+      phase?: string;
+      iteration?: number;
+      pending_tool_calls?: number;
+      subagent_workers?: number;
+      dispatch_queue_depth?: number;
+      dispatch_queue_state?: string;
+      dispatch_handoff_lane?: string | null;
+      board_attached?: boolean;
+      board_runtime_mode?: string | null;
+      board_bridge_artifact?: string | null;
+    };
+  };
+  execution_lanes: Array<{
+    id: string;
+    label: string;
+    mode: string;
+    state: string;
+    summary: string;
+  }>;
+  scheduler: {
+    policy: string;
+    preferred_lane?: string;
+    background_drain_requested?: boolean;
+    active_runtime?: {
+      adapter?: string | null;
+      health?: string | null;
+      runtime_mode?: string | null;
+      runtime_stage?: string | null;
+      artifact?: string | null;
+    };
+    queues: Array<{
+      id: string;
+      label: string;
+      lane: string;
+      depth: number;
+      state: string;
+      job_class: string;
+      pending_tool_calls?: number;
+      completed_tool_results?: number;
+      active_tasks?: string[];
+    }>;
+  };
+  workers: Array<{
+    id: string;
+    label: string;
+    lane: string;
+    kind: string;
+    state: string;
+    summary: string;
+    runtime_backend?: {
+      adapter?: string | null;
+      health?: string | null;
+      runtime_mode?: string | null;
+      runtime_stage?: string | null;
+      artifact?: string | null;
+    };
+    tasks?: Array<{
+      task_id: string;
+      label: string;
+      task_description: string;
+      phase: string;
+      iteration: number;
+      tool_events: Array<{
+        name?: string;
+        status?: string;
+        detail?: string;
+      }>;
+      usage: Record<string, number>;
+      stop_reason: string | null;
+      error: string | null;
+    }>;
+  }>;
+  embedded_topology: {
+    board: {
+      attached: boolean;
+      transport: string | null;
+      port: string | null;
+      target: string | null;
+      preferred_transport: string | null;
+      runtime_mode?: string | null;
+      bridge_artifact?: string | null;
+      last_error?: string | null;
+      available_ports?: string[];
+    };
+    transports: string[];
+    active_adapter: string | null;
+  };
+  runtime_topology: {
+    adapters: KernelManifestPayload["runtime_adapters"];
+    modules: KernelManifestPayload["runtime_modules"];
+    bridges: KernelManifestPayload["runtime_bridges"];
+    execution_lanes: KernelManifestPayload["execution_lanes"];
+    scheduler: KernelManifestPayload["scheduler"];
+    workers: KernelManifestPayload["workers"];
+  };
+  event_log: Array<{
+    id: string;
+    type?: string;
+    action: string;
+    state: string;
+    message: string;
+  }>;
+}
+
 /**
  * Stable kernel-facing event envelope for GUI consumers.
  *
@@ -377,7 +660,50 @@ export interface RuntimeCapabilities {
 export interface KernelEventPayload {
   type: KernelEventType;
   text?: string;
-  metadata?: Record<string, unknown>;
+  action?: KernelEventAction;
+  state?: KernelEventState;
+  metadata?: unknown;
+}
+
+export interface ShellDescriptorPayload {
+  name: string;
+  display_name: string;
+  description: string;
+  theme: string;
+  supports_threads: boolean;
+  supports_file_activity: boolean;
+  supports_approvals: boolean;
+  supports_runtime_controls: boolean;
+  host_contract?: {
+    mode?: "engineering" | "single-execution" | "review" | string;
+    showSidebarChrome?: boolean;
+    showSearchDialog?: boolean;
+    allowUtilitySurface?: boolean;
+    allowExecutionFork?: boolean;
+    allowWorkspaceControls?: boolean;
+    allowRuntimeModelControls?: boolean;
+    allowKernelConsole?: boolean;
+    allowComposer?: boolean;
+    readOnlyExecution?: boolean;
+    chrome?: {
+      showSidebarChrome?: boolean;
+      showSearchDialog?: boolean;
+    };
+    surfaces?: {
+      allowUtilitySurface?: boolean;
+      allowWorkspaceControls?: boolean;
+      allowRuntimeModelControls?: boolean;
+      allowKernelConsole?: boolean;
+    };
+    actions?: {
+      allowExecutionFork?: boolean;
+    };
+    composer?: {
+      allowComposer?: boolean;
+      readOnlyExecution?: boolean;
+    };
+  };
+  metadata?: Record<string, string>;
 }
 
 export interface ProviderModelInfo {
@@ -425,6 +751,7 @@ export interface SettingsPayload {
   surface?: RuntimeSurface;
   runtime_surface?: RuntimeSurface;
   runtime_capabilities?: RuntimeCapabilities;
+  kernel?: KernelManifestPayload;
   apply_state?: {
     status: SettingsApplyStatus;
     sections: string[];
@@ -575,6 +902,8 @@ export interface SettingsPayload {
     workspace_path: string;
     gateway_host: string;
     gateway_port: number;
+    profile_name: string;
+    shell_name: string;
     heartbeat: {
       enabled: boolean;
       interval_s: number;
@@ -978,6 +1307,8 @@ export interface SettingsUpdate {
   provider?: string;
   modelPreset?: string | null;
   contextWindowTokens?: number;
+  profileName?: string;
+  shellName?: string;
   timezone?: string;
   botName?: string;
   botIcon?: string;

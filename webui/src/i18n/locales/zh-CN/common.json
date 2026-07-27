@@ -1,12 +1,12 @@
 {
   "app": {
-    "brand": "nanobot",
+    "brand": "Mira",
     "loading": {
-      "connecting": "正在连接 nanobot…",
-      "boot": "正在加载 nanobot…"
+      "connecting": "正在连接 Mira…",
+      "boot": "正在加载 Mira…"
     },
     "error": {
-      "title": "无法连接到 nanobot",
+      "title": "无法连接到 Mira",
       "gatewayHint": "请确认 gateway 已启动（`nanobot gateway`），并且当前页面与 gateway 运行在同一台机器上。"
     },
     "auth": {
@@ -23,8 +23,8 @@
     },
     "system": {
       "section": "系统",
-      "restartHint": "重启 nanobot 以应用运行时更改。",
-      "restart": "重启 nanobot",
+      "restartHint": "重启 Mira 以应用运行时更改。",
+      "restart": "重启 Mira",
       "restarting": "正在重启...",
       "restartEngine": "重启引擎",
       "restartingEngine": "正在重启引擎..."
@@ -33,11 +33,11 @@
       "completed": "重启已完成，用时 {{seconds}} 秒。"
     },
     "documentTitle": {
-      "base": "nanobot",
-      "chat": "{{title}} · nanobot"
+      "base": "Mira",
+      "chat": "{{title}} · Mira"
     },
     "meta": {
-      "description": "nanobot Web UI —— 与你的 nanobot 工作区对话。"
+      "description": "Mira Web UI —— 与你的执行工作区对话。"
     }
   },
   "sidebar": {

@@ -16,6 +16,7 @@ interface ThreadMessagesProps {
   slashCommands?: SlashCommand[];
   forkBoundaryMessageCount?: number | null;
   onOpenFilePreview?: (path: string) => void;
+  showFileActivity?: boolean;
   onForkFromMessage?: (beforeUserIndex: number) => void;
   onQuoteSelection?: (text: string) => void;
 }
@@ -57,6 +58,7 @@ export function ThreadMessages({
   slashCommands = [],
   forkBoundaryMessageCount = null,
   onOpenFilePreview,
+  showFileActivity = true,
   onForkFromMessage,
   onQuoteSelection,
 }: ThreadMessagesProps) {
@@ -125,6 +127,7 @@ export function ThreadMessages({
             mcpPresets={mcpPresets}
             slashCommands={slashCommands}
             onOpenFilePreview={onOpenFilePreview}
+            showFileActivity={showFileActivity}
             onForkFromMessage={onForkFromMessage}
           />
         );
@@ -147,6 +150,7 @@ interface ThreadDisplayUnitProps {
   mcpPresets: McpPresetInfo[];
   slashCommands: SlashCommand[];
   onOpenFilePreview?: (path: string) => void;
+  showFileActivity: boolean;
   onForkFromMessage?: (beforeUserIndex: number) => void;
 }
 
@@ -164,6 +168,7 @@ const ThreadDisplayUnit = memo(function ThreadDisplayUnit({
   mcpPresets,
   slashCommands,
   onOpenFilePreview,
+  showFileActivity,
   onForkFromMessage,
 }: ThreadDisplayUnitProps) {
   // Introducing content-visibility after a unit has painted can move the
@@ -192,6 +197,7 @@ const ThreadDisplayUnit = memo(function ThreadDisplayUnit({
             cliApps={cliApps}
             mcpPresets={mcpPresets}
             onOpenFilePreview={onOpenFilePreview}
+            showFileActivity={showFileActivity}
           />
         ) : (
           <MessageBubble
@@ -227,6 +233,7 @@ function threadDisplayUnitPropsEqual(
     && previous.mcpPresets === next.mcpPresets
     && previous.slashCommands === next.slashCommands
     && previous.onOpenFilePreview === next.onOpenFilePreview
+    && previous.showFileActivity === next.showFileActivity
     && previous.onForkFromMessage === next.onForkFromMessage
   );
 }

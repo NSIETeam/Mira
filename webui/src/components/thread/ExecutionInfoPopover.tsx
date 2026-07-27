@@ -14,7 +14,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useSessionAutomationJobs } from "@/hooks/useSessionAutomationJobs";
+import { useExecutionAutomationJobs } from "@/hooks/useExecutionAutomationJobs";
 import { currentLocale } from "@/i18n";
 import { fmtDateTime } from "@/lib/format";
 import type { SessionAutomationJob } from "@/lib/types";
@@ -30,16 +30,27 @@ const RELATIVE_THRESHOLDS: [number, Intl.RelativeTimeFormatUnit][] = [
   [Number.POSITIVE_INFINITY, "year"],
 ];
 
-interface SessionInfoPopoverProps {
-  sessionKey: string;
+interface ExecutionInfoPopoverProps {
+  sessionKey?: string;
+  executionKey?: string;
   token: string;
   title: string;
 }
 
-export function SessionInfoPopover({ sessionKey, token, title }: SessionInfoPopoverProps) {
+export function ExecutionInfoPopover({
+  sessionKey,
+  executionKey,
+  token,
+  title,
+}: ExecutionInfoPopoverProps) {
   const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
-  const { jobs, loading, loadFailed, now } = useSessionAutomationJobs(open, token, sessionKey);
+  const resolvedExecutionKey = executionKey ?? sessionKey ?? "";
+  const { jobs, loading, loadFailed, now } = useExecutionAutomationJobs(
+    open,
+    token,
+    resolvedExecutionKey,
+  );
   const automationContent = loading ? (
     <div className="flex items-center gap-2 rounded-[16px] bg-muted/45 px-3 py-3 text-[12.5px] text-muted-foreground">
       <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
@@ -112,6 +123,9 @@ export function SessionInfoPopover({ sessionKey, token, title }: SessionInfoPopo
     </DropdownMenu>
   );
 }
+
+export const SessionInfoPopover = ExecutionInfoPopover;
+export const WorkbenchInfoPopover = ExecutionInfoPopover;
 
 function AutomationRow({ job, now }: { job: SessionAutomationJob; now: number }) {
   const { t } = useTranslation("common");

@@ -1,8 +1,8 @@
-# Contributing to nanobot
+# Contributing to Mira
 
 Thank you for being here.
 
-nanobot is built with a simple belief: good tools should feel calm, clear, and humane.
+Mira is built with a simple belief: good tools should feel calm, clear, and humane.
 We care deeply about useful features, but we also believe in achieving more with less:
 solutions should be powerful without becoming heavy, and ambitious without becoming
 needlessly complicated.
@@ -78,6 +78,11 @@ ruff check nanobot/
 ruff format <files-you-changed>
 ```
 
+CLI compatibility note:
+
+- `mira` is the Mira-branded launcher alias
+- `nanobot` remains supported as the compatibility command
+
 ## Contribution License
 
 By submitting a contribution, you confirm that you have the right to submit it
@@ -85,7 +90,7 @@ and agree that it will be licensed under the project's MIT License.
 
 ## Code Style
 
-We care about more than passing lint. We want nanobot to stay small, calm, and readable.
+We care about more than passing lint. We want Mira to stay small, calm, and readable.
 
 When contributing, please aim for code that feels:
 
@@ -132,4 +137,4 @@ Please feel free to open an [issue](https://github.com/HKUDS/nanobot/issues), jo
 - [Feishu/WeChat](./COMMUNICATION.md)
 - Email: Xubin Ren (@Re-bin) — <xubinrencs@gmail.com>
 
-Thank you for spending your time and care on nanobot. We would love for more people to participate in this community, and we genuinely welcome contributions of all sizes.
+Thank you for spending your time and care on Mira. We would love for more people to participate in this community, and we genuinely welcome contributions of all sizes.

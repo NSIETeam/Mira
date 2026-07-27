@@ -1,0 +1,11 @@
+{
+  "runtime": "c-serial-bridge",
+  "status": "ready",
+  "abi": "c",
+  "mode": "serial",
+  "status_symbol": "mira_bridge_status_json",
+  "attach_symbol": "mira_bridge_attach_board",
+  "board_io": true,
+  "kernel_surface": "mira",
+  "notes": "C bridge manifest for MCU and serial-facing Mira runtime control."
+}

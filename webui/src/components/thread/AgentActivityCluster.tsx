@@ -128,6 +128,7 @@ interface AgentActivityClusterProps {
   cliApps?: CliAppInfo[];
   mcpPresets?: McpPresetInfo[];
   onOpenFilePreview?: (path: string) => void;
+  showFileActivity?: boolean;
 }
 
 /**
@@ -143,14 +144,19 @@ export function AgentActivityCluster({
   cliApps = [],
   mcpPresets = [],
   onOpenFilePreview,
+  showFileActivity = true,
 }: AgentActivityClusterProps) {
   const { t } = useTranslation();
   const fileEditDisplayMode = useFileEditDisplayMode();
   const pageVisible = usePageVisibility();
   const activityMessages = useMemo(() => coalesceActivityMessages(messages), [messages]);
-  const fileEdits = useMemo(
+  const rawFileEdits = useMemo(
     () => summarizeFileEdits(collectFileEdits(activityMessages), isTurnStreaming),
     [activityMessages, isTurnStreaming],
+  );
+  const fileEdits = useMemo(
+    () => (showFileActivity ? rawFileEdits : []),
+    [rawFileEdits, showFileActivity],
   );
   const cliRuns = useMemo(() => collectCliRuns(activityMessages), [activityMessages]);
   const mcpRuns = useMemo(() => collectMcpRuns(activityMessages), [activityMessages]);

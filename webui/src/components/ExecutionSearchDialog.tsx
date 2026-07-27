@@ -9,44 +9,54 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { deriveTitle, visibleSessionPreview } from "@/lib/format";
+import { displayExecutionTitle } from "@/lib/chat-groups";
 import { cn } from "@/lib/utils";
-import type { ChatSummary } from "@/lib/types";
+import type { ExecutionSummary } from "@/lib/types";
 
-interface SessionSearchDialogProps {
+interface ExecutionSearchDialogProps {
   open: boolean;
-  sessions: ChatSummary[];
-  activeKey: string | null;
+  sessions: ExecutionSummary[];
+  executions?: ExecutionSummary[];
+  activeKey?: string | null;
+  activeExecutionKey?: string | null;
   loading: boolean;
   titleOverrides?: Record<string, string>;
   onOpenChange: (open: boolean) => void;
   onSelect: (key: string) => void;
+  onSelectExecution?: (key: string) => void;
 }
 
-export function SessionSearchDialog({
+export function ExecutionSearchDialog({
   open,
   sessions,
-  activeKey,
+  executions,
+  activeKey = null,
+  activeExecutionKey = null,
   loading,
   titleOverrides = {},
   onOpenChange,
   onSelect,
-}: SessionSearchDialogProps) {
+  onSelectExecution,
+}: ExecutionSearchDialogProps) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [query, setQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const executionItems = executions ?? sessions;
+  const resolvedActiveKey = activeExecutionKey ?? activeKey;
+  const handleSelectExecution = onSelectExecution ?? onSelect;
 
   const normalizedQuery = query.trim().toLowerCase();
-  const sessionResults = useMemo(() => {
+  const executionResults = useMemo(() => {
     if (!open) return [];
-    if (!normalizedQuery) return sessions;
+    if (!normalizedQuery) return executionItems;
     const terms = normalizedQuery.split(/\s+/).filter(Boolean);
-    return sessions.filter((session) =>
+    return executionItems.filter((session) =>
       sessionMatchesTerms(session, terms, titleOverrides[session.key]),
     );
-  }, [normalizedQuery, open, sessions, titleOverrides]);
-  const itemCount = sessionResults.length;
+  }, [executionItems, normalizedQuery, open, titleOverrides]);
+  const itemCount = executionResults.length;
 
   useEffect(() => {
     if (!open) return;
@@ -79,7 +89,7 @@ export function SessionSearchDialog({
 
   const handleSelect = (key: string) => {
     onOpenChange(false);
-    onSelect(key);
+    handleSelectExecution(key);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -98,7 +108,7 @@ export function SessionSearchDialog({
       return;
     }
     if (event.key === "Enter") {
-      const highlighted = sessionResults[highlightedIndex];
+      const highlighted = executionResults[highlightedIndex];
       if (!highlighted) return;
       event.preventDefault();
       handleSelect(highlighted.key);
@@ -153,26 +163,24 @@ export function SessionSearchDialog({
               {sectionLabel}
             </div>
 
-            {loading && sessions.length === 0 ? (
+            {loading && executionItems.length === 0 ? (
               <div className="px-3 py-7 text-[13px] text-muted-foreground">
                 {t("chat.loading")}
               </div>
-            ) : sessionResults.length === 0 ? (
+            ) : executionResults.length === 0 ? (
               <div className="px-3 py-7 text-[13px] text-muted-foreground">
                 {emptyLabel}
               </div>
             ) : (
               <ul className="space-y-0.5">
-                {sessionResults.map((session, index) => {
-                  const title = titleOverrides[session.key]?.trim() ||
-                    session.title?.trim() ||
-                    deriveTitle(session.preview, t("chat.newChat"));
+                {executionResults.map((session, index) => {
+                  const title = displayExecutionTitle(session, titleOverrides, t("chat.newChat"));
                   const preview = visibleSessionPreview(session.preview);
                   const showPreview =
                     preview.length > 0 &&
                     preview.toLowerCase() !== title.trim().toLowerCase();
                   const highlighted = index === highlightedIndex;
-                  const active = session.key === activeKey;
+                  const active = session.key === resolvedActiveKey;
                   return (
                     <li key={session.key}>
                       <button
@@ -220,8 +228,11 @@ export function SessionSearchDialog({
   );
 }
 
+export const SessionSearchDialog = ExecutionSearchDialog;
+export const WorkbenchSearchDialog = ExecutionSearchDialog;
+
 function sessionMatchesTerms(
-  session: ChatSummary,
+  session: ExecutionSummary,
   terms: string[],
   titleOverride?: string,
 ) {

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import type { ChatSummary } from "@/lib/types";
+import type { ExecutionSummary } from "@/lib/types";
 
 const TITLE_REFRESH_RETRY_DELAYS_MS = [1_000, 3_000, 7_000] as const;
 
-function hasGeneratedTitle(session: ChatSummary | null): boolean {
-  return !!session?.title?.trim();
+function hasGeneratedTitle(execution: ExecutionSummary | null): boolean {
+  return !!execution?.title?.trim();
 }
 
 /**
@@ -14,13 +14,13 @@ function hasGeneratedTitle(session: ChatSummary | null): boolean {
  * async title appears even if the websocket metadata notification is delayed.
  */
 export function useDeferredTitleRefresh(
-  activeSession: ChatSummary | null,
+  activeExecution: ExecutionSummary | null,
   refresh: () => Promise<void>,
   retryDelaysMs: readonly number[] = TITLE_REFRESH_RETRY_DELAYS_MS,
 ): () => void {
-  const activeSessionRef = useRef(activeSession);
+  const activeExecutionRef = useRef(activeExecution);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  activeSessionRef.current = activeSession;
+  activeExecutionRef.current = activeExecution;
 
   const clearTimers = useCallback(() => {
     for (const timer of timersRef.current) {
@@ -33,29 +33,29 @@ export function useDeferredTitleRefresh(
 
   useEffect(() => {
     clearTimers();
-  }, [activeSession?.key, clearTimers]);
+  }, [activeExecution?.key, clearTimers]);
 
   useEffect(() => {
-    if (hasGeneratedTitle(activeSession)) {
+    if (hasGeneratedTitle(activeExecution)) {
       clearTimers();
     }
-  }, [activeSession, clearTimers]);
+  }, [activeExecution, clearTimers]);
 
   return useCallback(() => {
     void refresh();
 
-    const sessionAtTurnEnd = activeSessionRef.current;
-    if (!sessionAtTurnEnd || hasGeneratedTitle(sessionAtTurnEnd)) {
+    const executionAtTurnEnd = activeExecutionRef.current;
+    if (!executionAtTurnEnd || hasGeneratedTitle(executionAtTurnEnd)) {
       return;
     }
 
     clearTimers();
     for (const delayMs of retryDelaysMs) {
       const timer = setTimeout(() => {
-        const latest = activeSessionRef.current;
+        const latest = activeExecutionRef.current;
         if (
           !latest ||
-          latest.key !== sessionAtTurnEnd.key ||
+          latest.key !== executionAtTurnEnd.key ||
           hasGeneratedTitle(latest)
         ) {
           return;

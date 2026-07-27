@@ -4,15 +4,16 @@ import { useClient } from "@/providers/ClientProvider";
 import i18n from "@/i18n";
 import {
   ApiError,
-  deleteSession as apiDeleteSession,
-  fetchSessionAutomations,
+  deleteExecution as apiDeleteExecution,
+  fetchExecutionAutomations,
+  fetchExecutionHistory,
   fetchWebuiThread,
-  listSessions,
+  listExecutions,
 } from "@/lib/api";
 import { hasPendingAgentActivity } from "@/lib/activity-timeline";
 import { deriveTitle } from "@/lib/format";
 import type {
-  ChatSummary,
+  ExecutionSummary,
   SessionAutomationJob,
   SessionDeleteResult,
   UIMessage,
@@ -42,22 +43,30 @@ function hasPendingToolCallsFromThread(
   return hasPendingAgentActivity(messages);
 }
 
-/** Sidebar state: fetches the full session list and exposes create / delete actions. */
-export function useSessions(): {
-  sessions: ChatSummary[];
+/** Sidebar state: fetches the full execution list and exposes create / delete actions. */
+export function useExecutions(): {
+  sessions: ExecutionSummary[];
+  executions: ExecutionSummary[];
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
   createChat: (workspaceScope?: WorkspaceScopePayload | null) => Promise<string>;
+  createExecution: (workspaceScope?: WorkspaceScopePayload | null) => Promise<string>;
   forkChat: (sourceChatId: string, beforeUserIndex: number, title?: string) => Promise<string>;
+  forkExecution: (sourceChatId: string, beforeUserIndex: number, title?: string) => Promise<string>;
   deleteChat: (
     key: string,
     options?: { deleteAutomations?: boolean },
   ) => Promise<SessionDeleteResult>;
+  deleteExecution: (
+    key: string,
+    options?: { deleteAutomations?: boolean },
+  ) => Promise<SessionDeleteResult>;
   getSessionAutomations: (key: string) => Promise<SessionAutomationJob[]>;
+  getExecutionAutomations: (key: string) => Promise<SessionAutomationJob[]>;
 } {
   const { client, token } = useClient();
-  const [sessions, setSessions] = useState<ChatSummary[]>([]);
+  const [sessions, setSessions] = useState<ExecutionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const tokenRef = useRef(token);
@@ -67,7 +76,7 @@ export function useSessions(): {
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
-      const rows = await listSessions(tokenRef.current);
+      const rows = await listExecutions(tokenRef.current);
       const serverKeys = new Set(rows.map((row) => row.key));
       setSessions((prev) => [
         ...rows,
@@ -100,9 +109,9 @@ export function useSessions(): {
     });
   }, [client, refresh]);
 
-  const createChat = useCallback(async (workspaceScope?: WorkspaceScopePayload | null): Promise<string> => {
-    const chatId = await client.newChat(CHAT_CREATE_TIMEOUT_MS, workspaceScope);
-    const key = `websocket:${chatId}`;
+  const createExecution = useCallback(async (workspaceScope?: WorkspaceScopePayload | null): Promise<string> => {
+    const executionId = await client.newExecution(CHAT_CREATE_TIMEOUT_MS, workspaceScope);
+    const key = `websocket:${executionId}`;
     optimisticKeysRef.current.add(key);
     // Optimistic insert; a subsequent refresh will replace it with the
     // authoritative row once the server persists the session.
@@ -110,7 +119,7 @@ export function useSessions(): {
       {
         key,
         channel: "websocket",
-        chatId,
+        chatId: executionId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         title: "",
@@ -119,27 +128,27 @@ export function useSessions(): {
       },
       ...prev.filter((s) => s.key !== key),
     ]);
-    return chatId;
+    return executionId;
   }, [client]);
 
-  const forkChat = useCallback(async (
+  const forkExecution = useCallback(async (
     sourceChatId: string,
     beforeUserIndex: number,
     title?: string,
   ): Promise<string> => {
-    const chatId = await client.forkChat(
+    const executionId = await client.forkExecution(
       sourceChatId,
       beforeUserIndex,
       title,
       CHAT_CREATE_TIMEOUT_MS,
     );
-    const key = `websocket:${chatId}`;
+    const key = `websocket:${executionId}`;
     optimisticKeysRef.current.add(key);
     setSessions((prev) => [
       {
         key,
         channel: "websocket",
-        chatId,
+        chatId: executionId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         title: title ?? "",
@@ -148,12 +157,12 @@ export function useSessions(): {
       },
       ...prev.filter((s) => s.key !== key),
     ]);
-    return chatId;
+    return executionId;
   }, [client]);
 
-  const deleteChat = useCallback(
+  const deleteExecution = useCallback(
     async (key: string, options?: { deleteAutomations?: boolean }) => {
-      const result = await apiDeleteSession(tokenRef.current, key, options);
+      const result = await apiDeleteExecution(tokenRef.current, key, options);
       if (!result.deleted) return result;
       optimisticKeysRef.current.delete(key);
       setSessions((prev) => prev.filter((s) => s.key !== key));
@@ -163,24 +172,33 @@ export function useSessions(): {
   );
 
   const getSessionAutomations = useCallback(async (key: string) => {
-    const result = await fetchSessionAutomations(tokenRef.current, key);
+    const result = await fetchExecutionAutomations(tokenRef.current, key);
     return result.jobs;
   }, []);
 
   return {
     sessions,
+    executions: sessions,
     loading,
     error,
     refresh,
-    createChat,
-    forkChat,
-    deleteChat,
+    createChat: createExecution,
+    createExecution,
+    forkChat: forkExecution,
+    forkExecution,
+    deleteChat: deleteExecution,
+    deleteExecution,
     getSessionAutomations,
+    getExecutionAutomations: getSessionAutomations,
   };
 }
 
-/** Lazy-load a session's on-disk messages the first time the UI displays it. */
-export function useSessionHistory(key: string | null): {
+export function useSessions(): ReturnType<typeof useExecutions> {
+  return useExecutions();
+}
+
+/** Lazy-load an execution's on-disk messages the first time the UI displays it. */
+export function useExecutionHistory(key: string | null): {
   messages: UIMessage[];
   loading: boolean;
   loadingOlder: boolean;
@@ -263,7 +281,7 @@ export function useSessionHistory(key: string | null): {
         });
     (async () => {
       try {
-        const body = await fetchWebuiThread(token, key, {
+        const body = await fetchExecutionHistory(token, key, {
           limit: INITIAL_HISTORY_PAGE_LIMIT,
           direction: "latest",
         });
@@ -347,7 +365,7 @@ export function useSessionHistory(key: string | null): {
     loadingOlderRef.current = true;
     setState((prev) => prev.key === key ? { ...prev, loadingOlder: true, error: null } : prev);
     try {
-      const body = await fetchWebuiThread(token, key, {
+      const body = await fetchExecutionHistory(token, key, {
         limit: OLDER_HISTORY_PAGE_LIMIT,
         before,
       });
@@ -450,13 +468,24 @@ export function useSessionHistory(key: string | null): {
   };
 }
 
+export function useSessionHistory(key: string | null): ReturnType<typeof useExecutionHistory> {
+  return useExecutionHistory(key);
+}
+
 /** Produce a compact display title for a session. */
 export function sessionTitle(
-  session: ChatSummary,
+  session: ExecutionSummary,
   firstUserMessage?: string,
 ): string {
   return deriveTitle(
     session.title || firstUserMessage || session.preview,
     i18n.t("chat.newChat"),
   );
+}
+
+export function executionTitle(
+  execution: ExecutionSummary,
+  firstUserMessage?: string,
+): string {
+  return sessionTitle(execution, firstUserMessage);
 }

@@ -53,6 +53,7 @@ interface ThreadViewportProps {
   userMessageOffset?: number;
   onLoadOlder?: () => Promise<void> | void;
   onOpenFilePreview?: (path: string) => void;
+  showFileActivity?: boolean;
   onForkFromMessage?: (beforeUserIndex: number) => void;
   onQuoteSelection?: (text: string) => void;
 }
@@ -170,6 +171,7 @@ export const ThreadViewport = forwardRef<ThreadViewportHandle, ThreadViewportPro
   userMessageOffset = 0,
   onLoadOlder,
   onOpenFilePreview,
+  showFileActivity = true,
   onForkFromMessage,
   onQuoteSelection,
 }, ref) {
@@ -650,6 +652,7 @@ export const ThreadViewport = forwardRef<ThreadViewportHandle, ThreadViewportPro
                   slashCommands={slashCommands}
                   forkBoundaryMessageCount={visibleForkBoundaryMessageCount}
                   onOpenFilePreview={onOpenFilePreview}
+                  showFileActivity={showFileActivity}
                   onForkFromMessage={onForkFromMessage}
                   onQuoteSelection={onQuoteSelection}
                 />

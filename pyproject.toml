@@ -1,15 +1,16 @@
 [project]
 name = "nanobot-ai"
 version = "0.3.0"
-description = "A lightweight personal AI assistant framework"
+description = "Mira: a lightweight execution kernel and personal AI agent framework"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
     {name = "Xubin Ren"},
-    {name = "the nanobot contributors"}
+    {name = "the Mira contributors"}
 ]
 keywords = ["ai", "agent", "chatbot"]
+urls = { Homepage = "https://github.com/NSIETeam/Mira", Documentation = "https://nanobot.wiki/docs/latest/getting-started/nanobot-overview" }
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -103,6 +104,12 @@ dev = [
 
 [project.scripts]
 nanobot = "nanobot.cli.commands:app"
+mira = "mira.cli.commands:app"
+
+# Distribution compatibility note:
+# - published package name stays `nanobot-ai` for now
+# - primary user-facing runtime entrypoint is `mira`
+# - legacy `nanobot` launcher remains for compatibility
 
 # Third-party tool plugins register here.  Built-in tools are discovered
 # automatically via pkgutil scanning in ToolLoader.discover().
@@ -136,15 +143,17 @@ artifacts = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["nanobot"]
+packages = ["nanobot", "mira"]
 exclude = ["nanobot/channels/*/tests/**"]
 
 [tool.hatch.build.targets.wheel.sources]
 "nanobot" = "nanobot"
+"mira" = "mira"
 
 [tool.hatch.build.targets.sdist]
 include = [
     "nanobot/",
+    "mira/",
     "nanobot/web/dist/",
     "hatch_build.py",
     "README.md",

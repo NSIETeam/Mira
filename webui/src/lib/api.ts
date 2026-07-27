@@ -5,10 +5,11 @@ import type {
   ChannelConfigurePayload,
   ChannelConnectPayload,
   ChannelValidationPayload,
-  ChatSummary,
+  ExecutionSummary,
   CliAppsPayload,
   FilePreviewPayload,
   ImageGenerationSettingsUpdate,
+  KernelManifestPayload,
   McpPresetsPayload,
   NanobotFeaturesPayload,
   ModelConfigurationCreate,
@@ -130,7 +131,7 @@ function splitKey(key: string): { channel: string; chatId: string } {
 export async function listSessions(
   token: string,
   base: string = "",
-): Promise<ChatSummary[]> {
+): Promise<ExecutionSummary[]> {
   type Row = {
     key: string;
     created_at: string | null;
@@ -158,6 +159,169 @@ export async function listSessions(
     runStartedAt: s.run_started_at ?? null,
     workspaceScope: s.workspace_scope ?? null,
   }));
+}
+
+export async function listExecutions(
+  token: string,
+  base: string = "",
+): Promise<ExecutionSummary[]> {
+  return listSessions(token, base);
+}
+
+export interface KernelStatePayload {
+  kernel: KernelManifestPayload;
+}
+
+export interface KernelTopologyPayload {
+  runtime_topology: KernelManifestPayload["runtime_topology"];
+}
+
+export interface KernelEmbeddedPayload {
+  embedded_topology: KernelManifestPayload["embedded_topology"];
+}
+
+export interface KernelSchedulerPayload {
+  scheduler: KernelManifestPayload["scheduler"];
+}
+
+export interface KernelWorkersPayload {
+  workers: KernelManifestPayload["workers"];
+}
+
+export interface KernelDiagnosticsPayload {
+  diagnostics: KernelManifestPayload["diagnostics"];
+}
+
+export interface KernelLanesPayload {
+  execution_lanes: KernelManifestPayload["execution_lanes"];
+}
+
+export async function fetchKernelState(
+  token: string,
+  base: string = "",
+): Promise<KernelStatePayload> {
+  return request<KernelStatePayload>(`${base}/api/kernel`, token, undefined, API_READ_TIMEOUT_MS);
+}
+
+export async function fetchKernelTopology(
+  token: string,
+  base: string = "",
+): Promise<KernelTopologyPayload> {
+  return request<KernelTopologyPayload>(
+    `${base}/api/kernel/topology`,
+    token,
+    undefined,
+    API_READ_TIMEOUT_MS,
+  );
+}
+
+export async function fetchKernelEmbedded(
+  token: string,
+  base: string = "",
+): Promise<KernelEmbeddedPayload> {
+  return request<KernelEmbeddedPayload>(
+    `${base}/api/kernel/embedded`,
+    token,
+    undefined,
+    API_READ_TIMEOUT_MS,
+  );
+}
+
+export async function fetchKernelScheduler(
+  token: string,
+  base: string = "",
+): Promise<KernelSchedulerPayload> {
+  return request<KernelSchedulerPayload>(
+    `${base}/api/kernel/scheduler`,
+    token,
+    undefined,
+    API_READ_TIMEOUT_MS,
+  );
+}
+
+export async function fetchKernelWorkers(
+  token: string,
+  base: string = "",
+): Promise<KernelWorkersPayload> {
+  return request<KernelWorkersPayload>(
+    `${base}/api/kernel/workers`,
+    token,
+    undefined,
+    API_READ_TIMEOUT_MS,
+  );
+}
+
+export async function fetchKernelDiagnostics(
+  token: string,
+  base: string = "",
+): Promise<KernelDiagnosticsPayload> {
+  return request<KernelDiagnosticsPayload>(
+    `${base}/api/kernel/diagnostics`,
+    token,
+    undefined,
+    API_READ_TIMEOUT_MS,
+  );
+}
+
+export async function fetchKernelLanes(
+  token: string,
+  base: string = "",
+): Promise<KernelLanesPayload> {
+  return request<KernelLanesPayload>(
+    `${base}/api/kernel/lanes`,
+    token,
+    undefined,
+    API_READ_TIMEOUT_MS,
+  );
+}
+
+export async function controlKernel(
+  token: string,
+  action: string,
+  values: Record<string, string | null | undefined> = {},
+  base: string = "",
+): Promise<{
+  ok: boolean;
+  runtime_control: KernelManifestPayload["runtime_control"];
+  kernel: KernelManifestPayload;
+}> {
+  const query = new URLSearchParams();
+  query.set("action", action);
+  Object.entries(values).forEach(([key, value]) => {
+    if (typeof value === "string" && value.trim()) {
+      query.set(key, value);
+    }
+  });
+  return request(
+    `${base}/api/kernel/control?${query.toString()}`,
+    token,
+    undefined,
+    API_READ_TIMEOUT_MS,
+  );
+}
+
+export async function executeKernelOperatorCommand(
+  token: string,
+  command: string,
+  base: string = "",
+): Promise<{
+  ok: boolean;
+  command: string;
+  output: string;
+  target_pane?: string | null;
+  details?: Record<string, string | number | boolean | null>;
+  runtime_control: KernelManifestPayload["runtime_control"];
+  kernel: KernelManifestPayload;
+}> {
+  const query = new URLSearchParams();
+  query.set("action", "operator_command");
+  query.set("command", command);
+  return request(
+    `${base}/api/kernel/control?${query.toString()}`,
+    token,
+    undefined,
+    API_READ_TIMEOUT_MS,
+  );
 }
 
 /** Disk-backed WebUI display thread snapshot (separate from agent session). */
@@ -189,6 +353,15 @@ export async function fetchWebuiThread(
   if (res.status === 404) return null;
   if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
   return (await res.json()) as WebuiThreadPersistedPayload;
+}
+
+export async function fetchExecutionHistory(
+  token: string,
+  key: string,
+  optionsOrBase?: FetchWebuiThreadOptions | string,
+  base: string = "",
+): Promise<WebuiThreadPersistedPayload | null> {
+  return fetchWebuiThread(token, key, optionsOrBase, base);
 }
 
 export async function fetchFilePreview(
@@ -236,6 +409,14 @@ export async function fetchSessionAutomations(
     undefined,
     API_READ_TIMEOUT_MS,
   );
+}
+
+export async function fetchExecutionAutomations(
+  token: string,
+  key: string,
+  base: string = "",
+): Promise<SessionAutomationsPayload> {
+  return fetchSessionAutomations(token, key, base);
 }
 
 export async function fetchAutomations(
@@ -324,6 +505,15 @@ export async function deleteSession(
     `${resolvedBase}/api/sessions/${encodeURIComponent(key)}/delete${suffix}`,
     token,
   );
+}
+
+export async function deleteExecution(
+  token: string,
+  key: string,
+  optionsOrBase?: { deleteAutomations?: boolean } | string,
+  base: string = "",
+): Promise<SessionDeleteResult> {
+  return deleteSession(token, key, optionsOrBase, base);
 }
 
 export async function fetchSettings(
@@ -760,6 +950,8 @@ export async function updateSettings(
   if (update.contextWindowTokens !== undefined) {
     query.set("context_window_tokens", String(update.contextWindowTokens));
   }
+  if (update.profileName !== undefined) query.set("profile_name", update.profileName);
+  if (update.shellName !== undefined) query.set("shell_name", update.shellName);
   if (update.timezone !== undefined) query.set("timezone", update.timezone);
   if (update.botName !== undefined) query.set("bot_name", update.botName);
   if (update.botIcon !== undefined) query.set("bot_icon", update.botIcon);

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ChatList } from "@/components/ChatList";
+import { ChatList } from "@/components/ExecutionList";
 import type { ChatSummary } from "@/lib/types";
 
 function session(overrides: Partial<ChatSummary>): ChatSummary {

@@ -1,0 +1,12 @@
+[package]
+name = "mira-kernel-runtime"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Rust execution worker for the Mira kernel surface"
+
+[lib]
+name = "mira_kernel_runtime"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]

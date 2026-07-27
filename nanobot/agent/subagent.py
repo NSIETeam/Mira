@@ -565,3 +565,30 @@ class SubagentManager:
             1 for tid in tids
             if tid in self._running_tasks and not self._running_tasks[tid].done()
         )
+
+    def status_snapshot(self, session_key: str | None = None) -> list[dict[str, Any]]:
+        """Project running subagents into an operator-facing snapshot."""
+        task_ids = (
+            sorted(self._session_tasks.get(session_key, set()))
+            if session_key is not None
+            else sorted(self._task_statuses.keys())
+        )
+        rows: list[dict[str, Any]] = []
+        for task_id in task_ids:
+            status = self._task_statuses.get(task_id)
+            if status is None:
+                continue
+            rows.append(
+                {
+                    "task_id": status.task_id,
+                    "label": status.label,
+                    "task_description": status.task_description,
+                    "phase": status.phase,
+                    "iteration": status.iteration,
+                    "tool_events": [dict(event) for event in list(status.tool_events)[-4:]],
+                    "usage": dict(status.usage),
+                    "stop_reason": status.stop_reason,
+                    "error": status.error,
+                }
+            )
+        return rows

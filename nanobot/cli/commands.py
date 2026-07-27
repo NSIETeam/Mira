@@ -1,4 +1,4 @@
-"""CLI commands for nanobot."""
+"""CLI commands for Mira."""
 
 import asyncio
 import os
@@ -24,7 +24,7 @@ if sys.platform == "win32":
 import typer  # noqa: E402
 from loguru import logger  # noqa: E402
 
-# Remove default handler and re-add with unified nanobot format
+# Remove default handler and re-add with unified kernel log format
 logger.remove()
 _log_handler_id = logger.add(
     sys.stderr,
@@ -60,7 +60,13 @@ from rich.markup import escape  # noqa: E402
 from rich.table import Table  # noqa: E402
 from rich.text import Text  # noqa: E402
 
-from nanobot import __logo__, __version__  # noqa: E402
+from nanobot import (  # noqa: E402
+    __app_name__,
+    __cli_name__,
+    __legacy_cli_name__,
+    __logo__,
+    __version__,
+)
 from nanobot import optional_features as feature_support  # noqa: E402
 from nanobot.agent.hooks import create_file_edit_activity_hook  # noqa: E402
 from nanobot.agent.loop import AgentLoop  # noqa: E402
@@ -218,9 +224,9 @@ class SafeFileHistory(FileHistory):
 
 
 app = typer.Typer(
-    name="nanobot",
+    name=__cli_name__,
     context_settings={"help_option_names": ["-h", "--help"]},
-    help=f"{__logo__} nanobot - Personal AI Assistant",
+    help=f"{__logo__} {__app_name__} - Engineering execution kernel",
     no_args_is_help=True,
 )
 
@@ -428,7 +434,7 @@ def _print_agent_response(
     body = _response_renderable(content, render_markdown, metadata)
     if show_header:
         console.print()
-        console.print(f"[cyan]{__logo__} nanobot[/cyan]")
+        console.print(f"[cyan]{__logo__} {__app_name__}[/cyan]")
     console.print(body)
     console.print()
 
@@ -464,7 +470,7 @@ async def _print_interactive_response(
         ansi = _render_interactive_ansi(
             lambda c: (
                 c.print(),
-                c.print(f"[cyan]{__logo__} nanobot[/cyan]"),
+                c.print(f"[cyan]{__logo__} {__app_name__}[/cyan]"),
                 c.print(_response_renderable(content, render_markdown, metadata)),
                 c.print(),
             )
@@ -619,7 +625,7 @@ async def _read_interactive_input_async() -> str:
 
 def version_callback(value: bool):
     if value:
-        console.print(f"{__logo__} nanobot v{__version__}")
+        console.print(f"{__logo__} {__app_name__} v{__version__}")
         raise typer.Exit()
 
 
@@ -629,7 +635,7 @@ def main(
         None, "--version", "-v", callback=version_callback, is_eager=True
     ),
 ):
-    """nanobot - Personal AI Assistant."""
+    """Mira - Engineering execution kernel."""
     pass
 
 
@@ -645,7 +651,7 @@ def onboard(
     wizard: bool = typer.Option(False, "--wizard", help="Use interactive wizard"),
     non_interactive_refresh: bool = typer.Option(False, "--refresh", help="Refresh config, preserving existing settings without prompting"),
 ):
-    """Initialize nanobot configuration and workspace."""
+    """Initialize Mira configuration and workspace."""
     from nanobot.config.loader import get_config_path, load_config, save_config, set_config_path
     from nanobot.config.schema import Config
 
@@ -711,7 +717,7 @@ def onboard(
             console.print(f"[green]✓[/green] Config saved at {config_path}")
         except Exception as e:
             console.print(f"[red]✗[/red] Error during configuration: {e}")
-            console.print("[yellow]Please run 'nanobot onboard' again to complete setup.[/yellow]")
+            console.print("[yellow]Please run 'mira onboard' again to complete setup.[/yellow]")
             raise typer.Exit(1)
     _onboard_plugins(config_path)
 
@@ -723,11 +729,13 @@ def onboard(
 
     sync_workspace_templates(workspace_path)
 
-    webui_cmd = "nanobot webui"
+    webui_cmd = f"{__cli_name__} webui"
     if explicit_config:
         webui_cmd += f' -c "{config_path}"'
 
-    typer.echo(f"\n✓ nanobot is ready. Run: {webui_cmd}")
+    typer.echo(
+        f"\n✓ {__app_name__} is ready. Run: {webui_cmd}  (or: {__cli_name__} webui)"
+    )
 
 
 def _onboard_plugins(config_path: Path) -> None:
@@ -886,7 +894,7 @@ def _confirm_webui_action(message: str, *, yes: bool) -> None:
     if not _cli_can_prompt():
         console.print(
             "[red]Error: WebUI setup needs confirmation. Re-run with --yes or use "
-            "`nanobot onboard --wizard`.[/red]"
+            "`mira onboard --wizard`.[/red]"
         )
         raise typer.Exit(1)
     if not typer.confirm(message, default=True):
@@ -1182,16 +1190,16 @@ def _print_foreground_port_conflict(
     gateway_port: int,
 ) -> None:
     console.print(
-        "[red]Error: nanobot cannot start because one of its local ports is already in use.[/red]"
+        f"[red]Error: {__app_name__} cannot start because one of its local ports is already in use.[/red]"
     )
     console.print(f"  WebUI: [cyan]{webui_url}[/cyan]")
     console.print(
         f"  Gateway health: [cyan]http://{_host_for_local_browser(gateway_host)}:{gateway_port}/health[/cyan]"
     )
     console.print()
-    console.print("If this is an existing nanobot instance, use it or stop it first:")
-    console.print("  [cyan]nanobot gateway status[/cyan]")
-    console.print("  [cyan]nanobot gateway stop[/cyan]")
+    console.print("If this is an existing Mira instance, use it or stop it first:")
+    console.print("  [cyan]mira gateway status[/cyan]")
+    console.print("  [cyan]mira gateway stop[/cyan]")
     console.print("Or choose different ports with [cyan]--port[/cyan] and [cyan]--gateway-port[/cyan].")
 
 
@@ -1204,7 +1212,9 @@ def _open_webui_browser(url: str, *, wait: bool = True) -> None:
     display_url = _webui_display_url(url)
     try:
         webbrowser.open(url)
-        console.print(f"[green]✓[/green] Opened WebUI: [cyan]{display_url}[/cyan]")
+        console.print(
+            f"[green]✓[/green] Opened {__app_name__} WebUI: [cyan]{display_url}[/cyan]"
+        )
     except Exception as exc:
         console.print(f"[yellow]Could not open browser ({exc}); visit {display_url}[/yellow]")
 
@@ -1213,11 +1223,11 @@ def _print_webui_foreground_lifecycle(*, attached: bool) -> None:
     """Explain how the browser and gateway lifecycles differ."""
     console.print()
     if attached:
-        console.print("[green]nanobot is attached to the existing gateway.[/green]")
+        console.print(f"[green]{__app_name__} is attached to the existing gateway.[/green]")
     else:
-        console.print("[green]nanobot is running in this terminal.[/green]")
+        console.print(f"[green]{__app_name__} is running in this terminal.[/green]")
     console.print("[dim]Closing the browser does not stop channels or automations.[/dim]")
-    console.print("[dim]Press Ctrl+C here to stop nanobot.[/dim]")
+    console.print(f"[dim]Press Ctrl+C here to stop {__legacy_cli_name__}.[/dim]")
 
 
 def _attach_to_background_gateway(runtime: Any) -> None:
@@ -1227,7 +1237,7 @@ def _attach_to_background_gateway(runtime: Any) -> None:
         while runtime.status().running:
             time.sleep(0.5)
     except KeyboardInterrupt:
-        console.print("\n[yellow]Stopping nanobot...[/yellow]")
+        console.print(f"\n[yellow]Stopping {__app_name__}...[/yellow]")
         result = runtime.stop()
         if result.ok or result.message == "gateway_not_running":
             console.print("[green]Gateway stopped.[/green]")
@@ -1247,7 +1257,7 @@ def _gateway_instance_command(
     """Return a copyable gateway command for the same config/workspace instance."""
     import shlex
 
-    parts = ["nanobot", "gateway", subcommand, "--config", str(config_path)]
+    parts = [__cli_name__, "gateway", subcommand, "--config", str(config_path)]
     if workspace:
         workspace_path = str(Path(workspace).expanduser().resolve(strict=False))
         parts.extend(["--workspace", workspace_path])
@@ -1259,8 +1269,9 @@ def _run_quick_start_for_webui(config: Config, *, yes: bool) -> Config:
     if yes:
         console.print(
             "[red]Error: provider/model setup is incomplete, and --yes cannot answer "
-            "provider credentials. Run `nanobot webui` interactively or "
-            "`nanobot onboard --wizard`.[/red]"
+            f"provider credentials. Run `{__cli_name__} webui` "
+            f"(or `{__legacy_cli_name__} webui`) interactively or "
+            f"`{__legacy_cli_name__} onboard --wizard`.[/red]"
         )
         raise typer.Exit(1)
 
@@ -1275,7 +1286,7 @@ def _run_quick_start_for_webui(config: Config, *, yes: bool) -> Config:
         result = run_quick_start_onboard(config)
     except RuntimeError as exc:
         console.print(f"[red]Error: {exc}[/red]")
-        console.print("[yellow]Run `nanobot onboard --wizard` after installing wizard dependencies.[/yellow]")
+        console.print("[yellow]Run `mira onboard --wizard` after installing wizard dependencies.[/yellow]")
         raise typer.Exit(1) from exc
     if not result.should_save:
         console.print("[yellow]Quick Start cancelled. No changes were saved.[/yellow]")
@@ -1335,7 +1346,7 @@ def serve(
     port: int | None = typer.Option(None, "--port", "-p", help="API server port"),
     host: str | None = typer.Option(None, "--host", "-H", help="Bind address"),
     timeout: float | None = typer.Option(None, "--timeout", "-t", help="Per-request timeout (seconds)"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show nanobot runtime logs"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show Mira runtime logs"),
     workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
     config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
 ):
@@ -1343,7 +1354,7 @@ def serve(
     try:
         from aiohttp import web  # noqa: F401
     except ImportError:
-        console.print("[red]aiohttp is required. Install with: nanobot plugins enable api[/red]")
+        console.print("[red]aiohttp is required. Install with: mira plugins enable api[/red]")
         raise typer.Exit(1)
 
     from nanobot.api.server import create_app
@@ -1446,7 +1457,7 @@ def webui(
     created_config = not config_path.exists()
     if created_config:
         console.print(f"[yellow]No config found at {config_path}.[/yellow]")
-        _confirm_webui_action("Create a nanobot config and workspace now?", yes=yes)
+        _confirm_webui_action("Create a Mira config and workspace now?", yes=yes)
 
     setup_config = _load_webui_setup_config(config_path)
     if workspace:
@@ -1466,7 +1477,7 @@ def webui(
         if background:
             console.print(
                 "[red]First-time WebUI setup must run in the foreground. "
-                "Run `nanobot webui` without --background.[/red]"
+                "Run `mira webui` (or `nanobot webui`) without --background.[/red]"
             )
             raise typer.Exit(1)
     elif provider_error:
@@ -1567,7 +1578,7 @@ def webui(
         )
         console.print("[dim]Closing the browser does not stop channels or automations.[/dim]")
         console.print(
-            "Stop nanobot: "
+            f"Stop {__app_name__}: "
             f"[cyan]{_gateway_instance_command('stop', config_path=config_path, workspace=workspace)}[/cyan]"
         )
         if not no_open:
@@ -1680,7 +1691,7 @@ def _run_gateway(
         )
         raise typer.Exit(1)
 
-    console.print(f"{__logo__} Starting nanobot gateway version {__version__} on port {port}...")
+    console.print(f"{__logo__} Starting {__app_name__} gateway version {__version__} on port {port}...")
     _prepare_webui_bundle_for_gateway(
         config,
         mode=webui_bundle_mode,
@@ -2264,7 +2275,7 @@ def agent(
     workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
     config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
     markdown: bool = typer.Option(True, "--markdown/--no-markdown", help="Render assistant output as Markdown"),
-    logs: bool = typer.Option(False, "--logs/--no-logs", help="Show nanobot runtime logs during chat"),
+    logs: bool = typer.Option(False, "--logs/--no-logs", help="Show Mira runtime logs during chat"),
 ):
     """Interact with the agent directly."""
     from nanobot.bus.queue import MessageBus
@@ -2600,7 +2611,7 @@ def channels_login(
 # Plugin Commands
 # ============================================================================
 
-plugins_app = typer.Typer(help="Manage optional nanobot features")
+plugins_app = typer.Typer(help="Manage optional Mira features")
 app.add_typer(plugins_app, name="plugins")
 
 
@@ -2608,7 +2619,7 @@ app.add_typer(plugins_app, name="plugins")
 def plugins_list(
     config_path: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
 ):
-    """List optional nanobot features."""
+    """List optional Mira features."""
     from nanobot.channels.registry import discover_plugins
     from nanobot.config.loader import load_config, set_config_path
 
@@ -2629,7 +2640,7 @@ def plugins_enable(
     config_path: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
     logs: bool = typer.Option(False, "--logs/--no-logs", help="Show optional package install logs"),
 ):
-    """Enable a nanobot feature."""
+    """Enable a Mira feature."""
     from nanobot.config.loader import get_config_path, set_config_path
 
     resolved_config_path = Path(config_path).expanduser().resolve() if config_path else None
@@ -2657,7 +2668,7 @@ def plugins_disable(
     name: str = typer.Argument(..., help="Channel name (e.g. telegram, matrix, slack)"),
     config_path: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
 ):
-    """Disable a nanobot channel feature."""
+    """Disable a Mira channel feature."""
     from nanobot.config.loader import get_config_path, set_config_path
 
     resolved_config_path = Path(config_path).expanduser().resolve() if config_path else None
@@ -2685,11 +2696,11 @@ def status(
     config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
     workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
 ):
-    """Show nanobot status."""
+    """Show Mira status."""
     config_path, loaded = _load_inspection_config(config=config, workspace=workspace)
     workspace_path = loaded.workspace_path
 
-    console.print(f"{__logo__} nanobot Status\n")
+    console.print(f"{__logo__} {__app_name__} Status\n")
 
     console.print(f"Config: {config_path} {'[green]✓[/green]' if config_path.exists() else '[red]✗[/red]'}")
     console.print(
@@ -2957,7 +2968,7 @@ def _login_xai_grok() -> None:
 
 @_register_logout("xai_grok")
 def _logout_xai_grok() -> None:
-    """Clear local xAI OAuth credentials for this nanobot instance."""
+    """Clear local xAI OAuth credentials for this Mira instance."""
     from nanobot.providers.xai_oauth import get_xai_oauth_storage_path, logout_xai_oauth
 
     token_path = get_xai_oauth_storage_path()

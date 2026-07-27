@@ -137,9 +137,9 @@ function baseSettingsPayload() {
   };
 }
 
-vi.mock("@/hooks/useSessions", async (importOriginal) => {
+vi.mock("@/hooks/useExecutions", async (importOriginal) => {
   const React = await import("react");
-  const actual = await importOriginal<typeof import("@/hooks/useSessions")>();
+  const actual = await importOriginal<typeof import("@/hooks/useExecutions")>();
   return {
     ...actual,
     useSessions: () => {

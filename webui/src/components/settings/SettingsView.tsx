@@ -167,6 +167,7 @@ import type {
   CliAppInfo,
   CliAppsPayload,
   ImageGenerationSettingsUpdate,
+  KernelManifestPayload,
   McpPresetInfo,
   McpPresetsPayload,
   NanobotFeatureInfo,
@@ -409,6 +410,9 @@ interface SettingsViewProps {
   theme: "light" | "dark";
   initialSection?: SettingsSectionKey;
   initialSettings?: SettingsPayload | null;
+  kernelManifest?: KernelManifestPayload | null;
+  onSelectProfile?: (registryName: string) => void;
+  onSelectShell?: (registryName: string) => void;
   showSidebar?: boolean;
   onToggleTheme: () => void;
   onBackToChat: () => void;
@@ -471,7 +475,7 @@ const DEFAULT_AGENT_SETTINGS_DRAFT: AgentSettingsDraft = {
   temperature: 0.1,
   reasoningEffort: "",
   timezone: "UTC",
-  botName: "nanobot",
+  botName: "Mira",
   botIcon: "",
   toolHintMaxLength: 40,
 };
@@ -618,6 +622,9 @@ export function SettingsView({
   theme,
   initialSection = "overview",
   initialSettings = null,
+  kernelManifest = null,
+  onSelectProfile,
+  onSelectShell,
   showSidebar = true,
   onToggleTheme,
   onBackToChat,
@@ -1999,6 +2006,9 @@ export function SettingsView({
         return (
           <OverviewSettings
             settings={settings}
+            kernelManifest={kernelManifest}
+            onSelectProfile={onSelectProfile}
+            onSelectShell={onSelectShell}
             requiresRestart={hasPendingRestart}
             showBrandLogos={localPrefs.brandLogos}
             onSelectSection={selectSection}
@@ -2559,11 +2569,17 @@ function SettingsSidebar({
 
 function OverviewSettings({
   settings,
+  kernelManifest,
+  onSelectProfile,
+  onSelectShell,
   requiresRestart,
   onSelectSection,
   showBrandLogos,
 }: {
   settings: SettingsPayload;
+  kernelManifest: KernelManifestPayload | null;
+  onSelectProfile?: (registryName: string) => void;
+  onSelectShell?: (registryName: string) => void;
   requiresRestart: boolean;
   onSelectSection: (section: SettingsSectionKey) => void;
   showBrandLogos: boolean;
@@ -2642,6 +2658,55 @@ function OverviewSettings({
     : requiresRestart
       ? tx("settings.values.restartPending", "Restart pending")
       : tx("settings.values.ready", "Ready");
+  const activeProfile = kernelManifest?.profile ?? null;
+  const profileRegistry = kernelManifest?.profile_registry ?? [];
+  const kernelIdentity = kernelManifest?.identity ?? null;
+  const activeProfileRegistryName = profileRegistry.find(
+    (item) => item.name === activeProfile?.name,
+  )?.registry_name ?? null;
+  const profileCaption = activeProfile
+    ? [
+        activeProfile.gui_enabled
+          ? tx("settings.values.guiEnabled", "GUI enabled")
+          : tx("settings.values.guiDisabled", "GUI disabled"),
+        activeProfile.automations_enabled
+          ? tx("settings.values.automationsEnabled", "Automations enabled")
+          : tx("settings.values.automationsDisabled", "Automations disabled"),
+      ].join(" · ")
+    : tx("settings.values.unavailable", "Unavailable");
+  const profileRegistryCountLabel = tx("settings.values.profileCount", "{{count}} profiles");
+  const activeShell = kernelManifest?.shell ?? null;
+  const shellRegistry = kernelManifest?.shell_registry ?? [];
+  const activeShellRegistryName = shellRegistry.find(
+    (item) => item.name === activeShell?.name,
+  )?.registry_name ?? null;
+  const runtimeBridges = kernelManifest?.runtime_bridges ?? [];
+  const activeBridge =
+    runtimeBridges.find((bridge) => bridge.status === "active")
+    ?? runtimeBridges[0]
+    ?? null;
+  const shellCaption = activeShell
+    ? [
+        activeShell.theme,
+        activeShell.host_contract?.surfaces?.allowKernelConsole
+          || activeShell.host_contract?.allowKernelConsole
+          ? tx("settings.values.kernelConsole", "Kernel console")
+          : tx("settings.values.minimalHost", "Minimal host"),
+        activeShell.supports_threads
+          ? tx("settings.values.threaded", "Threaded")
+          : tx("settings.values.singleExecution", "Single execution"),
+      ].join(" · ")
+    : tx("settings.values.unavailable", "Unavailable");
+  const shellRegistryCountLabel = tx("settings.values.shellCount", "{{count}} shells");
+  const runtimeBridgeCaption = activeBridge
+    ? [
+        activeBridge.backend_kind,
+        activeBridge.health,
+        activeBridge.board_capable
+          ? tx("settings.values.boardCapable", "Board capable")
+          : tx("settings.values.hosted", "Hosted"),
+      ].join(" · ")
+    : tx("settings.values.unavailable", "Unavailable");
   return (
     <div className="space-y-7">
       <section className="rounded-[22px] bg-settings-surface px-4 py-4 sm:px-5">
@@ -2700,10 +2765,104 @@ function OverviewSettings({
         <SettingsSectionTitle>{tx("settings.sections.system", "System")}</SettingsSectionTitle>
         <SettingsGroup>
           <OverviewListRow
+            icon={Hexagon}
+            title={tx("settings.overview.identity", "Kernel identity")}
+            value={kernelIdentity?.app_name ?? tx("settings.values.unavailable", "Unavailable")}
+            caption={
+              kernelIdentity
+                ? `${kernelIdentity.app_name} active · legacy launcher compatibility`
+                : tx("settings.values.unavailable", "Unavailable")
+            }
+            onClick={() => onSelectSection("runtime")}
+          />
+          <OverviewListRow
+            icon={Hexagon}
+            title={tx("settings.overview.profile", "Kernel profile")}
+            value={activeProfile?.name ?? tx("settings.values.unavailable", "Unavailable")}
+            caption={
+              profileRegistry.length > 0
+                ? `${profileCaption} · ${profileRegistryCountLabel.replace("{{count}}", String(profileRegistry.length))}`
+                : profileCaption
+            }
+            onClick={() => onSelectSection("runtime")}
+          />
+          {profileRegistry.length > 1 ? (
+            <div className="px-3 pb-2 pt-1">
+              <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground/70">
+                {tx("settings.overview.availableProfiles", "Available profiles")}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {profileRegistry.map((item) => {
+                  const active = item.registry_name === activeProfileRegistryName;
+                  return (
+                    <button
+                      key={item.registry_name}
+                      type="button"
+                      onClick={() => onSelectProfile?.(item.registry_name)}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                        active
+                          ? "border-foreground/20 bg-foreground text-background"
+                          : "border-border bg-background text-foreground hover:bg-muted",
+                      )}
+                    >
+                      {item.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          <OverviewListRow
+            icon={Layers}
+            title={tx("settings.overview.shell", "Shell")}
+            value={activeShell?.display_name ?? tx("settings.values.unavailable", "Unavailable")}
+            caption={
+              shellRegistry.length > 0
+                ? `${shellCaption} · ${shellRegistryCountLabel.replace("{{count}}", String(shellRegistry.length))}`
+                : shellCaption
+            }
+            onClick={() => onSelectSection("appearance")}
+          />
+          {shellRegistry.length > 1 ? (
+            <div className="px-3 pb-2 pt-1">
+              <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground/70">
+                {tx("settings.overview.availableShells", "Available shells")}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {shellRegistry.map((item) => {
+                  const active = item.registry_name === activeShellRegistryName;
+                  return (
+                    <button
+                      key={item.registry_name}
+                      type="button"
+                      onClick={() => onSelectShell?.(item.registry_name)}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                        active
+                          ? "border-foreground/20 bg-foreground text-background"
+                          : "border-border bg-background text-foreground hover:bg-muted",
+                      )}
+                    >
+                      {item.display_name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          <OverviewListRow
             icon={Server}
             title={runtimeTitle}
             value={runtimeValue}
             caption={runtimeCaption}
+            onClick={() => onSelectSection("runtime")}
+          />
+          <OverviewListRow
+            icon={Cpu}
+            title={tx("settings.overview.runtimeBridge", "Runtime bridge")}
+            value={activeBridge?.adapter ?? tx("settings.values.unavailable", "Unavailable")}
+            caption={runtimeBridgeCaption}
             onClick={() => onSelectSection("runtime")}
           />
           <OverviewListRow
@@ -2766,7 +2925,7 @@ function VersionCheckRow({ currentVersion }: { currentVersion?: string }) {
           {tx("settings.about.version", "Version")}
         </div>
         <div className="mt-0.5 text-[12px] leading-5 text-muted-foreground">
-          {currentVersion ? `v${currentVersion}` : "nanobot"}
+          {currentVersion ? `v${currentVersion}` : "Mira"}
         </div>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-2">
@@ -5450,7 +5609,7 @@ function AutomationsSettings({
             <div className="mx-auto mt-2 max-w-[28rem] text-[12px] leading-5">
               {tx(
                 "settings.automations.emptyHint",
-                "Create one from where it should run so nanobot keeps the right context.",
+                "Create one from where it should run so Mira keeps the right context.",
               )}
             </div>
           ) : null}
@@ -6172,7 +6331,7 @@ function NanobotFeatureInstallDialog({
           <DialogDescription className="mt-3 max-w-[20rem] text-center text-[14px] leading-6 text-muted-foreground">
             {tx(
               "settings.nanobotFeatures.installConfirmDescription",
-              "nanobot will add what {{name}} needs, then turn it on. Continue?",
+              "Mira will add what {{name}} needs, then turn it on. Continue?",
               { name },
             )}
           </DialogDescription>
@@ -6954,7 +7113,7 @@ function ChannelsSettings({
             <p className="max-w-[680px] text-[13px] leading-5 text-muted-foreground">
               {tx(
                 "settings.channels.description",
-                "Connect chat apps, email, and WebUI to nanobot.",
+                "Connect chat apps, email, and WebUI to Mira.",
               )}
             </p>
             <div className="flex flex-wrap gap-2 text-[12px] font-medium text-muted-foreground">
@@ -7015,7 +7174,7 @@ function ChannelsSettings({
       {requiresRestartPending ? (
         <div className="mt-3 shrink-0">
           <RestartRequiredNotice
-            message={tx("settings.channels.restartRequired", "Restart nanobot to apply updated channel support.")}
+            message={tx("settings.channels.restartRequired", "Restart Mira to apply updated channel support.")}
             onRestart={onRestart}
             isRestarting={isRestarting}
           />
@@ -7204,7 +7363,7 @@ function AppsCatalogSettings({
           <p className="max-w-[680px] text-[13px] leading-5 text-muted-foreground">
             {tx(
               "settings.apps.description",
-              "Add tools to nanobot, then @ them in chat.",
+              "Add tools to Mira, then @ them in chat.",
             )}
           </p>
           <span className="text-[12px] font-medium text-muted-foreground">{caption}</span>
@@ -7244,7 +7403,7 @@ function AppsCatalogSettings({
 
       {requiresRestartPending ? (
         <RestartRequiredNotice
-          message={tx("settings.apps.restartRequired", "Restart nanobot to apply updated apps and features.")}
+          message={tx("settings.apps.restartRequired", "Restart Mira to apply updated apps and features.")}
           onRestart={onRestart}
           isRestarting={isRestarting}
         />
@@ -8238,7 +8397,7 @@ function RuntimeSettings({
     timeout: settings.api?.timeout ?? 120,
     api_key_hint: settings.api?.api_key_hint,
     endpoint: `http://127.0.0.1:${settings.api?.port ?? 8900}/v1`,
-    command: "nanobot serve",
+    command: "mira serve",
   };
   const [apiHost, setApiHost] = useState(apiDefaults.host);
   const [apiPort, setApiPort] = useState(apiDefaults.port);
@@ -8290,7 +8449,7 @@ function RuntimeSettings({
       <section>
         <SettingsSectionTitle>{tx("settings.sections.identity", "Identity")}</SettingsSectionTitle>
           <SettingsGroup>
-          <SettingsRow title={tx("settings.rows.botName", "Bot name")} description={tx("settings.help.botName", "Shown wherever nanobot uses a display name.")}>
+          <SettingsRow title={tx("settings.rows.botName", "Bot name")} description={tx("settings.help.botName", "Shown wherever Mira uses a display name.")}>
             <Input
               value={form.botName}
               onChange={(event) => setForm((prev) => ({ ...prev, botName: event.target.value }))}
@@ -8316,7 +8475,7 @@ function RuntimeSettings({
             pendingRestart={requiresRestartPending}
             dirtyMessage={
               isNativeHost
-                ? tx("settings.status.hostRestartAfterSaving", "Save changes and nanobot will restart its engine.")
+                ? tx("settings.status.hostRestartAfterSaving", "Save changes and Mira will restart its engine.")
                 : tx("settings.status.restartAfterSaving", "Save changes, then restart when ready.")
             }
             pendingMessage={
@@ -8537,10 +8696,10 @@ function RuntimeSettings({
             title="Langfuse"
             description={
               settings.observability?.configured
-                ? tx("settings.observability.configured", "Tracing credentials are available to nanobot.")
+                ? tx("settings.observability.configured", "Tracing credentials are available to Mira.")
                 : tx(
                     "settings.observability.environment",
-                    "Set LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY, then restart nanobot.",
+                    "Set LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY, then restart Mira.",
                   )
             }
           >

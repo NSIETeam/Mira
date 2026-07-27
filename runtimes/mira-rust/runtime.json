@@ -1,0 +1,11 @@
+{
+  "runtime": "rust-ffi",
+  "status": "ready",
+  "abi": "c",
+  "mode": "ffi",
+  "crate": "mira-kernel-runtime",
+  "status_symbol": "mira_runtime_status_json",
+  "free_symbol": "mira_runtime_free_json",
+  "kernel_surface": "mira",
+  "notes": "Rust worker manifest for the Mira kernel runtime boundary."
+}

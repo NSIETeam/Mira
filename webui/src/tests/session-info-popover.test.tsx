@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SessionInfoPopover } from "@/components/thread/SessionInfoPopover";
+import { SessionInfoPopover } from "@/components/thread/ExecutionInfoPopover";
 import { setAppLanguage } from "@/i18n";
 
 function automationJob(

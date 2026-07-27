@@ -26,39 +26,45 @@ import {
 import { deriveTitle, relativeTime, visibleSessionPreview } from "@/lib/format";
 import {
   COLLAPSED_CHATS_VISIBLE_COUNT,
-  displayTitle,
-  groupSessions,
+  displayExecutionTitle,
+  groupExecutions,
   isCollapsedProject,
   isFoldableChatsGroup,
   isFoldedChatsGroup,
-  limitGroups,
-  visibleSessionsForGroup,
+  limitExecutionGroups,
+  visibleExecutionsForGroup,
   type ChatGroupLabels,
 } from "@/lib/chat-groups";
 import { cn } from "@/lib/utils";
-import type { ChatSummary, SidebarDensity, SidebarSortMode } from "@/lib/types";
+import type { ExecutionSummary, SidebarDensity, SidebarSortMode } from "@/lib/types";
 
 const INITIAL_VISIBLE_SESSIONS = 160;
 const VISIBLE_SESSIONS_INCREMENT = 160;
 const ACTION_MENU_CONTENT_CLASS = "w-[8.5rem] min-w-[8.5rem]";
 const ACTION_MENU_ITEM_CLASS = "grid w-[7.75rem] grid-cols-[1rem_minmax(0,1fr)] items-center gap-2";
 
-interface ChatListProps {
-  sessions: ChatSummary[];
-  activeKey: string | null;
+interface ExecutionListProps {
+  sessions: ExecutionSummary[];
+  executions?: ExecutionSummary[];
+  activeKey?: string | null;
+  activeExecutionKey?: string | null;
   onSelect: (key: string) => void;
   onRequestDelete: (key: string, label: string) => void;
+  onRequestDeleteExecution?: (key: string, label: string) => void;
   onTogglePin: (key: string) => void;
   onRequestRename: (key: string, label: string) => void;
   onToggleArchive: (key: string) => void;
   onToggleGroup?: (groupId: string) => void;
   onRequestRenameProject?: (projectKey: string, label: string) => void;
+  onNewExecutionInProject?: (projectPath: string, projectName: string) => void;
   onNewChatInProject?: (projectPath: string, projectName: string) => void;
   pinnedKeys?: string[];
   archivedKeys?: string[];
   titleOverrides?: Record<string, string>;
   projectNameOverrides?: Record<string, string>;
   collapsedGroups?: Record<string, boolean>;
+  runningExecutionIds?: string[];
+  updatedExecutionIds?: string[];
   runningChatIds?: string[];
   updatedChatIds?: string[];
   density?: SidebarDensity;
@@ -72,22 +78,28 @@ interface ChatListProps {
   emptyLabel?: string;
 }
 
-export const ChatList = memo(function ChatList({
+export const ExecutionList = memo(function ExecutionList({
   sessions,
-  activeKey,
+  executions,
+  activeKey = null,
+  activeExecutionKey = null,
   onSelect,
   onRequestDelete,
+  onRequestDeleteExecution,
   onTogglePin,
   onRequestRename,
   onToggleArchive,
   onToggleGroup,
   onRequestRenameProject,
+  onNewExecutionInProject,
   onNewChatInProject,
   pinnedKeys = [],
   archivedKeys = [],
   titleOverrides = {},
   projectNameOverrides = {},
   collapsedGroups = {},
+  runningExecutionIds = [],
+  updatedExecutionIds = [],
   runningChatIds = [],
   updatedChatIds = [],
   density = "comfortable",
@@ -99,8 +111,14 @@ export const ChatList = memo(function ChatList({
   actionMenuPortalContainer,
   loading,
   emptyLabel,
-}: ChatListProps) {
+}: ExecutionListProps) {
   const { t } = useTranslation();
+  const executionItems = executions ?? sessions;
+  const resolvedActiveKey = activeExecutionKey ?? activeKey;
+  const handleRequestDeleteExecution = onRequestDeleteExecution ?? onRequestDelete;
+  const handleNewExecutionInProject = onNewExecutionInProject ?? onNewChatInProject;
+  const activeExecutionIds = runningExecutionIds.length > 0 ? runningExecutionIds : runningChatIds;
+  const refreshedExecutionIds = updatedExecutionIds.length > 0 ? updatedExecutionIds : updatedChatIds;
   const [visibleLimit, setVisibleLimit] = useState(INITIAL_VISIBLE_SESSIONS);
   const labels = useMemo<ChatGroupLabels>(() => ({
     pinned: t("chat.groups.pinned"),
@@ -113,7 +131,7 @@ export const ChatList = memo(function ChatList({
     fallbackTitle: t("chat.newChat"),
   }), [t]);
   const groups = useMemo(
-    () => groupSessions(sessions, labels, {
+    () => groupExecutions(executionItems, labels, {
       pinnedKeys,
       archivedKeys,
       titleOverrides,
@@ -124,9 +142,9 @@ export const ChatList = memo(function ChatList({
     }),
     [
       archivedKeys,
+      executionItems,
       labels,
       pinnedKeys,
-      sessions,
       showArchived,
       sort,
       titleOverrides,
@@ -135,8 +153,8 @@ export const ChatList = memo(function ChatList({
     ],
   );
   const limitedGroups = useMemo(
-    () => limitGroups(groups, visibleLimit, activeKey, collapsedGroups),
-    [activeKey, collapsedGroups, groups, visibleLimit],
+    () => limitExecutionGroups(groups, visibleLimit, resolvedActiveKey, collapsedGroups),
+    [collapsedGroups, groups, resolvedActiveKey, visibleLimit],
   );
   const totalSessionCount = useMemo(
     () => groups.reduce(
@@ -156,7 +174,7 @@ export const ChatList = memo(function ChatList({
     setVisibleLimit(INITIAL_VISIBLE_SESSIONS);
   }, [showArchived, sort]);
 
-  if (loading && sessions.length === 0) {
+  if (loading && executionItems.length === 0) {
     return (
       <div className="px-3 py-6 text-[12px] text-muted-foreground">
         {t("chat.loading")}
@@ -164,7 +182,7 @@ export const ChatList = memo(function ChatList({
     );
   }
 
-  if (sessions.length === 0) {
+  if (executionItems.length === 0) {
     return (
       <div className="px-3 py-6 text-[12px] leading-5 text-muted-foreground/80">
         {emptyLabel ?? t("chat.noSessions")}
@@ -174,8 +192,8 @@ export const ChatList = memo(function ChatList({
 
   const pinned = new Set(pinnedKeys);
   const archived = new Set(archivedKeys);
-  const running = new Set(runningChatIds);
-  const updated = new Set(updatedChatIds);
+  const running = new Set(activeExecutionIds);
+  const updated = new Set(refreshedExecutionIds);
   const compact = density === "compact";
   const firstProjectGroupIndex = limitedGroups.findIndex((group) => group.kind === "project");
 
@@ -185,9 +203,9 @@ export const ChatList = memo(function ChatList({
         {limitedGroups.map((group, index) => {
           const foldableChatsGroup = isFoldableChatsGroup(group);
           const foldedChatsGroup = isFoldedChatsGroup(group, collapsedGroups);
-          const visibleSessions = visibleSessionsForGroup(
+          const visibleSessions = visibleExecutionsForGroup(
             group,
-            activeKey,
+            resolvedActiveKey,
             collapsedGroups,
           );
           const hiddenInGroup = Math.max(0, group.sessions.length - visibleSessions.length);
@@ -211,9 +229,9 @@ export const ChatList = memo(function ChatList({
                       ? () => onRequestRenameProject(group.projectKey ?? "", group.label)
                       : undefined
                   }
-                  onNewChat={
-                    group.projectPath && onNewChatInProject
-                      ? () => onNewChatInProject(group.projectPath ?? "", group.label)
+                  onNewExecution={
+                    group.projectPath && handleNewExecutionInProject
+                      ? () => handleNewExecutionInProject(group.projectPath ?? "", group.label)
                       : undefined
                   }
                   actionMenuPortalContainer={actionMenuPortalContainer}
@@ -225,12 +243,12 @@ export const ChatList = memo(function ChatList({
               {group.kind === "project" && collapsedGroups[group.id] ? null : (
                 <ul className="space-y-0.5">
                   {visibleSessions.map((s) => {
-                    const active = s.key === activeKey;
+                    const active = s.key === resolvedActiveKey;
                     const fallbackTitle = t("chat.fallbackTitle", {
                       id: s.chatId.slice(0, 6),
                     });
                     const generatedTitle = s.title?.trim() || "";
-                    const title = displayTitle(s, titleOverrides, t("chat.newChat"));
+                    const title = displayExecutionTitle(s, titleOverrides, t("chat.newChat"));
                     const tooltipTitle =
                       titleOverrides[s.key]?.trim() ||
                       generatedTitle ||
@@ -350,7 +368,7 @@ export const ChatList = memo(function ChatList({
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onSelect={() => {
-                                  window.setTimeout(() => onRequestDelete(s.key, title), 0);
+                                  window.setTimeout(() => handleRequestDeleteExecution(s.key, title), 0);
                                 }}
                                 className={cn(
                                   ACTION_MENU_ITEM_CLASS,
@@ -398,13 +416,15 @@ export const ChatList = memo(function ChatList({
   );
 });
 
+export const ChatList = ExecutionList;
+
 function ProjectGroupHeader({
   label,
   path,
   collapsed,
   onToggle,
   onRequestRename,
-  onNewChat,
+  onNewExecution,
   actionMenuPortalContainer,
   updatedAt,
 }: {
@@ -413,7 +433,7 @@ function ProjectGroupHeader({
   collapsed: boolean;
   onToggle: () => void;
   onRequestRename?: () => void;
-  onNewChat?: () => void;
+  onNewExecution?: () => void;
   actionMenuPortalContainer?: HTMLElement | null;
   updatedAt?: string | null;
 }) {
@@ -463,14 +483,14 @@ function ProjectGroupHeader({
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
-      {onNewChat ? (
+      {onNewExecution ? (
         <button
           type="button"
           aria-label={t("chat.newInProject", { project: label })}
           title={t("chat.newInProject", { project: label })}
           onClick={(event) => {
             event.stopPropagation();
-            onNewChat();
+            onNewExecution();
           }}
           className={cn(
             "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 opacity-40 transition-opacity",

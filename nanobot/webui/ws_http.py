@@ -88,9 +88,18 @@ from nanobot.webui.sidebar_state import (
     write_webui_sidebar_state,
 )
 from nanobot.webui.skills_api import webui_skill_detail_payload, webui_skills_payload
+from nanobot.webui.settings_api import runtime_capabilities as _rc
+from nanobot.webui.settings_routes import WebUISettingsRouter
 from nanobot.webui.thread_disk import delete_webui_thread
 from nanobot.webui.transcript import build_webui_thread_response
 from nanobot.webui.workspaces import WebUIWorkspaceController
+from nanobot.kernel import (
+    KernelApp,
+    active_kernel_app,
+    build_kernel_manifest,
+    default_engineering_shell,
+    get_profile,
+)
 
 _SLOW_WEBUI_HTTP_LOG_MS = 1_000
 _AUTOMATION_VALUES_HEADER = "X-Nanobot-Automation-Values"
@@ -118,6 +127,27 @@ def _default_model_name_from_config() -> str | None:
     except Exception as e:
         logger.debug("bootstrap model_name could not load from config: {}", e)
         return None
+
+
+def _bootstrap_shell_from_config():
+    try:
+        from nanobot.config.loader import load_config
+        from nanobot.kernel import get_shell
+
+        return get_shell(load_config().kernel.shell_name)
+    except Exception as e:
+        logger.debug("bootstrap shell resolver failed: {}", e)
+        return default_engineering_shell()
+
+
+def _bootstrap_profile_from_config():
+    try:
+        from nanobot.config.loader import load_config
+
+        return get_profile(load_config().kernel.profile_name)
+    except Exception as e:
+        logger.debug("bootstrap profile resolver failed: {}", e)
+        return get_profile(None)
 
 
 def _resolve_bootstrap_model_name(
@@ -189,10 +219,6 @@ class GatewayHTTPHandler:
         self.local_trigger_pending_ids = local_trigger_pending_ids
         self._log = log
         self._runtime_surface = runtime_surface
-
-        from nanobot.webui.settings_api import runtime_capabilities as _rc
-        from nanobot.webui.settings_routes import WebUISettingsRouter
-
         self._capabilities = _rc(runtime_surface, runtime_capabilities_overrides or {})
         self.settings_routes = WebUISettingsRouter(
             bus=bus,
@@ -206,6 +232,7 @@ class GatewayHTTPHandler:
             channel_feature_action=channel_feature_action,
             channel_runtime_status=channel_runtime_status,
         )
+        self._kernel_app: KernelApp | None = None
 
     def workspace_controls_available(self, connection: Any) -> bool:
         return self._runtime_surface == "native" or _is_localhost(connection)
@@ -344,6 +371,9 @@ class GatewayHTTPHandler:
 
         ws_url = self._bootstrap_ws_url(request)
         expected_path = _normalize_config_path(self.config.path)
+        shell = _bootstrap_shell_from_config()
+        profile = _bootstrap_profile_from_config()
+        kernel_payload = self._kernel_manifest_payload(profile=profile, shell=shell)
         payload = {
             "token": token,
             "ws_path": expected_path,
@@ -355,6 +385,8 @@ class GatewayHTTPHandler:
             "model_name": _resolve_bootstrap_model_name(self.runtime_model_name),
             "runtime_surface": self._runtime_surface,
             "runtime_capabilities": self._capabilities,
+            "shell": shell.to_dict(),
+            "kernel": kernel_payload,
         }
         if api_token is not None:
             payload["api_token"] = api_token
@@ -762,6 +794,22 @@ class GatewayHTTPHandler:
     ) -> Response | None:
         if got == "/api/sessions":
             return await self._handle_sessions_list(request)
+        if got == "/api/kernel":
+            return self._handle_kernel_state(request)
+        if got == "/api/kernel/topology":
+            return self._handle_kernel_topology(request)
+        if got == "/api/kernel/embedded":
+            return self._handle_kernel_embedded(request)
+        if got == "/api/kernel/scheduler":
+            return self._handle_kernel_scheduler(request)
+        if got == "/api/kernel/workers":
+            return self._handle_kernel_workers(request)
+        if got == "/api/kernel/diagnostics":
+            return self._handle_kernel_diagnostics(request)
+        if got == "/api/kernel/lanes":
+            return self._handle_kernel_lanes(request)
+        if got == "/api/kernel/control":
+            return self._handle_kernel_control(request)
         if got == "/api/commands":
             return self._handle_commands(request)
         if got == "/api/workspaces":
@@ -781,6 +829,164 @@ class GatewayHTTPHandler:
         if not self.check_api_token(request):
             return _http_error(401, "Unauthorized")
         return _http_json_response({"commands": builtin_command_palette()})
+
+    def _get_kernel_app(self) -> KernelApp | None:
+        if self._kernel_app is not None:
+            return self._kernel_app
+        shared_kernel = active_kernel_app()
+        if shared_kernel is not None:
+            self._kernel_app = shared_kernel
+            return self._kernel_app
+        try:
+            self._kernel_app = KernelApp.from_config()
+        except Exception as e:
+            self._log.debug("kernel app bootstrap unavailable: {}", e)
+            return None
+        return self._kernel_app
+
+    def _kernel_manifest_payload(self, *, profile: Any, shell: Any) -> dict[str, Any]:
+        kernel = self._get_kernel_app()
+        if kernel is not None:
+            payload = kernel.describe()
+            payload["capabilities"] = {
+                **dict(payload.get("capabilities", {})),
+                **self._capabilities,
+            }
+            return payload
+        return build_kernel_manifest(
+            profile=profile,
+            shell=shell,
+            runtime_capabilities=self._capabilities,
+        )
+
+    def _handle_kernel_state(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        kernel = self._get_kernel_app()
+        if kernel is None:
+            return _http_error(503, "kernel runtime unavailable")
+        return _http_json_response({"kernel": kernel.describe()})
+
+    def _handle_kernel_topology(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        kernel = self._get_kernel_app()
+        if kernel is None:
+            return _http_error(503, "kernel runtime unavailable")
+        return _http_json_response({"runtime_topology": kernel.runtime_topology_snapshot()})
+
+    def _handle_kernel_embedded(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        kernel = self._get_kernel_app()
+        if kernel is None:
+            return _http_error(503, "kernel runtime unavailable")
+        return _http_json_response({"embedded_topology": kernel.embedded_topology_snapshot()})
+
+    def _handle_kernel_scheduler(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        kernel = self._get_kernel_app()
+        if kernel is None:
+            return _http_error(503, "kernel runtime unavailable")
+        return _http_json_response({"scheduler": kernel.scheduler_snapshot()})
+
+    def _handle_kernel_workers(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        kernel = self._get_kernel_app()
+        if kernel is None:
+            return _http_error(503, "kernel runtime unavailable")
+        return _http_json_response({"workers": kernel.worker_snapshot()})
+
+    def _handle_kernel_diagnostics(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        kernel = self._get_kernel_app()
+        if kernel is None:
+            return _http_error(503, "kernel runtime unavailable")
+        return _http_json_response({"diagnostics": kernel.diagnostics_snapshot})
+
+    def _handle_kernel_lanes(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        kernel = self._get_kernel_app()
+        if kernel is None:
+            return _http_error(503, "kernel runtime unavailable")
+        return _http_json_response({"execution_lanes": kernel.execution_lanes()})
+
+    def _handle_kernel_control(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        kernel = self._get_kernel_app()
+        if kernel is None:
+            return _http_error(503, "kernel runtime unavailable")
+        query = _parse_query(request.path)
+        action = (_query_first(query, "action") or "").strip()
+        if not action:
+            return _http_error(400, "missing action")
+        try:
+            if action == "switch_adapter":
+                adapter = (_query_first(query, "adapter") or "").strip()
+                if not adapter:
+                    return _http_error(400, "missing adapter")
+                state = kernel.switch_runtime_adapter(adapter)
+            elif action == "focus_module":
+                module = (_query_first(query, "module") or "").strip()
+                if not module:
+                    return _http_error(400, "missing module")
+                state = kernel.focus_runtime_module(module)
+            elif action == "attach_board":
+                state = kernel.attach_board(
+                    transport=(_query_first(query, "transport") or "").strip() or None,
+                    port=(_query_first(query, "port") or "").strip() or None,
+                )
+            elif action == "detach_board":
+                state = kernel.detach_board()
+            elif action == "record_fault":
+                state = kernel.record_fault(
+                    (_query_first(query, "level") or "fault").strip() or "fault",
+                    (_query_first(query, "adapter") or "").strip() or None,
+                )
+            elif action == "clear_fault":
+                state = kernel.clear_fault(
+                    (_query_first(query, "adapter") or "").strip() or None
+                )
+            elif action == "restart_bridge":
+                state = kernel.restart_bridge(
+                    (_query_first(query, "adapter") or "").strip() or None
+                )
+            elif action == "pause_runtime":
+                state = kernel.pause_runtime(
+                    (_query_first(query, "reason") or "").strip() or None
+                )
+            elif action == "resume_runtime":
+                state = kernel.resume_runtime()
+            elif action == "degrade_runtime":
+                state = kernel.degrade_runtime(
+                    (_query_first(query, "reason") or "").strip() or None
+                )
+            elif action == "drain_background":
+                state = kernel.drain_background()
+            elif action == "prioritize_goal_lane":
+                state = kernel.prioritize_goal_lane()
+            elif action == "enter_maintenance":
+                state = kernel.enter_maintenance(
+                    (_query_first(query, "reason") or "").strip() or None
+                )
+            elif action == "exit_maintenance":
+                state = kernel.exit_maintenance()
+            elif action == "operator_command":
+                command = (_query_first(query, "command") or "").strip()
+                if not command:
+                    return _http_error(400, "missing command")
+                payload = kernel.execute_operator_command(command)
+                return _http_json_response({"ok": True, **payload, "kernel": kernel.describe()})
+            else:
+                return _http_error(404, "unknown kernel action")
+        except ValueError as e:
+            return _http_error(400, str(e))
+        return _http_json_response({"ok": True, "runtime_control": state, "kernel": kernel.describe()})
 
     def _handle_workspaces(self, connection: Any, request: WsRequest) -> Response:
         if not self.check_api_token(request):

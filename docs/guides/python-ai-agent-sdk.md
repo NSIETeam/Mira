@@ -33,7 +33,7 @@ nanobot agent -m "Hello!"
 ```python
 import asyncio
 
-from nanobot import Nanobot
+from mira.runtime import Nanobot
 
 
 async def main() -> None:

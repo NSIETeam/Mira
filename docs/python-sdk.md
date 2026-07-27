@@ -63,7 +63,7 @@ runtime.
 ```python
 import asyncio
 
-from nanobot import Nanobot
+from mira.runtime import Nanobot
 
 
 async def main() -> None:
@@ -245,7 +245,7 @@ process isolation, or need to call nanobot from a non-Python service.
 Set the workspace when your agent should work inside a specific project:
 
 ```python
-from nanobot import Nanobot
+from mira.runtime import Nanobot
 
 async with Nanobot.from_config(workspace="/my/project") as bot:
     result = await bot.run("Explain the project structure")
@@ -731,7 +731,7 @@ class Censor(AgentHook):
 import asyncio
 import time
 
-from nanobot import Nanobot
+from mira.runtime import Nanobot
 from nanobot.agent import AgentHook, AgentHookContext
 
 

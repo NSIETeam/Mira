@@ -5,14 +5,14 @@ import { useTranslation } from "react-i18next";
 import { FilePreviewAvailabilityProvider } from "@/components/FilePreviewAvailabilityContext";
 import { FilePreviewPanel } from "@/components/FilePreviewPanel";
 import { PromptNavigator } from "@/components/thread/PromptNavigator";
-import { SessionInfoPopover } from "@/components/thread/SessionInfoPopover";
+import { ExecutionInfoPopover } from "@/components/thread/ExecutionInfoPopover";
 import { ThreadComposer } from "@/components/thread/ThreadComposer";
 import type { ModelPresetOption } from "@/components/thread/ModelPresetBadge";
 import { ThreadHeader } from "@/components/thread/ThreadHeader";
 import { StreamErrorNotice } from "@/components/thread/StreamErrorNotice";
 import { ThreadViewport, type ThreadViewportHandle } from "@/components/thread/ThreadViewport";
 import { useNanobotStream, type SendAttachment, type SendOptions } from "@/hooks/useNanobotStream";
-import { useSessionHistory } from "@/hooks/useSessions";
+import { useExecutionHistory } from "@/hooks/useExecutions";
 import {
   ApiError,
   fetchFilePreviewAvailability,
@@ -33,7 +33,7 @@ import {
 } from "@/lib/mcp-preset-events";
 import { inferProviderFromModelName, providerDisplayLabel } from "@/lib/provider-brand";
 import type {
-  ChatSummary,
+  ExecutionSummary,
   SettingsPayload,
   SlashCommand,
   SkillSummary,
@@ -138,10 +138,14 @@ function maxFilePreviewWidth(containerWidth: number): number {
 }
 
 interface ThreadShellProps {
-  session: ChatSummary | null;
+  session?: ExecutionSummary | null;
+  execution?: ExecutionSummary | null;
   title: string;
-  onToggleSidebar: () => void;
+  onToggleSidebar?: () => void;
   onGoHome?: () => void;
+  onNewExecution?: () => void;
+  onCreateExecution?: (workspaceScope?: WorkspaceScopePayload | null) => Promise<string | null>;
+  onForkExecution?: (sourceChatId: string, beforeUserIndex: number) => Promise<string | null>;
   onNewChat?: () => void;
   onCreateChat?: (workspaceScope?: WorkspaceScopePayload | null) => Promise<string | null>;
   onForkChat?: (sourceChatId: string, beforeUserIndex: number) => Promise<string | null>;
@@ -160,6 +164,13 @@ interface ThreadShellProps {
   onWorkspaceScopeChange?: (scope: WorkspaceScopePayload) => void;
   settingsSnapshot?: SettingsPayload | null;
   onOpenModelSettings?: () => void;
+  supportsThreads?: boolean;
+  supportsRuntimeControls?: boolean;
+  supportsFileActivity?: boolean;
+  allowComposer?: boolean;
+  readOnlyExecution?: boolean;
+  shellTitle?: string;
+  shellDescription?: string | null;
   skills?: SkillSummary[];
 }
 
@@ -399,10 +410,15 @@ function useInstalledSettingItems<Payload, Item>({
 }
 
 export function ThreadShell({
-  session,
+  session = null,
+  execution = null,
   title,
   onToggleSidebar,
+  onNewExecution,
+  onNewChat,
+  onCreateExecution,
   onCreateChat,
+  onForkExecution,
   onForkChat,
   onTurnEnd,
   theme = "light",
@@ -419,11 +435,22 @@ export function ThreadShell({
   onWorkspaceScopeChange,
   settingsSnapshot = null,
   onOpenModelSettings,
+  supportsThreads = true,
+  supportsRuntimeControls = true,
+  supportsFileActivity = true,
+  allowComposer = true,
+  readOnlyExecution = false,
+  shellTitle,
+  shellDescription = null,
   skills = [],
 }: ThreadShellProps) {
+  const activeExecution = execution ?? session;
+  const handleNewExecution = onNewExecution ?? onNewChat;
+  const handleCreateExecution = onCreateExecution ?? onCreateChat;
+  const handleForkExecution = onForkExecution ?? onForkChat;
   const { t } = useTranslation();
-  const chatId = session?.chatId ?? null;
-  const historyKey = session?.key ?? null;
+  const chatId = activeExecution?.chatId ?? null;
+  const historyKey = activeExecution?.key ?? null;
   const {
     messages: historical,
     loading,
@@ -435,7 +462,7 @@ export function ThreadShell({
     refresh: refreshHistory,
     version: historyVersion,
     forkBoundaryMessageCount,
-  } = useSessionHistory(historyKey);
+  } = useExecutionHistory(historyKey);
   const { client, ingressLimits, modelName, token } = useClient();
   const [fallbackModelName, setFallbackModelName] = useState<string | null>(null);
   const [booting, setBooting] = useState(false);
@@ -676,7 +703,7 @@ export function ThreadShell({
       return;
     }
     setFallbackModelName(null);
-    return client.onKernelChat(chatId, (event) => {
+    return client.onKernelExecution(chatId, (event) => {
       if (event.type !== "status") return;
       const metadata = event.metadata;
       if (!metadata || typeof metadata !== "object") return;
@@ -829,7 +856,7 @@ export function ThreadShell({
       setBooting(true);
       pendingFirstRef.current = { content, images, options: withWorkspaceScope(options) };
       setPendingFirstTargetChatId(null);
-      const newId = await onCreateChat?.(workspaceScope);
+      const newId = await handleCreateExecution?.(workspaceScope);
       if (!newId) {
         pendingFirstRef.current = null;
         setPendingFirstTargetChatId(null);
@@ -841,7 +868,7 @@ export function ThreadShell({
       }
       setPendingFirstTargetChatId(newId);
     },
-    [booting, client, localModelPreset, onCreateChat, withWorkspaceScope, workspaceScope],
+    [booting, client, handleCreateExecution, localModelPreset, withWorkspaceScope, workspaceScope],
   );
 
   const handleThreadSend = useCallback(
@@ -944,19 +971,29 @@ export function ThreadShell({
     };
   }, [filePreviewPath]);
 
+  useEffect(() => {
+    if (supportsFileActivity || !filePreviewPath) return;
+    if (filePreviewCloseTimerRef.current !== null) {
+      window.clearTimeout(filePreviewCloseTimerRef.current);
+      filePreviewCloseTimerRef.current = null;
+    }
+    setFilePreviewClosing(false);
+    setFilePreviewPath(null);
+  }, [filePreviewPath, supportsFileActivity]);
+
   const handleForkFromMessage = useCallback(
     async (beforeUserIndex: number) => {
-      if (!chatId || !onForkChat) return;
-      const forkedChatId = await onForkChat(chatId, beforeUserIndex);
+      if (!chatId || !handleForkExecution) return;
+      const forkedChatId = await handleForkExecution(chatId, beforeUserIndex);
       if (!forkedChatId) return;
       messageCacheRef.current.delete(forkedChatId);
       appliedHistoryVersionRef.current.delete(forkedChatId);
       pendingCanonicalHydrateRef.current.add(forkedChatId);
     },
-    [chatId, onForkChat],
+    [chatId, handleForkExecution],
   );
 
-  const composer = (
+  const composer = allowComposer ? (
     <>
       {streamError ? (
         <StreamErrorNotice
@@ -964,7 +1001,7 @@ export function ThreadShell({
           onDismiss={dismissStreamError}
         />
       ) : null}
-      {session ? (
+      {activeExecution ? (
         <ThreadComposer
           onSend={handleThreadSend}
           disabled={!chatId}
@@ -983,7 +1020,12 @@ export function ThreadShell({
           modelProviderLabel={modelBadge.providerLabel}
           modelNeedsSetup={modelBadge.needsSetup}
           fallbackModelName={fallbackModelName}
-          onModelBadgeClick={modelBadge.needsSetup ? onOpenModelSettings : undefined}
+          onModelBadgeClick={
+            supportsRuntimeControls && modelBadge.needsSetup
+              ? onOpenModelSettings
+              : undefined
+          }
+          showRuntimeControls={supportsRuntimeControls}
           variant={showHeroComposer ? "hero" : "thread"}
           slashCommands={slashCommands}
           cliApps={cliApps}
@@ -1025,7 +1067,12 @@ export function ThreadShell({
           modelProviderLabel={modelBadge.providerLabel}
           modelNeedsSetup={modelBadge.needsSetup}
           fallbackModelName={fallbackModelName}
-          onModelBadgeClick={modelBadge.needsSetup ? onOpenModelSettings : undefined}
+          onModelBadgeClick={
+            supportsRuntimeControls && modelBadge.needsSetup
+              ? onOpenModelSettings
+              : undefined
+          }
+          showRuntimeControls={supportsRuntimeControls}
           variant="hero"
           slashCommands={slashCommands}
           cliApps={cliApps}
@@ -1045,7 +1092,7 @@ export function ThreadShell({
         />
       )}
     </>
-  );
+  ) : null;
 
   const emptyState = loading ? (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -1056,15 +1103,21 @@ export function ThreadShell({
       <HeroGreeting text={t(heroGreetingKey)} />
     </div>
   );
-  const sessionInfoAction = historyKey ? (
-    <SessionInfoPopover sessionKey={historyKey} token={token} title={title} />
+  const sessionInfoAction = supportsThreads && historyKey ? (
+    <ExecutionInfoPopover executionKey={historyKey} token={token} title={title} />
   ) : undefined;
-  const promptNavigatorAction = historyKey ? (
+  const promptNavigatorAction = supportsThreads && historyKey ? (
     <PromptNavigator
       messages={displayMessages}
       onJumpToPrompt={(promptId) => viewportRef.current?.jumpToUserPrompt(promptId)}
     />
   ) : undefined;
+  const capabilityBadges = [
+    supportsThreads ? "threads" : "workbench",
+    supportsRuntimeControls ? "runtime" : "fixed-runtime",
+    supportsFileActivity ? "files" : "no-files",
+    readOnlyExecution ? "read-only" : "interactive",
+  ];
 
   return (
     <section ref={shellRef} className="relative flex min-h-0 flex-1 overflow-hidden">
@@ -1079,6 +1132,8 @@ export function ThreadShell({
             hostChromeTitleInset={hostChromeTitleInset}
             hideThemeButton={hideThemeButton}
             minimal={!session && !loading}
+            subtitle={shellDescription || shellTitle || null}
+            capabilityBadges={capabilityBadges}
             promptNavigatorAction={promptNavigatorAction}
             sessionInfoAction={sessionInfoAction}
           />
@@ -1105,13 +1160,18 @@ export function ThreadShell({
             loadingOlder={loadingOlder}
             userMessageOffset={userMessageOffset}
             onLoadOlder={loadOlder}
-            onOpenFilePreview={historyKey ? handleOpenFilePreview : undefined}
-            onForkFromMessage={onForkChat ? handleForkFromMessage : undefined}
-            onQuoteSelection={session ? handleQuoteSelection : undefined}
+            onOpenFilePreview={historyKey && supportsFileActivity ? handleOpenFilePreview : undefined}
+            showFileActivity={supportsFileActivity}
+            onForkFromMessage={
+              !readOnlyExecution && supportsThreads && handleForkExecution
+                ? handleForkFromMessage
+                : undefined
+            }
+            onQuoteSelection={activeExecution ? handleQuoteSelection : undefined}
           />
         </FilePreviewAvailabilityProvider>
       </div>
-      {filePreviewPath && historyKey ? (
+      {supportsFileActivity && filePreviewPath && historyKey ? (
         <FilePreviewPanel
           sessionKey={historyKey}
           path={filePreviewPath}
@@ -1125,3 +1185,5 @@ export function ThreadShell({
     </section>
   );
 }
+
+export const WorkbenchShell = ThreadShell;

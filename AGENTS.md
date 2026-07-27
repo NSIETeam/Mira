@@ -2,9 +2,13 @@ This file provides guidance to AI coding agents working with this repository.
 
 ## Project Overview
 
-nanobot is a lightweight, open-source AI agent framework written in Python with a React/TypeScript WebUI. It centers around a small agent loop that receives messages from chat channels, invokes an LLM provider, executes tools, and manages session memory.
+Mira is a lightweight execution-kernel platform built from the original nanobot codebase, with a Python backend and React/TypeScript WebUI. It centers around a small agent loop that receives messages from chat channels, invokes an LLM provider, executes tools, and manages session memory.
 
 ## Development Commands
+
+Current compatibility note: the product/workbench identity is `Mira`, while the
+CLI/runtime layer keeps `nanobot` compatibility and now also exposes a `mira`
+launcher alias.
 
 ```bash
 # Python: run single test / lint
@@ -18,7 +22,7 @@ cd webui && bun run build
 cd webui && bun run test
 
 # Gateway
-nanobot gateway
+mira gateway
 ```
 
 ## High-Level Architecture
@@ -51,7 +55,7 @@ Messages flow through an async `MessageBus` (`nanobot/bus/queue.py`) that decoup
 
 ### Entry Points
 
-- **CLI**: `nanobot/cli/commands.py`
+- **CLI**: `nanobot/cli/commands.py` (`nanobot` compatibility command plus `mira` launcher alias)
 - **Python SDK**: `nanobot/nanobot.py`
 
 ## Project-Specific Notes
@@ -79,3 +83,22 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for contribution flow and PR guidelin
 - Tool registry: `nanobot/agent/tools/registry.py`
 - WebUI dev proxy config: `webui/vite.config.ts`
 - Tests mirror the `nanobot/` package structure.
+
+## Kernel Host Contract
+
+- The execution kernel should stay reusable and shell-agnostic. UI-specific behavior belongs in shell descriptors and host hooks, not in the agent loop or provider layer.
+- Backend shell declarations live in `nanobot/kernel/shell.py`.
+- Frontend shell contract types live in `webui/src/shells/types.ts`.
+- WebUI transport payloads for shell descriptors live in `webui/src/lib/types.ts`.
+- Shell registration and compatibility coercion live in `webui/src/shells/registry.ts`.
+- Prefer grouped shell capabilities over flat booleans:
+  - `chrome`: sidebar/search visibility
+  - `surfaces`: utility/workspace/runtime-control surfaces
+  - `actions`: execution-level actions such as fork
+  - `composer`: composer availability and read-only posture
+- Host orchestration should be implemented as hooks under `webui/src/shells/` and `webui/src/shells/engineering/`.
+- New shells should primarily provide:
+  - a descriptor from the kernel
+  - a stable `mode`
+  - a layout component
+  - grouped host capabilities

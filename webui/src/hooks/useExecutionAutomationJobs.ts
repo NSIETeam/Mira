@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 
 import { usePageVisibility } from "@/hooks/usePageVisibility";
-import { fetchSessionAutomations } from "@/lib/api";
+import { fetchExecutionAutomations } from "@/lib/api";
 import type { SessionAutomationJob } from "@/lib/types";
 
 const AUTOMATIONS_REFRESH_MS = 3000;
 
-export function useSessionAutomationJobs(open: boolean, token: string, sessionKey: string) {
+export function useExecutionAutomationJobs(open: boolean, token: string, executionKey: string) {
   const pageVisible = usePageVisibility();
   const [jobs, setJobs] = useState<SessionAutomationJob[]>([]);
   const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ export function useSessionAutomationJobs(open: boolean, token: string, sessionKe
         setJobs([]);
       }
       try {
-        const next = await fetchSessionAutomations(token, sessionKey);
+        const next = await fetchExecutionAutomations(token, executionKey);
         if (cancelled) return;
         setJobs(next.jobs);
         setLoadFailed(false);
@@ -46,7 +46,7 @@ export function useSessionAutomationJobs(open: boolean, token: string, sessionKe
       window.clearInterval(refreshId);
       window.removeEventListener("focus", refreshOnFocus);
     };
-  }, [open, pageVisible, sessionKey, token]);
+  }, [executionKey, open, pageVisible, token]);
 
   useEffect(() => {
     if (!open || !pageVisible) return;
@@ -56,4 +56,12 @@ export function useSessionAutomationJobs(open: boolean, token: string, sessionKe
   }, [open, pageVisible]);
 
   return { jobs, loading, loadFailed, now };
+}
+
+export function useSessionAutomationJobs(
+  open: boolean,
+  token: string,
+  sessionKey: string,
+): ReturnType<typeof useExecutionAutomationJobs> {
+  return useExecutionAutomationJobs(open, token, sessionKey);
 }
