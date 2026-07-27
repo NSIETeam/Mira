@@ -363,7 +363,7 @@ export function MiraKernelConsole({
     {
       label: "native",
       tone: "border-fuchsia-700 bg-fuchsia-950 text-fuchsia-100",
-      commands: ["native status", "native last-command", "native replay-last", "native modules"],
+      commands: ["native status", "native last-command", "native replay-last", "native replay runtime pause operator-ping", "native modules"],
     },
     {
       label: "fault",
