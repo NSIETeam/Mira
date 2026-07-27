@@ -1,0 +1,15 @@
+[package]
+name = "mira-kernel-bridge"
+version = "0.1.0"
+edition = "2021"
+description = "Minimal native execution bridge for the Mira kernel."
+license = "MIT"
+
+[lib]
+name = "mira_kernel_bridge"
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
