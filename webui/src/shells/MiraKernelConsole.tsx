@@ -1906,7 +1906,16 @@ export function MiraKernelConsole({
                       runTopologyCommand("modules", `module show ${module.name}`);
                     }}
                     disabled={operatorPending}
-                    className="rounded-full border border-slate-300/80 bg-slate-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-100"
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] transition-colors",
+                      module.native_status === "fault"
+                        ? "border-rose-300/80 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                        : module.native_status === "busy"
+                          ? "border-amber-300/80 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                          : module.native_status
+                            ? "border-fuchsia-300/80 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100"
+                            : "border-slate-300/80 bg-slate-50 text-slate-700 hover:bg-slate-100",
+                    )}
                   >
                     {module.name}
                   </button>
