@@ -2061,6 +2061,10 @@ export function MiraKernelConsole({
                 value={`${runtimeTopology?.scheduler.queues.length ?? schedulerQueues.length}`}
               />
               <Row
+                label="Native queue"
+                value={`${diagnostics?.snapshot.native_command_depth ?? 0}`}
+              />
+              <Row
                 label="Board"
                 value={embeddedTopology?.board.attached ? "attached" : "detached"}
               />
@@ -2086,6 +2090,10 @@ export function MiraKernelConsole({
               <Row
                 label="Runtime health"
                 value={scheduler?.active_runtime?.health ?? "ready"}
+              />
+              <Row
+                label="Native queue"
+                value={`${diagnostics?.snapshot.native_command_depth ?? 0}`}
               />
             </div>
             {scheduler?.active_runtime ? (
