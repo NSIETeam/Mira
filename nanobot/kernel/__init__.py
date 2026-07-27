@@ -35,6 +35,7 @@ from .observability import (
     append_kernel_event,
     build_diagnostics_snapshot,
 )
+from .native_bridge import NativeBridgeSnapshot, snapshot_native_bridge
 from .worker_plane import build_worker_registry, project_worker_registry
 from .runtime_topology import build_runtime_topology
 from .embedded_plane import build_board_snapshot, build_embedded_topology
@@ -105,6 +106,8 @@ __all__ = [
     "KERNEL_EVENT_LOG_LIMIT",
     "append_kernel_event",
     "build_diagnostics_snapshot",
+    "NativeBridgeSnapshot",
+    "snapshot_native_bridge",
     "build_worker_registry",
     "project_worker_registry",
     "build_runtime_topology",

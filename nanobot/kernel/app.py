@@ -53,6 +53,7 @@ from .runtime_bridge import (
     set_bridge_maintenance,
 )
 from .runtime_probe import attach_runtime_board_probe, board_status_runtime_probe, discover_serial_ports
+from .native_bridge import snapshot_native_bridge
 from .runtime_control import build_runtime_control_state
 from .runtime_control import (
     attach_board as attach_runtime_board,
@@ -478,6 +479,9 @@ class KernelApp:
         )
         self._scheduler_state = build_scheduler_state()
         self._event_log: list[dict[str, Any]] = []
+        self._native_module_states: dict[str, dict[str, Any]] = {}
+        self._native_bridge_artifact: str | None = None
+        self._native_queue_depth = 0
         self._dispatch_queue: list[dict[str, Any]] = []
         self._session_metadata: dict[str, dict[str, Any]] = {}
         self._session_status: dict[str, str] = {}
@@ -614,6 +618,14 @@ class KernelApp:
         return None
 
     def _refresh_live_event_log(self) -> None:
+        native_snapshot = snapshot_native_bridge()
+        if native_snapshot is not None:
+            self._native_queue_depth = native_snapshot.queue_depth
+            self._native_bridge_artifact = native_snapshot.artifact
+            if native_snapshot.module_states:
+                self._native_module_states.update(native_snapshot.module_states)
+            for row in reversed(native_snapshot.events):
+                self._event_log = [dict(row), *self._event_log][:24]
         session_key = self._active_session_key
         if not session_key:
             return
@@ -2253,15 +2265,16 @@ class KernelApp:
         maintenance_mode = dict(self._runtime_control.get("maintenance_mode", {}))
         board = dict(self._runtime_control.get("board", {}))
         dispatch_depth = len(self._dispatch_queue)
+        native_depth = self._native_queue_depth
         scheduler_state = clone_scheduler_state(self._scheduler_state)
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "") or None
         dispatch_queue_state = (
             "delegated"
-            if dispatch_handoff_lane and dispatch_depth
+            if dispatch_handoff_lane and (dispatch_depth or native_depth)
             else (
                 "preferred"
-                if scheduler_state.get("dispatch_priority") and dispatch_depth
-                else ("queued" if dispatch_depth else "ready")
+                if scheduler_state.get("dispatch_priority") and (dispatch_depth or native_depth)
+                else ("queued" if (dispatch_depth or native_depth) else "ready")
             )
         )
         snapshot = {
@@ -2269,7 +2282,7 @@ class KernelApp:
                 active_adapter=self._runtime_control.get("active_adapter"),
                 module_count=len(self._runtime_modules),
                 bridge_count=len(self._runtime_bridges),
-                dispatch_queue_depth=dispatch_depth,
+                dispatch_queue_depth=dispatch_depth + native_depth,
                 dispatch_queue_state=dispatch_queue_state,
                 dispatch_handoff_lane=dispatch_handoff_lane,
                 fault_level=str(fault_posture.get("last_level", "clear")),
@@ -2293,6 +2306,8 @@ class KernelApp:
         snapshot["snapshot"]["board_attached"] = bool(board.get("attached"))
         snapshot["snapshot"]["board_runtime_mode"] = board.get("runtime_mode")
         snapshot["snapshot"]["board_bridge_artifact"] = board.get("bridge_artifact")
+        snapshot["snapshot"]["native_bridge_artifact"] = self._native_bridge_artifact
+        snapshot["snapshot"]["native_module_count"] = len(self._native_module_states)
         return snapshot
 
     def diagnostics_snapshot_payload(self) -> dict[str, Any]:
