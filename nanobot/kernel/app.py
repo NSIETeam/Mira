@@ -53,7 +53,7 @@ from .runtime_bridge import (
     set_bridge_maintenance,
 )
 from .runtime_probe import attach_runtime_board_probe, board_status_runtime_probe, discover_serial_ports
-from .native_bridge import snapshot_native_bridge
+from .native_bridge import dispatch_native_bridge_command, snapshot_native_bridge
 from .runtime_control import build_runtime_control_state
 from .runtime_control import (
     attach_board as attach_runtime_board,
@@ -2643,6 +2643,27 @@ class KernelApp:
             message=message,
         )
 
+    def _dispatch_native_control(
+        self,
+        *,
+        target: str,
+        action: str,
+        value: str = "",
+    ) -> None:
+        result = dispatch_native_bridge_command(target=target, action=action, value=value)
+        if result.get("ok"):
+            self._native_command_depth = int(result.get("queue_depth") or self._native_command_depth)
+            artifact = str(result.get("artifact") or "").strip()
+            if artifact:
+                self._native_bridge_artifact = artifact
+        else:
+            error = str(result.get("error") or "native command rejected")
+            self._record_kernel_event(
+                "native_command",
+                state="fault",
+                message=f"{target}:{action} failed · {error}",
+            )
+
     def switch_runtime_adapter(self, adapter_name: str) -> dict[str, Any]:
         self._runtime_control = set_active_adapter(
             self._runtime_control,
@@ -2652,6 +2673,11 @@ class KernelApp:
         self._runtime_bridges = activate_runtime_bridge(
             self._runtime_bridges,
             adapter_name=adapter_name,
+        )
+        self._dispatch_native_control(
+            target="runtime",
+            action="switch_adapter",
+            value=adapter_name,
         )
         self._record_kernel_event(
             "switch_adapter",
@@ -2723,6 +2749,11 @@ class KernelApp:
             board["last_error"] = probe_result.get("error")
             next_state["board"] = board
         self._runtime_control = next_state
+        self._dispatch_native_control(
+            target="board",
+            action="attach",
+            value=f"{board.get('transport') or transport or 'serial'}:{board.get('port') or port or 'auto'}",
+        )
         self._record_kernel_event(
             "attach_board",
             state="ok",
@@ -2787,6 +2818,10 @@ class KernelApp:
             self._runtime_bridges,
             adapter_name=target_adapter,
         )
+        self._dispatch_native_control(
+            target=target_adapter,
+            action="restart_bridge",
+        )
         self._record_kernel_event(
             "restart_bridge",
             state="ok",
@@ -2799,6 +2834,11 @@ class KernelApp:
             self._runtime_control,
             gate_state="paused",
             reason=reason or "operator-paused",
+        )
+        self._dispatch_native_control(
+            target="runtime",
+            action="pause",
+            value=reason or "operator-paused",
         )
         self._record_kernel_event(
             "pause_runtime",
@@ -2821,6 +2861,11 @@ class KernelApp:
                 self._runtime_bridges,
                 adapter_name=active_adapter,
             )
+        self._dispatch_native_control(
+            target="runtime",
+            action="resume",
+            value="operator-ready",
+        )
         self._record_kernel_event(
             "resume_runtime",
             state="ok",
@@ -2833,6 +2878,11 @@ class KernelApp:
             self._runtime_control,
             gate_state="degraded",
             reason=reason or "fault-containment",
+        )
+        self._dispatch_native_control(
+            target="runtime",
+            action="degrade",
+            value=reason or "fault-containment",
         )
         self._record_kernel_event(
             "degrade_runtime",
@@ -2858,6 +2908,11 @@ class KernelApp:
             enabled=True,
             reason=maintenance_reason,
         )
+        self._dispatch_native_control(
+            target="runtime",
+            action="enter_maintenance",
+            value=maintenance_reason,
+        )
         self._record_kernel_event(
             "enter_maintenance",
             state="maintenance",
@@ -2879,6 +2934,11 @@ class KernelApp:
                 self._runtime_bridges,
                 adapter_name=active_adapter,
             )
+        self._dispatch_native_control(
+            target="runtime",
+            action="exit_maintenance",
+            value="operator-ready",
+        )
         self._record_kernel_event(
             "exit_maintenance",
             state="ok",
