@@ -1264,6 +1264,57 @@ class KernelApp:
                 "artifact": board.get("bridge_artifact") or "none",
                 "error": board.get("last_error") or "none",
             }
+        elif command == "native-status":
+            snapshot = self.diagnostics_snapshot_payload().get("snapshot", {})
+            target_pane = "adapters"
+            state = self.runtime_control_snapshot()
+            output = (
+                f"native queue={snapshot.get('native_command_depth', 0)}"
+                f" modules={snapshot.get('native_module_count', 0)}"
+                f" artifact={snapshot.get('native_bridge_artifact') or 'none'}"
+            )
+            details = {
+                "subject": "native",
+                "action": "status",
+                "command_depth": snapshot.get("native_command_depth", 0),
+                "module_count": snapshot.get("native_module_count", 0),
+                "artifact": snapshot.get("native_bridge_artifact") or "none",
+            }
+        elif command == "native-last-command":
+            snapshot = self.diagnostics_snapshot_payload().get("snapshot", {})
+            native_last_command = dict(snapshot.get("native_last_command") or {})
+            target_pane = "adapters"
+            state = self.runtime_control_snapshot()
+            output = (
+                f"native last-command target={native_last_command.get('target') or 'none'}"
+                f" action={native_last_command.get('action') or 'none'}"
+                f" depth={native_last_command.get('queue_depth', 0)}"
+            )
+            details = {
+                "subject": "native",
+                "action": "last-command",
+                "target": native_last_command.get("target") or "none",
+                "command": native_last_command.get("action") or "none",
+                "value": native_last_command.get("value") or "",
+                "queue_depth": native_last_command.get("queue_depth", 0),
+                "artifact": native_last_command.get("artifact") or "none",
+            }
+        elif command == "native-modules":
+            snapshot = self.diagnostics_snapshot_payload().get("snapshot", {})
+            native_modules = dict(snapshot.get("native_modules") or {})
+            target_pane = "modules"
+            state = self.runtime_control_snapshot()
+            output = f"native modules count={len(native_modules)}"
+            details = {
+                "subject": "native",
+                "action": "modules",
+                "count": len(native_modules),
+                "items": ", ".join(
+                    f"{name}:{row.get('status', 'unknown')}"
+                    for name, row in native_modules.items()
+                    if isinstance(row, dict)
+                ) or "none",
+            }
         elif command == "bridge-status":
             bridge_name = str(args[0] if args else self._runtime_control.get("active_adapter") or "")
             bridge = next(
