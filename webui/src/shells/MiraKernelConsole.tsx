@@ -767,6 +767,16 @@ export function MiraKernelConsole({
                               open module
                             </button>
                           ) : null}
+                          {"target" in entry.details && entry.details.target ? (
+                            <button
+                              type="button"
+                              onClick={() => setOperatorCommand(`native inspect ${String(entry.details.target)}`)}
+                              disabled={operatorPending}
+                              className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                            >
+                              fill inspect
+                            </button>
+                          ) : null}
                         </div>
                       ) : null}
                     </>
