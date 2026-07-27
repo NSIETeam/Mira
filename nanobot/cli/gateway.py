@@ -45,7 +45,7 @@ def create_gateway_app(
     prepare_webui_bundle: WebUIBundlePreparer | None = None,
 ) -> typer.Typer:
     gateway_app = typer.Typer(
-        help="Start and manage the nanobot gateway.",
+        help="Start and manage the Mira execution gateway.",
         invoke_without_command=True,
         no_args_is_help=False,
     )
@@ -85,8 +85,8 @@ def create_gateway_app(
         return service_factory() if service_factory is not None else GatewayServiceInstaller()
 
     def interactive_build_mode() -> BuildMode:
-        # `nanobot gateway` is often launched by tests, supervisors, or service managers.
-        # The higher-level `nanobot webui` command owns interactive first-run guidance.
+        # `mira gateway` is often launched by tests, supervisors, or service managers.
+        # The higher-level `mira webui` command owns interactive first-run guidance.
         return "warn"
 
     def start_options(
@@ -141,7 +141,7 @@ def create_gateway_app(
         foreground: bool = typer.Option(False, "--foreground", help="Run in the foreground"),
         background: bool = typer.Option(False, "--background", help="Start as a background process"),
     ) -> None:
-        """Start the nanobot gateway."""
+        """Start the Mira execution gateway."""
         if ctx.invoked_subcommand is not None:
             return
         if foreground and background:
