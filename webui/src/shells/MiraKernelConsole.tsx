@@ -1152,6 +1152,14 @@ export function MiraKernelConsole({
                       >
                         replay module
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setOperatorCommand(`native replay ${selectedModule.name} inspect status`)}
+                        disabled={operatorPending}
+                        className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                      >
+                        fill native cmd
+                      </button>
                     </>
                   ) : null}
                 </div>
