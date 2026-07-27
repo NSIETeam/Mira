@@ -374,6 +374,13 @@ export function MiraKernelConsole({
       commands: ["maintenance status", "enter-maintenance", "exit-maintenance", "goal reset"],
     },
   ];
+  const nativeReplayCommands = useMemo(() => {
+    const commands = ["native status", "native last-command", "native modules"];
+    if (nativeLastCommand?.target && nativeLastCommand?.action) {
+      commands.push(`module show ${nativeLastCommand.target}`);
+    }
+    return commands;
+  }, [nativeLastCommand?.action, nativeLastCommand?.target]);
   const paneClass = (pane: string) =>
     selectedPane === pane ? "space-y-2" : "hidden";
 
@@ -593,6 +600,27 @@ export function MiraKernelConsole({
                 >
                   run probe
                 </button>
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                    native replay
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {nativeReplayCommands.map((command) => (
+                      <button
+                        key={command}
+                        type="button"
+                        onClick={() => runQuickCommand(command)}
+                        disabled={operatorPending}
+                        className={cn(
+                          "rounded-full border border-fuchsia-700 bg-fuchsia-950 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900",
+                          operatorPending ? "opacity-60" : "",
+                        )}
+                      >
+                        {command}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
             <div className="space-y-2 rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2 font-mono text-[11px] text-slate-700">
