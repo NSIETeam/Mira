@@ -1041,7 +1041,21 @@ export function MiraKernelConsole({
                       : "border-slate-300/80 bg-slate-100 text-slate-700 hover:bg-slate-50",
                   )}
                 >
-                  {module.display_name}
+                  <span>{module.display_name}</span>
+                  {"native_status" in module ? (
+                    <span
+                      className={cn(
+                        "ml-2 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em]",
+                        module.native_status === "fault"
+                          ? "bg-rose-100 text-rose-700"
+                          : module.native_status === "busy"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-fuchsia-100 text-fuchsia-700",
+                      )}
+                    >
+                      {String(module.native_status)}
+                    </span>
+                  ) : null}
                 </button>
               )) : featureRows.map((feature) => (
                 <span
