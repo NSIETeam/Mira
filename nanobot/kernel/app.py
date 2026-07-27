@@ -2692,6 +2692,11 @@ class KernelApp:
             module_name=module_name,
             module_names=[module["name"] for module in self._runtime_modules],
         )
+        self._dispatch_native_control(
+            target=module_name,
+            action="focus_module",
+            value=module_name,
+        )
         self._record_kernel_event(
             "focus_module",
             state="ok",
@@ -2772,6 +2777,11 @@ class KernelApp:
         self._runtime_control = detach_runtime_board(self._runtime_control)
         active_adapter_name = str(self._runtime_control.get("active_adapter") or "")
         self._board_signatures.pop(active_adapter_name, None)
+        self._dispatch_native_control(
+            target="board",
+            action="detach",
+            value=active_adapter_name,
+        )
         self._record_kernel_event(
             "detach_board",
             state="ok",
@@ -2788,6 +2798,11 @@ class KernelApp:
                 adapter_name=target_adapter,
                 error=level,
             )
+            self._dispatch_native_control(
+                target=target_adapter,
+                action="record_fault",
+                value=level,
+            )
         self._record_kernel_event(
             "record_fault",
             state="fault",
@@ -2802,6 +2817,11 @@ class KernelApp:
             self._runtime_bridges = clear_bridge_fault(
                 self._runtime_bridges,
                 adapter_name=target_adapter,
+            )
+            self._dispatch_native_control(
+                target=target_adapter,
+                action="clear_fault",
+                value="clear",
             )
         self._record_kernel_event(
             "clear_fault",
