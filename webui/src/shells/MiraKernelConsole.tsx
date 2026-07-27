@@ -1766,6 +1766,26 @@ export function MiraKernelConsole({
               >
                 native modules
               </button>
+              {nativeLastCommand?.target && nativeLastCommand?.action ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => runTopologyCommand("adapters", "native last-command")}
+                    disabled={operatorPending}
+                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                  >
+                    replay last
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runTopologyCommand("modules", `module show ${nativeLastCommand.target}`)}
+                    disabled={operatorPending}
+                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                  >
+                    focus target
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
           <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
