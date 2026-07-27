@@ -363,7 +363,7 @@ export function MiraKernelConsole({
     {
       label: "native",
       tone: "border-fuchsia-700 bg-fuchsia-950 text-fuchsia-100",
-      commands: ["native status", "native last-command", "native modules"],
+      commands: ["native status", "native last-command", "native replay-last", "native modules"],
     },
     {
       label: "fault",
@@ -377,7 +377,7 @@ export function MiraKernelConsole({
     },
   ];
   const nativeReplayCommands = useMemo(() => {
-    const commands = ["native status", "native last-command", "native modules"];
+    const commands = ["native status", "native last-command", "native replay-last", "native modules"];
     if (nativeLastCommand?.target && nativeLastCommand?.action) {
       commands.push(`module show ${nativeLastCommand.target}`);
     }
@@ -718,11 +718,11 @@ export function MiraKernelConsole({
                           </button>
                           <button
                             type="button"
-                            onClick={() => runQuickCommand("native last-command")}
+                            onClick={() => runQuickCommand("native replay-last")}
                             disabled={operatorPending}
                             className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                           >
-                            inspect last
+                            replay last
                           </button>
                           {"target" in entry.details && entry.details.target ? (
                             <button
@@ -1807,6 +1807,14 @@ export function MiraKernelConsole({
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 last command
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("adapters", "native replay-last")}
+                disabled={operatorPending}
+                className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+              >
+                replay last
               </button>
               <button
                 type="button"
