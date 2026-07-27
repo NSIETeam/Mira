@@ -483,6 +483,7 @@ class KernelApp:
         self._native_bridge_artifact: str | None = None
         self._native_queue_depth = 0
         self._native_command_depth = 0
+        self._native_last_command: dict[str, Any] | None = None
         self._dispatch_queue: list[dict[str, Any]] = []
         self._session_metadata: dict[str, dict[str, Any]] = {}
         self._session_status: dict[str, str] = {}
@@ -2328,6 +2329,7 @@ class KernelApp:
         snapshot["snapshot"]["native_bridge_artifact"] = self._native_bridge_artifact
         snapshot["snapshot"]["native_module_count"] = len(self._native_module_states)
         snapshot["snapshot"]["native_command_depth"] = self._native_command_depth
+        snapshot["snapshot"]["native_last_command"] = dict(self._native_last_command or {})
         snapshot["snapshot"]["native_modules"] = dict(self._native_module_states)
         return snapshot
 
@@ -2656,6 +2658,22 @@ class KernelApp:
             artifact = str(result.get("artifact") or "").strip()
             if artifact:
                 self._native_bridge_artifact = artifact
+            self._native_last_command = {
+                "target": target,
+                "action": action,
+                "value": value,
+                "queue_depth": self._native_command_depth,
+                "artifact": self._native_bridge_artifact,
+            }
+            self._record_kernel_event(
+                "native_command",
+                state="ok",
+                message=(
+                    f"{target}:{action} queued"
+                    + (f" · {value}" if value else "")
+                    + f" · depth={self._native_command_depth}"
+                ),
+            )
         else:
             error = str(result.get("error") or "native command rejected")
             self._record_kernel_event(
