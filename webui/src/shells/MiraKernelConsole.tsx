@@ -359,6 +359,11 @@ export function MiraKernelConsole({
       commands: ["board status", "board mode", "board target", "board transport", "board ports"],
     },
     {
+      label: "native",
+      tone: "border-fuchsia-700 bg-fuchsia-950 text-fuchsia-100",
+      commands: ["native status", "native last-command", "native modules"],
+    },
+    {
       label: "fault",
       tone: "border-rose-700 bg-rose-950 text-rose-100",
       commands: ["fault show", "fault clear", "fault record", "bridge fault"],
