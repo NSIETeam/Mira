@@ -377,7 +377,7 @@ export function MiraKernelConsole({
     },
   ];
   const nativeReplayCommands = useMemo(() => {
-    const commands = ["native status", "native last-command", "native replay-last", "native modules"];
+    const commands = ["native status", "native last-command", "native replay-last", "native inspect memory", "native modules"];
     if (nativeLastCommand?.target && nativeLastCommand?.action) {
       commands.push(`module show ${nativeLastCommand.target}`);
     }
