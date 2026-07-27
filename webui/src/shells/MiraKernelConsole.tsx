@@ -118,6 +118,8 @@ export function MiraKernelConsole({
 }) {
   const appIdentity = kernelManifest?.identity?.app_name ?? "Mira";
   const shellMode = shellDescriptor?.host_contract?.mode ?? "engineering";
+  const nativeLastCommand = diagnostics?.snapshot.native_last_command;
+  const nativeModuleEntries = Object.entries(diagnostics?.snapshot.native_modules ?? {});
   const profile = kernelManifest?.profile ?? null;
   const featureRows = profile?.features.slice(0, 6) ?? [];
   const toolRows = profile?.tools.slice(0, 6) ?? [];
@@ -1615,6 +1617,80 @@ export function MiraKernelConsole({
               label="Board mode"
               value={diagnostics?.snapshot.board_runtime_mode ?? "unprobed"}
             />
+            <Row
+              label="Native queue"
+              value={`${diagnostics?.snapshot.native_command_depth ?? 0}`}
+            />
+            <Row
+              label="Native modules"
+              value={`${diagnostics?.snapshot.native_module_count ?? nativeModuleEntries.length}`}
+            />
+            <Row
+              label="Native bridge"
+              value={diagnostics?.snapshot.native_bridge_artifact ?? "none"}
+            />
+          </div>
+          <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Native control
+              </div>
+              <ConsoleBadge
+                label="queue"
+                value={`${diagnostics?.snapshot.native_command_depth ?? 0}`}
+                tone={diagnostics?.snapshot.native_command_depth ? "amber" : "slate"}
+              />
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <Row label="Last target" value={nativeLastCommand?.target ?? "none"} />
+              <Row label="Last action" value={nativeLastCommand?.action ?? "none"} />
+              <Row label="Last value" value={nativeLastCommand?.value || "none"} />
+              <Row label="Artifact" value={nativeLastCommand?.artifact ?? diagnostics?.snapshot.native_bridge_artifact ?? "none"} />
+            </div>
+            <div className="space-y-2">
+              <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Native modules</div>
+              <div className="flex flex-wrap gap-2">
+                {nativeModuleEntries.length ? nativeModuleEntries.slice(0, 8).map(([name, state]) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => runTopologyCommand("modules", `module show ${name}`)}
+                    disabled={operatorPending}
+                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                  >
+                    {name}:{state?.status ?? "unknown"}
+                  </button>
+                )) : (
+                  <span className="text-xs text-muted-foreground">No native modules observed.</span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("adapters", "native status")}
+                disabled={operatorPending}
+                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                inspect native
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("adapters", "native last-command")}
+                disabled={operatorPending}
+                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                last command
+              </button>
+              <button
+                type="button"
+                onClick={() => runTopologyCommand("modules", "native modules")}
+                disabled={operatorPending}
+                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                native modules
+              </button>
+            </div>
           </div>
           <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
             <div className="flex items-center justify-between gap-3">

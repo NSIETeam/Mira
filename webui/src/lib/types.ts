@@ -556,6 +556,22 @@ export interface KernelManifestPayload {
       board_attached?: boolean;
       board_runtime_mode?: string | null;
       board_bridge_artifact?: string | null;
+      native_bridge_artifact?: string | null;
+      native_module_count?: number;
+      native_command_depth?: number;
+      native_last_command?: {
+        target?: string | null;
+        action?: string | null;
+        value?: string | null;
+        queue_depth?: number;
+        artifact?: string | null;
+      };
+      native_modules?: Record<string, {
+        status?: string | null;
+        status_code?: number;
+        last_code?: number;
+        updated_at_ms?: number;
+      }>;
     };
   };
   execution_lanes: Array<{
