@@ -148,6 +148,10 @@ export function kernelErrorActionMatches(
   return event.action === action;
 }
 
+export function kernelCompletesSystemCommand(event: KernelEventPayload): boolean {
+  return event.type === "message" || kernelStatusStateMatches(event, "turn_end");
+}
+
 export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
   switch (ev.event) {
     case "delta":

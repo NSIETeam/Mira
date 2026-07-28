@@ -12,6 +12,7 @@ import type {
 import {
   attachedChatIdFromKernelMetadata,
   goalStateFromKernelMetadata,
+  kernelCompletesSystemCommand,
   kernelErrorActionMatches,
   kernelStatusStateMatches,
   readyChatIdFromKernelMetadata,
@@ -538,10 +539,7 @@ export class miraClient {
       ? parsed.turn_id
       : null;
     if (isSystemCommandTurnId(turnId)) {
-      if (
-        kernelEvent.type === "message"
-        || (kernelEvent.type === "status" && kernelEvent.state === "turn_end")
-      ) {
+      if (kernelCompletesSystemCommand(kernelEvent)) {
         this.resolveSystemCommand(turnId);
       }
       return;
