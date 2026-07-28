@@ -2396,7 +2396,7 @@ describe("ThreadComposer", () => {
     });
   });
 
-  it("persists queued guidance per chat across remounts", async () => {
+  it("persists queued guidance per execution across remounts", async () => {
     const onSend = vi.fn();
     const { rerender, unmount } = render(
       <ThreadComposer

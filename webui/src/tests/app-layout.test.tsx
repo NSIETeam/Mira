@@ -933,7 +933,7 @@ describe("App layout", () => {
       screen.getByText("这个话题有关联的自动任务。删除话题也会删除这些自动任务。"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText("This chat has scheduled automations. Deleting it will also delete them."),
+      screen.queryByText("This execution has scheduled automations. Deleting it will also delete them."),
     ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "删除" }));
