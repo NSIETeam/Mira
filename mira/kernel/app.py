@@ -7,6 +7,7 @@ thin GUI.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import shlex
 from typing import Any
@@ -81,6 +82,21 @@ KERNEL_MANIFEST_VERSION = 1
 KERNEL_EVENT_CONTRACT_VERSION = 1
 KERNEL_SNAPSHOT_CONTRACT_VERSION = 1
 _SHARED_KERNEL_APP: KernelApp | None = None
+_PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
+    "attach-board",
+    "detach-board",
+    "switch-adapter",
+    "restart-bridge",
+    "clear-fault",
+    "record-fault",
+    "pause-runtime",
+    "resume-runtime",
+    "degrade-runtime",
+    "drain-background",
+    "prioritize-goal-lane",
+    "enter-maintenance",
+    "exit-maintenance",
+}
 
 
 def active_kernel_app() -> KernelApp | None:
@@ -1231,6 +1247,7 @@ class KernelApp:
             if mapped is None:
                 raise ValueError(f"unknown operator command: {raw}")
             command, args = mapped
+        self._assert_operator_command_allowed(command, raw=raw)
         if command == "help":
             return {
                 "command": raw,
@@ -2641,6 +2658,25 @@ class KernelApp:
             "details": details,
             "action_result": action_result,
         }
+
+    def _operator_privilege_role(self) -> str:
+        geteuid = getattr(os, "geteuid", None)
+        if callable(geteuid) and int(geteuid()) == 0:
+            return "root"
+        return "user"
+
+    def _assert_operator_command_allowed(self, command: str, *, raw: str) -> None:
+        if command not in _PRIVILEGED_OPERATOR_COMMAND_PREFIXES:
+            return
+        host_contract = self._shell.host_contract if isinstance(self._shell.host_contract, dict) else {}
+        surfaces = host_contract.get("surfaces", {}) if isinstance(host_contract.get("surfaces", {}), dict) else {}
+        privilege = host_contract.get("privilege", {}) if isinstance(host_contract.get("privilege", {}), dict) else {}
+        allows_privileged_controls = bool(surfaces.get("allowPrivilegedRuntimeControls"))
+        privilege_role = str(privilege.get("role") or self._operator_privilege_role())
+        can_elevate = bool(privilege.get("canElevate"))
+        if allows_privileged_controls and (privilege_role == "root" or can_elevate):
+            return
+        raise PermissionError(f"operator command requires root privileges: {raw}")
 
     def _refresh_board_runtime_status(self) -> None:
         board = dict(self._runtime_control.get("board", {}))
