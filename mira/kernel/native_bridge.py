@@ -248,10 +248,12 @@ def _native_command_row(
     target = _decode_buffer(raw_command.target) or "none"
     action = _decode_buffer(raw_command.action) or "none"
     value = _decode_buffer(raw_command.value)
+    command_text = _native_command_text(target, action, value)
     return {
         "target": target,
         "action": action,
-        "command": _native_command_text(target, action, value),
+        "command": command_text,
+        "summary": f"{target}:{action}",
         "value": value,
         "status": _native_phase_state(
             int(raw_command.status),
@@ -302,6 +304,7 @@ def _native_dispatch_row(
     queue_depth: int = 0,
     error: str | None = None,
 ) -> dict[str, Any]:
+    command_text = _native_command_text(target, action, value)
     return {
         "ok": ok,
         "status": status,
@@ -310,7 +313,8 @@ def _native_dispatch_row(
         "artifact": artifact,
         "target": target,
         "action": action,
-        "command": _native_command_text(target, action, value),
+        "command": command_text,
+        "summary": f"{target}:{action}",
         "value": value,
         "queue_depth": queue_depth,
         "updated_at_ms": None,

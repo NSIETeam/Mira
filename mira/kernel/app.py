@@ -1531,13 +1531,12 @@ class KernelApp:
             queue_depth = native_context.get("queue_depth", 0)
             command_depth = native_context.get("command_depth", 0)
             module_count = native_context.get("module_count", 0)
-            last_target = native_last_command.get("target") or "none"
-            last_action = native_last_command.get("action") or "none"
+            last_summary = native_last_command.get("summary") or "none:none"
             artifact = native_context.get("bridge_artifact") or "none"
             output, details = (
                 f"native queue={queue_depth}"
                 f" modules={module_count}"
-                f" last={last_target}:{last_action}"
+                f" last={last_summary}"
                 f" artifact={artifact}",
                 {
                     "subject": "native",
@@ -1545,8 +1544,9 @@ class KernelApp:
                     "queue_depth": queue_depth,
                     "command_depth": command_depth,
                     "module_count": module_count,
-                    "last_target": last_target,
-                    "last_action": last_action,
+                    "last_target": native_last_command.get("target") or "none",
+                    "last_action": native_last_command.get("action") or "none",
+                    "last_summary": last_summary,
                     "module_focus": self._runtime_control.get("module_focus") or "none",
                     "artifact": artifact,
                 },
