@@ -42,13 +42,18 @@ export function HostChrome({
   appTagline?: string;
 }) {
   const { t } = useTranslation();
-  const privilegeBadge = appTagline.endsWith("· root")
+  const healthBadge = appTagline.endsWith("· attention")
+    ? { label: "attention", className: "border-rose-300/80 bg-rose-50 text-rose-700" }
+    : appTagline.endsWith("· healthy")
+      ? { label: "healthy", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
+      : null;
+  const privilegeBadge = appTagline.includes("· root")
     ? { label: "root", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
-    : appTagline.endsWith("· user")
+    : appTagline.includes("· user")
       ? { label: "user", className: "border-amber-300/80 bg-amber-50 text-amber-700" }
       : null;
-  const visibleTagline = privilegeBadge
-    ? appTagline.replace(/\s*·\s*(root|user)\s*$/, "")
+  const visibleTagline = privilegeBadge || healthBadge
+    ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention)\s*$/, "").replace(/\s*·\s*$/, "")
     : appTagline;
 
   return (
@@ -78,6 +83,11 @@ export function HostChrome({
           {privilegeBadge ? (
             <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]", privilegeBadge.className)}>
               {privilegeBadge.label}
+            </span>
+          ) : null}
+          {healthBadge ? (
+            <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]", healthBadge.className)}>
+              {healthBadge.label}
             </span>
           ) : null}
         </div>
