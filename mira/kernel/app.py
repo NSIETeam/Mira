@@ -1500,19 +1500,21 @@ class KernelApp:
             native_last_command = dict(native_context.get("last_command") or {})
             target_pane = "adapters"
             state = self.runtime_control_snapshot()
+            queue_depth = native_context.get("queue_depth", 0)
             command_depth = native_context.get("command_depth", 0)
             module_count = native_context.get("module_count", 0)
             last_target = native_last_command.get("target") or "none"
             last_action = native_last_command.get("action") or "none"
             artifact = native_context.get("bridge_artifact") or "none"
             output, details = (
-                f"native queue={command_depth}"
+                f"native queue={queue_depth}"
                 f" modules={module_count}"
                 f" last={last_target}:{last_action}"
                 f" artifact={artifact}",
                 {
                     "subject": "native",
                     "action": "status",
+                    "queue_depth": queue_depth,
                     "command_depth": command_depth,
                     "module_count": module_count,
                     "last_target": last_target,
