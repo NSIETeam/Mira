@@ -149,7 +149,7 @@ Current workspace/repo operations include:
 - repo root/status projection
 - repo tool contract projection
 
-This gives the workbench a clearer engineering posture similar to Codex-style project execution rather than a generic chat session.
+This gives the workbench a clearer engineering posture similar to Codex-style project execution rather than a generic conversation session.
 
 ## Delivery status
 

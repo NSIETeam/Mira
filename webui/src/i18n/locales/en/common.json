@@ -544,7 +544,7 @@
       "enable": "Enable tracing support"
     },
     "apps": {
-      "description": "Add tools to Mira, then @ them in chat.",
+      "description": "Add tools to Mira, then invoke them from the workbench.",
       "cliLabel": "App",
       "mcpLabel": "Integration",
       "channelLabel": "Channel",
@@ -654,7 +654,7 @@
         "updated": "Updated",
         "name": "Name"
       },
-      "search": "Search task, message, linked chat, or schedule",
+      "search": "Search task, message, linked execution, or schedule",
       "queue": "Queue",
       "loading": "Loading automations...",
       "noMatches": "No automations match this view.",
@@ -666,7 +666,7 @@
       "labels": {
         "schedule": "Schedule",
         "next": "Next",
-        "origin": "Linked chat",
+        "origin": "Linked execution",
         "created": "Created",
         "updated": "Updated"
       },
@@ -679,7 +679,7 @@
       "editTitle": "Edit automation",
       "save": "Save",
       "deleteTitle": "Delete automation",
-      "deleteDescription": "This removes {{name}} from the cron store. Past chat messages stay in the session.",
+      "deleteDescription": "This removes {{name}} from the cron store. Past execution history stays in the session.",
       "cancel": "Cancel",
       "status": {
         "system": "System",
@@ -692,7 +692,7 @@
       },
       "origin": {
         "system": "System",
-        "unknown": "No linked chat"
+        "unknown": "No linked execution"
       },
       "channels": {
         "api": "API",
@@ -1111,7 +1111,7 @@
           },
           "trigger": {
             "title": "Create local trigger",
-            "description": "Create a CLI trigger bound to this chat session."
+            "description": "Create a CLI trigger bound to this execution session."
           },
           "help": {
             "title": "Show help",

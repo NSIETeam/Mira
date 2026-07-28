@@ -431,7 +431,7 @@ describe("App layout", () => {
     );
     expect(document.title).toBe("Skills · mira");
 
-    fireEvent.click(screen.getByRole("button", { name: "Back to chat" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back to workbench" }));
     expect(await screen.findByText(HERO_GREETING_PATTERN)).toBeInTheDocument();
 
     fireEvent.click(within(sidebar).getByRole("button", { name: "Skills" }));
@@ -1278,7 +1278,7 @@ describe("App layout", () => {
     await waitFor(() => expect(connectSpy).toHaveBeenCalled());
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
     await act(async () => {
-      fireEvent.click(within(sidebar).getByRole("button", { name: /^Open chat$/ }));
+      fireEvent.click(within(sidebar).getByRole("button", { name: /^Open workbench$/ }));
     });
 
     act(() => {
@@ -1975,7 +1975,7 @@ describe("App layout", () => {
     expect(
       await screen.findByRole("navigation", { name: "Settings sections" }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Back to chat" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back to workbench" }));
 
     await waitFor(() => expect(document.title).toBe("mira"));
     expect(screen.getByText(HERO_GREETING_PATTERN)).toBeInTheDocument();

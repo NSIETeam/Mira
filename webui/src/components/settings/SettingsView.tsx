@@ -5518,7 +5518,7 @@ function AutomationsSettings({
                 onChange={(event) => onQueryChange(event.target.value)}
                 placeholder={tx(
                   "settings.automations.search",
-                  "Search task, message, linked chat, or schedule",
+                  "Search task, message, linked execution, or schedule",
                 )}
                 className={cn(
                   "h-9 w-full rounded-[13px] pl-9 text-[13px]",
@@ -7363,7 +7363,7 @@ function AppsCatalogSettings({
           <p className="max-w-[680px] text-[13px] leading-5 text-muted-foreground">
             {tx(
               "settings.apps.description",
-              "Add tools to Mira, then @ them in chat.",
+              "Add tools to Mira, then invoke them from the workbench.",
             )}
           </p>
           <span className="text-[12px] font-medium text-muted-foreground">{caption}</span>
