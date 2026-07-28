@@ -1169,6 +1169,13 @@ export function MiraKernelConsole({
                         tone="amber"
                       />
                     ) : null}
+                    {"native_updated_at_ms" in selectedModule && selectedModule.native_updated_at_ms ? (
+                      <ConsoleBadge
+                        label="updated"
+                        value={String(selectedModule.native_updated_at_ms)}
+                        tone="slate"
+                      />
+                    ) : null}
                   </div>
                 ) : null}
                 {runtimeControl?.module_focus ? (
