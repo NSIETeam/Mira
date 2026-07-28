@@ -2511,6 +2511,32 @@ export function MiraKernelConsole({
                 tone="slate"
               />
             </div>
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-emerald-700">Preferred lane</div>
+                <div className="mt-2 text-sm font-semibold text-emerald-950">
+                  {runtimeTopology?.scheduler?.preferred_lane ?? scheduler?.preferred_lane ?? "interactive"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-sky-200/70 bg-sky-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-sky-700">Workers</div>
+                <div className="mt-2 text-lg font-semibold text-sky-950">
+                  {runtimeTopology?.workers?.length ?? workers.length}
+                </div>
+              </div>
+              <div className="rounded-lg border border-fuchsia-200/70 bg-fuchsia-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-fuchsia-700">Module focus</div>
+                <div className="mt-2 text-sm font-semibold text-fuchsia-950">
+                  {runtimeControl?.module_focus ?? selectedModule?.name ?? "none"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-amber-200/70 bg-amber-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Dispatch queue</div>
+                <div className="mt-2 text-lg font-semibold text-amber-950">
+                  {dispatchQueue?.depth ?? 0}
+                </div>
+              </div>
+            </div>
             <div className="grid gap-2 md:grid-cols-2">
               <Row label="Adapters" value={`${runtimeTopologyAdapters.length}`} />
               <Row label="Modules" value={`${runtimeTopologyModules.length}`} />
@@ -2626,6 +2652,32 @@ export function MiraKernelConsole({
                 value={boardSnapshot?.attached ? "attached" : "detached"}
                 tone={boardSnapshot?.attached ? "emerald" : "amber"}
               />
+            </div>
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="rounded-lg border border-amber-200/70 bg-amber-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Board health</div>
+                <div className="mt-2 text-sm font-semibold text-amber-950">
+                  {boardSnapshot?.health ?? "unknown"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-200/70 bg-slate-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-600">Runtime mode</div>
+                <div className="mt-2 text-sm font-semibold text-slate-950">
+                  {boardSnapshot?.runtime_mode ?? "userland"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-cyan-200/70 bg-cyan-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-cyan-700">Known ports</div>
+                <div className="mt-2 text-lg font-semibold text-cyan-950">
+                  {embeddedPorts.length}
+                </div>
+              </div>
+              <div className="rounded-lg border border-fuchsia-200/70 bg-fuchsia-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-fuchsia-700">Bridge artifact</div>
+                <div className="mt-2 text-sm font-semibold text-fuchsia-950">
+                  {boardSnapshot?.bridge_artifact ?? "none"}
+                </div>
+              </div>
             </div>
             <div className="grid gap-2 md:grid-cols-2">
               <Row label="Target" value={boardSnapshot?.target ?? embeddedTargetHint ?? "host"} />
