@@ -523,9 +523,9 @@ def tool_contract_family(tool_name: str) -> str:
         return "unknown"
     if name.startswith("mcp") or name.startswith("browser"):
         return "mcp"
-    if name.startswith("web"):
+    if name.startswith(("web", "search", "fetch")) or "search" in name or "fetch" in name:
         return "web"
-    if name.startswith("file") or name.startswith("fs"):
+    if name.startswith(("file", "fs", "filesystem")) or "filesystem" in name:
         return "filesystem"
     if name.startswith("shell") or name.startswith("exec"):
         return "shell"
