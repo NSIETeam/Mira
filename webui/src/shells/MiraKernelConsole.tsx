@@ -257,9 +257,8 @@ export function MiraKernelConsole({
     message: String(event.message ?? "no message"),
     route: primaryEventAction(event),
   }));
-  const firstEventRoute = (pane: string) => eventLog
-    .map((event) => primaryEventAction(event))
-    .find((action) => action?.pane === pane) ?? null;
+  const firstEventRoute = (pane: string) =>
+    executionTimeline.find((event) => event.route?.pane === pane)?.route ?? null;
   const handleTimelineRoute = async (route?: {
     pane?: string | null;
     command?: string | null;
