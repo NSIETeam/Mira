@@ -1184,17 +1184,16 @@ export function usemiraStream(
         cancelStreamEndTimer();
         setIsStreaming(false);
         const completedAt = Date.now();
-        const completion = snapshot.completion;
         setMessages((prev) => {
           let finalized = prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m));
           finalized = pruneReasoningOnlyPlaceholders(finalized);
           finalized = stampLastAssistantCompletion(
             finalized,
             {
-              ...(completion.latencyMs !== undefined ? { latencyMs: completion.latencyMs } : {}),
+              ...(snapshot.completion.latencyMs !== undefined ? { latencyMs: snapshot.completion.latencyMs } : {}),
               completedAt,
             },
-            completion.turnId,
+            snapshot.completion.turnId,
           );
           buffer.current = null;
           activeAssistantRef.current = null;

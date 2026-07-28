@@ -243,6 +243,7 @@ export class miraClient {
   private recordGoalStatusForRunStrip(executionId: string, ev: InboundEvent): void {
     const kernelEvent = toKernelEventPayload(ev);
     if (kernelEvent.type !== "status") return;
+    const snapshot = kernelMetadataSnapshot(ev);
     if (kernelEvent.state === "turn_end") {
       if (this.runStartedAtByChatId.has(executionId)) {
         this.runStartedAtByChatId.delete(executionId);
@@ -250,7 +251,7 @@ export class miraClient {
       }
       return;
     }
-    const startedAt = kernelMetadataSnapshot(ev).runStartedAt;
+    const startedAt = snapshot.runStartedAt;
     if (startedAt !== null) {
       const previous = this.runStartedAtByChatId.get(executionId);
       this.runStartedAtByChatId.set(executionId, startedAt);
@@ -263,7 +264,8 @@ export class miraClient {
 
   private recordGoalStateSnapshot(executionId: string, ev: InboundEvent): void {
     const kernelEvent = toKernelEventPayload(ev);
-    const goalState = kernelMetadataSnapshot(ev).goalState;
+    const snapshot = kernelMetadataSnapshot(ev);
+    const goalState = snapshot.goalState;
     if (goalState && kernelEvent.type === "status") {
       this.goalStateByChatId.set(executionId, goalState);
       return;
