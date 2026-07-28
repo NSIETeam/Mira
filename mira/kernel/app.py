@@ -2012,6 +2012,7 @@ class KernelApp:
             status = self._session_status.get(session_key, "idle") if session_key != "none" else "idle"
             latency = self._session_latency.get(session_key)
             metadata = self._active_session_metadata() or {}
+            checkpoint = self._active_checkpoint()
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
             goal_blob = goal_state_ws_blob(metadata)
@@ -2030,6 +2031,10 @@ class KernelApp:
                     "latency_ms": latency_value,
                     "continuation": continuation,
                     "goal_active": "on" if goal_blob.get("active") else "off",
+                    "memory": "on" if self._profile.memory_enabled else "off",
+                    "checkpoint_phase": str((checkpoint or {}).get("phase") or "none"),
+                    "checkpoint_iteration": int((checkpoint or {}).get("iteration") or 0),
+                    "metadata_keys": len(metadata),
                 },
             )
         elif command == "session-goal":
@@ -2039,6 +2044,7 @@ class KernelApp:
             goal_blob = goal_state_ws_blob(metadata)
             active = "on" if goal_blob.get("active") else "off"
             continuation = "on" if internal_continuation_pending(metadata) else "off"
+            rounds = int(metadata.get("_sustained_goal_continuation_rounds") or 0) if metadata else 0
             output, details = (
                 f"goal active={active}"
                 f" status={goal_blob.get('status') or 'idle'}",
@@ -2049,6 +2055,8 @@ class KernelApp:
                     "status": goal_blob.get("status") or "idle",
                     "summary": goal_blob.get("ui_summary") or goal_blob.get("objective") or "none",
                     "continuation": continuation,
+                    "continuation_rounds": rounds,
+                    "memory": "on" if self._profile.memory_enabled else "off",
                 },
             )
         elif command == "session-continuation":
@@ -2069,6 +2077,8 @@ class KernelApp:
                     "rounds": rounds,
                     "goal_active": goal_active,
                     "session": self._active_session_key or "none",
+                    "memory": "on" if self._profile.memory_enabled else "off",
+                    "metadata_keys": len(metadata),
                 },
             )
         elif command == "goal-reset":
