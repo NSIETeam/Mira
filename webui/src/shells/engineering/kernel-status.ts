@@ -39,6 +39,24 @@ export type HostChromeViewModel = HostChromePresentation & {
   semantics: HostChromeSemantics;
 };
 
+const DEFAULT_HOST_KERNEL_STATUS_INPUT = {
+  privilege: "user",
+  health: "healthy",
+  maintenance: "live",
+} as const;
+
+function buildHostKernelSummary(input: {
+  privilege: "root" | "user";
+  health: "healthy" | "attention" | "offline";
+  maintenance: "maintenance" | "live";
+}): string {
+  return [
+    `privilege ${input.privilege}`,
+    `kernel ${input.health}`,
+    `runtime ${input.maintenance}`,
+  ].join(" · ");
+}
+
 export function createHostKernelStatus(input: {
   privilege: "root" | "user";
   health: "healthy" | "attention" | "offline";
@@ -66,20 +84,12 @@ export function createHostKernelStatus(input: {
     privilegeSeverity: input.privilege === "root" ? "elevated" : "restricted",
     connected: input.health !== "offline",
     alert: input.maintenance === "maintenance" || input.health === "attention",
-    summary: [
-      `privilege ${input.privilege}`,
-      `kernel ${input.health}`,
-      `runtime ${input.maintenance}`,
-    ].join(" · "),
+    summary: buildHostKernelSummary(input),
   };
 }
 
 export function createDefaultHostKernelStatus(): HostKernelStatus {
-  return createHostKernelStatus({
-    privilege: "user",
-    health: "healthy",
-    maintenance: "live",
-  });
+  return createHostKernelStatus(DEFAULT_HOST_KERNEL_STATUS_INPUT);
 }
 
 export function formatHostChromeTagline(appName: string, status: HostKernelStatus): string {
