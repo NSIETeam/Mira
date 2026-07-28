@@ -587,7 +587,11 @@ export class miraClient {
       return;
     }
 
-    if (parsed.event === "error" && parsed.detail === "workspace_scope_rejected") {
+    if (
+      kernelEvent.type === "error"
+      && parsed.event === "error"
+      && parsed.detail === "workspace_scope_rejected"
+    ) {
       this.emitError({
         kind: "workspace_scope_rejected",
         reason: parsed.reason,
@@ -600,7 +604,7 @@ export class miraClient {
       }
     }
 
-    if (parsed.event === "error" && this.pendingNewChat) {
+    if (kernelEvent.type === "error" && parsed.event === "error" && this.pendingNewChat) {
       clearTimeout(this.pendingNewChat.timer);
       const detail = typeof parsed.detail === "string" ? parsed.detail : "server error";
       const reason = typeof parsed.reason === "string" && parsed.reason ? `:${parsed.reason}` : "";
