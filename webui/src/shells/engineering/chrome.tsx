@@ -119,6 +119,7 @@ export function HostChrome({
             chromeCapsuleClass,
             chromeCapsuleMotionClass,
           )}
+          aria-label={chromeStatusTitle || `${appName} kernel status`}
           title={chromeStatusTitle || undefined}
         >
           <span className="text-slate-900">{appName}</span>
