@@ -381,8 +381,11 @@ export function MiraKernelConsole({
     if (nativeLastCommand?.target && nativeLastCommand?.action) {
       commands.push(`module show ${nativeLastCommand.target}`);
     }
+    if (selectedModule?.name) {
+      commands.push(`native inspect ${selectedModule.name}`);
+    }
     return commands;
-  }, [nativeLastCommand?.action, nativeLastCommand?.target]);
+  }, [nativeLastCommand?.action, nativeLastCommand?.target, selectedModule?.name]);
   const paneClass = (pane: string) =>
     selectedPane === pane ? "space-y-2" : "hidden";
 
