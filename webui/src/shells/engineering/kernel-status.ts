@@ -17,6 +17,8 @@ export type HostChromePresentation = {
   healthDotClass: string;
   chromeCapsuleClass: string;
   chromeCapsuleMotionClass: string;
+  visibleTagline: string;
+  chromeStatusTitle: string;
   chromeStatusLabel: string;
 };
 
@@ -113,7 +115,10 @@ export function createHostKernelStatus(input: {
   };
 }
 
-export function deriveHostChromePresentation(status: HostKernelStatus): HostChromePresentation {
+export function deriveHostChromePresentation(
+  status: HostKernelStatus,
+  appTagline: string,
+): HostChromePresentation {
   const healthBadge = status.health === "offline"
     ? { label: "offline", className: "border-slate-400/80 bg-slate-100 text-slate-700" }
     : status.health === "attention"
@@ -156,6 +161,10 @@ export function deriveHostChromePresentation(status: HostKernelStatus): HostChro
     healthBadge?.label,
     maintenanceBadge?.label === "maintenance" ? "maintenance" : null,
   ].filter(Boolean).join(" / ");
+  const visibleTagline = privilegeBadge || healthBadge || maintenanceBadge
+    ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention|offline)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "")
+    : appTagline;
+  const chromeStatusTitle = status.summary;
 
   return {
     healthBadge,
@@ -164,6 +173,8 @@ export function deriveHostChromePresentation(status: HostKernelStatus): HostChro
     healthDotClass,
     chromeCapsuleClass,
     chromeCapsuleMotionClass,
+    visibleTagline,
+    chromeStatusTitle,
     chromeStatusLabel,
   };
 }

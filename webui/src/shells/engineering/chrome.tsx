@@ -57,12 +57,10 @@ export function HostChrome({
     healthDotClass,
     chromeCapsuleClass,
     chromeCapsuleMotionClass,
+    visibleTagline,
+    chromeStatusTitle,
     chromeStatusLabel,
-  } = deriveHostChromePresentation(resolvedStatus);
-  const visibleTagline = privilegeBadge || healthBadge || maintenanceBadge
-    ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention|offline)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "")
-    : appTagline;
-  const chromeStatusTitle = resolvedStatus.summary;
+  } = deriveHostChromePresentation(resolvedStatus, appTagline);
 
   return (
     <header className="host-drag-region pointer-events-none absolute inset-x-0 top-0 z-40 h-12 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(248,250,252,0.84)_100%)] text-foreground/90 backdrop-blur-xl">
