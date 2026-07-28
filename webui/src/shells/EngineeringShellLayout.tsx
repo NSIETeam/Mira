@@ -26,7 +26,6 @@ export function EngineeringShellLayout({
     shellSupportsRuntimeControls,
     shellSupportsFileActivity,
     hostContract,
-    fallbackName: "engineering",
     fallbackTheme: "engineering",
   });
 

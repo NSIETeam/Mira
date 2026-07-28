@@ -66,7 +66,6 @@ export function shellDataAttributes({
   shellSupportsRuntimeControls,
   shellSupportsFileActivity,
   hostContract,
-  fallbackName,
   fallbackTheme,
   layout,
 }: {
@@ -75,12 +74,11 @@ export function shellDataAttributes({
   shellSupportsRuntimeControls: boolean;
   shellSupportsFileActivity: boolean;
   hostContract: ShellHostContract;
-  fallbackName: string;
   fallbackTheme: string;
   layout?: string;
 }): Record<string, string> {
   return {
-    "data-shell-name": shellDescriptor?.name ?? fallbackName,
+    "data-shell-name": shellDescriptor?.name ?? hostContract.mode,
     "data-shell-theme": shellDescriptor?.theme ?? fallbackTheme,
     "data-shell-description": shellDescriptor?.description ?? "",
     "data-shell-supports-threads": shellSupportsThreads ? "true" : "false",
