@@ -701,6 +701,35 @@ export function MiraKernelConsole({
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Operator shell
             </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-slate-800 bg-slate-950/95 px-3 py-2">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Command path</div>
+                <div className="mt-2 text-sm font-semibold text-slate-50">
+                  {selectedPane}
+                </div>
+                <div className="text-xs text-slate-400">
+                  {operatorPending ? "foreground execution active" : "operator shell ready"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-800 bg-slate-950/95 px-3 py-2">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Privilege posture</div>
+                <div className="mt-2 text-sm font-semibold text-slate-50">
+                  {privilegeRole}
+                </div>
+                <div className="text-xs text-slate-400">
+                  {shellAllowsPrivilegedControls ? "runtime control contract enabled" : "restricted shell contract"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-800 bg-slate-950/95 px-3 py-2">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Native replay</div>
+                <div className="mt-2 text-sm font-semibold text-slate-50">
+                  {nativeLastCommand?.target ?? "none"}:{nativeLastCommand?.action ?? "idle"}
+                </div>
+                <div className="text-xs text-slate-400">
+                  queue {(nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0)} · health {nativeSnapshot?.health ?? "unknown"}
+                </div>
+              </div>
+            </div>
             <div className="rounded-md border border-slate-300/80 bg-slate-950 px-3 py-2 font-mono text-[11px] text-slate-100">
               <div className="mb-2 flex items-center justify-between gap-3 text-slate-400">
                 <span>mira-kernel@{shellMode}:{selectedPane}$</span>
@@ -1858,12 +1887,38 @@ export function MiraKernelConsole({
           <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Runtime bridges
           </div>
-          <div className="space-y-2 rounded-xl border border-border/70 bg-background/80 p-3">
+          <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-3">
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-emerald-700">Ready bridges</div>
+                <div className="mt-2 text-lg font-semibold text-emerald-950">
+                  {runtimeBridges.filter((bridge) => bridge.health === "ready").length}
+                </div>
+              </div>
+              <div className="rounded-lg border border-rose-200/70 bg-rose-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-rose-700">Faulted bridges</div>
+                <div className="mt-2 text-lg font-semibold text-rose-950">
+                  {runtimeBridges.filter((bridge) => bridge.health === "fault").length}
+                </div>
+              </div>
+              <div className="rounded-lg border border-amber-200/70 bg-amber-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Active adapter</div>
+                <div className="mt-2 text-sm font-semibold text-amber-950">
+                  {runtimeControl?.active_adapter ?? "unset"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-200/70 bg-slate-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-600">Failover chain</div>
+                <div className="mt-2 text-sm font-semibold text-slate-900">
+                  {runtimeControl?.adapter_failover_order?.length ?? 0}
+                </div>
+              </div>
+            </div>
             {runtimeBridges.length ? runtimeBridges.map((bridge) => (
               <div
                 key={bridge.adapter}
                 className={cn(
-                  "rounded-md border px-3 py-2",
+                  "rounded-xl border px-3 py-3 shadow-sm",
                   selectedBridge?.adapter === bridge.adapter
                     ? "border-slate-900/20 bg-slate-100/90"
                     : "border-border/70 bg-slate-50/70",
@@ -1886,6 +1941,12 @@ export function MiraKernelConsole({
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
                   {bridge.backend_kind} · {bridge.entrypoint}
+                </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-4">
+                  <Row label="Stage" value={bridge.runtime_stage} />
+                  <Row label="Mode" value={bridge.runtime_mode} />
+                  <Row label="ABI" value={bridge.abi} />
+                  <Row label="Artifact" value={bridge.manifest ?? bridge.entrypoint} />
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <ConsoleBadge
@@ -2954,6 +3015,26 @@ export function MiraKernelConsole({
             Fault control
           </div>
           <div className="grid gap-3 xl:grid-cols-3">
+            <div className="xl:col-span-3 grid gap-3 md:grid-cols-4">
+              <div className="rounded-xl border border-rose-200/80 bg-rose-50/70 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-rose-700">Native fault modules</div>
+                <div className="mt-2 text-lg font-semibold text-rose-950">{nativeFaultModules.length}</div>
+              </div>
+              <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Faulted bridges</div>
+                <div className="mt-2 text-lg font-semibold text-amber-950">{faultedBridges.length}</div>
+              </div>
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-600">Supervisor</div>
+                <div className="mt-2 text-sm font-semibold text-slate-950">
+                  {diagnostics?.supervisor ?? runtimeControl?.fault_posture.supervisor ?? "unknown"}
+                </div>
+              </div>
+              <div className="rounded-xl border border-fuchsia-200/80 bg-fuchsia-50/70 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-fuchsia-700">Recent console errors</div>
+                <div className="mt-2 text-lg font-semibold text-fuchsia-950">{recentErrors.length}</div>
+              </div>
+            </div>
             <div className="rounded-xl border border-rose-200/80 bg-rose-50/70 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-700">
