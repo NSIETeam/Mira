@@ -494,10 +494,12 @@ export function MiraKernelConsole({
   }, [nativeAction, selectedModule?.actions]);
   const paneClass = (pane: string) =>
     selectedPane === pane ? "space-y-2" : "hidden";
-  const lastNativeStatus = nativeLastCommand?.status ?? "idle";
-  const lastNativeCode = nativeLastCommand?.code ?? 0;
-  const lastNativeCommand = nativeLastCommand?.command ?? nativeLastCommand?.action ?? "none";
-  const lastNativeUpdated = nativeLastCommand?.updated_at_ms ?? null;
+  const lastNativeContext = {
+    status: nativeLastCommand?.status ?? "idle",
+    code: nativeLastCommand?.code ?? 0,
+    command: nativeLastCommand?.command ?? nativeLastCommand?.action ?? "none",
+    updatedAt: nativeLastCommand?.updated_at_ms ?? null,
+  };
   const nativeFaultModules = nativeModuleEntries.filter(([, state]) => state?.status === "fault");
   const faultedBridges = runtimeBridges.filter((bridge) => bridge.health === "fault");
   const faultEventCount = executionTimeline.filter((event) => event.type.includes("fault") || event.type.includes("maintenance")).length;
@@ -2389,14 +2391,14 @@ export function MiraKernelConsole({
             <div className="grid gap-2 md:grid-cols-2">
               <Row label="Last target" value={nativeLastCommand?.target ?? "none"} />
               <Row label="Last action" value={nativeLastCommand?.action ?? "none"} />
-              <Row label="Last command" value={lastNativeCommand} />
-              <Row label="Last status" value={lastNativeStatus} />
-              <Row label="Last code" value={String(lastNativeCode)} />
+              <Row label="Last command" value={lastNativeContext.command} />
+              <Row label="Last status" value={lastNativeContext.status} />
+              <Row label="Last code" value={String(lastNativeContext.code)} />
               <Row label="Last value" value={nativeLastCommand?.value || "none"} />
               <Row label="Artifact" value={nativeLastCommand?.artifact ?? nativeSnapshot?.bridge_artifact ?? "none"} />
               <Row label="Module focus" value={runtimeControl?.module_focus ?? "none"} />
               <Row label="Command backlog" value={`${nativeSnapshot?.command_depth ?? 0}`} />
-              <Row label="Updated" value={lastNativeUpdated ? formatKernelTimestamp(lastNativeUpdated) : "none"} />
+              <Row label="Updated" value={lastNativeContext.updatedAt ? formatKernelTimestamp(lastNativeContext.updatedAt) : "none"} />
             </div>
             <div className="space-y-2">
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Native modules</div>
