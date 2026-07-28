@@ -75,6 +75,10 @@ export function HostChrome({
     healthBadge ? `kernel ${healthBadge.label}` : null,
     maintenanceBadge ? `runtime ${maintenanceBadge.label}` : null,
   ].filter(Boolean).join(" · ");
+  const chromeStatusLabel = [
+    healthBadge?.label,
+    maintenanceBadge?.label === "maintenance" ? "maintenance" : null,
+  ].filter(Boolean).join(" / ");
 
   return (
     <header className="host-drag-region pointer-events-none absolute inset-x-0 top-0 z-40 h-12 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(248,250,252,0.84)_100%)] text-foreground/90 backdrop-blur-xl">
@@ -106,6 +110,11 @@ export function HostChrome({
           <span className="text-slate-900">{appName}</span>
           <span className={cn("h-1.5 w-1.5 rounded-full", healthDotClass)} />
           <span>{visibleTagline}</span>
+          {chromeStatusLabel ? (
+            <span className="rounded-full border border-current/15 bg-black/[0.03] px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]">
+              {chromeStatusLabel}
+            </span>
+          ) : null}
           {privilegeBadge ? (
             <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]", privilegeBadge.className)}>
               {privilegeBadge.label}
