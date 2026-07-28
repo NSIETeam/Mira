@@ -3611,23 +3611,28 @@ class KernelApp:
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "none")
         dispatch_priority = bool(scheduler_state.get("dispatch_priority"))
         lifecycle_counts: dict[str, int] = {}
+        family_counts: dict[str, int] = {}
         items: list[str] = []
         roots: list[str] = []
         queue_items: list[dict[str, Any]] = []
         for row in self._dispatch_queue:
             lifecycle = str(row.get("lifecycle") or row.get("status") or "queued")
             lifecycle_counts[lifecycle] = lifecycle_counts.get(lifecycle, 0) + 1
+            family = str(row.get("family") or tool_contract_family(str(row.get("tool") or "")))
+            family_counts[family] = family_counts.get(family, 0) + 1
         for row in self._dispatch_queue[:limit]:
             tool = str(row.get("tool") or "unknown")
+            family = str(row.get("family") or tool_contract_family(tool))
             module = str(row.get("module") or "runtime")
             lifecycle = str(row.get("lifecycle") or row.get("status") or "queued")
-            items.append(f"{tool}@{module}:{lifecycle}")
+            items.append(f"{tool}[{family}]@{module}:{lifecycle}")
             root = str(row.get("root") or "").strip()
             if root:
                 roots.append(root)
             queue_items.append(
                 {
                     "tool": tool,
+                    "family": family,
                     "module": module,
                     "lifecycle": lifecycle,
                     "root": root or None,
@@ -3643,6 +3648,9 @@ class KernelApp:
             "priority": "on" if dispatch_priority else "off",
             "handoff": dispatch_handoff_lane,
             "items": ", ".join(items) or "none",
+            "families": ", ".join(
+                f"{name}:{count}" for name, count in sorted(family_counts.items())
+            ) or "none",
             "lifecycle": ", ".join(
                 f"{name}:{count}" for name, count in lifecycle_counts.items()
             ) or "none",
