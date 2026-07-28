@@ -522,9 +522,9 @@ export function usemiraStream(
   /** Whether ``messages`` belongs to the current ``chatId`` after a session switch. */
   messagesReady: boolean;
   isStreaming: boolean;
-  /** Unix epoch seconds when the current user turn started (WebSocket ``goal_status``). */
+  /** Unix epoch seconds when the current user turn started (kernel lifecycle ``running`` state). */
   runStartedAt: number | null;
-  /** Latest sustained goal for this ``chatId`` (``goal_state`` WS events). */
+  /** Latest sustained goal for this ``chatId`` from kernel metadata. */
   goalState: GoalStateWsPayload | undefined;
   send: (
     content: string,

@@ -135,9 +135,9 @@ export class miraClient {
   private static readonly PENDING_INBOUND_MAX = 2000;
   // chat_ids we've attached to since connect; re-attached after reconnects
   private knownChats = new Set<string>();
-  /** Wall-clock run strip: updated from ``goal_status`` even with no ``onChat`` subscriber. */
+  /** Wall-clock run strip mirrored from kernel lifecycle status frames even with no ``onChat`` subscriber. */
   private runStartedAtByChatId = new Map<string, number>();
-  /** Latest ``goal_state`` snapshot per ``chat_id`` (multi-session isolation). */
+  /** Latest sustained-goal snapshot per ``chat_id`` from kernel metadata (multi-session isolation). */
   private goalStateByChatId = new Map<string, GoalStateWsPayload>();
   private pendingNewChat: PendingRequest<string> | null = null;
   private pendingTranscriptions = new Map<string, PendingRequest<string>>();
@@ -223,13 +223,13 @@ export class miraClient {
     };
   }
 
-  /** Last ``goal_status`` ``started_at`` (unix sec) for *executionId*, if the turn is running. */
+  /** Last kernel lifecycle ``running`` timestamp (unix sec) for *executionId*, if the turn is running. */
   getRunStartedAt(executionId: string): number | null {
     const v = this.runStartedAtByChatId.get(executionId);
     return v === undefined ? null : v;
   }
 
-  /** Last ``goal_state`` payload for *executionId*, if any frame has arrived this connection. */
+  /** Last sustained-goal payload for *executionId*, if any kernel metadata frame has arrived this connection. */
   getGoalState(executionId: string): GoalStateWsPayload | undefined {
     return this.goalStateByChatId.get(executionId);
   }
