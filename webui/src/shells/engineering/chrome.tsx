@@ -9,6 +9,7 @@ import { logoFallbackUrls } from "@/lib/provider-brand";
 import type { PairingRequestInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
+  createDefaultHostChromeViewModel,
   createDefaultHostKernelStatus,
   formatHostChromeTagline,
   deriveHostChromeViewModel,
@@ -60,10 +61,12 @@ export function HostChrome({
     chromeStatusTitle,
     chromeStatusLabel,
     semantics,
-  } = deriveHostChromeViewModel({
-    appName,
-    status: resolvedStatus,
-  });
+  } = kernelStatus
+    ? deriveHostChromeViewModel({
+        appName,
+        status: resolvedStatus,
+      })
+    : createDefaultHostChromeViewModel(appName);
   const visibleTaglineText = visibleTagline || formatHostChromeTagline(appName, resolvedStatus);
 
   return (
