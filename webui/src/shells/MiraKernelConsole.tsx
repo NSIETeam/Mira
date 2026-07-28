@@ -962,6 +962,26 @@ export function MiraKernelConsole({
       examples: "repo tools · tool status",
     },
   ] as const;
+  const errorTriageRoutes = useMemo(() => recentErrors.slice(0, 4).map((error) => {
+    if (error.kind === "workspace_scope_rejected") {
+      return {
+        id: error.id,
+        label: "scope rejection",
+        detail: error.message,
+        pane: "workspace",
+        command: activeWorkspaceScope ? "workspace scope" : "workspace status",
+        tone: "border-amber-200/80 bg-amber-50/70 text-amber-900",
+      };
+    }
+    return {
+      id: error.id,
+      label: "transport fault",
+      detail: error.message,
+      pane: "control_plane",
+      command: "event tail 8",
+      tone: "border-rose-200/80 bg-rose-50/70 text-rose-900",
+    };
+  }), [activeWorkspaceScope, recentErrors]);
 
   return (
     <aside className="hidden w-[332px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[356px]">
@@ -1391,6 +1411,37 @@ export function MiraKernelConsole({
                 ) : null}
               </div>
               <div className="mt-3 space-y-2">
+                {errorTriageRoutes.length ? (
+                  <div className="space-y-2">
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                      recent incidents
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {errorTriageRoutes.map((route) => (
+                        <div key={route.id} className={cn("rounded-md border px-2 py-2", route.tone)}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="text-[10px] uppercase tracking-[0.12em]">
+                                {route.label}
+                              </div>
+                              <div className="mt-1 text-[10px] opacity-80">
+                                {route.detail}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => runTopologyCommand(route.pane, route.command)}
+                              disabled={operatorPending}
+                              className="rounded-full border border-current/30 bg-white/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] transition-colors hover:bg-white"
+                            >
+                              triage
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="grid gap-2 md:grid-cols-3">
                   {operatorPlaybooks.map((playbook) => (
                     <div
