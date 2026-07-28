@@ -695,7 +695,7 @@ function Shell({
   });
   const { connectionStatus, runtimeModel, recentErrors } = useKernelConsoleState(client);
   const shellPrivilegeRole = shellDescriptor?.host_contract?.privilege?.role ?? "user";
-  const appTagline = `${kernelManifest?.identity?.app_name ?? "Mira"} universal execution kernel · ${shellPrivilegeRole}`;
+  const appTagline = `${kernelManifest?.identity?.app_name ?? "Mira"} universal execution kernel · engineering shell · ${shellPrivilegeRole}`;
   const kernelControl = useKernelControlState({
     kernelManifest,
     token,

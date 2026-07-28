@@ -809,6 +809,7 @@ export function MiraKernelConsole({
               </div>
               <div className="flex flex-wrap gap-2">
                 <ConsoleBadge label="shell" value={shellMode} tone="slate" />
+                <ConsoleBadge label="role" value={privilegePosture.roleLabel} tone={privilegeRole === "root" ? "emerald" : "amber"} />
                 <ConsoleBadge label="gate" value={runtimeControl?.execution_gate?.state ?? "open"} tone={runtimeControl?.execution_gate?.state === "open" ? "emerald" : "amber"} />
                 <ConsoleBadge label="board" value={boardAttachmentLabel} tone={boardSnapshot?.attached ? "emerald" : "amber"} />
                 <ConsoleBadge label="native" value={nativeHealthLabel} tone={nativeSnapshot?.health === "ready" ? "emerald" : "amber"} />
