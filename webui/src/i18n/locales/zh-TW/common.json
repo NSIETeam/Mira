@@ -37,18 +37,18 @@
       "chat": "{{title}} · mira"
     },
     "meta": {
-      "description": "mira Web UI —— 與你的 mira 工作區對話。"
+      "description": "mira 工作台 UI —— 操作你的 mira 執行工作區。"
     }
   },
   "sidebar": {
     "navigation": "側邊欄導覽",
     "collapse": "收合側邊欄",
-    "newChat": "新增話題",
+    "newChat": "新增執行",
     "searchAria": "搜尋",
     "searchPlaceholder": "搜尋",
     "searchResults": "搜尋結果",
-    "noSearchResults": "沒有符合的話題。",
-    "recent": "最近話題",
+    "noSearchResults": "沒有符合的執行。",
+    "recent": "最近執行",
     "settings": "設定",
     "language": {
       "label": "語言",
@@ -444,7 +444,7 @@
       "readyPrompt": "請 mira 使用 @{{name}} 完成這項任務。",
       "readyTry": "試用 @{{name}}",
       "readyCopied": "已複製",
-      "openChat": "開啟聊天",
+      "openChat": "開啟工作台",
       "requires": "需要",
       "test": "測試 CLI",
       "update": "更新 CLI",
@@ -822,9 +822,9 @@
     "pin": "置頂",
     "unpin": "取消置頂",
     "rename": "重新命名",
-    "renameTitle": "重新命名話題",
-    "renameDescription": "為這個話題選擇僅顯示於本機側邊欄的名稱。",
-    "renamePlaceholder": "話題名稱",
+    "renameTitle": "重新命名執行",
+    "renameDescription": "為這個執行選擇僅顯示於本機側邊欄的名稱。",
+    "renamePlaceholder": "執行名稱",
     "renameProjectTitle": "重新命名專案",
     "renameProjectDescription": "為這個專案選擇僅顯示於本機側邊欄的名稱。",
     "renameProjectPlaceholder": "專案名稱",
@@ -834,10 +834,10 @@
     "showArchived": "顯示封存",
     "hideArchived": "隱藏封存",
     "delete": "刪除",
-    "newChat": "新增話題",
+    "newChat": "新增執行",
     "groups": {
       "pinned": "置頂",
-      "all": "話題",
+      "all": "執行",
       "projects": "專案",
       "today": "今天",
       "yesterday": "昨天",
@@ -846,11 +846,11 @@
     }
   },
   "deleteConfirm": {
-    "title": "刪除這個話題？",
+    "title": "刪除這個執行？",
     "description": "此操作無法復原。",
     "cancel": "取消",
     "confirm": "刪除",
-    "automationsDescription": "這個話題含有已排程的自動任務。刪除話題時也會一併刪除這些任務。",
+    "automationsDescription": "這個執行含有已排程的自動任務。刪除執行時也會一併刪除這些任務。",
     "moreAutomations": "另有 {{count}} 個",
     "confirmWithAutomations": "刪除",
     "schedule": {
