@@ -184,7 +184,6 @@ export function MiraKernelConsole({
   const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
   const nativeArtifactLabel = nativeSnapshot?.bridge_artifact ?? "none";
   const profileName = profile?.name ?? "unknown";
-  const activeAdapterName = runtimeControl?.active_adapter ?? "unset";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
   const sessionControls = kernelManifest?.session_controls?.actions ?? [];
   const workerControls = kernelManifest?.worker_controls?.actions ?? [];
@@ -1811,7 +1810,7 @@ export function MiraKernelConsole({
           <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
             <ConsoleRowGrid
               items={[
-                { label: "Adapter", value: selectedBridge?.adapter ?? activeAdapterName },
+                { label: "Adapter", value: selectedBridge?.adapter ?? (runtimeControl?.active_adapter ?? "unset") },
                 { label: "Health", value: selectedBridge?.health ?? "unknown" },
                 { label: "Status", value: selectedBridge?.status ?? "unknown" },
                 { label: "Maintenance", value: runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off" },
@@ -1910,7 +1909,7 @@ export function MiraKernelConsole({
               />
               <Row
                 label="Active"
-              value={activeAdapterName}
+              value={runtimeControl?.active_adapter ?? "unset"}
               />
             </div>
           </div>
@@ -2009,7 +2008,7 @@ export function MiraKernelConsole({
               <div className="rounded-lg border border-amber-200/70 bg-amber-50/80 p-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Active adapter</div>
                 <div className="mt-2 text-sm font-semibold text-amber-950">
-                  {activeAdapterName}
+                  {runtimeControl?.active_adapter ?? "unset"}
                 </div>
               </div>
               <div className="rounded-lg border border-slate-200/70 bg-slate-50/80 p-3">
@@ -3424,7 +3423,7 @@ export function MiraKernelConsole({
             </div>
             {runtimeControl ? (
               <div className="mt-2 grid gap-2 rounded-md border border-slate-300/70 bg-slate-50/80 p-3">
-                <Row label="Active adapter" value={activeAdapterName} />
+                <Row label="Active adapter" value={runtimeControl?.active_adapter ?? "unset"} />
                 <Row label="Execution gate" value={runtimeControl.execution_gate?.state ?? "open"} />
                 <Row
                   label="Gate reason"
