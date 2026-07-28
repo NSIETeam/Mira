@@ -25,15 +25,6 @@ export function useKernelControlState({
   const [selectedModuleName, setSelectedModuleName] = useState<string | null>(
     runtimeControl?.module_focus ?? runtimeModules[0]?.name ?? null,
   );
-  const [boardAttachment, setBoardAttachment] = useState(
-    runtimeControl?.board ?? {
-      attached: false,
-      transport: null,
-      port: null,
-      target: null,
-      preferred_transport: null,
-    },
-  );
   const [selectedBoardTransport, setSelectedBoardTransport] = useState<string | null>(
     runtimeControl?.board.transport ?? runtimeControl?.board.preferred_transport ?? null,
   );
@@ -48,15 +39,6 @@ export function useKernelControlState({
   useEffect(() => {
     setSelectedAdapterName(runtimeControl?.active_adapter ?? runtimeAdapters[0]?.name ?? null);
     setSelectedModuleName(runtimeControl?.module_focus ?? runtimeModules[0]?.name ?? null);
-    setBoardAttachment(
-      runtimeControl?.board ?? {
-        attached: false,
-        transport: null,
-        port: null,
-        target: null,
-        preferred_transport: null,
-      },
-    );
     setSelectedBoardTransport(
       runtimeControl?.board.transport ?? runtimeControl?.board.preferred_transport ?? null,
     );
@@ -161,7 +143,6 @@ export function useKernelControlState({
       setSelectedAdapterName,
       selectedModuleName,
       setSelectedModuleName,
-      boardAttachment,
       selectedBoardTransport,
       setSelectedBoardTransport,
       selectedBoardPort,
@@ -184,7 +165,6 @@ export function useKernelControlState({
       selectedPane,
       selectedAdapterName,
       selectedModuleName,
-      boardAttachment,
       selectedBoardTransport,
       selectedBoardPort,
       token,
