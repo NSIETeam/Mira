@@ -279,8 +279,44 @@ export function kernelErrorActionMatches(
   return event.action === action;
 }
 
+export function kernelMessageActionMatches(
+  event: KernelEventPayload,
+  action?: string,
+): boolean {
+  if (event.type !== "message") return false;
+  if (action === undefined) return true;
+  return event.action === action;
+}
+
+export function kernelReasoningActionMatches(
+  event: KernelEventPayload,
+  action?: string,
+): boolean {
+  if (event.type !== "reasoning") return false;
+  if (action === undefined) return true;
+  return event.action === action;
+}
+
+export function kernelToolCallActionMatches(
+  event: KernelEventPayload,
+  action?: string,
+): boolean {
+  if (event.type !== "tool_call") return false;
+  if (action === undefined) return true;
+  return event.action === action;
+}
+
+export function kernelToolResultActionMatches(
+  event: KernelEventPayload,
+  action?: string,
+): boolean {
+  if (event.type !== "tool_result") return false;
+  if (action === undefined) return true;
+  return event.action === action;
+}
+
 export function kernelCompletesSystemCommand(event: KernelEventPayload): boolean {
-  return event.type === "message" || kernelStatusStateMatches(event, "turn_end");
+  return kernelMessageActionMatches(event) || kernelStatusStateMatches(event, "turn_end");
 }
 
 export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {

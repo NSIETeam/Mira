@@ -13,7 +13,11 @@ import type { StreamError } from "@/lib/mira-client";
 import { formatQuotedUserMessage } from "@/lib/user-message-quote";
 import {
   assistantCompletionFromKernelMetadata,
+  kernelMessageActionMatches,
   kernelMetadataSnapshot,
+  kernelReasoningActionMatches,
+  kernelToolCallActionMatches,
+  kernelToolResultActionMatches,
 } from "@/lib/kernel-events";
 import type {
   InboundEvent,
@@ -907,7 +911,7 @@ export function usemiraStream(
         cancelStreamEndTimer();
       }
 
-      if (event.type === "reasoning" && action === "message") {
+      if (kernelReasoningActionMatches(event, "message")) {
         const line = typeof metadata.text === "string" ? metadata.text : "";
         if (!line) return;
         if (fileEditSegmentRef.current) clearActivitySegment();
@@ -920,7 +924,7 @@ export function usemiraStream(
         return;
       }
 
-      if (event.type === "message" && action === "delta") {
+      if (kernelMessageActionMatches(event, "delta")) {
         if (suppressStreamUntilTurnEndRef.current) return;
         const chunk = typeof event.text === "string" ? event.text : "";
         if (!chunk) return;
@@ -935,7 +939,7 @@ export function usemiraStream(
         return;
       }
 
-      if (event.type === "reasoning" && action === "delta") {
+      if (kernelReasoningActionMatches(event, "delta")) {
         if (suppressStreamUntilTurnEndRef.current) return;
         const chunk = typeof event.text === "string" ? event.text : "";
         if (!chunk) return;
@@ -950,7 +954,7 @@ export function usemiraStream(
         return;
       }
 
-      if (event.type === "tool_call" && action === "trace") {
+      if (kernelToolCallActionMatches(event, "trace")) {
         flushPendingStreamEvents({ closeAnswerSegment: true });
         const rawToolEvents = Array.isArray(metadata.tool_events)
           ? metadata.tool_events as ToolProgressEvent[]
@@ -1017,7 +1021,7 @@ export function usemiraStream(
         return;
       }
 
-      if (event.type === "tool_result" && action === "file_edit") {
+      if (kernelToolResultActionMatches(event, "file_edit")) {
         flushPendingStreamEvents({ closeAnswerSegment: true });
         const edits = Array.isArray(metadata.edits) ? metadata.edits : [];
         if (edits.length === 0) return;
@@ -1095,7 +1099,7 @@ export function usemiraStream(
         return;
       }
 
-      if (event.type === "message" && action === "complete") {
+      if (kernelMessageActionMatches(event, "complete")) {
         if (suppressStreamUntilTurnEndRef.current) return;
         const mediaUrls = Array.isArray(metadata.media_urls)
           ? metadata.media_urls as Array<{ url: string; name?: string }>
@@ -1154,7 +1158,7 @@ export function usemiraStream(
         return;
       }
 
-      if (event.type === "reasoning" && action === "complete") {
+      if (kernelReasoningActionMatches(event, "complete")) {
         if (suppressStreamUntilTurnEndRef.current) return;
         setMessages((prev) => closeReasoningStream(prev));
         return;
