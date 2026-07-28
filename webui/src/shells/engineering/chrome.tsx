@@ -52,9 +52,11 @@ export function HostChrome({
     : appTagline.endsWith("· live")
       ? { label: "live", className: "border-slate-300/80 bg-slate-50 text-slate-700" }
       : null;
-  const healthDotClass = healthBadge?.label === "attention"
-    ? "bg-rose-500 shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
-    : "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.16)]";
+  const healthDotClass = maintenanceBadge?.label === "maintenance"
+    ? "bg-amber-500 shadow-[0_0_0_3px_rgba(245,158,11,0.18)]"
+    : healthBadge?.label === "attention"
+      ? "bg-rose-500 shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
+      : "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.16)]";
   const privilegeBadge = appTagline.includes("· root")
     ? { label: "root", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
     : appTagline.includes("· user")
