@@ -63,6 +63,35 @@ export function attachedChatIdFromKernelMetadata(metadata: unknown): string | nu
   return chatId;
 }
 
+export function runtimeModelFromKernelMetadata(metadata: unknown): {
+  modelName: string | null;
+  modelPreset?: string | null;
+} | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const row = metadata as Record<string, unknown>;
+  if (typeof row.model_name !== "string") return null;
+  return {
+    modelName: row.model_name || null,
+    modelPreset: typeof row.model_preset === "string" ? row.model_preset : null,
+  };
+}
+
+export function sessionUpdateFromKernelMetadata(metadata: unknown): {
+  chatId: string;
+  scope?: string;
+  workspaceScope?: unknown;
+} | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const row = metadata as Record<string, unknown>;
+  const chatId = typeof row.chat_id === "string" ? row.chat_id : null;
+  if (!chatId || !("workspace_scope" in row)) return null;
+  return {
+    chatId,
+    scope: typeof row.scope === "string" ? row.scope : undefined,
+    workspaceScope: row.workspace_scope,
+  };
+}
+
 export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
   switch (ev.event) {
     case "delta":

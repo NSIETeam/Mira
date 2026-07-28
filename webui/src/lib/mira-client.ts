@@ -14,6 +14,8 @@ import {
   goalStateFromKernelMetadata,
   readyChatIdFromKernelMetadata,
   runStartedAtFromKernelMetadata,
+  runtimeModelFromKernelMetadata,
+  sessionUpdateFromKernelMetadata,
   toKernelEventPayload,
 } from "./kernel-events";
 import { createHostWebSocket } from "./runtime";
@@ -563,12 +565,11 @@ export class miraClient {
       return;
     }
 
-    if (
-      kernelEvent.type === "status"
-      && kernelEvent.state === "ready"
-      && "model_name" in parsed
-    ) {
-      this.emitRuntimeModelUpdate(parsed.model_name || null, parsed.model_preset ?? null);
+    const runtimeModel = kernelEvent.type === "status" && kernelEvent.state === "ready"
+      ? runtimeModelFromKernelMetadata(parsed)
+      : null;
+    if (runtimeModel) {
+      this.emitRuntimeModelUpdate(runtimeModel.modelName, runtimeModel.modelPreset);
       return;
     }
 
@@ -591,12 +592,15 @@ export class miraClient {
       return;
     }
 
-    if (
-      kernelEvent.type === "status"
-      && kernelEvent.state === "ready"
-      && "workspace_scope" in parsed
-    ) {
-      this.emitSessionUpdate(parsed.chat_id, parsed.scope, parsed.workspace_scope);
+    const sessionUpdate = kernelEvent.type === "status" && kernelEvent.state === "ready"
+      ? sessionUpdateFromKernelMetadata(parsed)
+      : null;
+    if (sessionUpdate) {
+      this.emitSessionUpdate(
+        sessionUpdate.chatId,
+        sessionUpdate.scope,
+        sessionUpdate.workspaceScope as WorkspaceScopePayload,
+      );
       return;
     }
 
