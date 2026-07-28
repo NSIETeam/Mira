@@ -1008,11 +1008,12 @@ export function MiraKernelConsole({
                           {"target" in entry.details && "command" in entry.details ? (
                             <button
                               type="button"
-                              onClick={() => setOperatorCommand(
-                                `native replay ${String(entry.details.target)} ${String(entry.details.command)}${
+                              onClick={() => {
+                                const replayCommand = `native replay ${String(entry.details.target)} ${String(entry.details.command)}${
                                   entry.details.value ? ` ${String(entry.details.value)}` : ""
-                                }`,
-                              )}
+                                }`;
+                                setOperatorCommand(replayCommand);
+                              }}
                               disabled={operatorPending}
                               className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                             >
@@ -1022,7 +1023,10 @@ export function MiraKernelConsole({
                           {"target" in entry.details && entry.details.target ? (
                             <button
                               type="button"
-                              onClick={() => runQuickCommand(`native focus ${String(entry.details.target)}`)}
+                              onClick={() => {
+                                const focusCommand = `native focus ${String(entry.details.target)}`;
+                                runQuickCommand(focusCommand);
+                              }}
                               disabled={operatorPending}
                               className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                             >
@@ -2022,20 +2026,29 @@ export function MiraKernelConsole({
                   <AdapterActionButton
                     binding={{
                       ...resolveActionBinding("restart_bridge"),
-                      onTrigger: () => runQuickCommand(`restart-bridge ${bridge.adapter}`),
+                      onTrigger: () => {
+                        const restartCommand = `restart-bridge ${bridge.adapter}`;
+                        runQuickCommand(restartCommand);
+                      },
                     }}
                   />
                   <AdapterActionButton
                     binding={{
                       ...resolveActionBinding("record_fault"),
-                      onTrigger: () => runQuickCommand(`record-fault fault ${bridge.adapter}`),
+                      onTrigger: () => {
+                        const recordFaultCommand = `record-fault fault ${bridge.adapter}`;
+                        runQuickCommand(recordFaultCommand);
+                      },
                     }}
                   />
                   {bridge.health === "fault" ? (
                     <AdapterActionButton
                       binding={{
                         ...resolveActionBinding("clear_fault"),
-                        onTrigger: () => runQuickCommand(`clear-fault ${bridge.adapter}`),
+                        onTrigger: () => {
+                          const clearFaultCommand = `clear-fault ${bridge.adapter}`;
+                          runQuickCommand(clearFaultCommand);
+                        },
                       }}
                     />
                   ) : null}
