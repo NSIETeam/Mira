@@ -513,11 +513,9 @@ class KernelApp:
         self._event_log: list[dict[str, Any]] = []
         self._native_module_states: dict[str, dict[str, Any]] = {}
         self._native_bridge_artifact: str | None = None
-        self._native_queue_depth = 0
-        self._native_command_depth = 0
-        self._native_module_count = 0
         self._native_recent_commands: list[dict[str, Any]] = []
         self._native_last_command: dict[str, Any] | None = None
+        self._reset_native_command_state()
         self._dispatch_queue: list[dict[str, Any]] = []
         self._session_metadata: dict[str, dict[str, Any]] = {}
         self._session_status: dict[str, str] = {}
@@ -3327,6 +3325,17 @@ class KernelApp:
             self._native_module_states.update(module_states)
         if last_command is not None:
             self._native_last_command = dict(last_command)
+
+    def _reset_native_command_state(self) -> None:
+        self._native_module_states = {}
+        self._native_bridge_artifact = None
+        self._native_recent_commands = []
+        self._native_last_command = None
+        self._store_native_command_state(
+            queue_depth=0,
+            command_depth=0,
+            module_count=0,
+        )
 
     def _dispatch_native_control(
         self,
