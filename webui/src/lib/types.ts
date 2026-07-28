@@ -581,6 +581,9 @@ export interface KernelManifestPayload {
       kind: "host" | "console" | "planned" | string;
       availability?: "available" | "planned" | "disabled" | string;
       target_pane?: string | null;
+      privileged?: boolean;
+      required_role?: "root" | "user" | string;
+      privileged_reason?: string | null;
     }>;
     telemetry: string[];
     embedded_transports: string[];

@@ -3490,12 +3490,17 @@ function AdapterActionButton({
       title={
         resolved.availability === "planned"
           ? "Planned kernel path"
+          : resolved.requiredRole === "root"
+            ? resolved.privilegedReason ?? "Requires root-level privileges"
+            : resolved.privileged
+              ? resolved.privilegedReason ?? "Requires elevated privileges"
           : resolved.targetPane
             ? `Focus ${resolved.targetPane}`
             : undefined
       }
     >
       {resolved.label}
+      {resolved.requiredRole === "root" ? " · root" : resolved.availability === "planned" ? " · planned" : ""}
     </button>
   );
 }
