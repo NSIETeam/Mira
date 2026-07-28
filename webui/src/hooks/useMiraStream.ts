@@ -889,7 +889,6 @@ export function usemiraStream(
       const metadata = event.metadata as Record<string, unknown> | undefined;
       if (!metadata || typeof metadata !== "object") return;
       const snapshot = kernelMetadataSnapshot(metadata);
-      const state = typeof event.state === "string" ? event.state : "";
       const turn = turnFieldsFromEvent(snapshot.turnFields);
       const sideChannelEvent =
         turn.turnId !== undefined && sideChannelTurnIdsRef.current.has(turn.turnId);
