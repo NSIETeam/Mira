@@ -3828,14 +3828,17 @@ class KernelApp:
                 self._runtime_bridges,
                 adapter_name=active_adapter,
             )
-        return self._commit_runtime_control_action(
+        self._dispatch_native_control(
             target="runtime",
             action="exit_maintenance",
             value="operator-ready",
-            event_action="exit_maintenance",
-            event_state="ok",
-            event_message="maintenance window closed",
         )
+        self._record_kernel_event(
+            "exit_maintenance",
+            state="ok",
+            message="maintenance window closed",
+        )
+        return self.runtime_control
 
     @classmethod
     def build_loop(
