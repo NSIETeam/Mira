@@ -544,6 +544,14 @@ def tool_contract_family_counts(tools: list[str]) -> dict[str, int]:
     return counts
 
 
+def tool_contract_family_groups(tools: list[str]) -> dict[str, list[str]]:
+    groups: dict[str, list[str]] = {}
+    for tool in tools:
+        family = tool_contract_family(tool)
+        groups.setdefault(family, []).append(str(tool))
+    return {family: sorted(items) for family, items in sorted(groups.items())}
+
+
 class KernelApp:
     """Thin kernel wrapper around the existing agent loop."""
 
@@ -2217,6 +2225,7 @@ class KernelApp:
             tools = list(self._profile.tools)
             families = sorted({tool_contract_family(tool) for tool in tools})
             family_counts = tool_contract_family_counts(tools)
+            family_groups = tool_contract_family_groups(tools)
             target_pane = "workspace"
             state = self.runtime_control_snapshot()
             output = (
@@ -2233,6 +2242,9 @@ class KernelApp:
                 "families": ", ".join(families) or "none",
                 "family_counts": ", ".join(
                     f"{family}:{family_counts[family]}" for family in sorted(family_counts)
+                ) or "none",
+                "family_groups": "; ".join(
+                    f"{family}=[{', '.join(items)}]" for family, items in family_groups.items()
                 ) or "none",
             }
         elif command == "repo-prepare-tool":
