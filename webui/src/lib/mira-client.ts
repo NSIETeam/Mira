@@ -523,11 +523,12 @@ export class miraClient {
       console.log("[mira ws inbound]", summarizeInboundWsPayload(parsed));
     }
 
+    const kernelEvent = toKernelEventPayload(parsed);
+
     const turnId = "turn_id" in parsed && typeof parsed.turn_id === "string"
       ? parsed.turn_id
       : null;
     if (isSystemCommandTurnId(turnId)) {
-      const kernelEvent = toKernelEventPayload(parsed);
       if (
         kernelEvent.type === "message"
         || (kernelEvent.type === "status" && kernelEvent.state === "turn_end")
@@ -554,12 +555,20 @@ export class miraClient {
       return;
     }
 
-    if (parsed.event === "runtime_model_updated") {
+    if (
+      kernelEvent.type === "status"
+      && kernelEvent.state === "ready"
+      && parsed.event === "runtime_model_updated"
+    ) {
       this.emitRuntimeModelUpdate(parsed.model_name || null, parsed.model_preset ?? null);
       return;
     }
 
-    if (parsed.event === "transcription_result") {
+    if (
+      kernelEvent.type === "status"
+      && kernelEvent.state === "done"
+      && parsed.event === "transcription_result"
+    ) {
       this.resolveTranscription(parsed.request_id, parsed.text);
       return;
     }
@@ -569,7 +578,11 @@ export class miraClient {
       return;
     }
 
-    if (parsed.event === "session_updated") {
+    if (
+      kernelEvent.type === "status"
+      && kernelEvent.state === "ready"
+      && parsed.event === "session_updated"
+    ) {
       this.emitSessionUpdate(parsed.chat_id, parsed.scope, parsed.workspace_scope);
       return;
     }
