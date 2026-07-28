@@ -960,7 +960,7 @@
       "sessionInfo": "Execution details"
     },
     "sessionInfo": {
-      "title": "Session",
+      "title": "Execution",
       "untitled": "Untitled execution",
       "automations": "Automations",
       "count": "{{count}}",
@@ -990,7 +990,7 @@
       "placeholderHero": "Describe the execution you want to run…",
       "placeholderOpening": "Opening a new execution…",
       "placeholderStreaming": "Model is responding…",
-      "inputAria": "Message input",
+      "inputAria": "Execution input",
       "sendHint": "Enter to send · Shift+Enter for newline",
       "runRuntimeTitle": "Running · {{elapsed}}",
       "goalStateStrip": "Goal · {{label}}",
@@ -998,10 +998,10 @@
       "goalStateExpandAria": "Show full goal",
       "goalStateSheetTitle": "Goal",
       "goalStateCloseAria": "Close goal",
-      "send": "Send message",
+      "send": "Run execution",
       "stop": "Stop response",
-      "quotedContext": "Quoted context",
-      "removeQuotedContext": "Remove quoted context",
+      "quotedContext": "Execution context",
+      "removeQuotedContext": "Remove execution context",
       "modelNotConfigured": "Model not configured",
       "configureModel": "Configure model",
       "queued": {
