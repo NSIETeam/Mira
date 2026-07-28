@@ -506,42 +506,90 @@ export function MiraKernelConsole({
   ];
   const operatorPlaybooks = useMemo(() => {
     const recoveryCommands = [
-      inspectFaultsAction?.command ?? "fault show",
-      clearFaultsAction?.command ?? "fault clear",
-      dispatchDrainAction?.command ?? "tool drain",
-      "runtime health",
+      {
+        label: inspectFaultsAction?.command ?? "fault show",
+        command: inspectFaultsAction?.command ?? "fault show",
+        locked: false,
+      },
+      {
+        label: clearFaultsAction?.command ?? "fault clear",
+        command: clearFaultsAction?.command ?? "fault clear",
+        locked: !actionAllowed(clearFaultsAction),
+      },
+      {
+        label: dispatchDrainAction?.command ?? "tool drain",
+        command: dispatchDrainAction?.command ?? "tool drain",
+        locked: !actionAllowed(dispatchDrainAction),
+      },
+      {
+        label: "runtime health",
+        command: "runtime health",
+        locked: false,
+      },
     ];
     const embeddedCommands = [
-      embeddedBoardStatusAction?.command ?? "board status",
-      embeddedRefreshPortsAction?.command ?? "board ports",
-      "board mode",
-      "board transport",
-      embeddedInspectAction?.command ?? "topology embedded",
+      {
+        label: embeddedBoardStatusAction?.command ?? "board status",
+        command: embeddedBoardStatusAction?.command ?? "board status",
+        locked: false,
+      },
+      {
+        label: embeddedRefreshPortsAction?.command ?? "board ports",
+        command: embeddedRefreshPortsAction?.command ?? "board ports",
+        locked: false,
+      },
+      {
+        label: "board mode",
+        command: "board mode",
+        locked: false,
+      },
+      {
+        label: "board transport",
+        command: "board transport",
+        locked: false,
+      },
+      {
+        label: embeddedInspectAction?.command ?? "topology embedded",
+        command: embeddedInspectAction?.command ?? "topology embedded",
+        locked: false,
+      },
     ];
-    const moduleCommand = selectedModuleInspectNativeAction?.command
-      ?? selectedModuleFillNativeInspectAction?.command
-      ?? "native inspect memory";
+    const moduleCommand = {
+      label: selectedModuleInspectNativeAction?.command
+        ?? selectedModuleFillNativeInspectAction?.command
+        ?? "native inspect memory",
+      command: selectedModuleInspectNativeAction?.command
+        ?? selectedModuleFillNativeInspectAction?.command
+        ?? "native inspect memory",
+      locked: false,
+    };
     return [
       {
         label: "operator bring-up",
         tone: "border-cyan-700 bg-cyan-950 text-cyan-100",
         detail: "runtime / scheduler / workspace",
-        commands: ["runtime health", "scheduler status", "workspace status", "repo tools"],
+        commands: [
+          { label: "runtime health", command: "runtime health", locked: false },
+          { label: "scheduler status", command: "scheduler status", locked: false },
+          { label: "workspace status", command: "workspace status", locked: false },
+          { label: "repo tools", command: "repo tools", locked: false },
+        ],
       },
       {
         label: "fault recovery",
         tone: "border-rose-700 bg-rose-950 text-rose-100",
         detail: privilegeRole === "root" || canElevate ? "fault lane / drain / recover" : "observe-first recovery path",
-        commands: recoveryCommands.filter(Boolean),
+        commands: recoveryCommands.filter((item) => Boolean(item.command)),
       },
       {
         label: "embedded attach",
         tone: "border-amber-700 bg-amber-950 text-amber-100",
         detail: "board / ports / native module",
-        commands: [...embeddedCommands.filter(Boolean), moduleCommand].filter(Boolean),
+        commands: [...embeddedCommands.filter((item) => Boolean(item.command)), moduleCommand].filter((item) => Boolean(item.command)),
       },
     ];
   }, [
+    actionAllowed,
     canElevate,
     clearFaultsAction,
     dispatchDrainAction,
@@ -1360,8 +1408,11 @@ export function MiraKernelConsole({
                         </div>
                         <button
                           type="button"
-                          onClick={() => runQuickCommand(playbook.commands[0] ?? "runtime health")}
-                          disabled={operatorPending || !playbook.commands.length}
+                          onClick={() => {
+                            const firstRunnable = playbook.commands.find((item) => !item.locked)?.command ?? "runtime health";
+                            runQuickCommand(firstRunnable);
+                          }}
+                          disabled={operatorPending || !playbook.commands.some((item) => !item.locked)}
                           className={cn(
                             "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] transition-colors",
                             playbook.tone,
@@ -1372,21 +1423,26 @@ export function MiraKernelConsole({
                         </button>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        {playbook.commands.map((command) => (
+                        {playbook.commands.map((item) => (
                           <button
-                            key={`${playbook.label}-${command}`}
+                            key={`${playbook.label}-${item.command}`}
                             type="button"
-                            onClick={() => runQuickCommand(command)}
-                            disabled={operatorPending}
+                            onClick={() => runQuickCommand(item.command)}
+                            disabled={operatorPending || item.locked}
                             className={cn(
                               "rounded-full border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-200 transition-colors hover:bg-slate-900",
-                              operatorPending ? "opacity-60" : "",
+                              operatorPending || item.locked ? "opacity-60" : "",
                             )}
                           >
-                            {command}
+                            {item.label}
                           </button>
                         ))}
                       </div>
+                      {playbook.commands.some((item) => item.locked) ? (
+                        <div className="mt-2 text-[10px] uppercase tracking-[0.12em] text-amber-400">
+                          locked by privilege posture
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
