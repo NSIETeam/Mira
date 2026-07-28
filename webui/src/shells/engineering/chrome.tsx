@@ -42,7 +42,9 @@ export function HostChrome({
   appTagline?: string;
 }) {
   const { t } = useTranslation();
-  const healthBadge = appTagline.endsWith("· attention")
+  const healthBadge = appTagline.includes("· offline")
+    ? { label: "offline", className: "border-slate-400/80 bg-slate-100 text-slate-700" }
+    : appTagline.endsWith("· attention")
     ? { label: "attention", className: "border-rose-300/80 bg-rose-50 text-rose-700" }
     : appTagline.includes("· healthy")
       ? { label: "healthy", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
@@ -54,16 +56,22 @@ export function HostChrome({
       : null;
   const healthDotClass = maintenanceBadge?.label === "maintenance"
     ? "bg-amber-500 shadow-[0_0_0_3px_rgba(245,158,11,0.18)]"
+    : healthBadge?.label === "offline"
+      ? "bg-slate-500 shadow-[0_0_0_3px_rgba(100,116,139,0.18)]"
     : healthBadge?.label === "attention"
       ? "bg-rose-500 shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
       : "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.16)]";
   const chromeCapsuleClass = maintenanceBadge?.label === "maintenance"
     ? "border-amber-200/90 bg-amber-50/90 text-amber-800"
+    : healthBadge?.label === "offline"
+      ? "border-slate-300/90 bg-slate-100/95 text-slate-700"
     : healthBadge?.label === "attention"
       ? "border-rose-200/90 bg-rose-50/90 text-rose-800"
       : "border-slate-200/70 bg-white/75 text-slate-500";
   const chromeCapsuleMotionClass = maintenanceBadge?.label === "maintenance"
     ? "shadow-[0_0_0_1px_rgba(245,158,11,0.10),0_10px_28px_rgba(245,158,11,0.12)]"
+    : healthBadge?.label === "offline"
+      ? "shadow-[0_0_0_1px_rgba(100,116,139,0.10),0_10px_24px_rgba(100,116,139,0.12)]"
     : healthBadge?.label === "attention"
       ? "shadow-[0_0_0_1px_rgba(244,63,94,0.10),0_10px_28px_rgba(244,63,94,0.14)] animate-pulse"
       : "shadow-sm";
@@ -73,7 +81,7 @@ export function HostChrome({
       ? { label: "user", className: "border-amber-300/80 bg-amber-50 text-amber-700" }
       : null;
   const visibleTagline = privilegeBadge || healthBadge || maintenanceBadge
-    ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "")
+    ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention|offline)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "")
     : appTagline;
   const chromeStatusTitle = [
     privilegeBadge ? `privilege ${privilegeBadge.label}` : null,
