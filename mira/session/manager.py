@@ -478,26 +478,6 @@ class SessionManager:
         """Get the collision-resistant workspace path for a session."""
         return self.sessions_dir / f"{self._storage_key(key)}.jsonl"
 
-    @staticmethod
-    def _stored_key_for_path(path: Path) -> str | None:
-        """Read the stored session key from a JSONL metadata row, if present."""
-        try:
-            with open(path, encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    data = json.loads(line)
-                    if not isinstance(data, dict):
-                        raise ValueError("session records must be JSON objects")
-                    if data.get("_type") == "metadata":
-                        stored_key = data.get("key")
-                        return stored_key if isinstance(stored_key, str) else None
-                    return None
-        except _SESSION_DATA_ERRORS:
-            return None
-        return None
-
     def _resolve_session_path(self, key: str, *, migrate: bool = False) -> Path | None:
         """Resolve a session path in the active workspace."""
         path = self._get_session_path(key)
