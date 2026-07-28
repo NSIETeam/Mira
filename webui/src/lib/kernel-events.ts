@@ -3,6 +3,14 @@ import type {
   KernelEventPayload,
 } from "./types";
 
+function goalSummary(goal: unknown): string {
+  if (!goal || typeof goal !== "object") return "";
+  const blob = goal as Record<string, unknown>;
+  if (typeof blob.ui_summary === "string" && blob.ui_summary.trim()) return blob.ui_summary;
+  if (typeof blob.objective === "string" && blob.objective.trim()) return blob.objective;
+  return "";
+}
+
 export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
   switch (ev.event) {
     case "delta":
@@ -16,11 +24,26 @@ export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
     case "stream_end":
       return { type: "status", state: "stream_end", metadata: ev };
     case "turn_end":
-      return { type: "status", state: "turn_end", metadata: ev };
+      return {
+        type: "status",
+        text: goalSummary("goal_state" in ev ? ev.goal_state : undefined) || "turn completed",
+        state: "turn_end",
+        metadata: ev,
+      };
     case "goal_status":
-      return { type: "status", state: "goal_status", metadata: ev };
+      return {
+        type: "status",
+        text: ev.status === "running" ? "goal runtime active" : "goal runtime idle",
+        state: ev.status,
+        metadata: ev,
+      };
     case "goal_state":
-      return { type: "status", state: "goal_state", metadata: ev };
+      return {
+        type: "status",
+        text: goalSummary(ev.goal_state) || (ev.goal_state.active ? "active sustained goal" : "goal state cleared"),
+        state: ev.goal_state.active ? "running" : "done",
+        metadata: ev,
+      };
     case "ready":
       return { type: "status", state: "ready", metadata: ev };
     case "attached":
