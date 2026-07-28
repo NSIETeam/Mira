@@ -132,6 +132,22 @@ export function workspaceScopeRejectionFromKernelMetadata(metadata: unknown): {
   };
 }
 
+export function kernelStatusStateMatches(
+  event: KernelEventPayload,
+  ...states: string[]
+): boolean {
+  return event.type === "status" && typeof event.state === "string" && states.includes(event.state);
+}
+
+export function kernelErrorActionMatches(
+  event: KernelEventPayload,
+  action?: string,
+): boolean {
+  if (event.type !== "error") return false;
+  if (action === undefined) return true;
+  return event.action === action;
+}
+
 export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
   switch (ev.event) {
     case "delta":

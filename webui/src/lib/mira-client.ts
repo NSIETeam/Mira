@@ -12,6 +12,8 @@ import type {
 import {
   attachedChatIdFromKernelMetadata,
   goalStateFromKernelMetadata,
+  kernelErrorActionMatches,
+  kernelStatusStateMatches,
   readyChatIdFromKernelMetadata,
   runStartedAtFromKernelMetadata,
   runtimeModelFromKernelMetadata,
@@ -545,7 +547,7 @@ export class miraClient {
       return;
     }
 
-    const readyChatId = kernelEvent.type === "status" && kernelEvent.state === "ready"
+    const readyChatId = kernelStatusStateMatches(kernelEvent, "ready")
       ? readyChatIdFromKernelMetadata(parsed)
       : null;
     if (readyChatId) {
@@ -554,7 +556,7 @@ export class miraClient {
       return;
     }
 
-    const attachedChatId = kernelEvent.type === "status" && kernelEvent.state === "ready"
+    const attachedChatId = kernelStatusStateMatches(kernelEvent, "ready")
       ? attachedChatIdFromKernelMetadata(parsed)
       : null;
     if (attachedChatId) {
@@ -568,7 +570,7 @@ export class miraClient {
       return;
     }
 
-    const runtimeModel = kernelEvent.type === "status" && kernelEvent.state === "ready"
+    const runtimeModel = kernelStatusStateMatches(kernelEvent, "ready")
       ? runtimeModelFromKernelMetadata(parsed)
       : null;
     if (runtimeModel) {
@@ -576,7 +578,7 @@ export class miraClient {
       return;
     }
 
-    const transcriptionResult = kernelEvent.type === "status" && kernelEvent.state === "done"
+    const transcriptionResult = kernelStatusStateMatches(kernelEvent, "done")
       ? transcriptionResultFromKernelMetadata(parsed)
       : null;
     if (transcriptionResult) {
@@ -584,7 +586,7 @@ export class miraClient {
       return;
     }
 
-    const transcriptionError = kernelEvent.type === "error" && kernelEvent.action === "transcription_error"
+    const transcriptionError = kernelErrorActionMatches(kernelEvent, "transcription_error")
       ? transcriptionErrorFromKernelMetadata(parsed)
       : null;
     if (transcriptionError) {
@@ -592,7 +594,7 @@ export class miraClient {
       return;
     }
 
-    const sessionUpdate = kernelEvent.type === "status" && kernelEvent.state === "ready"
+    const sessionUpdate = kernelStatusStateMatches(kernelEvent, "ready")
       ? sessionUpdateFromKernelMetadata(parsed)
       : null;
     if (sessionUpdate) {
@@ -604,7 +606,7 @@ export class miraClient {
       return;
     }
 
-    const workspaceScopeRejection = kernelEvent.type === "error"
+    const workspaceScopeRejection = kernelErrorActionMatches(kernelEvent)
       ? workspaceScopeRejectionFromKernelMetadata(parsed)
       : null;
     if (workspaceScopeRejection) {
