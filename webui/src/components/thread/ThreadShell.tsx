@@ -791,9 +791,9 @@ export function ThreadShell({
     }
   }, [chatId, displayMessages]);
 
-  // Persist thread to in-memory cache after paint so ``usemiraStream``'s chat switch
+  // Persist thread to in-memory cache after paint so ``usemiraStream``'s execution switch
   // ``useEffect`` reset has flushed; ``skipLayoutCacheRef`` drops the first run that still
-  // sees the *previous* chat's ``messages`` (avoids stale rows leaking across sessions).
+  // sees the *previous* execution's ``messages`` (avoids stale rows leaking across sessions).
   useEffect(() => {
     if (!chatId) {
       return;
@@ -809,7 +809,7 @@ export function ThreadShell({
   }, [chatId, displayMessages, loading]);
 
   // The landing composer queues the first message while `new_chat` is in flight.
-  // Only the chat created for that send may consume it; selecting another chat
+  // Only the execution created for that send may consume it; selecting another execution
   // while creation is pending must not leak the message there.
   useEffect(() => {
     if (!chatId || pendingFirstTargetChatId !== chatId) return;
