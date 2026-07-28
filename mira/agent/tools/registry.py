@@ -104,6 +104,7 @@ class ToolRegistry:
         mcp_tools: list[dict[str, Any]] = []
         for schema in definitions:
             name = self._schema_name(schema)
+            schema["x_mira_family"] = self._schema_family(schema)
             if name.startswith("mcp_"):
                 mcp_tools.append(schema)
             else:
