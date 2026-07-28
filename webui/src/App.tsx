@@ -1207,7 +1207,7 @@ function Shell({
                 <div className="max-w-md space-y-3">
                   <h2 className="text-lg font-semibold">{shellTitle}</h2>
                   <p className="text-sm text-muted-foreground">
-                    This shell disables runtime controls and keeps the execution layer focused on chat.
+                    This shell disables runtime controls and keeps the execution layer focused on the operator workflow.
                   </p>
                 </div>
               </div>

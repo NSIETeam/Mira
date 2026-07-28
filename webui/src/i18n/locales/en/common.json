@@ -954,10 +954,10 @@
     },
     "header": {
       "toggleSidebar": "Toggle sidebar",
-      "newChat": "Start a new topic",
+      "newChat": "Start a new execution",
       "toggleTheme": "Toggle theme from header",
-      "settings": "Open settings",
-      "sessionInfo": "Session details"
+      "settings": "Open system settings",
+      "sessionInfo": "Execution details"
     },
     "sessionInfo": {
       "title": "Session",

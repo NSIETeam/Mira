@@ -121,7 +121,7 @@ export function PairingCodePopup({
     <div
       role="dialog"
       aria-live="polite"
-      aria-label={t("app.pairing.title", { defaultValue: "Pair a chat user" })}
+      aria-label={t("app.pairing.title", { defaultValue: "Pair an execution user" })}
       className={cn(
         "fixed right-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-[70]",
         "w-[min(calc(100vw-2rem),24rem)] rounded-[24px]",
@@ -136,11 +136,11 @@ export function PairingCodePopup({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[15px] font-semibold tracking-[-0.01em]">
-                {t("app.pairing.title", { defaultValue: "Pair a chat user" })}
+                {t("app.pairing.title", { defaultValue: "Pair an execution user" })}
               </p>
               <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
                 {t("app.pairing.description", {
-                  defaultValue: "Enter the pairing code shown in the chat.",
+                  defaultValue: "Enter the pairing code shown in the execution channel.",
                 })}
               </p>
             </div>

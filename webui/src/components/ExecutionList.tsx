@@ -528,8 +528,8 @@ function ChatsFoldFooter({
 }) {
   const { t, i18n } = useTranslation();
   const collapsedFallback = i18n.resolvedLanguage?.startsWith("zh")
-    ? `已折叠 ${hiddenCount} 个对话`
-    : `${hiddenCount} hidden topics`;
+    ? `已折叠 ${hiddenCount} 个执行`
+    : `${hiddenCount} hidden executions`;
 
   return (
     <div className="px-2 pb-1 pt-1">
