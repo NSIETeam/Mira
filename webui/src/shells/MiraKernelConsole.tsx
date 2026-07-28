@@ -581,6 +581,32 @@ export function MiraKernelConsole({
       value: `m${kernelManifest?.contracts?.manifest_version ?? 0}/e${kernelManifest?.contracts?.event_version ?? 0}/s${kernelManifest?.contracts?.snapshot_version ?? 0}`,
     },
   ];
+  const runtimeSummaryRows = [
+    { label: "Streaming", value: executionContract?.supports_streaming ? "enabled" : "off" },
+    { label: "Background", value: executionContract?.supports_background ? "enabled" : "off" },
+    { label: "Engine restart", value: runtimeCapabilities?.can_restart_engine ? "available" : "n/a" },
+    { label: "Open logs", value: runtimeCapabilities?.can_open_logs ? "available" : "n/a" },
+    { label: "Diag modules", value: `${diagnostics?.snapshot.module_count ?? runtimeModules.length}` },
+    { label: "Diag bridges", value: `${diagnostics?.snapshot.bridge_count ?? runtimeBridges.length}` },
+    { label: "Diag gate", value: diagnostics?.snapshot.execution_gate ?? runtimeControl?.execution_gate?.state ?? "open" },
+    { label: "Diag phase", value: diagPhase ?? "idle" },
+    { label: "Diag iter", value: `${diagIteration ?? 0}` },
+    { label: "Tool wait", value: `${diagPendingToolCalls}` },
+    { label: "Subagents", value: `${diagSubagentWorkers}` },
+    { label: "Board", value: boardAttachmentLabel },
+    { label: "Board mode", value: boardSnapshot?.runtime_mode ?? "unprobed" },
+    { label: "Board health", value: boardHealthLabel },
+    { label: "Native health", value: nativeHealthLabel },
+    { label: "Native queue", value: `${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0}` },
+    { label: "Native modules", value: `${nativeSnapshot?.module_count ?? nativeModuleEntries.length}` },
+    { label: "Native bridge", value: nativeArtifactLabel },
+  ];
+  const faultSummaryRows = [
+    { label: "Supervisor", value: runtimeControl?.fault_posture.supervisor ?? diagnostics?.supervisor ?? "unknown" },
+    { label: "Fault level", value: runtimeControl?.fault_posture.last_level ?? "clear" },
+    { label: "Maintenance", value: runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off" },
+    { label: "Gate", value: runtimeControl?.execution_gate?.state ?? "open" },
+  ];
 
   return (
     <aside className="hidden w-[332px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[356px]">
@@ -2371,66 +2397,7 @@ export function MiraKernelConsole({
             Runtime
           </div>
           <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
-            <Row
-              label="Streaming"
-              value={executionContract?.supports_streaming ? "enabled" : "off"}
-            />
-            <Row
-              label="Background"
-              value={executionContract?.supports_background ? "enabled" : "off"}
-            />
-            <Row
-              label="Engine restart"
-              value={runtimeCapabilities?.can_restart_engine ? "available" : "n/a"}
-            />
-            <Row
-              label="Open logs"
-              value={runtimeCapabilities?.can_open_logs ? "available" : "n/a"}
-            />
-            <Row
-              label="Diag modules"
-              value={`${diagnostics?.snapshot.module_count ?? runtimeModules.length}`}
-            />
-            <Row
-              label="Diag bridges"
-              value={`${diagnostics?.snapshot.bridge_count ?? runtimeBridges.length}`}
-            />
-            <Row
-              label="Diag gate"
-              value={diagnostics?.snapshot.execution_gate ?? runtimeControl?.execution_gate?.state ?? "open"}
-            />
-            <Row label="Diag phase" value={diagPhase ?? "idle"} />
-            <Row label="Diag iter" value={`${diagIteration ?? 0}`} />
-            <Row label="Tool wait" value={`${diagPendingToolCalls}`} />
-            <Row label="Subagents" value={`${diagSubagentWorkers}`} />
-            <Row
-              label="Board"
-              value={boardAttachmentLabel}
-            />
-            <Row
-              label="Board mode"
-              value={boardSnapshot?.runtime_mode ?? "unprobed"}
-            />
-            <Row
-              label="Board health"
-              value={boardHealthLabel}
-            />
-            <Row
-              label="Native health"
-              value={nativeHealthLabel}
-            />
-            <Row
-              label="Native queue"
-              value={`${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0}`}
-            />
-            <Row
-              label="Native modules"
-              value={`${nativeSnapshot?.module_count ?? nativeModuleEntries.length}`}
-            />
-            <Row
-              label="Native bridge"
-              value={nativeArtifactLabel}
-            />
+            <ConsoleRowGrid items={runtimeSummaryRows} className="grid gap-2" />
           </div>
           <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
             <div className="flex items-center justify-between gap-3">
@@ -3324,12 +3291,7 @@ export function MiraKernelConsole({
             </div>
           </div>
           <div className="rounded-xl border border-border/70 bg-background/80 p-3">
-            <div className="mb-3 grid gap-2 md:grid-cols-2">
-              <Row label="Supervisor" value={runtimeControl?.fault_posture.supervisor ?? diagnostics?.supervisor ?? "unknown"} />
-              <Row label="Fault level" value={runtimeControl?.fault_posture.last_level ?? "clear"} />
-              <Row label="Maintenance" value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"} />
-              <Row label="Gate" value={runtimeControl?.execution_gate?.state ?? "open"} />
-            </div>
+            <ConsoleRowGrid items={faultSummaryRows} className="mb-3 grid gap-2 md:grid-cols-2" />
             <div className="mb-3 grid gap-3 md:grid-cols-3">
               <ConsoleInfoCard
                 label="Privilege gate"
