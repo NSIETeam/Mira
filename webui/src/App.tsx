@@ -988,7 +988,6 @@ function Shell({
         topChrome={showHostChrome ? (
           <HostChrome
             appName={appName}
-            appTagline={appTagline}
             kernelStatus={hostKernelStatus}
             onToggleSidebar={showMainSidebar ? toggleHostSidebar : undefined}
             onSidebarPreviewEnter={openHostSidebarPreview}
