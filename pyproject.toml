@@ -104,12 +104,10 @@ dev = [
 
 [project.scripts]
 mira = "mira.cli.commands:app"
-mira = "mira.cli.commands:app"
 
 # Distribution compatibility note:
 # - published package name stays `mira` for now
 # - primary user-facing runtime entrypoint is `mira`
-# - legacy `mira` launcher remains for compatibility
 
 # Third-party tool plugins register here.  Built-in tools are discovered
 # automatically via pkgutil scanning in ToolLoader.discover().
@@ -143,16 +141,14 @@ artifacts = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["mira", "mira"]
+packages = ["mira"]
 exclude = ["mira/channels/*/tests/**"]
 
 [tool.hatch.build.targets.wheel.sources]
 "mira" = "mira"
-"mira" = "mira"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "mira/",
     "mira/",
     "mira/web/dist/",
     "hatch_build.py",

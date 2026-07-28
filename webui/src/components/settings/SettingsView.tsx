@@ -2770,7 +2770,11 @@ function OverviewSettings({
             value={kernelIdentity?.app_name ?? tx("settings.values.unavailable", "Unavailable")}
             caption={
               kernelIdentity
-                ? `${kernelIdentity.app_name} active · compat launcher alias retained`
+                ? `${kernelIdentity.app_name} active${
+                  kernelIdentity.legacy_cli_name && kernelIdentity.legacy_cli_name !== kernelIdentity.cli_name
+                    ? ` · compat launcher alias ${kernelIdentity.legacy_cli_name}`
+                    : ""
+                }`
                 : tx("settings.values.unavailable", "Unavailable")
             }
             onClick={() => onSelectSection("runtime")}
