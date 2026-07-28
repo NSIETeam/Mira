@@ -617,8 +617,9 @@ export class miraClient {
 
     if (kernelEvent.type === "error" && this.pendingNewChat) {
       clearTimeout(this.pendingNewChat.timer);
-      const detail = typeof parsed.detail === "string" ? parsed.detail : "server error";
-      const reason = typeof parsed.reason === "string" && parsed.reason ? `:${parsed.reason}` : "";
+      const errorPayload = parsed as { detail?: string; reason?: string };
+      const detail = typeof errorPayload.detail === "string" ? errorPayload.detail : "server error";
+      const reason = typeof errorPayload.reason === "string" && errorPayload.reason ? `:${errorPayload.reason}` : "";
       this.pendingNewChat.reject(new Error(`${detail}${reason}`));
       this.pendingNewChat = null;
     }

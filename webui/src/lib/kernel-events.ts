@@ -1,6 +1,7 @@
 import type {
   GoalStateWsPayload,
   InboundEvent,
+  KernelEventAction,
   KernelEventPayload,
   UITurnPhase,
 } from "./types";
@@ -54,7 +55,7 @@ function errorEvent(
   return {
     type: "error",
     text,
-    action,
+    action: action as KernelEventAction,
     metadata,
   };
 }
@@ -258,6 +259,7 @@ export function kernelFrameSnapshot(metadata: unknown): KernelFrameSnapshot {
 
 export function readyChatIdFromKernelMetadata(metadata: unknown): string | null {
   const row = metadataRow(metadata);
+  if (!row) return null;
   const chatId = metadataChatId(row);
   if (!chatId || "turn_id" in row) return null;
   return chatId;
@@ -290,6 +292,7 @@ export function sessionUpdateFromKernelMetadata(metadata: unknown): {
   workspaceScope?: unknown;
 } | null {
   const row = metadataRow(metadata);
+  if (!row) return null;
   const chatId = metadataChatId(row);
   if (!chatId || !("workspace_scope" in row)) return null;
   return {
@@ -329,6 +332,7 @@ export function workspaceScopeRejectionFromKernelMetadata(metadata: unknown): {
   chatId?: string;
 } | null {
   const row = metadataRow(metadata);
+  if (!row) return null;
   if (row.detail !== "workspace_scope_rejected") return null;
   const reason = metadataString(row, "reason");
   const chatId = metadataChatId(row);

@@ -1724,8 +1724,12 @@ def _run_gateway(
         try:
             provider_snapshot = _observe_fallback_models(build_provider_snapshot(config))
         except ValueError as exc:
-            console.print(f"[red]Error: {exc}[/red]")
-            raise typer.Exit(1) from exc
+            message = str(exc)
+            if "No API key configured for provider" in message:
+                provider_snapshot = build_unconfigured_provider_snapshot(config, message)
+            else:
+                console.print(f"[red]Error: {exc}[/red]")
+                raise typer.Exit(1) from exc
     session_manager = SessionManager(config.workspace_path)
 
     # Self-heal the gateway state file with the current PID after any restart.

@@ -20,7 +20,6 @@ import {
   kernelStatusMatchesLifecycle,
   kernelToolCallActionMatches,
   kernelToolResultActionMatches,
-  turnFieldsFromKernelMetadata,
 } from "@/lib/kernel-events";
 import type {
   InboundEvent,
@@ -1013,7 +1012,7 @@ export function usemiraStream(
 
       if (kernelToolResultActionMatches(event, "file_edit")) {
         flushPendingStreamEvents({ closeAnswerSegment: true });
-        const edits = payload.edits ?? [];
+        const edits = (payload.edits ?? []) as UIFileEdit[];
         if (edits.length === 0) return;
         const normalized = mergeFileEdits(undefined, edits);
         if (normalized.length === 0) return;
@@ -1122,14 +1121,20 @@ export function usemiraStream(
           buffer.current = null;
           activeAssistantRef.current = null;
           const filtered = activeId ? prev.filter((m) => m.id !== activeId) : prev;
+          const completion = assistantCompletionFromKernelMetadata(snapshot, {
+            content: event.text ?? "",
+            ...(hasMedia ? { media } : {}),
+            ...(normalizedSource ? { source: normalizedSource } : {}),
+          }) as {
+            content: string;
+            latencyMs?: number;
+            media?: UIMediaAttachment[];
+            source?: UIMessageSource;
+          };
           return absorbCompleteAssistantMessage(
             filtered,
             {
-              ...assistantCompletionFromKernelMetadata(snapshot, {
-                content: event.text ?? "",
-                ...(hasMedia ? { media } : {}),
-                ...(normalizedSource ? { source: normalizedSource } : {}),
-              }),
+              ...completion,
               ...turnFieldsFromEvent({
                 turn_id: turn.turnId,
                 turn_phase: turn.turnPhase,

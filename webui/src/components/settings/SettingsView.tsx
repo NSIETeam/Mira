@@ -2324,13 +2324,13 @@ export function SettingsView({
         onClose={closeXaiOAuthFlow}
       />
 
-      <miraFeatureInstallDialog
+      <MiraFeatureInstallDialog
         feature={miraFeatureConfirm}
         installing={miraFeatureAction === `enable:${miraFeatureConfirm?.name ?? ""}`}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           if (!open) setmiraFeatureConfirm(null);
         }}
-        onConfirm={(feature) => handlemiraFeatureAction("enable", feature.name, true)}
+        onConfirm={(feature: { name: string }) => handlemiraFeatureAction("enable", feature.name, true)}
       />
 
       <AutomationDeleteDialog
@@ -6303,7 +6303,7 @@ function AutomationDeleteDialog({
   );
 }
 
-function miraFeatureInstallDialog({
+function MiraFeatureInstallDialog({
   feature,
   installing,
   onOpenChange,

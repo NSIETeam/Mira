@@ -495,6 +495,7 @@ export interface KernelManifestPayload {
   }>;
   runtime_bridges: Array<{
     adapter: string;
+    label?: string | null;
     backend_kind: string;
     status: string;
     health: string;
@@ -549,6 +550,9 @@ export interface KernelManifestPayload {
     display_name: string;
     category: string;
     status: string;
+    native_status?: string | null;
+    native_last_code?: number | null;
+    native_updated_at_ms?: number | null;
     operator_actions: string[];
     summary: string;
     actions?: Array<{
@@ -745,6 +749,8 @@ export interface KernelManifestPayload {
   scheduler: {
     policy: string;
     preferred_lane?: string;
+    dispatch_priority?: boolean;
+    dispatch_handoff_lane?: string | null;
     background_drain_requested?: boolean;
     active_runtime?: {
       adapter?: string | null;
@@ -912,6 +918,7 @@ export interface ShellHostContractPayload {
     allowWorkspaceControls?: boolean;
     allowRuntimeModelControls?: boolean;
     allowKernelConsole?: boolean;
+    allowPrivilegedRuntimeControls?: boolean;
   };
   actions?: {
     allowExecutionFork?: boolean;

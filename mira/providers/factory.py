@@ -318,7 +318,14 @@ def load_provider_snapshot(
 ) -> ProviderSnapshot:
     from mira.config.loader import load_config, resolve_config_env_vars
 
-    return build_provider_snapshot(
-        resolve_config_env_vars(load_config(config_path)),
-        preset_name=preset_name,
-    )
+    config = resolve_config_env_vars(load_config(config_path))
+    try:
+        return build_provider_snapshot(
+            config,
+            preset_name=preset_name,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "No API key configured for provider" not in message:
+            raise
+        return build_unconfigured_provider_snapshot(config, message)

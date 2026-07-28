@@ -97,6 +97,8 @@ Mira keeps the core small: channels and shells feed the same execution kernel, t
 
 The operator shell now exposes the same long-task lifecycle the kernel persists internally: sustained goals can be inspected, resumed, completed, or cancelled from the workbench, and root/user privilege workflow stays explicit through the same host contract.
 
+Gateway startup now degrades into an unconfigured setup shell when no model API key is present, so the engineering workbench can still boot for inspection, shell control, and first-time configuration.
+
 ```
   Channels / Engineering Shell / Terminal / API
                     |
@@ -218,6 +220,8 @@ mira gateway              # 长期运行的服务
 Mira 保持内核精简：聊天渠道和工程外壳都接入同一个执行内核，LLM 负责决策何时调用工具，而壳层特有行为不进入运行时主循环。默认工作台刻意偏工程化，但内核契约本身仍保持通用，后续可以继续接入 Rust/C 原生宿主桥接、更轻的嵌入式控制面和更薄的定制外壳。
 
 现在 operator shell 已经把内核内部持久化的长任务生命周期直接暴露出来：持续目标可以在工作台内 inspect、resume、complete、cancel，root/user 权限工作流也通过同一份 host contract 保持显式一致。
+
+现在即使没有配置模型 API key，gateway 启动也会降级进入未配置 setup shell，不会直接退出；工程工作台仍可用于检查、控制台操作和首次配置。
 
 ```
   Channels / Engineering Shell / Terminal / API

@@ -32,3 +32,7 @@ def build_worker_registry() -> list[dict[str, Any]]:
             "summary": "Delegated worker pool for parallel or specialized execution.",
         },
     ]
+
+
+def project_worker_registry() -> list[dict[str, Any]]:
+    return build_worker_registry()

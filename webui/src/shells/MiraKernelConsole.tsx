@@ -76,11 +76,6 @@ function formatClockTime(date: Date): string {
   });
 }
 
-function formatIsoTimestamp(value: string | null | undefined): string {
-  if (!value) return "unknown";
-  return formatClockTime(new Date(value));
-}
-
 function formatKernelTimestampList(value: string): string {
   return value
     .split(",")
@@ -124,7 +119,7 @@ function findActionById<T extends { id?: string | null }>(
 }
 
 function renderNativeModuleChip({
-  name,
+  name: _name,
   state,
   operatorPending,
   pane,
@@ -290,6 +285,7 @@ export function MiraKernelConsole({
   const canElevate = hostContract.privilege.canElevate;
   const shellAllowsPrivilegedControls = hostContract.surfaces.allowPrivilegedRuntimeControls;
   const allowsPrivilegedControls = shellAllowsPrivilegedControls && (privilegeRole === "root" || canElevate);
+  const operatorReadyLabel = "operator-ready";
   const privilegePosture = {
     roleLabel: privilegeRole,
     contractLabel: shellAllowsPrivilegedControls ? "runtime control contract enabled" : "restricted shell contract",
@@ -346,7 +342,6 @@ export function MiraKernelConsole({
   const runtimeCapabilities = kernelManifest?.capabilities ?? null;
   const executionContract = kernelManifest?.execution ?? null;
   const goalState = diagnostics?.snapshot.goal_state;
-  const operatorReadyLabel = "operator-ready";
   const boardAttachmentLabel = boardSnapshot?.attached ? "attached" : "detached";
   const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
@@ -443,7 +438,7 @@ export function MiraKernelConsole({
     try {
       const result = await onRunOperatorCommand(route.command);
       appendOperatorOutput(`$ ${route.command}`);
-      appendOperatorResult(result);
+      if (result && typeof result === "object") appendOperatorResult(result);
     } catch (error) {
       appendOperatorOutput(error instanceof Error ? error.message : "timeline routing failed");
     }
@@ -549,7 +544,7 @@ export function MiraKernelConsole({
     try {
       if (!onRunOperatorCommand) throw new Error("operator command transport unavailable");
       const result = await onRunOperatorCommand(raw);
-      appendOperatorResult(result);
+      if (result && typeof result === "object") appendOperatorResult(result);
     } catch (error) {
       appendOperatorOutput(error instanceof Error ? error.message : "operator command failed");
     } finally {
@@ -568,7 +563,7 @@ export function MiraKernelConsole({
       try {
         if (!onRunOperatorCommand) throw new Error("operator command transport unavailable");
         const result = await onRunOperatorCommand(command);
-        appendOperatorResult(result);
+        if (result && typeof result === "object") appendOperatorResult(result);
       } catch (error) {
         appendOperatorOutput(error instanceof Error ? error.message : "operator command failed");
       } finally {
@@ -1040,7 +1035,7 @@ export function MiraKernelConsole({
     },
     {
       label: "Embedded target",
-      value: embeddedTargetHint ?? boardSnapshot?.label ?? boardSnapshot?.target ?? "not attached",
+      value: embeddedTargetHint ?? boardSnapshot?.target ?? "not attached",
       detail: `${boardAttachmentLabel} · ${boardSnapshot?.transport ?? "transport unknown"}`,
       tone: "border-amber-200/80 bg-amber-50/70",
     },
@@ -1919,12 +1914,12 @@ export function MiraKernelConsole({
                           >
                             inspect last
                           </button>
-                          {"target" in entry.details && "command" in entry.details ? (
+                          {entry.details && "target" in entry.details && "command" in entry.details ? (
                             <button
                               type="button"
                               onClick={() => {
-                                const replayCommand = `native replay ${String(entry.details.target)} ${String(entry.details.command)}${
-                                  entry.details.value ? ` ${String(entry.details.value)}` : ""
+                                const replayCommand = `native replay ${String(entry.details?.target ?? "")} ${String(entry.details?.command ?? "")}${
+                                  entry.details?.value ? ` ${String(entry.details.value)}` : ""
                                 }`;
                                 setOperatorCommand(replayCommand);
                               }}
@@ -1934,11 +1929,11 @@ export function MiraKernelConsole({
                               fill replay
                             </button>
                           ) : null}
-                          {"target" in entry.details && entry.details.target ? (
+                          {entry.details && "target" in entry.details && entry.details.target ? (
                             <button
                               type="button"
                               onClick={() => {
-                                const focusCommand = `native focus ${String(entry.details.target)}`;
+                                const focusCommand = `native focus ${String(entry.details?.target ?? "")}`;
                                 runQuickCommand(focusCommand);
                               }}
                               disabled={operatorPending}
@@ -2547,7 +2542,7 @@ export function MiraKernelConsole({
                     <ConsoleBadge
                       label="native"
                       value={String(selectedModule.native_status ?? "unknown")}
-                      tone="fuchsia"
+                      tone="slate"
                     />
                     {"native_last_code" in selectedModule ? (
                       <ConsoleBadge
@@ -2924,10 +2919,10 @@ export function MiraKernelConsole({
                   {bridge.backend_kind} · {bridge.entrypoint}
                 </div>
                 <div className="mt-3 grid gap-2 md:grid-cols-4">
-                  <Row label="Stage" value={bridge.runtime_stage} />
-                  <Row label="Mode" value={bridge.runtime_mode} />
-                  <Row label="ABI" value={bridge.abi} />
-                  <Row label="Artifact" value={bridge.manifest ?? bridge.entrypoint} />
+                  <Row label="Stage" value={bridge.runtime_stage ?? "unknown"} />
+                  <Row label="Mode" value={bridge.runtime_mode ?? "unknown"} />
+                  <Row label="ABI" value={bridge.abi ?? "unknown"} />
+                  <Row label="Artifact" value={bridge.manifest ?? bridge.entrypoint ?? "unknown"} />
                 </div>
                 {(bridge.runtime || bridge.version || bridge.queue_depth !== undefined || bridge.module_count !== undefined || bridge.updated_at_ms !== undefined) ? (
                   <div className="mt-2 grid gap-2 md:grid-cols-4">
@@ -3018,7 +3013,7 @@ export function MiraKernelConsole({
                               <div className="flex flex-wrap items-center gap-2 text-[12px] text-slate-700">
                                 <span>{formatBridgeCommandSummary(row)}</span>
                                 {typeof row.updated_at_ms === "number" ? (
-                                  <span>{formatRuntimeTimestamp(row.updated_at_ms)}</span>
+                                  <span>{formatKernelTimestamp(row.updated_at_ms)}</span>
                                 ) : null}
                               </div>
                             </div>
@@ -4346,7 +4341,7 @@ export function MiraKernelConsole({
                         {error.kind}
                       </span>
                       <span className="text-[11px] text-rose-500">
-                        {formatIsoTimestamp(error.at)}
+                        {formatKernelTimestamp(error.at)}
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-rose-900">{error.message}</div>

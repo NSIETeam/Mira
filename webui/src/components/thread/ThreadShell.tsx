@@ -11,7 +11,7 @@ import type { ModelPresetOption } from "@/components/thread/ModelPresetBadge";
 import { ThreadHeader } from "@/components/thread/ThreadHeader";
 import { StreamErrorNotice } from "@/components/thread/StreamErrorNotice";
 import { ThreadViewport, type ThreadViewportHandle } from "@/components/thread/ThreadViewport";
-import { usemiraStream, type SendAttachment, type SendOptions } from "@/hooks/usemiraStream";
+import { usemiraStream, type SendAttachment, type SendOptions } from "@/hooks/useMiraStream";
 import { useExecutionHistory } from "@/hooks/useExecutions";
 import {
   ApiError,
