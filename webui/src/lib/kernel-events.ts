@@ -159,6 +159,11 @@ export function assistantCompletionFromKernelMetadata(
 export interface KernelMetadataSnapshot {
   goalState?: GoalStateWsPayload;
   runStartedAt: number | null;
+  turnFields: {
+    turn_id?: string;
+    turn_phase?: UITurnPhase;
+    turn_seq?: number;
+  };
   completion: {
     latencyMs?: number;
     turnId?: string;
@@ -192,6 +197,7 @@ export function kernelMetadataSnapshot(metadata: unknown): KernelMetadataSnapsho
   return {
     goalState: goalStateFromKernelMetadata(metadata),
     runStartedAt: runStartedAtFromKernelMetadata(metadata),
+    turnFields: turnFieldsFromKernelMetadata(metadata),
     completion: turnCompletionFromKernelMetadata(metadata),
     readyChatId: readyChatIdFromKernelMetadata(metadata),
     attachedChatId: attachedChatIdFromKernelMetadata(metadata),
