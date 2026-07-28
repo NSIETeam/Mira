@@ -22,10 +22,15 @@ def runtime_probe_payload(
     runtime_mode: object,
     abi: object,
     status_symbol: object,
+    runtime: object = None,
+    version: object = None,
+    queue_depth: object = None,
+    module_count: object = None,
+    capabilities: object = None,
     error: object = None,
 ) -> dict[str, Any]:
     health = runtime_health(status)
-    return {
+    payload = {
         "health": health,
         "artifact": artifact,
         "manifest": manifest,
@@ -34,3 +39,14 @@ def runtime_probe_payload(
         "status_symbol": status_symbol,
         "last_error": None if health != "fault" else str(error or "runtime probe fault"),
     }
+    if runtime is not None:
+        payload["runtime"] = runtime
+    if version is not None:
+        payload["version"] = version
+    if queue_depth is not None:
+        payload["queue_depth"] = queue_depth
+    if module_count is not None:
+        payload["module_count"] = module_count
+    if capabilities is not None:
+        payload["capabilities"] = capabilities
+    return payload

@@ -2673,6 +2673,14 @@ export function MiraKernelConsole({
                   <Row label="ABI" value={bridge.abi} />
                   <Row label="Artifact" value={bridge.manifest ?? bridge.entrypoint} />
                 </div>
+                {(bridge.runtime || bridge.version || bridge.queue_depth !== undefined || bridge.module_count !== undefined) ? (
+                  <div className="mt-2 grid gap-2 md:grid-cols-4">
+                    {bridge.runtime ? <Row label="Runtime" value={bridge.runtime} /> : null}
+                    {bridge.version ? <Row label="Version" value={bridge.version} /> : null}
+                    {bridge.queue_depth !== undefined ? <Row label="Queue depth" value={String(bridge.queue_depth ?? 0)} /> : null}
+                    {bridge.module_count !== undefined ? <Row label="Module count" value={String(bridge.module_count ?? 0)} /> : null}
+                  </div>
+                ) : null}
                 <div className="mt-2 flex flex-wrap gap-2">
                   <ConsoleBadge
                     label="status"
@@ -2698,7 +2706,7 @@ export function MiraKernelConsole({
                     <ConsoleBadge label="mode" value={bridge.runtime_mode} tone="slate" />
                   ) : null}
                 </div>
-                {bridge.manifest || bridge.status_symbol || bridge.build_hint || bridge.kernel_surface || bridge.free_symbol || bridge.attach_symbol ? (
+                {bridge.manifest || bridge.status_symbol || bridge.build_hint || bridge.kernel_surface || bridge.free_symbol || bridge.attach_symbol || bridge.capabilities?.length ? (
                   <div className="mt-3 grid gap-2 rounded-md border border-slate-200/80 bg-white/80 p-3 text-xs">
                     {bridge.manifest ? (
                       <Row label="Manifest" value={bridge.manifest} />
@@ -2717,6 +2725,9 @@ export function MiraKernelConsole({
                     ) : null}
                     {bridge.attach_symbol ? (
                       <Row label="Attach symbol" value={bridge.attach_symbol} />
+                    ) : null}
+                    {bridge.capabilities?.length ? (
+                      <Row label="Capabilities" value={bridge.capabilities.join(", ")} />
                     ) : null}
                     {bridge.build_hint ? (
                       <Row label="Build hint" value={bridge.build_hint} />

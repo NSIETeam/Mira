@@ -505,6 +505,11 @@ export interface KernelManifestPayload {
     kernel_surface?: string | null;
     free_symbol?: string | null;
     attach_symbol?: string | null;
+    runtime?: string | null;
+    version?: string | null;
+    queue_depth?: number | null;
+    module_count?: number | null;
+    capabilities?: string[] | null;
     runtime_mode?: string | null;
     runtime_stage?: string;
     build_hint?: string | null;
