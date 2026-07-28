@@ -183,7 +183,6 @@ export function MiraKernelConsole({
   const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
   const sessionControls = kernelManifest?.session_controls?.actions ?? [];
-  const workerControls = kernelManifest?.worker_controls?.actions ?? [];
   const scheduler = kernelManifest?.scheduler ?? null;
   const schedulerQueues = scheduler?.queues.slice(0, 4) ?? [];
   const dispatchQueue = schedulerQueues.find((queue) => queue.id === "tool_dispatch") ?? null;
@@ -3016,7 +3015,7 @@ export function MiraKernelConsole({
                                 return;
                               }
                               if (queue.lane === "subagent") {
-                                runContractAction(workerControls[0], "runtime");
+                                runContractAction(kernelManifest?.worker_controls?.actions?.[0], "runtime");
                                 return;
                               }
                               if (queue.lane === "sustained_goal") {
