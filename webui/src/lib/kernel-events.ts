@@ -204,6 +204,11 @@ export interface KernelStreamPayloadSnapshot {
   source?: unknown;
 }
 
+export interface KernelFrameSnapshot {
+  metadata: KernelMetadataSnapshot;
+  payload: KernelStreamPayloadSnapshot;
+}
+
 export function kernelMetadataSnapshot(metadata: unknown): KernelMetadataSnapshot {
   return {
     goalState: goalStateFromKernelMetadata(metadata),
@@ -241,6 +246,13 @@ export function kernelStreamPayloadSnapshot(metadata: unknown): KernelStreamPayl
     ...(mediaUrls ? { mediaUrls } : {}),
     ...(media ? { media } : {}),
     ...(source !== undefined ? { source } : {}),
+  };
+}
+
+export function kernelFrameSnapshot(metadata: unknown): KernelFrameSnapshot {
+  return {
+    metadata: kernelMetadataSnapshot(metadata),
+    payload: kernelStreamPayloadSnapshot(metadata),
   };
 }
 

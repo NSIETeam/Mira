@@ -14,11 +14,10 @@ import { formatQuotedUserMessage } from "@/lib/user-message-quote";
 import {
   assistantCompletionFromKernelMetadata,
   kernelExtendsStreamingActivity,
+  kernelFrameSnapshot,
   kernelMessageActionMatches,
-  kernelMetadataSnapshot,
   kernelReasoningActionMatches,
   kernelStatusMatchesLifecycle,
-  kernelStreamPayloadSnapshot,
   kernelToolCallActionMatches,
   kernelToolResultActionMatches,
   turnFieldsFromKernelMetadata,
@@ -889,8 +888,9 @@ export function usemiraStream(
     const handleKernelEvent = (event: KernelEventPayload) => {
       const metadata = event.metadata as Record<string, unknown> | undefined;
       if (!metadata || typeof metadata !== "object") return;
-      const snapshot = kernelMetadataSnapshot(metadata);
-      const payload = kernelStreamPayloadSnapshot(metadata);
+      const frame = kernelFrameSnapshot(metadata);
+      const snapshot = frame.metadata;
+      const payload = frame.payload;
       const turn = turnFieldsFromEvent(snapshot.turnFields);
       const sideChannelEvent =
         turn.turnId !== undefined && sideChannelTurnIdsRef.current.has(turn.turnId);
