@@ -1392,9 +1392,31 @@ export function MiraKernelConsole({
                           />
                         ) : null}
                       </div>
+                      {"family_counts" in entry.details ? (
+                        <div className="mt-2 rounded-sm border border-slate-200/80 bg-white/80 px-2 py-1 text-[10px] text-slate-600">
+                          <span className="font-semibold uppercase tracking-[0.12em] text-slate-500">
+                            family counts
+                          </span>
+                          <div className="mt-1">{String(entry.details.family_counts)}</div>
+                        </div>
+                      ) : null}
+                      {"family_groups" in entry.details ? (
+                        <div className="mt-2 rounded-sm border border-slate-200/80 bg-white/80 px-2 py-1 text-[10px] text-slate-600">
+                          <span className="font-semibold uppercase tracking-[0.12em] text-slate-500">
+                            family groups
+                          </span>
+                          <div className="mt-1 break-words">{String(entry.details.family_groups)}</div>
+                        </div>
+                      ) : null}
                       <div className="mt-2 grid gap-1.5 text-[10px] text-slate-500">
                         {Object.entries(entry.details)
-                          .filter(([key]) => key !== "subject" && key !== "action" && key !== "family")
+                          .filter(
+                            ([key]) => key !== "subject"
+                              && key !== "action"
+                              && key !== "family"
+                              && key !== "family_counts"
+                              && key !== "family_groups",
+                          )
                           .map(([key, value]) => (
                             key === "items" || key === "codes" || key === "updated" ? (
                               <div
