@@ -3324,8 +3324,15 @@ export function MiraKernelConsole({
                       </div>
                     ) : null}
                     {queue.family_counts && queue.family_counts !== "none" ? (
-                      <div className="mt-2 text-[11px] text-amber-700">
-                        families {queue.family_counts}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {String(queue.family_counts).split(",").map((entry) => (
+                          <span
+                            key={`${queue.id}-${entry}`}
+                            className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700"
+                          >
+                            {entry.trim()}
+                          </span>
+                        ))}
                       </div>
                     ) : null}
                     {queue.state === "delegated" || queue.state === "handoff" ? (
