@@ -27,7 +27,6 @@ export function shellDataAttributes({
   shellSupportsFileActivity: boolean;
   hostContract: ShellHostContract;
 }): Record<string, string> {
-  const layout = hostContract.mode === "engineering" ? null : hostContract.mode;
   return {
     "data-shell-name": shellDescriptor?.name ?? hostContract.mode,
     "data-shell-theme": shellDescriptor?.theme ?? shellThemeFallback(hostContract),
@@ -35,7 +34,7 @@ export function shellDataAttributes({
     "data-shell-supports-threads": dataFlag(shellSupportsThreads),
     "data-shell-supports-runtime-controls": dataFlag(shellSupportsRuntimeControls),
     "data-shell-supports-file-activity": dataFlag(shellSupportsFileActivity),
-    ...(layout ? { "data-shell-layout": layout } : {}),
+    ...(hostContract.mode !== "engineering" ? { "data-shell-layout": hostContract.mode } : {}),
     "data-shell-mode": hostContract.mode,
     "data-shell-read-only": dataFlag(hostContract.composer.readOnlyExecution),
   };
