@@ -986,6 +986,16 @@ export function MiraKernelConsole({
     () => Object.fromEntries(errorTriageRoutes.map((route) => [route.id, route])),
     [errorTriageRoutes],
   );
+  const faultFocusModule = useMemo(() => {
+    const firstFault = nativeFaultModules[0]?.[0] ?? null;
+    if (!firstFault) return null;
+    return {
+      name: firstFault,
+      focus: moduleFocusCommand(firstFault),
+      inspect: moduleInspectFillCommand(firstFault),
+      show: moduleShowCommand(firstFault),
+    };
+  }, [moduleFocusCommand, moduleInspectFillCommand, moduleShowCommand, nativeFaultModules]);
 
   return (
     <aside className="hidden w-[332px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[356px]">
@@ -3929,6 +3939,51 @@ export function MiraKernelConsole({
                 valueClassName="mt-2 text-sm font-semibold text-amber-950"
               />
             </div>
+            {faultFocusModule ? (
+              <div className="mb-3 rounded-lg border border-rose-200/80 bg-rose-50/80 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-rose-700">Fault focus module</div>
+                    <div className="mt-1 text-sm font-semibold text-rose-950">{faultFocusModule.name}</div>
+                  </div>
+                  <span className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700">
+                    module-linked
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {faultFocusModule.focus ? (
+                    <button
+                      type="button"
+                      onClick={() => runQuickCommand(faultFocusModule.focus!)}
+                      disabled={operatorPending}
+                      className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+                    >
+                      focus module
+                    </button>
+                  ) : null}
+                  {faultFocusModule.show ? (
+                    <button
+                      type="button"
+                      onClick={() => runQuickCommand(faultFocusModule.show!)}
+                      disabled={operatorPending}
+                      className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+                    >
+                      open module
+                    </button>
+                  ) : null}
+                  {faultFocusModule.inspect ? (
+                    <button
+                      type="button"
+                      onClick={() => setOperatorCommand(faultFocusModule.inspect!)}
+                      disabled={operatorPending}
+                      className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+                    >
+                      fill inspect
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <ConsoleActionButton
                 action={inspectFaultsAction}
