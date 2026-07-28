@@ -206,6 +206,18 @@ export function MiraKernelConsole({
   const embeddedBoardStatusAction = embeddedTopologyAction("board_status");
   const embeddedInspectAction = embeddedTopologyAction("inspect_embedded");
   const embeddedRefreshPortsAction = embeddedTopologyAction("refresh_board_ports");
+  const nativeReplayLastAction = nativeAction("replay_last");
+  const nativeStatusAction = nativeAction("native_status");
+  const nativeLastCommandAction = nativeAction("native_last_command");
+  const nativeModulesAction = nativeAction("native_modules");
+  const nativeFocusLastTargetAction = nativeAction("focus_last_target");
+  const nativeOpenLastTargetAction = nativeAction("open_last_target");
+  const selectedModuleInspectNativeStatusAction = selectedModuleAction("inspect_native_status");
+  const selectedModuleFocusNativeAction = selectedModuleAction("focus_native");
+  const selectedModuleInspectNativeAction = selectedModuleAction("inspect_native");
+  const selectedModuleShowModuleAction = selectedModuleAction("show_module");
+  const selectedModuleFillNativeInspectAction = selectedModuleAction("fill_native_inspect");
+  const selectedModuleFillNativeReplayAction = selectedModuleAction("fill_native_replay");
   const findModuleAction = (moduleName: string, actionId: string) =>
     runtimeModules.find((module) => module.name === moduleName)?.actions?.find((action) => action.id === actionId)
     ?? runtimeTopologyModules.find((module) => module.name === moduleName)?.actions?.find((action) => action.id === actionId)
@@ -1013,32 +1025,36 @@ export function MiraKernelConsole({
                             </button>
                           ) : null}
                           {"target" in entry.details && entry.details.target ? (
-                            <button
+                            {(() => {
+                              const moduleShowAction = findModuleAction(String(entry.details.target), "show_module");
+                              const moduleInspectFillCommand = findModuleAction(String(entry.details.target), "fill_native_inspect")?.command;
+                              return (
+                                <>
+                                  <button
                               type="button"
                               onClick={() => {
-                                const action = findModuleAction(String(entry.details.target), "show_module");
-                                if (!action?.command) return;
-                                runQuickCommand(action.command);
+                                if (!moduleShowAction?.command) return;
+                                runQuickCommand(moduleShowAction.command);
                               }}
-                              disabled={operatorPending || !findModuleAction(String(entry.details.target), "show_module")?.command}
+                              disabled={operatorPending || !moduleShowAction?.command}
                               className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                             >
                               open module
                             </button>
-                          ) : null}
-                          {"target" in entry.details && entry.details.target ? (
-                            <button
+                                  <button
                               type="button"
                               onClick={() => {
-                                const command = findModuleAction(String(entry.details.target), "fill_native_inspect")?.command;
-                                if (!command) return;
-                                setOperatorCommand(command);
+                                if (!moduleInspectFillCommand) return;
+                                setOperatorCommand(moduleInspectFillCommand);
                               }}
-                              disabled={operatorPending || !findModuleAction(String(entry.details.target), "fill_native_inspect")?.command}
+                              disabled={operatorPending || !moduleInspectFillCommand}
                               className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                             >
                               fill inspect
                             </button>
+                                </>
+                              );
+                            })()}
                           ) : null}
                         </div>
                       ) : null}
@@ -1596,8 +1612,8 @@ export function MiraKernelConsole({
                     <>
                       <button
                         type="button"
-                        onClick={() => runContractAction(selectedModuleAction("inspect_native_status"), "adapters")}
-                        disabled={operatorPending || !selectedModuleAction("inspect_native_status")?.command}
+                        onClick={() => runContractAction(selectedModuleInspectNativeStatusAction, "adapters")}
+                        disabled={operatorPending || !selectedModuleInspectNativeStatusAction?.command}
                         className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                       >
                         inspect native
@@ -1605,57 +1621,57 @@ export function MiraKernelConsole({
                       {nativeLastCommand?.target === selectedModule.name ? (
                         <button
                           type="button"
-                          onClick={() => runContractAction(nativeAction("replay_last"), "adapters")}
-                          disabled={operatorPending || !nativeAction("replay_last")?.command}
+                          onClick={() => runContractAction(nativeReplayLastAction, "adapters")}
+                          disabled={operatorPending || !nativeReplayLastAction?.command}
                           className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                         >
                           replay native
                         </button>
                       ) : null}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const command = selectedModuleAction("focus_native")?.command;
+                        <button
+                          type="button"
+                          onClick={() => {
+                          const command = selectedModuleFocusNativeAction?.command;
                           if (!command) return;
                           runQuickCommand(command);
                         }}
-                        disabled={operatorPending || !selectedModuleAction("focus_native")?.command}
+                        disabled={operatorPending || !selectedModuleFocusNativeAction?.command}
                         className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                       >
                         native focus
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const command = selectedModuleAction("inspect_native")?.command;
+                        <button
+                          type="button"
+                          onClick={() => {
+                          const command = selectedModuleInspectNativeAction?.command;
                           if (!command) return;
                           runQuickCommand(command);
                         }}
-                        disabled={operatorPending || !selectedModuleAction("inspect_native")?.command}
+                        disabled={operatorPending || !selectedModuleInspectNativeAction?.command}
                         className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                       >
                         native inspect
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const command = selectedModuleAction("show_module")?.command;
+                        <button
+                          type="button"
+                          onClick={() => {
+                          const command = selectedModuleShowModuleAction?.command;
                           if (!command) return;
                           runQuickCommand(command);
                         }}
-                        disabled={operatorPending || !selectedModuleAction("show_module")?.command}
+                        disabled={operatorPending || !selectedModuleShowModuleAction?.command}
                         className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                       >
                         open module
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const command = selectedModuleAction("fill_native_replay")?.command;
+                        <button
+                          type="button"
+                          onClick={() => {
+                          const command = selectedModuleFillNativeReplayAction?.command;
                           if (!command) return;
                           setOperatorCommand(command);
                         }}
-                        disabled={operatorPending || !selectedModuleAction("fill_native_replay")?.command}
+                        disabled={operatorPending || !selectedModuleFillNativeReplayAction?.command}
                         className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                       >
                         fill native cmd
@@ -2401,24 +2417,24 @@ export function MiraKernelConsole({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => runContractAction(nativeAction("native_status"), "adapters")}
-                disabled={operatorPending || !nativeAction("native_status")?.command}
+                onClick={() => runContractAction(nativeStatusAction, "adapters")}
+                disabled={operatorPending || !nativeStatusAction?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 inspect native
               </button>
               <button
                 type="button"
-                onClick={() => runContractAction(nativeAction("native_last_command"), "adapters")}
-                disabled={operatorPending || !nativeAction("native_last_command")?.command}
+                onClick={() => runContractAction(nativeLastCommandAction, "adapters")}
+                disabled={operatorPending || !nativeLastCommandAction?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 last command
               </button>
               <button
                 type="button"
-                onClick={() => runContractAction(nativeAction("native_modules"), "modules")}
-                disabled={operatorPending || !nativeAction("native_modules")?.command}
+                onClick={() => runContractAction(nativeModulesAction, "modules")}
+                disabled={operatorPending || !nativeModulesAction?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 native modules
@@ -2427,24 +2443,24 @@ export function MiraKernelConsole({
                 <>
                   <button
                     type="button"
-                    onClick={() => runContractAction(nativeAction("focus_last_target"), "modules")}
-                    disabled={operatorPending || !nativeAction("focus_last_target")?.command}
+                    onClick={() => runContractAction(nativeFocusLastTargetAction, "modules")}
+                    disabled={operatorPending || !nativeFocusLastTargetAction?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     focus last target
                   </button>
                   <button
                     type="button"
-                    onClick={() => runContractAction(nativeAction("replay_last"), "adapters")}
-                    disabled={operatorPending || !nativeAction("replay_last")?.command}
+                    onClick={() => runContractAction(nativeReplayLastAction, "adapters")}
+                    disabled={operatorPending || !nativeReplayLastAction?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     replay last
                   </button>
                   <button
                     type="button"
-                    onClick={() => runContractAction(nativeAction("open_last_target"), "modules")}
-                    disabled={operatorPending || !nativeAction("open_last_target")?.command}
+                    onClick={() => runContractAction(nativeOpenLastTargetAction, "modules")}
+                    disabled={operatorPending || !nativeOpenLastTargetAction?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     open target
@@ -2459,16 +2475,16 @@ export function MiraKernelConsole({
                 <>
                   <button
                     type="button"
-                    onClick={() => runContractAction(selectedModuleAction("focus_native"), "modules")}
-                    disabled={operatorPending || !selectedModuleAction("focus_native")?.command}
+                    onClick={() => runContractAction(selectedModuleFocusNativeAction, "modules")}
+                    disabled={operatorPending || !selectedModuleFocusNativeAction?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     focus selected
                   </button>
                   <button
                     type="button"
-                    onClick={() => runContractAction(selectedModuleAction("inspect_native"), "modules")}
-                    disabled={operatorPending || !selectedModuleAction("inspect_native")?.command}
+                    onClick={() => runContractAction(selectedModuleInspectNativeAction, "modules")}
+                    disabled={operatorPending || !selectedModuleInspectNativeAction?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     inspect selected
@@ -2476,11 +2492,11 @@ export function MiraKernelConsole({
                   <button
                     type="button"
                     onClick={() => {
-                      const command = selectedModuleAction("fill_native_inspect")?.command;
+                      const command = selectedModuleFillNativeInspectAction?.command;
                       if (!command) return;
                       setOperatorCommand(command);
                     }}
-                    disabled={operatorPending || !selectedModuleAction("fill_native_inspect")?.command}
+                    disabled={operatorPending || !selectedModuleFillNativeInspectAction?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     fill selected inspect
@@ -2488,11 +2504,11 @@ export function MiraKernelConsole({
                   <button
                     type="button"
                     onClick={() => {
-                      const command = selectedModuleAction("fill_native_replay")?.command;
+                      const command = selectedModuleFillNativeReplayAction?.command;
                       if (!command) return;
                       setOperatorCommand(command);
                     }}
-                    disabled={operatorPending || !selectedModuleAction("fill_native_replay")?.command}
+                    disabled={operatorPending || !selectedModuleFillNativeReplayAction?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     fill selected replay
