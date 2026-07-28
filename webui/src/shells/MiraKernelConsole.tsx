@@ -1521,12 +1521,12 @@ export function MiraKernelConsole({
                   </button>
                 </div>
                 <div className="mt-3 space-y-2">
-                  {eventLog.length ? eventLog.slice(0, 5).map((event, index) => (
+                  {executionTimeline.length ? executionTimeline.slice(0, 5).map((event, index) => (
                     <button
                       key={`${event.id ?? "event"}-${index}`}
                       type="button"
-                      onClick={() => void handleTimelineRoute(primaryEventAction(event))}
-                      disabled={operatorPending || !primaryEventAction(event)?.command}
+                      onClick={() => void handleTimelineRoute(event.route)}
+                      disabled={operatorPending || !event.route?.command}
                       className="w-full rounded-md border border-violet-200/80 bg-white/80 px-2.5 py-2 text-left transition-colors hover:bg-violet-100/60"
                     >
                       <div className="flex items-center justify-between gap-3">
