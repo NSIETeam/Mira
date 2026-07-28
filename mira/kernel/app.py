@@ -89,6 +89,47 @@ KERNEL_MANIFEST_VERSION = 1
 KERNEL_EVENT_CONTRACT_VERSION = 1
 KERNEL_SNAPSHOT_CONTRACT_VERSION = 1
 _SHARED_KERNEL_APP: KernelApp | None = None
+
+
+def _session_control_actions() -> list[dict[str, str]]:
+    return [
+        {
+            "id": "inspect_session",
+            "label": "inspect session",
+            "pane": "runtime",
+            "command": "session status",
+        },
+        {
+            "id": "inspect_goal",
+            "label": "inspect goal",
+            "pane": "runtime",
+            "command": "session goal",
+        },
+        {
+            "id": "inspect_continuation",
+            "label": "inspect continuation",
+            "pane": "runtime",
+            "command": "session continuation",
+        },
+        {
+            "id": "resume_goal",
+            "label": "resume goal",
+            "pane": "runtime",
+            "command": "goal resume",
+        },
+        {
+            "id": "complete_goal",
+            "label": "complete goal",
+            "pane": "runtime",
+            "command": "goal complete",
+        },
+        {
+            "id": "cancel_goal",
+            "label": "cancel goal",
+            "pane": "runtime",
+            "command": "goal cancel",
+        },
+    ]
 _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
     "attach-board",
     "detach-board",
@@ -408,44 +449,7 @@ def build_kernel_manifest(
             ),
         },
         "session_controls": {
-            "actions": [
-                {
-                    "id": "inspect_session",
-                    "label": "inspect session",
-                    "pane": "runtime",
-                    "command": "session status",
-                },
-                {
-                    "id": "inspect_goal",
-                    "label": "inspect goal",
-                    "pane": "runtime",
-                    "command": "session goal",
-                },
-                {
-                    "id": "inspect_continuation",
-                    "label": "inspect continuation",
-                    "pane": "runtime",
-                    "command": "session continuation",
-                },
-                {
-                    "id": "resume_goal",
-                    "label": "resume goal",
-                    "pane": "runtime",
-                    "command": "goal resume",
-                },
-                {
-                    "id": "complete_goal",
-                    "label": "complete goal",
-                    "pane": "runtime",
-                    "command": "goal complete",
-                },
-                {
-                    "id": "cancel_goal",
-                    "label": "cancel goal",
-                    "pane": "runtime",
-                    "command": "goal cancel",
-                },
-            ],
+            "actions": _session_control_actions(),
         },
         "worker_controls": {
             "actions": [
@@ -1254,44 +1258,7 @@ class KernelApp:
         manifest["runtime_control"] = self.runtime_control_snapshot()
         manifest["diagnostics"] = self.diagnostics_snapshot
         manifest["session_controls"] = {
-            "actions": [
-                {
-                    "id": "inspect_session",
-                    "label": "inspect session",
-                    "pane": "runtime",
-                    "command": "session status",
-                },
-                {
-                    "id": "inspect_goal",
-                    "label": "inspect goal",
-                    "pane": "runtime",
-                    "command": "session goal",
-                },
-                {
-                    "id": "inspect_continuation",
-                    "label": "inspect continuation",
-                    "pane": "runtime",
-                    "command": "session continuation",
-                },
-                {
-                    "id": "resume_goal",
-                    "label": "resume goal",
-                    "pane": "runtime",
-                    "command": "goal resume",
-                },
-                {
-                    "id": "complete_goal",
-                    "label": "complete goal",
-                    "pane": "runtime",
-                    "command": "goal complete",
-                },
-                {
-                    "id": "cancel_goal",
-                    "label": "cancel goal",
-                    "pane": "runtime",
-                    "command": "goal cancel",
-                },
-            ],
+            "actions": _session_control_actions(),
         }
         manifest["worker_controls"] = {
             "actions": [
