@@ -32,6 +32,7 @@ export function HostChrome({
   rightAction,
   appName = "Mira",
   appTagline = "Kernel workbench",
+  kernelStatus,
 }: {
   onToggleSidebar?: () => void;
   onSidebarPreviewEnter?: () => void;
@@ -40,18 +41,56 @@ export function HostChrome({
   rightAction?: ReactNode;
   appName?: string;
   appTagline?: string;
+  kernelStatus?: {
+    privilege: "root" | "user" | "unknown";
+    health: "healthy" | "attention" | "offline" | "unknown";
+    maintenance: "maintenance" | "live" | "unknown";
+    runtimeState: "healthy" | "attention" | "offline" | "maintenance";
+    runtimeSeverity: "normal" | "warning" | "critical";
+    privilegeSeverity: "elevated" | "restricted" | "unknown";
+    connected: boolean;
+    alert: boolean;
+    summary: string;
+  };
 }) {
   const { t } = useTranslation();
-  const healthBadge = appTagline.includes("· offline")
+  const resolvedStatus = kernelStatus ?? {
+    privilege: appTagline.includes("· root") ? "root" : appTagline.includes("· user") ? "user" : "unknown",
+    health: appTagline.includes("· offline") ? "offline" : appTagline.includes("· attention") ? "attention" : appTagline.includes("· healthy") ? "healthy" : "unknown",
+    maintenance: appTagline.endsWith("· maintenance") ? "maintenance" : appTagline.endsWith("· live") ? "live" : "unknown",
+    runtimeState: appTagline.endsWith("· maintenance")
+      ? "maintenance"
+      : appTagline.includes("· offline")
+        ? "offline"
+        : appTagline.includes("· attention")
+          ? "attention"
+          : "healthy",
+    runtimeSeverity: appTagline.endsWith("· maintenance")
+      ? "warning"
+      : appTagline.includes("· offline")
+        ? "critical"
+        : appTagline.includes("· attention")
+          ? "warning"
+          : "normal",
+    privilegeSeverity: appTagline.includes("· root") ? "elevated" : appTagline.includes("· user") ? "restricted" : "unknown",
+    connected: !appTagline.includes("· offline"),
+    alert: appTagline.includes("· attention") || appTagline.endsWith("· maintenance"),
+    summary: [
+      appTagline.includes("· root") ? "privilege root" : appTagline.includes("· user") ? "privilege user" : null,
+      appTagline.includes("· offline") ? "kernel offline" : appTagline.includes("· attention") ? "kernel attention" : appTagline.includes("· healthy") ? "kernel healthy" : null,
+      appTagline.endsWith("· maintenance") ? "runtime maintenance" : appTagline.endsWith("· live") ? "runtime live" : null,
+    ].filter(Boolean).join(" · "),
+  } as const;
+  const healthBadge = resolvedStatus.health === "offline"
     ? { label: "offline", className: "border-slate-400/80 bg-slate-100 text-slate-700" }
-    : appTagline.endsWith("· attention")
+    : resolvedStatus.health === "attention"
     ? { label: "attention", className: "border-rose-300/80 bg-rose-50 text-rose-700" }
-    : appTagline.includes("· healthy")
+    : resolvedStatus.health === "healthy"
       ? { label: "healthy", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
       : null;
-  const maintenanceBadge = appTagline.endsWith("· maintenance")
+  const maintenanceBadge = resolvedStatus.maintenance === "maintenance"
     ? { label: "maintenance", className: "border-amber-300/80 bg-amber-50 text-amber-700" }
-    : appTagline.endsWith("· live")
+    : resolvedStatus.maintenance === "live"
       ? { label: "live", className: "border-slate-300/80 bg-slate-50 text-slate-700" }
       : null;
   const healthDotClass = maintenanceBadge?.label === "maintenance"
@@ -75,45 +114,19 @@ export function HostChrome({
     : healthBadge?.label === "attention"
       ? "shadow-[0_0_0_1px_rgba(244,63,94,0.10),0_10px_28px_rgba(244,63,94,0.14)] animate-pulse"
       : "shadow-sm";
-  const privilegeBadge = appTagline.includes("· root")
+  const privilegeBadge = resolvedStatus.privilege === "root"
     ? { label: "root", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
-    : appTagline.includes("· user")
+    : resolvedStatus.privilege === "user"
       ? { label: "user", className: "border-amber-300/80 bg-amber-50 text-amber-700" }
       : null;
   const visibleTagline = privilegeBadge || healthBadge || maintenanceBadge
     ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention|offline)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "")
     : appTagline;
-  const chromeStatusTitle = [
-    privilegeBadge ? `privilege ${privilegeBadge.label}` : null,
-    healthBadge ? `kernel ${healthBadge.label}` : null,
-    maintenanceBadge ? `runtime ${maintenanceBadge.label}` : null,
-  ].filter(Boolean).join(" · ");
+  const chromeStatusTitle = resolvedStatus.summary;
   const chromeStatusLabel = [
     healthBadge?.label,
     maintenanceBadge?.label === "maintenance" ? "maintenance" : null,
   ].filter(Boolean).join(" / ");
-  const runtimeState =
-    maintenanceBadge?.label === "maintenance"
-      ? "maintenance"
-      : healthBadge?.label === "offline"
-        ? "offline"
-        : healthBadge?.label === "attention"
-          ? "attention"
-          : "healthy";
-  const runtimeSeverity =
-    maintenanceBadge?.label === "maintenance"
-      ? "warning"
-      : healthBadge?.label === "offline"
-        ? "critical"
-        : healthBadge?.label === "attention"
-          ? "warning"
-          : "normal";
-  const privilegeSeverity =
-    privilegeBadge?.label === "root"
-      ? "elevated"
-      : privilegeBadge?.label === "user"
-        ? "restricted"
-        : "unknown";
 
   return (
     <header className="host-drag-region pointer-events-none absolute inset-x-0 top-0 z-40 h-12 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(248,250,252,0.84)_100%)] text-foreground/90 backdrop-blur-xl">
@@ -145,14 +158,14 @@ export function HostChrome({
           aria-live="polite"
           aria-atomic="true"
           aria-label={chromeStatusTitle || `${appName} kernel status`}
-          data-kernel-health={healthBadge?.label ?? "unknown"}
-          data-kernel-connected={healthBadge?.label === "offline" ? "false" : "true"}
-          data-kernel-alert={healthBadge?.label === "attention" || maintenanceBadge?.label === "maintenance" ? "true" : "false"}
-          data-runtime-maintenance={maintenanceBadge?.label ?? "unknown"}
-          data-shell-privilege={privilegeBadge?.label ?? "unknown"}
-          data-privilege-severity={privilegeSeverity}
-          data-runtime-state={runtimeState}
-          data-runtime-severity={runtimeSeverity}
+          data-kernel-health={resolvedStatus.health}
+          data-kernel-connected={resolvedStatus.connected ? "true" : "false"}
+          data-kernel-alert={resolvedStatus.alert ? "true" : "false"}
+          data-runtime-maintenance={resolvedStatus.maintenance}
+          data-shell-privilege={resolvedStatus.privilege}
+          data-privilege-severity={resolvedStatus.privilegeSeverity}
+          data-runtime-state={resolvedStatus.runtimeState}
+          data-runtime-severity={resolvedStatus.runtimeSeverity}
           data-kernel-status-summary={chromeStatusTitle || undefined}
           title={chromeStatusTitle || undefined}
         >
