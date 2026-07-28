@@ -1160,7 +1160,6 @@ export function usemiraStream(
 
       if ("goal_state" in metadata && metadata.goal_state && typeof metadata.goal_state === "object") {
         setGoalState(metadata.goal_state as GoalStateWsPayload);
-        if (rawEvent === "goal_state") return;
       }
 
       if (state === "running" || state === "idle") {
