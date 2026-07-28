@@ -1570,6 +1570,17 @@ class KernelApp:
                 code=int(native_last_command.get("code") or 0),
                 updated_at_ms=native_last_command.get("updated_at_ms"),
             )
+            details["action_row"] = {
+                "target": target,
+                "action": action,
+                "command": command_text,
+                "value": str(native_last_command.get("value") or ""),
+                "status": str(native_last_command.get("status") or "idle"),
+                "code": int(native_last_command.get("code") or 0),
+                "queue_depth": int(queue_depth or 0),
+                "artifact": str(native_last_command.get("artifact") or details.get("artifact") or "none"),
+                "updated_at_ms": native_last_command.get("updated_at_ms"),
+            }
             output, details = (
                 f"native last-command target={target}"
                 f" action={action}"
