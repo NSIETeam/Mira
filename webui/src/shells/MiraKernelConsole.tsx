@@ -186,7 +186,6 @@ export function MiraKernelConsole({
   const nativeArtifactLabel = nativeSnapshot?.bridge_artifact ?? "none";
   const profileName = profile?.name ?? "unknown";
   const activeAdapterName = runtimeControl?.active_adapter ?? "unset";
-  const boardTransportLabel = boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
   const sessionControls = kernelManifest?.session_controls?.actions ?? [];
   const workerControls = kernelManifest?.worker_controls?.actions ?? [];
@@ -2150,7 +2149,7 @@ export function MiraKernelConsole({
             <Row label="Attach" value={boardSnapshot?.attached ? "attached" : "detached"} />
             <Row
               label="Transport"
-              value={boardTransportLabel}
+              value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"}
             />
             <Row label="Port" value={boardSnapshot?.port ?? "not bound"} />
             <Row
@@ -2751,7 +2750,7 @@ export function MiraKernelConsole({
             </div>
             <div className="grid gap-2 md:grid-cols-2">
               <Row label="Target" value={boardSnapshot?.target ?? embeddedTargetHint ?? "host"} />
-              <Row label="Transport" value={boardTransportLabel} />
+              <Row label="Transport" value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"} />
               <Row label="Runtime mode" value={boardSnapshot?.runtime_mode ?? "userland"} />
               <Row label="Health" value={boardHealthLabel} />
               <Row label="Port" value={boardSnapshot?.port ?? "none"} />
@@ -2794,7 +2793,7 @@ export function MiraKernelConsole({
                   {boardSnapshot?.port ?? embeddedPorts[0] ?? "no-port"}
                 </div>
                 <div className="mt-1 text-xs text-amber-700/80">
-                  transport {boardTransportLabel}
+                  transport {boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"}
                 </div>
               </div>
               <div className="rounded-lg border border-cyan-200/80 bg-cyan-50/80 p-3">
