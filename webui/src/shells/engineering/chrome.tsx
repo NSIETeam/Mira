@@ -119,6 +119,8 @@ export function HostChrome({
             chromeCapsuleClass,
             chromeCapsuleMotionClass,
           )}
+          role="status"
+          aria-live="polite"
           aria-label={chromeStatusTitle || `${appName} kernel status`}
           data-kernel-health={healthBadge?.label ?? "unknown"}
           data-runtime-maintenance={maintenanceBadge?.label ?? "unknown"}
