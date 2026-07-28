@@ -45,6 +45,22 @@ function errorEvent(
   };
 }
 
+function goalRuntimeText(status: string): string {
+  return status === "running" ? "goal runtime active" : "goal runtime idle";
+}
+
+function goalStateText(goal: GoalStateWsPayload): string {
+  return goalSummary(goal) || (goal.active ? "active sustained goal" : "goal state cleared");
+}
+
+function modelUpdateText(prefix: string, modelName: string): string {
+  return modelName.trim() ? `${prefix} ${modelName}` : `${prefix} updated`;
+}
+
+function sessionUpdateText(scope: string | undefined): string {
+  return scope && scope.trim() ? `session ${scope} updated` : "session updated";
+}
+
 function goalSummary(goal: unknown): string {
   const blob = metadataRow(goal);
   const uiSummary = metadataString(blob, "ui_summary");
@@ -205,45 +221,19 @@ export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
         goalSummary("goal_state" in ev ? ev.goal_state : undefined) || "turn completed",
       );
     case "goal_status":
-      return statusEvent(
-        ev.status,
-        ev,
-        ev.status === "running" ? "goal runtime active" : "goal runtime idle",
-      );
+      return statusEvent(ev.status, ev, goalRuntimeText(ev.status));
     case "goal_state":
-      return statusEvent(
-        ev.goal_state.active ? "running" : "done",
-        ev,
-        goalSummary(ev.goal_state) || (ev.goal_state.active ? "active sustained goal" : "goal state cleared"),
-      );
+      return statusEvent(ev.goal_state.active ? "running" : "done", ev, goalStateText(ev.goal_state));
     case "ready":
       return statusEvent("ready", ev, "kernel transport ready");
     case "attached":
       return statusEvent("ready", ev, "shell attached to kernel");
     case "runtime_model_updated":
-      return statusEvent(
-        "ready",
-        ev,
-        typeof ev.model_name === "string" && ev.model_name.trim()
-          ? `runtime model ${ev.model_name}`
-          : "runtime model updated",
-      );
+      return statusEvent("ready", ev, modelUpdateText("runtime model", ev.model_name));
     case "turn_model_updated":
-      return statusEvent(
-        "running",
-        ev,
-        typeof ev.model_name === "string" && ev.model_name.trim()
-          ? `turn model ${ev.model_name}`
-          : "turn model updated",
-      );
+      return statusEvent("running", ev, modelUpdateText("turn model", ev.model_name));
     case "session_updated":
-      return statusEvent(
-        "ready",
-        ev,
-        typeof ev.scope === "string" && ev.scope.trim()
-          ? `session ${ev.scope} updated`
-          : "session updated",
-      );
+      return statusEvent("ready", ev, sessionUpdateText(ev.scope));
     case "transcription_result":
       return statusEvent("done", ev, "audio transcription ready");
     case "transcription_error":
