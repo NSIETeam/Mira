@@ -44,6 +44,10 @@ export function shellAllowsKernelConsole(contract: ShellHostContract): boolean {
   return contract.surfaces.allowKernelConsole;
 }
 
+export function shellAllowsPrivilegedRuntimeControls(contract: ShellHostContract): boolean {
+  return contract.surfaces.allowPrivilegedRuntimeControls;
+}
+
 export function shellAllowsExecutionFork(contract: ShellHostContract): boolean {
   return contract.actions.allowExecutionFork;
 }

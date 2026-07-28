@@ -54,6 +54,7 @@ const DEFAULT_HOST_CONTRACT = buildHostContract({
     allowWorkspaceControls: true,
     allowRuntimeModelControls: true,
     allowKernelConsole: true,
+    allowPrivilegedRuntimeControls: true,
   },
   actions: {
     allowExecutionFork: true,
@@ -124,6 +125,10 @@ function coerceHostContract(
     rawSurfaces?.allowKernelConsole,
     fallback.surfaces.allowKernelConsole,
   );
+  const allowPrivilegedRuntimeControls = readCompatBoolean(
+    rawSurfaces?.allowPrivilegedRuntimeControls,
+    fallback.surfaces.allowPrivilegedRuntimeControls,
+  );
   const allowComposer = readCompatBoolean(
     rawComposer?.allowComposer,
     fallback.composer.allowComposer,
@@ -154,6 +159,7 @@ function coerceHostContract(
       allowWorkspaceControls,
       allowRuntimeModelControls,
       allowKernelConsole,
+      allowPrivilegedRuntimeControls,
     },
     actions: {
       allowExecutionFork,
@@ -192,6 +198,7 @@ const SHELL_VIEW_REGISTRY: Record<string, ShellViewRegistration> = {
         allowWorkspaceControls: false,
         allowRuntimeModelControls: false,
         allowKernelConsole: true,
+        allowPrivilegedRuntimeControls: true,
       },
       actions: {
         allowExecutionFork: false,
@@ -219,6 +226,7 @@ const SHELL_VIEW_REGISTRY: Record<string, ShellViewRegistration> = {
         allowWorkspaceControls: false,
         allowRuntimeModelControls: false,
         allowKernelConsole: true,
+        allowPrivilegedRuntimeControls: false,
       },
       actions: {
         allowExecutionFork: false,

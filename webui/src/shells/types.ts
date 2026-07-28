@@ -14,6 +14,7 @@ export interface ShellHostSurfaceContract {
   allowWorkspaceControls: boolean;
   allowRuntimeModelControls: boolean;
   allowKernelConsole: boolean;
+  allowPrivilegedRuntimeControls: boolean;
 }
 
 export interface ShellHostActionContract {

@@ -8,7 +8,13 @@ import type {
   WorkspaceScopePayload,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { normalizedShellHostContract, normalizedShellMode, shellCanElevate, shellPrivilegeRole } from "./contract";
+import {
+  normalizedShellHostContract,
+  normalizedShellMode,
+  shellAllowsPrivilegedRuntimeControls,
+  shellCanElevate,
+  shellPrivilegeRole,
+} from "./contract";
 import type { KernelOperatorActionBinding } from "./useKernelOperatorActions";
 import type { KernelConsoleErrorEntry } from "./useKernelConsoleState";
 
@@ -152,7 +158,8 @@ export function MiraKernelConsole({
   const hostContract = normalizedShellHostContract(shellDescriptor);
   const privilegeRole = shellPrivilegeRole(hostContract);
   const canElevate = shellCanElevate(hostContract);
-  const allowsPrivilegedControls = privilegeRole === "root" || canElevate;
+  const shellAllowsPrivilegedControls = shellAllowsPrivilegedRuntimeControls(hostContract);
+  const allowsPrivilegedControls = shellAllowsPrivilegedControls && (privilegeRole === "root" || canElevate);
   const actionAllowed = (
     action?: { privileged?: boolean | null; required_role?: string | null } | null,
   ) => {
