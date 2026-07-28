@@ -89,9 +89,9 @@ class ToolRegistry:
         name = cls._schema_name(schema).lower()
         if name.startswith("mcp_"):
             return "mcp"
-        if name.startswith(("web_", "search_", "fetch_")):
+        if name.startswith(("web_", "search_", "fetch_")) or "search" in name or "fetch" in name:
             return "web"
-        if name.startswith(("read_", "write_", "edit_", "list_", "glob_", "grep_", "filesystem_")):
+        if name.startswith(("read_", "write_", "edit_", "list_", "glob_", "grep_", "filesystem_")) or "filesystem" in name:
             return "filesystem"
         if name.startswith(("shell_", "exec_", "run_")):
             return "shell"
