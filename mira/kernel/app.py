@@ -1796,6 +1796,17 @@ class KernelApp:
                         for row in list(bridge.get("recent_commands") or [])
                         if isinstance(row, dict)
                     ) or "none",
+                    "recent_command_rows": [
+                        {
+                            "target": dict(row).get("target") or "runtime",
+                            "action": dict(row).get("action") or "status",
+                            "status": dict(row).get("status") or "unknown",
+                            "code": int(dict(row).get("code") or 0),
+                            "updated_at_ms": dict(row).get("updated_at_ms"),
+                        }
+                        for row in list(bridge.get("recent_commands") or [])
+                        if isinstance(row, dict)
+                    ],
                     "status_row": {
                         "bridge": bridge_name or "unset",
                         "runtime": bridge.get("runtime") or bridge_name or "unknown",

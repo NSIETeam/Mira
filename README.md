@@ -18,6 +18,8 @@
 
 **Mira** is a lightweight, self-hosted execution kernel for serious AI agents. It is built around a small reusable runtime, thin host shells, and a Codex-style engineering console for sessions, tools, runtime state, root/user posture, fault recovery, and native or embedded control from one workbench.
 
+Today the default shell is no longer a demo chat page. It is an operator-facing agent workbench with kernel console, bridge telemetry, runtime controls, privilege posture, and recovery playbooks wired around the same small execution loop.
+
 Mira is designed as execution infrastructure first, product shell second: the loop stays small, the control plane stays explicit, and the same kernel contract can back desktop operators, service hosts, and constrained device targets without collapsing into app-specific UI code.
 
 ### What is Mira?
@@ -134,6 +136,8 @@ MIT — see [LICENSE](./LICENSE).
 ## 中文
 
 **Mira** 是一个轻量级、可自托管的 AI Agent 通用执行内核。它围绕“小而稳”的运行时、薄外壳和接近 Codex 风格的工程控制台来构建，把会话、工具、运行时状态、root/user 权限姿态、故障恢复以及 native / 嵌入式控制统一进一个工作台。
+
+现在默认壳层已经不是演示聊天页，而是一个面向操作者的 Agent 工作台：内核控制台、bridge 遥测、运行控制、权限姿态和恢复 playbook 都围绕同一套小内核接好。
 
 Mira 优先被设计成执行基础设施，而不是某个单一产品：主循环保持精简，控制面保持显式，内核契约可以同时服务桌面操作者、服务宿主和受限设备目标，而不会把产品界面逻辑反灌回运行时核心。
 

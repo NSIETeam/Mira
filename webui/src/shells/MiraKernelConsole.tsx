@@ -2745,12 +2745,31 @@ export function MiraKernelConsole({
                       />
                     ) : null}
                     {bridge.recent_commands?.length ? (
-                      <Row
-                        label="Recent commands"
-                        value={bridge.recent_commands
-                          .map((row) => `${row.target ?? "runtime"}:${row.action ?? "status"}:${row.status ?? "ready"}:${row.code ?? 0}`)
-                          .join(", ")}
-                      />
+                      <div className="grid gap-2">
+                        <div className="font-medium uppercase tracking-[0.18em] text-slate-500">
+                          Recent commands
+                        </div>
+                        <div className="grid gap-2">
+                          {bridge.recent_commands.map((row, index) => (
+                            <div
+                              key={`${bridge.adapter}-recent-command-${index}`}
+                              className="grid gap-1 rounded-md border border-slate-200/80 bg-slate-50/90 px-3 py-2"
+                            >
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                                <span>{row.target ?? "runtime"}</span>
+                                <span>{row.action ?? "status"}</span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-[12px] text-slate-700">
+                                <span>Status {row.status ?? "ready"}</span>
+                                <span>Code {row.code ?? 0}</span>
+                                {typeof row.updated_at_ms === "number" ? (
+                                  <span>{formatRuntimeTimestamp(row.updated_at_ms)}</span>
+                                ) : null}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     ) : null}
                     {bridge.build_hint ? (
                       <Row label="Build hint" value={bridge.build_hint} />
