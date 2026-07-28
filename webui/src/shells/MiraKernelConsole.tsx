@@ -383,6 +383,7 @@ export function MiraKernelConsole({
     }
     if (selectedModule?.name) {
       commands.push(`native inspect ${selectedModule.name}`);
+      commands.push(`native replay ${selectedModule.name} inspect status`);
     }
     return commands;
   }, [nativeLastCommand?.action, nativeLastCommand?.target, selectedModule?.name]);
