@@ -1545,6 +1545,17 @@ class KernelApp:
                 updated_at_ms=native_last_command.get("updated_at_ms"),
             )
             details["module_focus"] = self._runtime_control.get("module_focus") or "none"
+            details["status_row"] = {
+                "queue_depth": int(queue_depth or 0),
+                "command_depth": int(details.get("command_depth") or 0),
+                "module_count": int(module_count or 0),
+                "last_target": str(details.get("last_target") or "none"),
+                "last_action": str(details.get("last_action") or "none"),
+                "last_summary": str(last_summary or "none:none"),
+                "module_focus": str(details.get("module_focus") or "none"),
+                "artifact": str(artifact or "none"),
+                "updated_at_ms": native_last_command.get("updated_at_ms"),
+            }
             output, details = (
                 f"native queue={queue_depth}"
                 f" modules={module_count}"
