@@ -52,7 +52,7 @@ import {
 import { useExecutionRuntimeState } from "@/shells/useExecutionRuntimeState";
 import { useExecutionSessionState } from "@/shells/useExecutionSessionState";
 import { MiraKernelConsole } from "@/shells/MiraKernelConsole";
-import { createHostKernelStatus, formatHostChromeTagline } from "@/shells/engineering/kernel-status";
+import { createHostKernelStatus } from "@/shells/engineering/kernel-status";
 import { useShellPresentationState } from "@/shells/useShellPresentationState";
 import { resolveShellRegistration } from "@/shells/registry";
 import { useKernelConsoleState } from "@/shells/useKernelConsoleState";
