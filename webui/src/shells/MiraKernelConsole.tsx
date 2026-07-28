@@ -825,6 +825,28 @@ export function MiraKernelConsole({
       tone: "border-amber-200/80 bg-amber-50/70",
     },
   ] as const;
+  const toolFamilySurface = [
+    {
+      family: "filesystem",
+      examples: "tool inspect filesystem · repo prepare-tool filesystem",
+    },
+    {
+      family: "shell",
+      examples: "tool inspect shell · tool dispatch shell",
+    },
+    {
+      family: "web",
+      examples: "tool inspect search · tool dispatch search",
+    },
+    {
+      family: "subagent / long-task",
+      examples: "tool delegate-subagent · tool delegate-goal",
+    },
+    {
+      family: "mcp / core",
+      examples: "repo tools · tool status",
+    },
+  ] as const;
 
   return (
     <aside className="hidden w-[332px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[356px]">
@@ -1304,6 +1326,26 @@ export function MiraKernelConsole({
                       >
                         {command}
                       </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                    tool families
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {toolFamilySurface.map((item) => (
+                      <div
+                        key={item.family}
+                        className="rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1.5"
+                      >
+                        <div className="text-[10px] uppercase tracking-[0.12em] text-slate-400">
+                          {item.family}
+                        </div>
+                        <div className="mt-1 text-[10px] text-slate-300">
+                          {item.examples}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
