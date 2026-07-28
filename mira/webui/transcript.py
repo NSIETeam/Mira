@@ -872,19 +872,6 @@ def build_user_transcript_event(
     return event
 
 
-def _is_legacy_raw_subagent_result(message: dict[str, Any]) -> bool:
-    content = message.get("content")
-    if not isinstance(content, str):
-        return False
-    text = content.replace("\r\n", "\n").strip()
-    return (
-        text.startswith("[Subagent '")
-        and "\n\nTask:" in text
-        and "\n\nResult:" in text
-        and "Summarize this naturally" in text
-    )
-
-
 def _session_user_event(
     session_key: str,
     message: dict[str, Any],
@@ -894,8 +881,6 @@ def _session_user_event(
     if is_hidden_history_message(message):
         return None
     message = public_history_message(message)
-    if _is_legacy_raw_subagent_result(message):
-        return None
     content = message.get("content")
     text = content if isinstance(content, str) else ""
     media = message.get("media")
