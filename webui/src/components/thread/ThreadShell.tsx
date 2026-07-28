@@ -1103,16 +1103,19 @@ export function ThreadShell({
       label: "Slash",
       value: `${slashCommands.length}`,
       detail: slashCommands.slice(0, 2).map((command) => command.command).join(" · ") || "no commands",
+      action: slashCommands[0]?.command ?? null,
     },
     {
       label: "CLI",
       value: `${cliApps.length}`,
       detail: cliApps.slice(0, 2).map((app) => app.name).join(" · ") || "no apps",
+      action: cliApps[0] ? `@${cliApps[0].name}` : null,
     },
     {
       label: "MCP",
       value: `${mcpPresets.length}`,
       detail: mcpPresets.slice(0, 2).map((preset) => preset.name).join(" · ") || "no presets",
+      action: mcpPresets[0] ? `@${mcpPresets[0].name}` : null,
     },
   ];
   const emptyState = loading ? (
@@ -1204,6 +1207,9 @@ export function ThreadShell({
                   </div>
                   <div className="mt-1 text-xs text-slate-600">
                     {item.detail}
+                  </div>
+                  <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                    {item.action ? `ready: ${item.action}` : "ready: pending install"}
                   </div>
                 </div>
               ))}
