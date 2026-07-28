@@ -199,6 +199,13 @@ export function MiraKernelConsole({
   const faultAction = (id: string) => runtimeControl?.fault_posture.actions?.find((action) => action.id === id) ?? null;
   const runtimeTopologyAction = (id: string) => runtimeTopology?.actions?.find((action) => action.id === id) ?? null;
   const embeddedTopologyAction = (id: string) => embeddedTopology?.actions?.find((action) => action.id === id) ?? null;
+  const selectedBridgeInspectAction = selectedBridgeAction("inspect_bridge");
+  const selectedBridgeRestartAction = selectedBridgeAction("restart_bridge");
+  const selectedBridgeMarkFaultAction = selectedBridgeAction("mark_bridge_fault");
+  const selectedBridgeClearFaultAction = selectedBridgeAction("clear_bridge_fault");
+  const embeddedBoardStatusAction = embeddedTopologyAction("board_status");
+  const embeddedInspectAction = embeddedTopologyAction("inspect_embedded");
+  const embeddedRefreshPortsAction = embeddedTopologyAction("refresh_board_ports");
   const findModuleAction = (moduleName: string, actionId: string) =>
     runtimeModules.find((module) => module.name === moduleName)?.actions?.find((action) => action.id === actionId)
     ?? runtimeTopologyModules.find((module) => module.name === moduleName)?.actions?.find((action) => action.id === actionId)
@@ -642,9 +649,9 @@ export function MiraKernelConsole({
                 >
                   {language}
                 </span>
-              )) : selectedBridgeAction("restart_bridge") ? (
+              )) : selectedBridgeRestartAction ? (
                 <span className="text-xs text-muted-foreground">
-                  {actionRestrictionReason(selectedBridgeAction("restart_bridge"))}
+                  {actionRestrictionReason(selectedBridgeRestartAction)}
                 </span>
               ) : faultAction("clear_faults") ? (
                 <span className="text-xs text-muted-foreground">
@@ -1715,42 +1722,42 @@ export function MiraKernelConsole({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => runContractAction(selectedBridgeAction("inspect_bridge"), "adapters")}
-                disabled={operatorPending || !selectedBridgeAction("inspect_bridge")?.command}
+                onClick={() => runContractAction(selectedBridgeInspectAction, "adapters")}
+                disabled={operatorPending || !selectedBridgeInspectAction?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 inspect
               </button>
-              {actionAllowed(selectedBridgeAction("restart_bridge")) ? (
+              {actionAllowed(selectedBridgeRestartAction) ? (
                 <>
                   <button
                     type="button"
-                    onClick={() => runContractAction(selectedBridgeAction("restart_bridge"), "adapters")}
-                    disabled={operatorPending || !selectedBridgeAction("restart_bridge")?.command}
+                    onClick={() => runContractAction(selectedBridgeRestartAction, "adapters")}
+                    disabled={operatorPending || !selectedBridgeRestartAction?.command}
                     className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
                   >
                     restart
                   </button>
                   <button
                     type="button"
-                    onClick={() => runContractAction(selectedBridgeAction("mark_bridge_fault"), "faults")}
-                    disabled={operatorPending || !selectedBridgeAction("mark_bridge_fault")?.command}
+                    onClick={() => runContractAction(selectedBridgeMarkFaultAction, "faults")}
+                    disabled={operatorPending || !selectedBridgeMarkFaultAction?.command}
                     className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
                   >
                     mark fault
                   </button>
                   <button
                     type="button"
-                    onClick={() => runContractAction(selectedBridgeAction("clear_bridge_fault"), "faults")}
-                    disabled={operatorPending || !selectedBridgeAction("clear_bridge_fault")?.command}
+                    onClick={() => runContractAction(selectedBridgeClearFaultAction, "faults")}
+                    disabled={operatorPending || !selectedBridgeClearFaultAction?.command}
                     className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
                   >
                     clear fault
                   </button>
                 </>
-              ) : selectedBridgeAction("restart_bridge") ? (
+              ) : selectedBridgeRestartAction ? (
                 <span className="text-xs text-muted-foreground">
-                  {actionRestrictionReason(selectedBridgeAction("restart_bridge"))}
+                  {actionRestrictionReason(selectedBridgeRestartAction)}
                 </span>
               ) : null}
             </div>
@@ -2688,11 +2695,11 @@ export function MiraKernelConsole({
                     key={port}
                     type="button"
                     onClick={() => {
-                      onSelectPane(embeddedTopologyAction("board_status")?.pane ?? "adapters");
+                      onSelectPane(embeddedBoardStatusAction?.pane ?? "adapters");
                       onSelectBoardPort?.(port);
-                      runContractAction(embeddedTopologyAction("board_status"), "adapters");
+                      runContractAction(embeddedBoardStatusAction, "adapters");
                     }}
-                    disabled={operatorPending || !embeddedTopologyAction("board_status")?.command}
+                    disabled={operatorPending || !embeddedBoardStatusAction?.command}
                     className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
                   >
                     {port}
@@ -2734,16 +2741,16 @@ export function MiraKernelConsole({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => runContractAction(embeddedTopologyAction("inspect_embedded"), "runtime")}
-                disabled={operatorPending || !embeddedTopologyAction("inspect_embedded")?.command}
+                onClick={() => runContractAction(embeddedInspectAction, "runtime")}
+                disabled={operatorPending || !embeddedInspectAction?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 inspect embedded
               </button>
               <button
                 type="button"
-                onClick={() => runContractAction(embeddedTopologyAction("refresh_board_ports"), "adapters")}
-                disabled={operatorPending || !embeddedTopologyAction("refresh_board_ports")?.command}
+                onClick={() => runContractAction(embeddedRefreshPortsAction, "adapters")}
+                disabled={operatorPending || !embeddedRefreshPortsAction?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 refresh ports
