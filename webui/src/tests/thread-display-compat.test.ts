@@ -37,6 +37,18 @@ describe("normalizeLegacyLongTaskMessages", () => {
     expect(out[0]!.traces).toEqual(["long_task · done"]);
   });
 
+  it("uses an execution-neutral fallback for empty legacy rows", () => {
+    const legacy = {
+      id: "y",
+      role: "assistant",
+      kind: "long_task",
+      content: "   ",
+      createdAt: 1,
+    } as unknown as UIMessage;
+    const out = normalizeLegacyLongTaskMessages([legacy]);
+    expect(out[0]!.content).toBe("(legacy execution activity)");
+  });
+
   it("removes model and silent-command turns without hiding concurrent replies", () => {
     const visible = projectWebuiThreadMessages([
       message("user", { id: "model", content: "/model fast", turnId: "model-turn" }),

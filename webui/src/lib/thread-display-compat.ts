@@ -12,7 +12,7 @@ export function normalizeLegacyLongTaskMessages(messages: UIMessage[]): UIMessag
   return messages.map((m) => {
     const kind = (m as { kind?: string }).kind;
     if (kind !== "long_task") return m;
-    const text = (m.content ?? "").trim() || "(legacy thread activity)";
+    const text = (m.content ?? "").trim() || "(legacy execution activity)";
     return {
       id: m.id,
       role: "tool",
