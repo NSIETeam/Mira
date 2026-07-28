@@ -178,10 +178,3 @@ export function deriveHostChromeViewModel(input: {
     semantics: deriveHostChromeSemantics(input.appName, input.status),
   };
 }
-
-export function createDefaultHostChromeViewModel(appName: string): HostChromeViewModel {
-  return deriveHostChromeViewModel({
-    appName,
-    status: createDefaultHostKernelStatus(),
-  });
-}
