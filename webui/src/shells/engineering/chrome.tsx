@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import {
   deriveFallbackKernelStatus,
   deriveHostChromePresentation,
+  deriveHostChromeSemantics,
   type HostKernelStatus,
 } from "./kernel-status";
 
@@ -61,6 +62,7 @@ export function HostChrome({
     chromeStatusTitle,
     chromeStatusLabel,
   } = deriveHostChromePresentation(resolvedStatus, appTagline);
+  const semantics = deriveHostChromeSemantics(appName, resolvedStatus);
 
   return (
     <header className="host-drag-region pointer-events-none absolute inset-x-0 top-0 z-40 h-12 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(248,250,252,0.84)_100%)] text-foreground/90 backdrop-blur-xl">
@@ -91,17 +93,17 @@ export function HostChrome({
           role="status"
           aria-live="polite"
           aria-atomic="true"
-          aria-label={chromeStatusTitle || `${appName} kernel status`}
-          data-kernel-health={resolvedStatus.health}
-          data-kernel-connected={resolvedStatus.connected ? "true" : "false"}
-          data-kernel-alert={resolvedStatus.alert ? "true" : "false"}
-          data-runtime-maintenance={resolvedStatus.maintenance}
-          data-shell-privilege={resolvedStatus.privilege}
-          data-privilege-severity={resolvedStatus.privilegeSeverity}
-          data-runtime-state={resolvedStatus.runtimeState}
-          data-runtime-severity={resolvedStatus.runtimeSeverity}
-          data-kernel-status-summary={chromeStatusTitle || undefined}
-          title={chromeStatusTitle || undefined}
+          aria-label={semantics.ariaLabel}
+          data-kernel-health={semantics.kernelHealth}
+          data-kernel-connected={semantics.kernelConnected}
+          data-kernel-alert={semantics.kernelAlert}
+          data-runtime-maintenance={semantics.runtimeMaintenance}
+          data-shell-privilege={semantics.shellPrivilege}
+          data-privilege-severity={semantics.privilegeSeverity}
+          data-runtime-state={semantics.runtimeState}
+          data-runtime-severity={semantics.runtimeSeverity}
+          data-kernel-status-summary={semantics.statusSummary}
+          title={semantics.statusSummary}
         >
           {chromeStatusTitle ? <span className="sr-only">{chromeStatusTitle}</span> : null}
           <span className="text-slate-900">{appName}</span>

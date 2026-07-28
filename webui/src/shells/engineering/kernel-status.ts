@@ -22,6 +22,19 @@ export type HostChromePresentation = {
   chromeStatusLabel: string;
 };
 
+export type HostChromeSemantics = {
+  ariaLabel: string;
+  statusSummary: string | undefined;
+  kernelHealth: string;
+  kernelConnected: "true" | "false";
+  kernelAlert: "true" | "false";
+  runtimeMaintenance: string;
+  shellPrivilege: string;
+  privilegeSeverity: string;
+  runtimeState: string;
+  runtimeSeverity: string;
+};
+
 export function deriveFallbackKernelStatus(appTagline: string): HostKernelStatus {
   const privilege = appTagline.includes("· root")
     ? "root"
@@ -180,5 +193,23 @@ export function deriveHostChromePresentation(
     visibleTagline,
     chromeStatusTitle,
     chromeStatusLabel,
+  };
+}
+
+export function deriveHostChromeSemantics(
+  appName: string,
+  status: HostKernelStatus,
+): HostChromeSemantics {
+  return {
+    ariaLabel: status.summary || `${appName} kernel status`,
+    statusSummary: status.summary || undefined,
+    kernelHealth: status.health,
+    kernelConnected: status.connected ? "true" : "false",
+    kernelAlert: status.alert ? "true" : "false",
+    runtimeMaintenance: status.maintenance,
+    shellPrivilege: status.privilege,
+    privilegeSeverity: status.privilegeSeverity,
+    runtimeState: status.runtimeState,
+    runtimeSeverity: status.runtimeSeverity,
   };
 }
