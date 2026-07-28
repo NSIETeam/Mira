@@ -7,7 +7,7 @@ export function shellDataAttributes({
   shellSupportsRuntimeControls,
   shellSupportsFileActivity,
   hostContract,
-  fallbackTheme,
+  fallbackTheme = hostContract.mode,
   layout,
 }: {
   shellDescriptor: ShellDescriptorPayload | null;
@@ -15,7 +15,7 @@ export function shellDataAttributes({
   shellSupportsRuntimeControls: boolean;
   shellSupportsFileActivity: boolean;
   hostContract: ShellHostContract;
-  fallbackTheme: string;
+  fallbackTheme?: string;
   layout?: string;
 }): Record<string, string> {
   return {
