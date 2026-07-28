@@ -83,9 +83,6 @@ export function MiraKernelConsole({
   connectionStatus,
   runtimeModel,
   recentErrors,
-  onOpenKernelSettings,
-  onRestartRuntime,
-  onRestartEngine,
   embeddedTargetHint,
   operatorActions,
   selectedPane,
@@ -115,9 +112,6 @@ export function MiraKernelConsole({
   connectionStatus: string;
   runtimeModel: string | null;
   recentErrors: KernelConsoleErrorEntry[];
-  onOpenKernelSettings?: () => void;
-  onRestartRuntime?: () => void;
-  onRestartEngine?: () => void;
   embeddedTargetHint?: string | null;
   operatorActions?: Record<string, KernelOperatorActionBinding>;
   selectedPane: string;
@@ -3089,15 +3083,9 @@ export function MiraKernelConsole({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {onOpenKernelSettings ? (
-              <ConsoleButton label="Kernel settings" onClick={onOpenKernelSettings} />
-            ) : null}
-            {onRestartRuntime ? (
-              <ConsoleButton label="Restart runtime" onClick={onRestartRuntime} />
-            ) : null}
-            {onRestartEngine ? (
-              <ConsoleButton label="Restart engine" onClick={onRestartEngine} />
-            ) : null}
+            <AdapterActionButton binding={resolveActionBinding("open_kernel_settings")} />
+            <AdapterActionButton binding={resolveActionBinding("restart_runtime")} />
+            <AdapterActionButton binding={resolveActionBinding("restart_engine")} />
           </div>
         </section>
 

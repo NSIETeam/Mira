@@ -1110,11 +1110,6 @@ function Shell({
             connectionStatus={connectionStatus}
             runtimeModel={runtimeModel}
             recentErrors={recentErrors}
-            onOpenKernelSettings={() => onOpenSettings("runtime")}
-            onRestartRuntime={onRestart}
-            onRestartEngine={() => {
-              void onNativeEngineRestart();
-            }}
             embeddedTargetHint={
               kernelManifest?.profile.name === "mira-embedded-lab"
                 ? "Embedded lab kernel profile enabled for constrained targets"
