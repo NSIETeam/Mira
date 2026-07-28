@@ -4,10 +4,11 @@ import type {
   ExecutionSummary,
   KernelManifestPayload,
   KernelOperatorActionResult,
+  ShellDescriptorPayload,
   WorkspaceScopePayload,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { resolveShellHostContract } from "./registry";
+import { resolveShellRegistration } from "./registry";
 import type { KernelOperatorActionBinding } from "./useKernelOperatorActions";
 import type { KernelConsoleErrorEntry } from "./useKernelConsoleState";
 
@@ -92,7 +93,7 @@ export function MiraKernelConsole({
   onRunOperatorCommand,
 }: {
   kernelManifest: KernelManifestPayload | null;
-  shellDescriptor: import("@/lib/types").ShellDescriptorPayload | null;
+  shellDescriptor: ShellDescriptorPayload | null;
   activeExecution: ExecutionSummary | null;
   activeWorkspaceScope: WorkspaceScopePayload | null;
   workspaceError: string | null;
@@ -121,7 +122,7 @@ export function MiraKernelConsole({
   } | void>;
 }) {
   const appIdentity = kernelManifest?.identity?.app_name ?? "Mira";
-  const hostContract = resolveShellHostContract(shellDescriptor);
+  const hostContract = resolveShellRegistration(shellDescriptor).hostContract;
   const shellMode = hostContract.mode;
   const privilegeRole = hostContract.privilege.role;
   const canElevate = hostContract.privilege.canElevate;
