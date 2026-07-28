@@ -15,8 +15,7 @@ import { ExecutionList } from "@/components/ExecutionList";
 import { ConnectionBadge } from "@/components/ConnectionBadge";
 import { Button } from "@/components/ui/button";
 import {
-  createDefaultHostKernelStatus,
-  deriveHostChromeViewModel,
+  deriveKernelBrandingLine,
   type HostKernelStatus,
 } from "@/shells/engineering/kernel-status";
 import type {
@@ -97,10 +96,7 @@ export function Sidebar(props: SidebarProps) {
   const runningExecutionIds = props.runningExecutionIds;
   const updatedExecutionIds = props.updatedExecutionIds;
   const appName = props.appName ?? "Mira";
-  const sidebarChrome = deriveHostChromeViewModel({
-    appName,
-    status: props.kernelStatus ?? createDefaultHostKernelStatus(),
-  });
+  const sidebarTagline = deriveKernelBrandingLine(appName, props.kernelStatus);
 
   return (
     <nav
@@ -147,7 +143,7 @@ export function Sidebar(props: SidebarProps) {
               {appName}
             </div>
             <div className="truncate text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              {sidebarChrome.visibleTagline}
+              {sidebarTagline}
             </div>
           </div>
         )}

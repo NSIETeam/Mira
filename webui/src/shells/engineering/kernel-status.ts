@@ -39,6 +39,18 @@ export type HostChromeViewModel = HostChromePresentation & {
   semantics: HostChromeSemantics;
 };
 
+export function formatKernelBrandingLine(appName: string, status: HostKernelStatus): string {
+  const appTagline = `${appName} universal execution kernel · engineering shell · ${status.privilege} · ${status.health} · ${status.maintenance}`;
+  return appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention|offline)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "");
+}
+
+export function deriveKernelBrandingLine(
+  appName: string,
+  status: HostKernelStatus = createDefaultHostKernelStatus(),
+): string {
+  return formatKernelBrandingLine(appName, status);
+}
+
 const DEFAULT_HOST_KERNEL_STATUS_INPUT = {
   privilege: "user",
   health: "healthy",
@@ -138,10 +150,7 @@ export function deriveHostChromePresentation(
     healthBadge?.label,
     maintenanceBadge?.label === "maintenance" ? "maintenance" : null,
   ].filter(Boolean).join(" / ");
-  const appTagline = `${appName} universal execution kernel · engineering shell · ${status.privilege} · ${status.health} · ${status.maintenance}`;
-  const visibleTagline = privilegeBadge || healthBadge || maintenanceBadge
-    ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention|offline)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "")
-    : appTagline;
+  const visibleTagline = formatKernelBrandingLine(appName, status);
   const chromeStatusTitle = status.summary;
 
   return {
