@@ -711,49 +711,51 @@ function Shell({
   });
   const { byId: operatorActionMap } = useKernelOperatorActions({
     actionRegistry: kernelManifest?.operator_console.action_registry ?? [],
-    onOpenKernelSettings: () => onOpenSettings("runtime"),
-    onRestartRuntime: onRestart,
-    onRestartEngine: () => {
-      void onNativeEngineRestart();
-    },
-    onInspectFaults: () => kernelControl.setSelectedPane("faults"),
-    onRecordFault: () => {
-      void kernelControl.recordFault();
-    },
-    onClearFault: () => {
-      void kernelControl.clearFault();
-    },
-    onRestartBridge: () => {
-      void kernelControl.restartBridge();
-    },
-    onPauseRuntime: () => {
-      void kernelControl.pauseRuntime();
-    },
-    onResumeRuntime: () => {
-      void kernelControl.resumeRuntime();
-    },
-    onDegradeRuntime: () => {
-      void kernelControl.degradeRuntime();
-    },
-    onDrainBackground: () => {
-      void kernelControl.drainBackground();
-    },
-    onPrioritizeGoalLane: () => {
-      void kernelControl.prioritizeGoalLane();
-    },
-    onEnterMaintenance: () => {
-      void kernelControl.enterMaintenance();
-    },
-    onExitMaintenance: () => {
-      void kernelControl.exitMaintenance();
-    },
-    onInspectModules: () => kernelControl.setSelectedPane("modules"),
-    onSwitchAdapter: () => {
-      kernelControl.setSelectedPane("adapters");
-      void kernelControl.cycleAdapter();
-    },
-    onAttachBoard: () => {
-      void kernelControl.attachBoard();
+    handlers: {
+      open_kernel_settings: () => onOpenSettings("runtime"),
+      restart_runtime: onRestart,
+      restart_engine: () => {
+        void onNativeEngineRestart();
+      },
+      inspect_faults: () => kernelControl.setSelectedPane("faults"),
+      record_fault: () => {
+        void kernelControl.recordFault();
+      },
+      clear_fault: () => {
+        void kernelControl.clearFault();
+      },
+      restart_bridge: () => {
+        void kernelControl.restartBridge();
+      },
+      pause_runtime: () => {
+        void kernelControl.pauseRuntime();
+      },
+      resume_runtime: () => {
+        void kernelControl.resumeRuntime();
+      },
+      degrade_runtime: () => {
+        void kernelControl.degradeRuntime();
+      },
+      drain_background: () => {
+        void kernelControl.drainBackground();
+      },
+      prioritize_goal_lane: () => {
+        void kernelControl.prioritizeGoalLane();
+      },
+      enter_maintenance: () => {
+        void kernelControl.enterMaintenance();
+      },
+      exit_maintenance: () => {
+        void kernelControl.exitMaintenance();
+      },
+      inspect_modules: () => kernelControl.setSelectedPane("modules"),
+      switch_adapter: () => {
+        kernelControl.setSelectedPane("adapters");
+        void kernelControl.cycleAdapter();
+      },
+      attach_board: () => {
+        void kernelControl.attachBoard();
+      },
     },
   });
   useEffect(() => {
