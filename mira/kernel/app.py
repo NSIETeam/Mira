@@ -2674,6 +2674,54 @@ class KernelApp:
             "action_result": action_result,
         }
 
+    def dispatch_control_action(self, action: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        normalized = str(action or "").strip()
+        if not normalized:
+            raise ValueError("missing action")
+        payload = params or {}
+        self.assert_control_action_allowed(normalized, raw=normalized)
+        if normalized == "switch_adapter":
+            adapter = str(payload.get("adapter") or "").strip()
+            if not adapter:
+                raise ValueError("missing adapter")
+            return self.switch_runtime_adapter(adapter)
+        if normalized == "focus_module":
+            module = str(payload.get("module") or "").strip()
+            if not module:
+                raise ValueError("missing module")
+            return self.focus_runtime_module(module)
+        if normalized == "attach_board":
+            return self.attach_board(
+                transport=str(payload.get("transport") or "").strip() or None,
+                port=str(payload.get("port") or "").strip() or None,
+            )
+        if normalized == "detach_board":
+            return self.detach_board()
+        if normalized == "record_fault":
+            return self.record_fault(
+                str(payload.get("level") or "fault").strip() or "fault",
+                str(payload.get("adapter") or "").strip() or None,
+            )
+        if normalized == "clear_fault":
+            return self.clear_fault(str(payload.get("adapter") or "").strip() or None)
+        if normalized == "restart_bridge":
+            return self.restart_bridge(str(payload.get("adapter") or "").strip() or None)
+        if normalized == "pause_runtime":
+            return self.pause_runtime(str(payload.get("reason") or "").strip() or None)
+        if normalized == "resume_runtime":
+            return self.resume_runtime()
+        if normalized == "degrade_runtime":
+            return self.degrade_runtime(str(payload.get("reason") or "").strip() or None)
+        if normalized == "drain_background":
+            return self.drain_background()
+        if normalized == "prioritize_goal_lane":
+            return self.prioritize_goal_lane()
+        if normalized == "enter_maintenance":
+            return self.enter_maintenance(str(payload.get("reason") or "").strip() or None)
+        if normalized == "exit_maintenance":
+            return self.exit_maintenance()
+        raise ValueError(f"unknown kernel action: {normalized}")
+
     def _operator_privilege_role(self) -> str:
         geteuid = getattr(os, "geteuid", None)
         if callable(geteuid) and int(geteuid()) == 0:

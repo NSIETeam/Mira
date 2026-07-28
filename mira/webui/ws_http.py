@@ -926,68 +926,28 @@ class GatewayHTTPHandler:
         if not action:
             return _http_error(400, "missing action")
         try:
-            kernel.assert_control_action_allowed(action, raw=action)
-            if action == "switch_adapter":
-                adapter = (_query_first(query, "adapter") or "").strip()
-                if not adapter:
-                    return _http_error(400, "missing adapter")
-                state = kernel.switch_runtime_adapter(adapter)
-            elif action == "focus_module":
-                module = (_query_first(query, "module") or "").strip()
-                if not module:
-                    return _http_error(400, "missing module")
-                state = kernel.focus_runtime_module(module)
-            elif action == "attach_board":
-                state = kernel.attach_board(
-                    transport=(_query_first(query, "transport") or "").strip() or None,
-                    port=(_query_first(query, "port") or "").strip() or None,
-                )
-            elif action == "detach_board":
-                state = kernel.detach_board()
-            elif action == "record_fault":
-                state = kernel.record_fault(
-                    (_query_first(query, "level") or "fault").strip() or "fault",
-                    (_query_first(query, "adapter") or "").strip() or None,
-                )
-            elif action == "clear_fault":
-                state = kernel.clear_fault(
-                    (_query_first(query, "adapter") or "").strip() or None
-                )
-            elif action == "restart_bridge":
-                state = kernel.restart_bridge(
-                    (_query_first(query, "adapter") or "").strip() or None
-                )
-            elif action == "pause_runtime":
-                state = kernel.pause_runtime(
-                    (_query_first(query, "reason") or "").strip() or None
-                )
-            elif action == "resume_runtime":
-                state = kernel.resume_runtime()
-            elif action == "degrade_runtime":
-                state = kernel.degrade_runtime(
-                    (_query_first(query, "reason") or "").strip() or None
-                )
-            elif action == "drain_background":
-                state = kernel.drain_background()
-            elif action == "prioritize_goal_lane":
-                state = kernel.prioritize_goal_lane()
-            elif action == "enter_maintenance":
-                state = kernel.enter_maintenance(
-                    (_query_first(query, "reason") or "").strip() or None
-                )
-            elif action == "exit_maintenance":
-                state = kernel.exit_maintenance()
-            elif action == "operator_command":
+            if action == "operator_command":
                 command = (_query_first(query, "command") or "").strip()
                 if not command:
                     return _http_error(400, "missing command")
                 payload = kernel.execute_operator_command(command)
                 return _http_json_response({"ok": True, **payload, "kernel": kernel.describe()})
-            else:
-                return _http_error(404, "unknown kernel action")
+            state = kernel.dispatch_control_action(
+                action,
+                {
+                    "adapter": (_query_first(query, "adapter") or "").strip() or None,
+                    "module": (_query_first(query, "module") or "").strip() or None,
+                    "transport": (_query_first(query, "transport") or "").strip() or None,
+                    "port": (_query_first(query, "port") or "").strip() or None,
+                    "level": (_query_first(query, "level") or "fault").strip() or "fault",
+                    "reason": (_query_first(query, "reason") or "").strip() or None,
+                },
+            )
         except PermissionError as e:
             return _http_error(403, str(e))
         except ValueError as e:
+            if str(e).startswith("unknown kernel action:"):
+                return _http_error(404, str(e))
             return _http_error(400, str(e))
         return _http_json_response({"ok": True, "runtime_control": state, "kernel": kernel.describe()})
 
