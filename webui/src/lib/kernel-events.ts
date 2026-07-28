@@ -22,6 +22,14 @@ function metadataNumber(row: Record<string, unknown> | null, key: string): numbe
   return typeof value === "number" ? value : null;
 }
 
+function metadataChatId(row: Record<string, unknown> | null): string | null {
+  return metadataString(row, "chat_id");
+}
+
+function metadataRequestId(row: Record<string, unknown> | null): string | null {
+  return metadataString(row, "request_id");
+}
+
 function statusEvent(
   state: string,
   metadata: InboundEvent,
@@ -104,14 +112,14 @@ export function turnCompletionFromKernelMetadata(metadata: unknown): {
 
 export function readyChatIdFromKernelMetadata(metadata: unknown): string | null {
   const row = metadataRow(metadata);
-  const chatId = metadataString(row, "chat_id");
+  const chatId = metadataChatId(row);
   if (!chatId || "turn_id" in row) return null;
   return chatId;
 }
 
 export function attachedChatIdFromKernelMetadata(metadata: unknown): string | null {
   const row = metadataRow(metadata);
-  const chatId = metadataString(row, "chat_id");
+  const chatId = metadataChatId(row);
   const sessionId = metadataString(row, "session_id");
   if (!chatId || !sessionId) return null;
   return chatId;
@@ -136,7 +144,7 @@ export function sessionUpdateFromKernelMetadata(metadata: unknown): {
   workspaceScope?: unknown;
 } | null {
   const row = metadataRow(metadata);
-  const chatId = metadataString(row, "chat_id");
+  const chatId = metadataChatId(row);
   if (!chatId || !("workspace_scope" in row)) return null;
   return {
     chatId,
@@ -150,7 +158,7 @@ export function transcriptionResultFromKernelMetadata(metadata: unknown): {
   text: string;
 } | null {
   const row = metadataRow(metadata);
-  const requestId = metadataString(row, "request_id");
+  const requestId = metadataRequestId(row);
   const text = metadataString(row, "text");
   if (!requestId || text === null) return null;
   return { requestId, text };
@@ -163,7 +171,7 @@ export function transcriptionErrorFromKernelMetadata(metadata: unknown): {
   const row = metadataRow(metadata);
   const detail = metadataString(row, "detail") ?? "";
   if (!detail) return null;
-  const requestId = metadataString(row, "request_id") ?? undefined;
+  const requestId = metadataRequestId(row) ?? undefined;
   return {
     ...(requestId ? { requestId } : {}),
     detail,
@@ -176,9 +184,11 @@ export function workspaceScopeRejectionFromKernelMetadata(metadata: unknown): {
 } | null {
   const row = metadataRow(metadata);
   if (row.detail !== "workspace_scope_rejected") return null;
+  const reason = metadataString(row, "reason");
+  const chatId = metadataChatId(row);
   return {
-    ...(metadataString(row, "reason") ? { reason: metadataString(row, "reason") as string } : {}),
-    ...(metadataString(row, "chat_id") ? { chatId: metadataString(row, "chat_id") as string } : {}),
+    ...(reason ? { reason } : {}),
+    ...(chatId ? { chatId } : {}),
   };
 }
 
