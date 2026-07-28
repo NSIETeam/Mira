@@ -1414,14 +1414,14 @@ export function MiraKernelConsole({
                   disabled={operatorPending}
                   onRun={runContractAction}
                 />
-                <button
-                  type="button"
-                  onClick={() => runTopologyCommand("runtime", "tool status")}
-                  disabled={operatorPending}
+                <ConsoleActionButton
+                  action={{ command: "tool status" }}
+                  pane="runtime"
+                  label="inspect backlog"
                   className="rounded-full border border-emerald-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
-                >
-                  inspect backlog
-                </button>
+                  disabled={operatorPending}
+                  onRun={() => runTopologyCommand("runtime", "tool status")}
+                />
               </div>
             </div>
             <div className="rounded-lg border border-blue-200/80 bg-blue-50/60 p-3">
