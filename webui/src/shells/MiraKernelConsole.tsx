@@ -212,6 +212,9 @@ export function MiraKernelConsole({
   const nativeModulesAction = nativeAction("native_modules");
   const nativeFocusLastTargetAction = nativeAction("focus_last_target");
   const nativeOpenLastTargetAction = nativeAction("open_last_target");
+  const nativeStatusCommand = "native status";
+  const nativeReplayLastCommand = "native replay-last";
+  const nativeLastCommandQuery = "native last-command";
   const selectedModuleInspectNativeStatusAction = selectedModuleAction("inspect_native_status");
   const selectedModuleFocusNativeAction = selectedModuleAction("focus_native");
   const selectedModuleInspectNativeAction = selectedModuleAction("inspect_native");
@@ -974,7 +977,7 @@ export function MiraKernelConsole({
                         <div className="mt-2 flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => runQuickCommand("native status")}
+                            onClick={() => runQuickCommand(nativeStatusCommand)}
                             disabled={operatorPending}
                             className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                           >
@@ -982,7 +985,7 @@ export function MiraKernelConsole({
                           </button>
                           <button
                             type="button"
-                            onClick={() => runQuickCommand("native replay-last")}
+                            onClick={() => runQuickCommand(nativeReplayLastCommand)}
                             disabled={operatorPending}
                             className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                           >
@@ -990,7 +993,7 @@ export function MiraKernelConsole({
                           </button>
                           <button
                             type="button"
-                            onClick={() => runQuickCommand("native last-command")}
+                            onClick={() => runQuickCommand(nativeLastCommandQuery)}
                             disabled={operatorPending}
                             className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                           >
@@ -1021,36 +1024,37 @@ export function MiraKernelConsole({
                             </button>
                           ) : null}
                           {"target" in entry.details && entry.details.target ? (
-                            {(() => {
+                            (() => {
                               const moduleShowAction = findModuleAction(String(entry.details.target), "show_module");
-                              const moduleInspectFillCommand = findModuleAction(String(entry.details.target), "fill_native_inspect")?.command;
+                              const moduleInspectFillCommand =
+                                findModuleAction(String(entry.details.target), "fill_native_inspect")?.command;
                               return (
                                 <>
                                   <button
-                              type="button"
-                              onClick={() => {
-                                if (!moduleShowAction?.command) return;
-                                runQuickCommand(moduleShowAction.command);
-                              }}
-                              disabled={operatorPending || !moduleShowAction?.command}
-                              className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
-                            >
-                              open module
-                            </button>
+                                    type="button"
+                                    onClick={() => {
+                                      if (!moduleShowAction?.command) return;
+                                      runQuickCommand(moduleShowAction.command);
+                                    }}
+                                    disabled={operatorPending || !moduleShowAction?.command}
+                                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                                  >
+                                    open module
+                                  </button>
                                   <button
-                              type="button"
-                              onClick={() => {
-                                if (!moduleInspectFillCommand) return;
-                                setOperatorCommand(moduleInspectFillCommand);
-                              }}
-                              disabled={operatorPending || !moduleInspectFillCommand}
-                              className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
-                            >
-                              fill inspect
-                            </button>
+                                    type="button"
+                                    onClick={() => {
+                                      if (!moduleInspectFillCommand) return;
+                                      setOperatorCommand(moduleInspectFillCommand);
+                                    }}
+                                    disabled={operatorPending || !moduleInspectFillCommand}
+                                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                                  >
+                                    fill inspect
+                                  </button>
                                 </>
                               );
-                            })()}
+                            })()
                           ) : null}
                         </div>
                       ) : null}
