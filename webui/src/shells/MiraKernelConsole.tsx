@@ -179,7 +179,6 @@ export function MiraKernelConsole({
   const executionContract = kernelManifest?.execution ?? null;
   const goalState = diagnostics?.snapshot.goal_state;
   const operatorReadyLabel = "operator-ready";
-  const unresolvedRuntimeLabel = "unresolved";
   const boardAttachmentLabel = boardSnapshot?.attached ? "attached" : "detached";
   const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
@@ -540,7 +539,7 @@ export function MiraKernelConsole({
     { label: "Shell", value: shellDescriptor?.display_name ?? "Mira" },
     { label: "Mode", value: shellMode },
     { label: "Status", value: connectionStatus },
-    { label: "Model", value: runtimeModel ?? unresolvedRuntimeLabel },
+    { label: "Model", value: runtimeModel ?? "unresolved" },
     { label: "Running", value: `${runningExecutionCount}` },
     { label: "Gate", value: runtimeControl?.execution_gate?.state ?? "open" },
     { label: "Maintenance", value: runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off" },
@@ -678,7 +677,7 @@ export function MiraKernelConsole({
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Runtime</div>
-                <div className="mt-2 text-lg font-semibold text-white">{runtimeModel ?? unresolvedRuntimeLabel}</div>
+                <div className="mt-2 text-lg font-semibold text-white">{runtimeModel ?? "unresolved"}</div>
                 <div className="text-xs text-slate-300">
                   {runtimeControl?.execution_gate?.reason ?? operatorReadyLabel}
                 </div>
