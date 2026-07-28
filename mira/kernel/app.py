@@ -3269,13 +3269,6 @@ class KernelApp:
                 ]
         return workers
 
-    def workers_snapshot(
-        self,
-        *,
-        session_metadata: dict[str, Any] | None = None,
-    ) -> list[dict[str, Any]]:
-        return self.worker_snapshot(session_metadata=session_metadata)
-
     def drain_background(self) -> dict[str, Any]:
         self._scheduler_state = request_background_drain(self._scheduler_state)
         self._record_kernel_event(
