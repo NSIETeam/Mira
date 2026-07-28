@@ -11,47 +11,11 @@ export function normalizedShellHostContract(
 export function shellDescriptorAllowsKernelConsole(
   shellDescriptor: ShellDescriptorPayload | null,
 ): boolean {
-  return shellAllowsKernelConsole(normalizedShellHostContract(shellDescriptor));
-}
-
-export function shellShowsSidebarChrome(contract: ShellHostContract): boolean {
-  return contract.chrome.showSidebarChrome;
-}
-
-export function shellShowsSearchDialog(contract: ShellHostContract): boolean {
-  return contract.chrome.showSearchDialog;
-}
-
-export function shellAllowsUtilitySurface(contract: ShellHostContract): boolean {
-  return contract.surfaces.allowUtilitySurface;
-}
-
-export function shellAllowsWorkspaceControls(contract: ShellHostContract): boolean {
-  return contract.surfaces.allowWorkspaceControls;
-}
-
-export function shellAllowsRuntimeModelControls(contract: ShellHostContract): boolean {
-  return contract.surfaces.allowRuntimeModelControls;
-}
-
-export function shellAllowsKernelConsole(contract: ShellHostContract): boolean {
-  return contract.surfaces.allowKernelConsole;
+  return normalizedShellHostContract(shellDescriptor).surfaces.allowKernelConsole;
 }
 
 export function shellAllowsPrivilegedRuntimeControls(contract: ShellHostContract): boolean {
   return contract.surfaces.allowPrivilegedRuntimeControls;
-}
-
-export function shellAllowsExecutionFork(contract: ShellHostContract): boolean {
-  return contract.actions.allowExecutionFork;
-}
-
-export function shellAllowsComposer(contract: ShellHostContract): boolean {
-  return contract.composer.allowComposer;
-}
-
-export function shellReadOnlyExecution(contract: ShellHostContract): boolean {
-  return contract.composer.readOnlyExecution;
 }
 
 export function shellDataAttributes({
@@ -80,6 +44,6 @@ export function shellDataAttributes({
     "data-shell-supports-file-activity": shellSupportsFileActivity ? "true" : "false",
     ...(layout ? { "data-shell-layout": layout } : {}),
     "data-shell-mode": hostContract.mode,
-    "data-shell-read-only": shellReadOnlyExecution(hostContract) ? "true" : "false",
+    "data-shell-read-only": hostContract.composer.readOnlyExecution ? "true" : "false",
   };
 }

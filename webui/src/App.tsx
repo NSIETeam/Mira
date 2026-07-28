@@ -54,17 +54,6 @@ import { useExecutionRuntimeState } from "@/shells/useExecutionRuntimeState";
 import { useExecutionSessionState } from "@/shells/useExecutionSessionState";
 import { MiraKernelConsole } from "@/shells/MiraKernelConsole";
 import { useShellPresentationState } from "@/shells/useShellPresentationState";
-import {
-  shellAllowsKernelConsole,
-  shellAllowsComposer,
-  shellAllowsExecutionFork,
-  shellAllowsRuntimeModelControls,
-  shellAllowsUtilitySurface,
-  shellAllowsWorkspaceControls,
-  shellReadOnlyExecution,
-  shellShowsSearchDialog,
-  shellShowsSidebarChrome,
-} from "@/shells/contract";
 import { resolveShellRegistration } from "@/shells/registry";
 import { useKernelConsoleState } from "@/shells/useKernelConsoleState";
 import { useKernelControlState } from "@/shells/useKernelControlState";
@@ -576,16 +565,16 @@ function Shell({
   );
   const ShellView = shellRegistration.component;
   const shellHostContract = shellRegistration.hostContract;
-  const shellUtilitySurfaceEnabled = shellAllowsUtilitySurface(shellHostContract);
-  const shellExecutionForkEnabled = shellAllowsExecutionFork(shellHostContract);
-  const shellWorkspaceControlsEnabled = shellAllowsWorkspaceControls(shellHostContract);
-  const shellRuntimeModelControlsEnabled = shellAllowsRuntimeModelControls(shellHostContract);
-  const shellKernelConsoleEnabled = shellAllowsKernelConsole(shellHostContract);
-  const shellComposerEnabled = shellAllowsComposer(shellHostContract);
-  const shellExecutionReadOnly = shellReadOnlyExecution(shellHostContract);
+  const shellUtilitySurfaceEnabled = shellHostContract.surfaces.allowUtilitySurface;
+  const shellExecutionForkEnabled = shellHostContract.actions.allowExecutionFork;
+  const shellWorkspaceControlsEnabled = shellHostContract.surfaces.allowWorkspaceControls;
+  const shellRuntimeModelControlsEnabled = shellHostContract.surfaces.allowRuntimeModelControls;
+  const shellKernelConsoleEnabled = shellHostContract.surfaces.allowKernelConsole;
+  const shellComposerEnabled = shellHostContract.composer.allowComposer;
+  const shellExecutionReadOnly = shellHostContract.composer.readOnlyExecution;
   const activeShellView = shellUtilitySurfaceEnabled ? view : "chat";
   const showMainSidebar =
-    shellShowsSidebarChrome(shellHostContract)
+    shellHostContract.chrome.showSidebarChrome
     && shellSupportsThreads
     && activeShellView !== "settings";
   const {
@@ -814,7 +803,7 @@ function Shell({
     onWorkspaceScopeRejected,
   });
   const executionSearchOpen =
-    shellShowsSearchDialog(shellHostContract) ? sessionSearchOpen : false;
+    shellHostContract.chrome.showSearchDialog ? sessionSearchOpen : false;
   useExecutionSessionState({
     client,
     loading,
