@@ -942,11 +942,7 @@ export function MiraKernelConsole({
                                               ? findModuleAction(moduleName, "show_module")
                                               : findModuleAction(moduleName, "focus_native");
                                             if (!action?.command) return;
-                                            if (key === "items") {
-                                              runQuickCommand(action.command);
-                                            } else {
-                                              runQuickCommand(action.command);
-                                            }
+                                            runQuickCommand(action.command);
                                           }
                                         }}
                                         disabled={operatorPending}
