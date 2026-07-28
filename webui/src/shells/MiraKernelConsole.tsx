@@ -112,6 +112,10 @@ function formatNativeCommandSummary(command: {
   return `${command?.target ?? "target"}:${command?.action ?? "action"}:${command?.status ?? "queued"}:${command?.queue_depth ?? 0}`;
 }
 
+function noneValue(value: string | null | undefined): string {
+  return value && value.length ? value : "none";
+}
+
 function findActionById<T extends { id?: string | null }>(
   actions: T[] | null | undefined,
   id: string,
@@ -205,14 +209,14 @@ function buildNativeControlRows(input: {
   moduleFocus: string | null | undefined;
 }) {
   return [
-    { label: "Last target", value: input.nativeLastCommand?.target ?? "none" },
-    { label: "Last action", value: input.nativeLastCommand?.action ?? "none" },
+    { label: "Last target", value: noneValue(input.nativeLastCommand?.target) },
+    { label: "Last action", value: noneValue(input.nativeLastCommand?.action) },
     { label: "Last command", value: input.lastNativeContext.command },
     { label: "Last status", value: input.lastNativeContext.status },
     { label: "Last code", value: String(input.lastNativeContext.code) },
-    { label: "Last value", value: input.nativeLastCommand?.value || "none" },
-    { label: "Artifact", value: input.nativeLastCommand?.artifact ?? (input.nativeSnapshot?.bridge_artifact ?? "none") },
-    { label: "Module focus", value: input.moduleFocus ?? "none" },
+    { label: "Last value", value: noneValue(input.nativeLastCommand?.value) },
+    { label: "Artifact", value: noneValue(input.nativeLastCommand?.artifact ?? input.nativeSnapshot?.bridge_artifact) },
+    { label: "Module focus", value: noneValue(input.moduleFocus) },
     { label: "Command backlog", value: `${input.nativeSnapshot?.command_depth ?? 0}` },
     { label: "Updated", value: input.lastNativeContext.updatedAt ? formatKernelTimestamp(input.lastNativeContext.updatedAt) : "none" },
   ];
