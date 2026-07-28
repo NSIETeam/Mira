@@ -170,6 +170,7 @@ def convert_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "name": name,
             "description": fn.get("description") or "",
             "parameters": params if isinstance(params, dict) else {},
+            "x_mira_family": tool.get("x_mira_family") or fn.get("x_mira_family"),
         })
     return converted
 
