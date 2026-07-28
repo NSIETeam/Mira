@@ -583,6 +583,26 @@ export function MiraKernelConsole({
                 >
                   native replay runtime pause operator-ping
                 </button>
+                {selectedModule?.name ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setOperatorCommand(`native inspect ${selectedModule.name}`)}
+                      disabled={operatorPending}
+                      className="rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
+                    >
+                      native inspect {selectedModule.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOperatorCommand(`native replay ${selectedModule.name} inspect status`)}
+                      disabled={operatorPending}
+                      className="rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
+                    >
+                      native replay {selectedModule.name} inspect status
+                    </button>
+                  </>
+                ) : null}
               </div>
               <div className="mt-3 space-y-2">
                 {quickCommandGroups.map((group) => (
