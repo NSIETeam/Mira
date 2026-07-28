@@ -1132,9 +1132,6 @@ function Shell({
             onAttachBoard={(options) => {
               void kernelControl.attachBoard(options);
             }}
-            onDetachBoard={() => {
-              void kernelControl.detachBoard();
-            }}
             onRunOperatorCommand={async (command) => {
               const payload = await executeKernelOperatorCommand(token, command);
               onKernelChange(payload.kernel);
@@ -1143,15 +1140,6 @@ function Shell({
                 targetPane: payload.target_pane ?? null,
                 details: payload.details,
               };
-            }}
-            onRestartBridgeAdapter={(adapterName) => {
-              void kernelControl.restartBridge(adapterName);
-            }}
-            onRecordBridgeFault={(adapterName) => {
-              void kernelControl.recordFault("fault", adapterName);
-            }}
-            onClearBridgeFault={(adapterName) => {
-              void kernelControl.clearFault(adapterName);
             }}
           />
         ) : null}

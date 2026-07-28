@@ -97,11 +97,7 @@ export function MiraKernelConsole({
   selectedBoardPort,
   onSelectBoardPort,
   onAttachBoard,
-  onDetachBoard,
   onRunOperatorCommand,
-  onRestartBridgeAdapter,
-  onRecordBridgeFault,
-  onClearBridgeFault,
 }: {
   kernelManifest: KernelManifestPayload | null;
   shellDescriptor: ShellDescriptorPayload | null;
@@ -136,16 +132,12 @@ export function MiraKernelConsole({
   selectedBoardPort?: string | null;
   onSelectBoardPort?: (port: string | null) => void;
   onAttachBoard?: (options?: { transport?: string | null; port?: string | null }) => void;
-  onDetachBoard?: () => void;
   onRunOperatorCommand?: (command: string) => Promise<{
     output?: string;
     targetPane?: string | null;
     details?: Record<string, string | number | boolean | null>;
     action_result?: KernelOperatorActionResult;
   } | void>;
-  onRestartBridgeAdapter?: (adapterName: string) => void;
-  onRecordBridgeFault?: (adapterName: string) => void;
-  onClearBridgeFault?: (adapterName: string) => void;
 }) {
   const appIdentity = kernelManifest?.identity?.app_name ?? "Mira";
   const shellMode = normalizedShellMode(shellDescriptor);
@@ -2013,26 +2005,20 @@ export function MiraKernelConsole({
                   <AdapterActionButton
                     binding={{
                       ...resolveActionBinding("restart_bridge"),
-                      onTrigger: onRestartBridgeAdapter
-                        ? () => onRestartBridgeAdapter(bridge.adapter)
-                        : resolveActionBinding("restart_bridge").onTrigger,
+                      onTrigger: () => runQuickCommand(`restart-bridge ${bridge.adapter}`),
                     }}
                   />
                   <AdapterActionButton
                     binding={{
                       ...resolveActionBinding("record_fault"),
-                      onTrigger: onRecordBridgeFault
-                        ? () => onRecordBridgeFault(bridge.adapter)
-                        : resolveActionBinding("record_fault").onTrigger,
+                      onTrigger: () => runQuickCommand(`record-fault fault ${bridge.adapter}`),
                     }}
                   />
                   {bridge.health === "fault" ? (
                     <AdapterActionButton
                       binding={{
                         ...resolveActionBinding("clear_fault"),
-                        onTrigger: onClearBridgeFault
-                          ? () => onClearBridgeFault(bridge.adapter)
-                          : resolveActionBinding("clear_fault").onTrigger,
+                        onTrigger: () => runQuickCommand(`clear-fault ${bridge.adapter}`),
                       }}
                     />
                   ) : null}
@@ -2131,7 +2117,7 @@ export function MiraKernelConsole({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onDetachBoard?.()}
+                  onClick={() => runQuickCommand("detach-board")}
                   className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[11px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
                 >
                   Detach board
@@ -3437,24 +3423,6 @@ function ConsoleBadge({
     <span className={cn("rounded-md border px-2 py-1 text-[10px] uppercase tracking-[0.14em]", toneClass)}>
       {label}: <span className="font-semibold">{value}</span>
     </span>
-  );
-}
-
-function ConsoleButton({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-full border border-slate-300/80 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 transition-colors hover:bg-slate-50"
-    >
-      {label}
-    </button>
   );
 }
 
