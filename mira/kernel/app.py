@@ -1558,6 +1558,7 @@ class KernelApp:
             state = self.runtime_control_snapshot()
             target = native_last_command.get("target") or "none"
             action = native_last_command.get("action") or "none"
+            command_text = native_last_command.get("command") or action
             queue_depth = native_last_command.get("queue_depth", 0)
             output, details = (
                 f"native last-command target={target}"
@@ -1567,7 +1568,7 @@ class KernelApp:
                     "subject": "native",
                     "action": "last-command",
                     "target": target,
-                    "command": action,
+                    "command": command_text,
                     "value": native_last_command.get("value") or "",
                     "status": native_last_command.get("status") or "idle",
                     "code": native_last_command.get("code", 0),
@@ -3561,7 +3562,7 @@ class KernelApp:
         details = self._native_command_details(
             action=action_label,
             target=target,
-            command=command,
+            command=str(self._native_last_command.get("command") or command),
             value=value,
         )
         output = (
