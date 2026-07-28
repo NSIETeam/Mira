@@ -26,6 +26,7 @@ import {
   installedCliAppsFromPayload,
   isCliAppsPayload,
 } from "@/lib/cli-app-events";
+import { cn } from "@/lib/utils";
 import {
   MCP_PRESETS_CHANGED_EVENT,
   installedMcpPresetsFromPayload,
@@ -1093,10 +1094,25 @@ export function ThreadShell({
     </div>
   ) : (
     <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
-      <HeroGreeting text={t(heroGreetingKey)} />
-      <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-        {t("thread.heroSubtitle")}
-      </p>
+      <div className="rounded-full border border-cyan-200/80 bg-cyan-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
+        Mira engineering cockpit
+      </div>
+      <div className="mt-5 rounded-[28px] border border-slate-200/80 bg-white/90 px-8 py-8 shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
+        <HeroGreeting text={t(heroGreetingKey)} />
+        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+          {t("thread.heroSubtitle")}
+        </p>
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em]">
+          {capabilityBadges.map((badge) => (
+            <span
+              key={badge}
+              className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-slate-700"
+            >
+              {badge}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
   const sessionInfoAction = supportsThreads && historyKey ? (
@@ -1121,8 +1137,57 @@ export function ThreadShell({
   ].filter(Boolean).join(" · ");
 
   return (
-    <section ref={shellRef} className="relative flex min-h-0 flex-1 overflow-hidden">
-      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+    <section
+      ref={shellRef}
+      className="relative flex min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.08),transparent_28%),linear-gradient(180deg,rgba(248,250,252,0.95)_0%,rgba(241,245,249,0.98)_100%)]"
+    >
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden px-3 pb-3 pt-2">
+        <div className="mb-3 grid shrink-0 gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
+          <div className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Execution cockpit
+                </div>
+                <div className="mt-1 text-sm font-semibold text-foreground">
+                  {title}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {shellPosture || "universal execution shell"}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {capabilityBadges.map((badge) => (
+                  <span
+                    key={badge}
+                    className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700"
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Operator posture
+            </div>
+            <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-1">
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Execution</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">
+                  {readOnlyExecution ? "locked" : "live"}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Composer</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">
+                  {allowComposer ? "operator ready" : "viewer only"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         {!hideHeader ? (
           <ThreadHeader
             title={title}
@@ -1142,34 +1207,59 @@ export function ThreadShell({
         <FilePreviewAvailabilityProvider
           resolve={historyKey ? resolveFilePreviewAvailability : undefined}
         >
-          <ThreadViewport
-            ref={viewportRef}
-            messages={displayMessages}
-            isStreaming={turnActive}
-            emptyState={emptyState}
-            composer={composer}
-            activeTurnId={viewportTurnId}
-            activeTurnStartedHere={activeTurnStartedHere}
-            conversationKey={historyKey}
-            conversationReady={messagesReady}
-            showScrollToBottomButton={!!session}
-            cliApps={cliApps}
-            mcpPresets={mcpPresets}
-            slashCommands={slashCommands}
-            forkBoundaryMessageCount={forkBoundaryMessageCount}
-            hasMoreBefore={hasMoreBefore}
-            loadingOlder={loadingOlder}
-            userMessageOffset={userMessageOffset}
-            onLoadOlder={loadOlder}
-            onOpenFilePreview={historyKey && supportsFileActivity ? handleOpenFilePreview : undefined}
-            showFileActivity={supportsFileActivity}
-            onForkFromMessage={
-              !readOnlyExecution && supportsThreads && handleForkExecution
-                ? handleForkFromMessage
-                : undefined
-            }
-            onQuoteSelection={activeExecution ? handleQuoteSelection : undefined}
-          />
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/88 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-[linear-gradient(180deg,rgba(248,250,252,0.96)_0%,rgba(248,250,252,0)_100%)]" />
+            <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b border-slate-200/70 px-4 py-2">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Execution stream
+              </div>
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]",
+                    turnActive
+                      ? "border-cyan-300/80 bg-cyan-50 text-cyan-700"
+                      : "border-slate-300/80 bg-slate-50 text-slate-700",
+                  )}
+                >
+                  {turnActive ? "streaming" : "idle"}
+                </span>
+                <span className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700">
+                  {historyKey ? "attached" : "standby"}
+                </span>
+              </div>
+            </div>
+            <div className="h-full pt-11">
+              <ThreadViewport
+                ref={viewportRef}
+                messages={displayMessages}
+                isStreaming={turnActive}
+                emptyState={emptyState}
+                composer={composer}
+                activeTurnId={viewportTurnId}
+                activeTurnStartedHere={activeTurnStartedHere}
+                conversationKey={historyKey}
+                conversationReady={messagesReady}
+                showScrollToBottomButton={!!session}
+                cliApps={cliApps}
+                mcpPresets={mcpPresets}
+                slashCommands={slashCommands}
+                forkBoundaryMessageCount={forkBoundaryMessageCount}
+                hasMoreBefore={hasMoreBefore}
+                loadingOlder={loadingOlder}
+                userMessageOffset={userMessageOffset}
+                onLoadOlder={loadOlder}
+                onOpenFilePreview={historyKey && supportsFileActivity ? handleOpenFilePreview : undefined}
+                showFileActivity={supportsFileActivity}
+                onForkFromMessage={
+                  !readOnlyExecution && supportsThreads && handleForkExecution
+                    ? handleForkFromMessage
+                    : undefined
+                }
+                onQuoteSelection={activeExecution ? handleQuoteSelection : undefined}
+              />
+            </div>
+          </div>
         </FilePreviewAvailabilityProvider>
       </div>
       {supportsFileActivity && filePreviewPath && historyKey ? (
