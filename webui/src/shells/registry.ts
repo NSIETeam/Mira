@@ -69,6 +69,32 @@ const DEFAULT_HOST_CONTRACT = buildHostContract({
   },
 });
 
+function buildUserShellContract({
+  mode,
+  chrome,
+  surfaces,
+  composer,
+}: {
+  mode: ShellHostContract["mode"];
+  chrome: ShellHostContract["chrome"];
+  surfaces: ShellHostContract["surfaces"];
+  composer: ShellHostContract["composer"];
+}): ShellHostContract {
+  return buildHostContract({
+    mode,
+    chrome,
+    surfaces,
+    actions: {
+      allowExecutionFork: false,
+    },
+    composer,
+    privilege: {
+      role: "user",
+      canElevate: false,
+    },
+  });
+}
+
 function readBooleanOr(primary: unknown, fallback: boolean): boolean {
   return typeof primary === "boolean" ? primary : fallback;
 }
@@ -183,7 +209,7 @@ const SHELL_VIEW_REGISTRY: Record<string, ShellViewRegistration> = {
   },
   "single-execution": {
     component: SingleExecutionShellLayout,
-    hostContract: buildHostContract({
+    hostContract: buildUserShellContract({
       mode: "single-execution",
       chrome: {
         showSidebarChrome: false,
@@ -203,15 +229,11 @@ const SHELL_VIEW_REGISTRY: Record<string, ShellViewRegistration> = {
         allowComposer: true,
         readOnlyExecution: false,
       },
-      privilege: {
-        role: "user",
-        canElevate: false,
-      },
     }),
   },
   review: {
     component: ReviewShellLayout,
-    hostContract: buildHostContract({
+    hostContract: buildUserShellContract({
       mode: "review",
       chrome: {
         showSidebarChrome: false,
@@ -230,10 +252,6 @@ const SHELL_VIEW_REGISTRY: Record<string, ShellViewRegistration> = {
       composer: {
         allowComposer: false,
         readOnlyExecution: true,
-      },
-      privilege: {
-        role: "user",
-        canElevate: false,
       },
     }),
   },
