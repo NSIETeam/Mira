@@ -1,12 +1,5 @@
 import type { ShellHostContract } from "./types";
-import { resolveShellRegistration } from "./registry";
 import type { ShellDescriptorPayload } from "@/lib/types";
-
-export function normalizedShellHostContract(
-  shellDescriptor: ShellDescriptorPayload | null,
-): ShellHostContract {
-  return resolveShellRegistration(shellDescriptor).hostContract;
-}
 
 export function shellDataAttributes({
   shellDescriptor,

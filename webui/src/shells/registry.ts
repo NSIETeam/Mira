@@ -266,3 +266,9 @@ export function resolveShellRegistration(
     hostContract: coerceHostContract(shellDescriptor, fallbackRegistration.hostContract),
   };
 }
+
+export function resolveShellHostContract(
+  shellDescriptor: ShellDescriptorPayload | null | undefined,
+): ShellHostContract {
+  return resolveShellRegistration(shellDescriptor).hostContract;
+}

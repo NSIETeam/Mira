@@ -4,15 +4,10 @@ import type {
   ExecutionSummary,
   KernelManifestPayload,
   KernelOperatorActionResult,
-  ShellDescriptorPayload,
   WorkspaceScopePayload,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import {
-  normalizedShellHostContract,
-  shellCanElevate,
-  shellPrivilegeRole,
-} from "./contract";
+import { resolveShellHostContract } from "./registry";
 import type { KernelOperatorActionBinding } from "./useKernelOperatorActions";
 import type { KernelConsoleErrorEntry } from "./useKernelConsoleState";
 
@@ -97,7 +92,7 @@ export function MiraKernelConsole({
   onRunOperatorCommand,
 }: {
   kernelManifest: KernelManifestPayload | null;
-  shellDescriptor: ShellDescriptorPayload | null;
+  shellDescriptor: import("@/lib/types").ShellDescriptorPayload | null;
   activeExecution: ExecutionSummary | null;
   activeWorkspaceScope: WorkspaceScopePayload | null;
   workspaceError: string | null;
@@ -126,10 +121,10 @@ export function MiraKernelConsole({
   } | void>;
 }) {
   const appIdentity = kernelManifest?.identity?.app_name ?? "Mira";
-  const hostContract = normalizedShellHostContract(shellDescriptor);
+  const hostContract = resolveShellHostContract(shellDescriptor);
   const shellMode = hostContract.mode;
-  const privilegeRole = shellPrivilegeRole(hostContract);
-  const canElevate = shellCanElevate(hostContract);
+  const privilegeRole = hostContract.privilege.role;
+  const canElevate = hostContract.privilege.canElevate;
   const shellAllowsPrivilegedControls = hostContract.surfaces.allowPrivilegedRuntimeControls;
   const allowsPrivilegedControls = shellAllowsPrivilegedControls && (privilegeRole === "root" || canElevate);
   const actionAllowed = (
