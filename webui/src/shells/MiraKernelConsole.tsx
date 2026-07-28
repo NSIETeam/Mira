@@ -182,7 +182,6 @@ export function MiraKernelConsole({
   const unresolvedRuntimeLabel = "unresolved";
   const boardAttachmentLabel = boardSnapshot?.attached ? "attached" : "detached";
   const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
-  const boardHealthLabel = boardSnapshot?.health ?? "unknown";
   const nativeArtifactLabel = nativeSnapshot?.bridge_artifact ?? "none";
   const profileName = profile?.name ?? "unknown";
   const activeAdapterName = runtimeControl?.active_adapter ?? "unset";
@@ -581,7 +580,7 @@ export function MiraKernelConsole({
     { label: "Subagents", value: `${diagSubagentWorkers}` },
     { label: "Board", value: boardAttachmentLabel },
     { label: "Board mode", value: boardSnapshot?.runtime_mode ?? "unprobed" },
-    { label: "Board health", value: boardHealthLabel },
+    { label: "Board health", value: boardSnapshot?.health ?? "unknown" },
     { label: "Native health", value: nativeHealthLabel },
     { label: "Native queue", value: `${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0}` },
     { label: "Native modules", value: `${nativeSnapshot?.module_count ?? nativeModuleEntries.length}` },
@@ -2164,7 +2163,7 @@ export function MiraKernelConsole({
               label="Runtime mode"
               value={boardSnapshot?.runtime_mode ?? "unprobed"}
             />
-            <Row label="Health" value={boardHealthLabel} />
+            <Row label="Health" value={boardSnapshot?.health ?? "unknown"} />
             <Row
               label="Bridge artifact"
               value={boardSnapshot?.bridge_artifact ?? "none"}
@@ -2726,7 +2725,7 @@ export function MiraKernelConsole({
               <div className="rounded-lg border border-amber-200/70 bg-amber-50/80 p-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Board health</div>
                 <div className="mt-2 text-sm font-semibold text-amber-950">
-                  {boardHealthLabel}
+                  {boardSnapshot?.health ?? "unknown"}
                 </div>
               </div>
               <div className="rounded-lg border border-slate-200/70 bg-slate-50/80 p-3">
@@ -2752,7 +2751,7 @@ export function MiraKernelConsole({
               <Row label="Target" value={boardSnapshot?.target ?? embeddedTargetHint ?? "host"} />
               <Row label="Transport" value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"} />
               <Row label="Runtime mode" value={boardSnapshot?.runtime_mode ?? "userland"} />
-              <Row label="Health" value={boardHealthLabel} />
+              <Row label="Health" value={boardSnapshot?.health ?? "unknown"} />
               <Row label="Port" value={boardSnapshot?.port ?? "none"} />
             </div>
             <div className="space-y-2">
