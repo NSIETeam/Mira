@@ -228,6 +228,44 @@ def _module_actions(module_name: str) -> list[dict[str, str]]:
             "command": f"native replay {module_name} inspect status".strip(),
         },
     ]
+
+
+def _bridge_actions(adapter_name: str) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "inspect_bridge",
+            "label": "inspect",
+            "pane": "adapters",
+            "command": f"bridge status {adapter_name}".strip(),
+        },
+        {
+            "id": "restart_bridge",
+            "label": "restart",
+            "pane": "adapters",
+            "command": f"restart-bridge {adapter_name}".strip(),
+            "privileged": True,
+            "required_role": "root",
+            "privileged_reason": "requires elevated runtime control",
+        },
+        {
+            "id": "mark_bridge_fault",
+            "label": "mark fault",
+            "pane": "faults",
+            "command": f"bridge fault {adapter_name}".strip(),
+            "privileged": True,
+            "required_role": "root",
+            "privileged_reason": "requires elevated fault control",
+        },
+        {
+            "id": "clear_bridge_fault",
+            "label": "clear fault",
+            "pane": "faults",
+            "command": f"clear-fault {adapter_name}".strip(),
+            "privileged": True,
+            "required_role": "root",
+            "privileged_reason": "requires elevated fault control",
+        },
+    ]
 _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
     "attach-board",
     "detach-board",
@@ -766,41 +804,7 @@ class KernelApp:
         for bridge in self._runtime_bridges:
             row = dict(bridge)
             adapter_name = str(row.get("adapter") or "")
-            row["actions"] = [
-                {
-                    "id": "inspect_bridge",
-                    "label": "inspect",
-                    "pane": "adapters",
-                    "command": f"bridge status {adapter_name}".strip(),
-                },
-                {
-                    "id": "restart_bridge",
-                    "label": "restart",
-                    "pane": "adapters",
-                    "command": f"restart-bridge {adapter_name}".strip(),
-                    "privileged": True,
-                    "required_role": "root",
-                    "privileged_reason": "requires elevated runtime control",
-                },
-                {
-                    "id": "mark_bridge_fault",
-                    "label": "mark fault",
-                    "pane": "faults",
-                    "command": f"bridge fault {adapter_name}".strip(),
-                    "privileged": True,
-                    "required_role": "root",
-                    "privileged_reason": "requires elevated fault control",
-                },
-                {
-                    "id": "clear_bridge_fault",
-                    "label": "clear fault",
-                    "pane": "faults",
-                    "command": f"clear-fault {adapter_name}".strip(),
-                    "privileged": True,
-                    "required_role": "root",
-                    "privileged_reason": "requires elevated fault control",
-                },
-            ]
+            row["actions"] = _bridge_actions(adapter_name)
             rows.append(row)
         return rows
 
