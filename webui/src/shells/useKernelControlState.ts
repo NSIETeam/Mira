@@ -55,7 +55,6 @@ export function useKernelControlState({
     if (targetPane) {
       setSelectedPane(targetPane);
     }
-    return payload;
   };
 
   const cycleAdapter = async () => {
