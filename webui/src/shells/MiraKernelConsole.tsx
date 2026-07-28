@@ -1774,6 +1774,7 @@ export function MiraKernelConsole({
                   { label: "Depth", value: `${dispatchQueue?.depth ?? 0}` },
                   { label: "Lane", value: dispatchQueue?.lane ?? "interactive" },
                   { label: "Class", value: dispatchQueue?.job_class ?? "tool_contract_dispatch" },
+                  { label: "Families", value: dispatchQueue?.family_counts ?? "none" },
                   { label: "Handoff", value: diagnostics?.snapshot.dispatch_handoff_lane ?? "none" },
                   { label: "Owner", value: dispatchQueue?.dispatch_contract?.owner ?? diagnostics?.snapshot.dispatch_contract?.owner ?? "interactive" },
                   { label: "Mode", value: dispatchQueue?.dispatch_contract?.mode ?? diagnostics?.snapshot.dispatch_contract?.mode ?? "direct" },
