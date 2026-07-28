@@ -1310,6 +1310,7 @@ export function MiraKernelConsole({
               <ConsoleBadge label="streaming" value={executionContract?.supports_streaming ? "on" : "off"} tone="slate" />
               <ConsoleBadge label="background" value={executionContract?.supports_background ? "on" : "off"} tone="slate" />
               <ConsoleBadge label="engine" value={runtimeCapabilities?.can_restart_engine ? "restartable" : "fixed"} tone={runtimeCapabilities?.can_restart_engine ? "emerald" : "amber"} />
+              <ConsoleBadge label="privilege" value={privilegePosture.roleLabel} tone={privilegeRole === "root" ? "emerald" : "amber"} />
               <ConsoleBadge
                 label="gate"
                 value={runtimeControl?.execution_gate?.state ?? "open"}
@@ -3479,6 +3480,8 @@ export function MiraKernelConsole({
                   label="Maintenance"
                   value={runtimeControl.maintenance_mode?.enabled ? "enabled" : "off"}
                 />
+                <Row label="Privilege role" value={privilegePosture.roleLabel} />
+                <Row label="Control posture" value={privilegePosture.accessLabel} />
                 <Row label="Supervisor" value={runtimeControl.fault_posture.supervisor} />
                 <Row label="Restart policy" value={runtimeControl.fault_posture.restart_policy} />
                 <Row label="Fault level" value={runtimeControl.fault_posture.last_level} />
