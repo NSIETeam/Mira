@@ -3134,9 +3134,10 @@ class KernelApp:
                     ),
                     "job_class": "tool_contract_dispatch",
                     "active_tasks": [
-                        f"{item['label']}:{item['lifecycle']}"
+                        f"{item['label']}[{item.get('family', 'core')}]:{item['lifecycle']}"
                         for item in dispatch_items[:4]
                     ],
+                    "family_counts": queue_snapshot.get("families", "none"),
                     "dispatch_contract": {
                         "owner": (
                             "goal"
