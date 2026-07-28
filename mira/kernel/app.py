@@ -13,7 +13,7 @@ import shlex
 from typing import Any
 
 from mira.agent.loop import AgentLoop
-from mira import __app_name__, __cli_name__, __legacy_cli_name__
+from mira import __app_name__, __cli_name__
 from mira.bus.runtime_events import (
     GoalStateChanged,
     RuntimeEventBus,
@@ -187,7 +187,6 @@ def build_kernel_manifest(
         "identity": {
             "app_name": __app_name__,
             "cli_name": __cli_name__,
-            "legacy_cli_name": __legacy_cli_name__,
         },
         "profile": profile.to_dict(),
         "profile_registry": list_profiles(),
@@ -2051,7 +2050,6 @@ class KernelApp:
                 "action": "manifest",
                 "app": identity.get("app_name") or "unknown",
                 "cli": identity.get("cli_name") or "unknown",
-                "legacy_cli": identity.get("legacy_cli_name") or "none",
                 "manifest_version": contracts.get("manifest_version") or 0,
                 "event_version": contracts.get("event_version") or 0,
                 "snapshot_version": contracts.get("snapshot_version") or 0,

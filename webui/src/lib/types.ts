@@ -421,7 +421,6 @@ export interface KernelManifestPayload {
   identity: {
     app_name: string;
     cli_name: string;
-    legacy_cli_name: string;
   };
   contracts: {
     manifest_version: number;
