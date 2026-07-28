@@ -2,7 +2,7 @@
 
 This checklist is for packaging the current repository as a Mira-branded execution kernel workbench rather than the original nanobot-first surface.
 
-Date baseline: July 27, 2026.
+Date baseline: July 28, 2026.
 
 For the implementation-oriented overview of the current engineering surface, see
 [Mira Kernel Workbench](./mira-kernel-workbench.md).
@@ -79,7 +79,7 @@ This is the practical line between "intentional compatibility" and "still-visibl
 | WebUI visible storage keys | Mixed, partly Mira-first | No | New front-facing keys should prefer `mira.*` when safe |
 | README positioning | Mira-first with compatibility notes | No | Should present Mira as the default product identity |
 | Release-critical docs landing pages | Mira-first | No | Should not feel nanobot-first to a new user |
-| Repo metadata and remote URLs | Mostly Mira-aligned in local source, still requires hosted verification | No | Must be aligned and checked manually at release time |
+| Repo metadata and remote URLs | `origin` and hosted repo aligned to `NSIETeam/Mira`; `upstream` intentionally tracks `HKUDS/nanobot` | Yes | Public delivery should resolve through Mira, upstream remains source-sync only |
 
 ### Treat as compatibility, not a blocker by itself
 
@@ -114,19 +114,18 @@ These items are not proven by code edits alone and still require explicit delive
 - repo metadata and remote URLs are aligned with the intended Mira repository
 - package metadata points to `NSIETeam/Mira` rather than the upstream mira repository
 
-## Repository rename execution
+## Repository identity status
 
-Code edits alone do not complete the repository rename. The repository/platform layer still needs an explicit release operator pass.
+The hosted delivery repo is now `NSIETeam/Mira` on branch `main`.
 
-Required platform steps:
+Current repository facts verified on July 28, 2026:
 
-1. rename the GitHub repository to `Mira`
-2. confirm the default branch, release pages, and badges now resolve under `NSIETeam/Mira`
-3. update any remaining repository description, social preview, homepage, and topic metadata to match Mira
-4. confirm local remotes point at `NSIETeam/Mira` instead of the upstream mira repository
-5. only after that treat the repository-name migration as complete
+1. local `origin` points to `https://github.com/NSIETeam/Mira.git`
+2. hosted repo resolves as `NSIETeam/Mira`
+3. hosted default branch is `main`
+4. `upstream` still points to `HKUDS/nanobot` and should be treated as source-sync only
 
-Until those steps are performed, "Mira" is true for the local product surface but not yet fully true for the hosted repository identity.
+This means the Mira repository-name migration is complete for the delivery remote, while the upstream nanobot remote remains intentionally retained for reference and sync.
 
 ### Workflow checks
 
@@ -141,7 +140,7 @@ Before calling the migration done, the next operator should perform these steps 
 1. build or typecheck the touched Python and WebUI surfaces
 2. open the Mira WebUI and exercise the kernel console manually
 3. verify the shell commands for runtime, session, workspace, and tool orchestration
-4. confirm repo metadata, public URLs, and the `NSIETeam/Mira` repository naming
+4. confirm package metadata and any remaining public URLs are consistent with `NSIETeam/Mira`
 5. only then commit and push
 
 ## Practical completion standard

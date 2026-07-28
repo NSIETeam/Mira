@@ -13,7 +13,7 @@ Mira is no longer just a chat-first agent shell. The current target is a compact
 
 ## Current status
 
-As of July 27, 2026, the local source tree is already Mira-first in product shape:
+As of July 28, 2026, the local source tree is already Mira-first in product shape:
 
 - the primary runtime/workbench identity is Mira
 - the operator shell behaves like a compact kernel console
@@ -23,7 +23,7 @@ As of July 27, 2026, the local source tree is already Mira-first in product shap
 What is still outside code-only completion:
 
 - build/runtime verification has not yet been run for the current migration pass
-- hosted repository identity still needs explicit platform confirmation under `NSIETeam/Mira`
+- deeper Otto-pattern migration and validation still need explicit implementation and verification work
 - compatibility-bound surfaces such as `nanobot`, `~/.mira/`, `mira/...`, and `mira.wiki` remain intentionally retained for now
 
 ## Current workbench shape
@@ -153,7 +153,7 @@ This gives the workbench a clearer engineering posture similar to Codex-style pr
 
 ## Delivery status
 
-As of July 27, 2026, the Mira workbench already has:
+As of July 28, 2026, the Mira workbench already has:
 
 - a Mira-branded kernel/runtime surface
 - a Codex-style engineering panel direction
@@ -164,7 +164,7 @@ As of July 27, 2026, the Mira workbench already has:
 Remaining work is mostly in three categories:
 
 - final verification and delivery checks
-- residual outward-facing branding cleanup
+- residual outward-facing compatibility cleanup
 - deeper orchestration migration from Otto-style execution patterns
 
 For the release-prep checklist that matches the current implementation, see
