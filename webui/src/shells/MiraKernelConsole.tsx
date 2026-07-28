@@ -166,7 +166,6 @@ export function MiraKernelConsole({
   const boardSnapshot = diagnostics?.snapshot.board;
   const nativeSnapshot = diagnostics?.snapshot.native;
   const nativeLastCommand = nativeSnapshot?.last_command;
-  const nativeRecentCommands = nativeSnapshot?.recent_commands?.slice(-6).reverse() ?? [];
   const nativeModuleEntries = Object.entries(nativeSnapshot?.modules ?? {});
   const profile = kernelManifest?.profile ?? null;
   const adapterContract = kernelManifest?.targets.adapter ?? null;
@@ -2439,7 +2438,7 @@ export function MiraKernelConsole({
             <div className="space-y-2">
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Recent commands</div>
               <div className="flex flex-wrap gap-2">
-                {nativeRecentCommands.length ? nativeRecentCommands.map((command, index) => (
+                {nativeSnapshot?.recent_commands?.length ? nativeSnapshot.recent_commands.slice(-6).reverse().map((command, index) => (
                   (() => {
                     const replayRecentAction = command.actions?.find((action) => action.id === "replay_recent_command");
                     return (
