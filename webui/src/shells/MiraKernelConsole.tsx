@@ -803,13 +803,15 @@ export function MiraKernelConsole({
                   {kernelManifest?.identity?.app_name ?? "Mira"} operator console
                 </div>
                 <div className="max-w-2xl text-sm text-slate-300">
-                  General execution layer with runtime supervision, native bridge control, module focus,
-                  board operations, and fault posture in one shell.
+                  General execution layer with runtime supervision, privilege-aware control, native bridge
+                  control, module focus, board operations, and fault recovery in one shell.
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 <ConsoleBadge label="shell" value={shellMode} tone="slate" />
                 <ConsoleBadge label="role" value={privilegePosture.roleLabel} tone={privilegeRole === "root" ? "emerald" : "amber"} />
+                <ConsoleBadge label="access" value={privilegePosture.accessLabel} tone={allowsPrivilegedControls ? "emerald" : "amber"} />
+                <ConsoleBadge label="recovery" value={privilegePosture.recoveryLabel} tone={allowsPrivilegedControls ? "emerald" : "amber"} />
                 <ConsoleBadge label="gate" value={runtimeControl?.execution_gate?.state ?? "open"} tone={runtimeControl?.execution_gate?.state === "open" ? "emerald" : "amber"} />
                 <ConsoleBadge label="board" value={boardAttachmentLabel} tone={boardSnapshot?.attached ? "emerald" : "amber"} />
                 <ConsoleBadge label="native" value={nativeHealthLabel} tone={nativeSnapshot?.health === "ready" ? "emerald" : "amber"} />
