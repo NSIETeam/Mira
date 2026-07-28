@@ -799,6 +799,32 @@ export function MiraKernelConsole({
       tone: "border-amber-300/80 bg-amber-50 text-amber-700 hover:bg-amber-100",
     },
   ].filter((item) => item.command);
+  const cockpitPrimitiveSurface = [
+    {
+      label: "Tool contracts",
+      value: `${operatorActionRegistry.length}`,
+      detail: "console actions exposed to the shell",
+      tone: "border-cyan-200/80 bg-cyan-50/70",
+    },
+    {
+      label: "Execution lanes",
+      value: `${executionLanes.length}`,
+      detail: executionLanes.map((lane) => lane.id).slice(0, 2).join(" · ") || "none",
+      tone: "border-emerald-200/80 bg-emerald-50/70",
+    },
+    {
+      label: "Scheduler queues",
+      value: `${schedulerQueues.length}`,
+      detail: schedulerQueues.map((queue) => queue.id).slice(0, 2).join(" · ") || "none",
+      tone: "border-slate-200/80 bg-slate-50/70",
+    },
+    {
+      label: "Worker lanes",
+      value: `${workers.length}`,
+      detail: workers.map((worker) => worker.lane).slice(0, 2).join(" · ") || "none",
+      tone: "border-amber-200/80 bg-amber-50/70",
+    },
+  ] as const;
 
   return (
     <aside className="hidden w-[332px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[356px]">
@@ -869,6 +895,23 @@ export function MiraKernelConsole({
                 >
                   {item.label}
                 </button>
+              ))}
+            </div>
+            <div className="mt-3 grid gap-2 xl:grid-cols-2">
+              {cockpitPrimitiveSurface.map((item) => (
+                <div key={item.label} className={cn("rounded-xl border p-3", item.tone)}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      {item.label}
+                    </div>
+                    <div className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700">
+                      {item.value}
+                    </div>
+                  </div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    {item.detail}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
