@@ -982,6 +982,10 @@ export function MiraKernelConsole({
       tone: "border-rose-200/80 bg-rose-50/70 text-rose-900",
     };
   }), [activeWorkspaceScope, recentErrors]);
+  const shellErrorTriageById = useMemo(
+    () => Object.fromEntries(errorTriageRoutes.map((route) => [route.id, route])),
+    [errorTriageRoutes],
+  );
 
   return (
     <aside className="hidden w-[332px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[356px]">
@@ -3874,15 +3878,26 @@ export function MiraKernelConsole({
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {recentErrors.length ? recentErrors.slice(0, 4).map((error) => (
-                  <button
-                    key={error.id}
-                    type="button"
-                    onClick={() => runContractAction(inspectFaultsAction, "faults")}
-                    disabled={operatorPending || !inspectFaultsAction?.command}
-                    className="rounded-full border border-violet-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
-                  >
-                    {error.kind}
-                  </button>
+                  (() => {
+                    const route = shellErrorTriageById[error.id];
+                    return (
+                      <button
+                        key={error.id}
+                        type="button"
+                        onClick={() => {
+                          if (route) {
+                            runTopologyCommand(route.pane, route.command);
+                            return;
+                          }
+                          runContractAction(inspectFaultsAction, "faults");
+                        }}
+                        disabled={operatorPending || (!route && !inspectFaultsAction?.command)}
+                        className="rounded-full border border-violet-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
+                      >
+                        {error.kind}
+                      </button>
+                    );
+                  })()
                 )) : (
                   <span className="text-xs text-violet-700/80">No shell errors.</span>
                 )}
@@ -3969,6 +3984,21 @@ export function MiraKernelConsole({
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-rose-900">{error.message}</div>
+                    {shellErrorTriageById[error.id] ? (
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          onClick={() => runTopologyCommand(
+                            shellErrorTriageById[error.id].pane,
+                            shellErrorTriageById[error.id].command,
+                          )}
+                          disabled={operatorPending}
+                          className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-50"
+                        >
+                          triage in {shellErrorTriageById[error.id].pane}
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
