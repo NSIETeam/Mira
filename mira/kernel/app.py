@@ -141,6 +141,53 @@ def _worker_control_actions() -> list[dict[str, str]]:
             "command": "worker show",
         },
     ]
+
+
+def _fault_posture_actions() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "inspect_faults",
+            "label": "inspect",
+            "pane": "faults",
+            "command": "fault show",
+        },
+        {
+            "id": "clear_faults",
+            "label": "clear",
+            "pane": "faults",
+            "command": "fault clear",
+            "privileged": True,
+            "required_role": "root",
+            "privileged_reason": "requires elevated fault control",
+        },
+        {
+            "id": "record_fault",
+            "label": "record",
+            "pane": "faults",
+            "command": "fault record",
+            "privileged": True,
+            "required_role": "root",
+            "privileged_reason": "requires elevated fault control",
+        },
+        {
+            "id": "enter_maintenance",
+            "label": "maintenance on",
+            "pane": "control_plane",
+            "command": "enter-maintenance",
+            "privileged": True,
+            "required_role": "root",
+            "privileged_reason": "requires elevated maintenance control",
+        },
+        {
+            "id": "exit_maintenance",
+            "label": "maintenance off",
+            "pane": "control_plane",
+            "command": "exit-maintenance",
+            "privileged": True,
+            "required_role": "root",
+            "privileged_reason": "requires elevated maintenance control",
+        },
+    ]
 _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
     "attach-board",
     "detach-board",
@@ -752,50 +799,7 @@ class KernelApp:
     def runtime_control_snapshot(self) -> dict[str, Any]:
         state = self.runtime_control
         fault_posture = dict(state.get("fault_posture", {}))
-        fault_posture["actions"] = [
-            {
-                "id": "inspect_faults",
-                "label": "inspect",
-                "pane": "faults",
-                "command": "fault show",
-            },
-            {
-                "id": "clear_faults",
-                "label": "clear",
-                "pane": "faults",
-                "command": "fault clear",
-                "privileged": True,
-                "required_role": "root",
-                "privileged_reason": "requires elevated fault control",
-            },
-            {
-                "id": "record_fault",
-                "label": "record",
-                "pane": "faults",
-                "command": "fault record",
-                "privileged": True,
-                "required_role": "root",
-                "privileged_reason": "requires elevated fault control",
-            },
-            {
-                "id": "enter_maintenance",
-                "label": "maintenance on",
-                "pane": "control_plane",
-                "command": "enter-maintenance",
-                "privileged": True,
-                "required_role": "root",
-                "privileged_reason": "requires elevated maintenance control",
-            },
-            {
-                "id": "exit_maintenance",
-                "label": "maintenance off",
-                "pane": "control_plane",
-                "command": "exit-maintenance",
-                "privileged": True,
-                "required_role": "root",
-                "privileged_reason": "requires elevated maintenance control",
-            },
-        ]
+        fault_posture["actions"] = _fault_posture_actions()
         state["fault_posture"] = fault_posture
         return state
 
