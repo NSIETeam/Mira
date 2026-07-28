@@ -24,7 +24,7 @@ export type HostChromePresentation = {
 
 export type HostChromeSemantics = {
   ariaLabel: string;
-  statusSummary: string | undefined;
+  statusSummary: string;
   kernelHealth: string;
   kernelConnected: "true" | "false";
   kernelAlert: "true" | "false";
@@ -158,12 +158,11 @@ export function deriveHostChromePresentation(
 }
 
 export function deriveHostChromeSemantics(
-  appName: string,
   status: HostKernelStatus,
 ): HostChromeSemantics {
   return {
-    ariaLabel: status.summary || `${appName} kernel status`,
-    statusSummary: status.summary || undefined,
+    ariaLabel: status.summary,
+    statusSummary: status.summary,
     kernelHealth: status.health,
     kernelConnected: status.connected ? "true" : "false",
     kernelAlert: status.alert ? "true" : "false",
@@ -181,6 +180,6 @@ export function deriveHostChromeViewModel(input: {
 }): HostChromeViewModel {
   return {
     ...deriveHostChromePresentation(input.status, input.appName),
-    semantics: deriveHostChromeSemantics(input.appName, input.status),
+    semantics: deriveHostChromeSemantics(input.status),
   };
 }
