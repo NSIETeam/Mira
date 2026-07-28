@@ -3028,7 +3028,7 @@ class KernelApp:
         automation_depth = len(subagent_rows)
         queue_snapshot = self._dispatch_queue_snapshot(limit=4)
         dispatch_depth = int(queue_snapshot["queue_depth"])
-        dispatch_items = [item.strip() for item in str(queue_snapshot["items"]).split(",") if item.strip() and item.strip() != "none"]
+        dispatch_items = [dict(item) for item in list(queue_snapshot.get("queue_items") or [])]
         payload = {
             "policy": str(scheduler_state.get("policy") or "priority-foreground-with-background-drain"),
             "preferred_lane": preferred_lane,
@@ -3058,7 +3058,7 @@ class KernelApp:
                     ),
                     "job_class": "goal_slice",
                     "active_tasks": (
-                        [f"dispatch:{item}" for item in dispatch_items[:3]]
+                        [f"dispatch:{item['label']}:{item['lifecycle']}" for item in dispatch_items[:3]]
                         if dispatch_handoff_lane == "sustained_goal" and dispatch_depth
                         else []
                     ),
@@ -3080,7 +3080,7 @@ class KernelApp:
                     ),
                     "job_class": "cron_or_trigger",
                     "active_tasks": (
-                        [f"dispatch:{item}" for item in dispatch_items[:3]]
+                        [f"dispatch:{item['label']}:{item['lifecycle']}" for item in dispatch_items[:3]]
                         if dispatch_handoff_lane == "subagent" and dispatch_depth
                         else [row["label"] for row in subagent_rows[:4]]
                     ),
@@ -3105,7 +3105,10 @@ class KernelApp:
                         )
                     ),
                     "job_class": "tool_contract_dispatch",
-                    "active_tasks": dispatch_items[:4],
+                    "active_tasks": [
+                        f"{item['label']}:{item['lifecycle']}"
+                        for item in dispatch_items[:4]
+                    ],
                     "dispatch_contract": {
                         "owner": (
                             "goal"
@@ -3215,6 +3218,7 @@ class KernelApp:
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "")
         queue_snapshot = self._dispatch_queue_snapshot(limit=3)
         dispatch_depth = int(queue_snapshot["queue_depth"])
+        dispatch_items = [dict(item) for item in list(queue_snapshot.get("queue_items") or [])]
         if any(status == "running" for status in self._session_status.values()):
             preferred_lane = "interactive"
         workers = project_worker_registry(
@@ -3247,10 +3251,10 @@ class KernelApp:
                 worker["tasks"] = [
                     {
                         "task_id": f"dispatch-{index}",
-                        "label": f"Dispatch {item.split('@', 1)[0]}",
-                        "phase": item.rsplit(':', 1)[-1],
+                        "label": f"Dispatch {item['tool']}",
+                        "phase": item["lifecycle"],
                         "iteration": 0,
-                        "task_description": item,
+                        "task_description": f"{item['label']}:{item['lifecycle']}",
                         "task_target": "dispatch",
                         "actions": [
                             {
@@ -3268,10 +3272,7 @@ class KernelApp:
                         "tool_events": [],
                         "error": None,
                     }
-                    for index, item in enumerate(
-                        [entry.strip() for entry in str(queue_snapshot["items"]).split(",") if entry.strip() and entry.strip() != "none"][:3],
-                        start=1,
-                    )
+                    for index, item in enumerate(dispatch_items[:3], start=1)
                 ]
             elif lane == "interactive" and active_bridge is not None:
                 worker["summary"] = (
@@ -3292,10 +3293,10 @@ class KernelApp:
                 worker["tasks"] = [
                     {
                         "task_id": f"goal-dispatch-{index}",
-                        "label": f"Goal handoff {item.split('@', 1)[0]}",
-                        "phase": item.rsplit(':', 1)[-1],
+                        "label": f"Goal handoff {item['tool']}",
+                        "phase": item["lifecycle"],
                         "iteration": 0,
-                        "task_description": item,
+                        "task_description": f"{item['label']}:{item['lifecycle']}",
                         "task_target": "goal_dispatch",
                         "actions": [
                             {
@@ -3319,10 +3320,7 @@ class KernelApp:
                         "tool_events": [],
                         "error": None,
                     }
-                    for index, item in enumerate(
-                        [entry.strip() for entry in str(queue_snapshot["items"]).split(",") if entry.strip() and entry.strip() != "none"][:3],
-                        start=1,
-                    )
+                    for index, item in enumerate(dispatch_items[:3], start=1)
                 ]
             elif lane == "subagent" and subagent_rows:
                 worker["state"] = "running"
@@ -3335,10 +3333,10 @@ class KernelApp:
                 worker["tasks"] = [
                     {
                         "task_id": f"subagent-dispatch-{index}",
-                        "label": f"Subagent handoff {item.split('@', 1)[0]}",
-                        "phase": item.rsplit(':', 1)[-1],
+                        "label": f"Subagent handoff {item['tool']}",
+                        "phase": item["lifecycle"],
                         "iteration": 0,
-                        "task_description": item,
+                        "task_description": f"{item['label']}:{item['lifecycle']}",
                         "task_target": "subagent_dispatch",
                         "actions": [
                             {
@@ -3362,10 +3360,7 @@ class KernelApp:
                         "tool_events": [],
                         "error": None,
                     }
-                    for index, item in enumerate(
-                        [entry.strip() for entry in str(queue_snapshot["items"]).split(",") if entry.strip() and entry.strip() != "none"][:3],
-                        start=1,
-                    )
+                    for index, item in enumerate(dispatch_items[:3], start=1)
                 ]
         return workers
 
@@ -3581,6 +3576,7 @@ class KernelApp:
         lifecycle_counts: dict[str, int] = {}
         items: list[str] = []
         roots: list[str] = []
+        queue_items: list[dict[str, Any]] = []
         for row in self._dispatch_queue:
             lifecycle = str(row.get("lifecycle") or row.get("status") or "queued")
             lifecycle_counts[lifecycle] = lifecycle_counts.get(lifecycle, 0) + 1
@@ -3592,6 +3588,19 @@ class KernelApp:
             root = str(row.get("root") or "").strip()
             if root:
                 roots.append(root)
+            queue_items.append(
+                {
+                    "tool": tool,
+                    "module": module,
+                    "lifecycle": lifecycle,
+                    "root": root or None,
+                    "label": f"{tool}@{module}",
+                }
+            )
+        lifecycle_rows = [
+            {"state": name, "count": count}
+            for name, count in lifecycle_counts.items()
+        ]
         return {
             "queue_depth": len(self._dispatch_queue),
             "priority": "on" if dispatch_priority else "off",
@@ -3601,6 +3610,9 @@ class KernelApp:
                 f"{name}:{count}" for name, count in lifecycle_counts.items()
             ) or "none",
             "roots": ", ".join(roots[:limit]) or "none",
+            "queue_items": queue_items,
+            "root_items": roots[:limit],
+            "lifecycle_rows": lifecycle_rows,
         }
 
     def switch_runtime_adapter(self, adapter_name: str) -> dict[str, Any]:
