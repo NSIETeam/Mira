@@ -130,6 +130,17 @@ def _session_control_actions() -> list[dict[str, str]]:
             "command": "goal cancel",
         },
     ]
+
+
+def _worker_control_actions() -> list[dict[str, str]]:
+    return [
+        {
+            "id": "inspect_workers",
+            "label": "inspect workers",
+            "pane": "runtime",
+            "command": "worker show",
+        },
+    ]
 _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
     "attach-board",
     "detach-board",
@@ -452,14 +463,7 @@ def build_kernel_manifest(
             "actions": _session_control_actions(),
         },
         "worker_controls": {
-            "actions": [
-                {
-                    "id": "inspect_workers",
-                    "label": "inspect workers",
-                    "pane": "runtime",
-                    "command": "worker show",
-                },
-            ],
+            "actions": _worker_control_actions(),
         },
         "execution_lanes": [
             {
@@ -1261,14 +1265,7 @@ class KernelApp:
             "actions": _session_control_actions(),
         }
         manifest["worker_controls"] = {
-            "actions": [
-                {
-                    "id": "inspect_workers",
-                    "label": "inspect workers",
-                    "pane": "runtime",
-                    "command": "worker show",
-                },
-            ],
+            "actions": _worker_control_actions(),
         }
         manifest["execution_lanes"] = self.execution_lanes(session_metadata=self._active_session_metadata())
         manifest["scheduler"] = self.scheduler_snapshot(session_metadata=self._active_session_metadata())
