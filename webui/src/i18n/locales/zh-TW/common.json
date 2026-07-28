@@ -640,19 +640,19 @@
         "updated": "更新時間",
         "name": "名稱"
       },
-      "search": "搜尋任務、訊息、關聯對話或排程",
+      "search": "搜尋任務、訊息、關聯執行或排程",
       "queue": "任務佇列",
       "loading": "正在載入自動任務…",
       "noMatches": "目前沒有符合條件的自動任務。",
       "empty": "尚無自動任務。",
-      "emptyHint": "請從自動任務預定執行的對話中建立，讓 mira 保留正確的對話脈絡。",
+      "emptyHint": "請從自動任務預定執行的工作階段中建立，讓 mira 保留正確的執行脈絡。",
       "oneShot": "單次",
       "systemTask": "系統管理的自動任務",
       "localTrigger": "本機觸發器",
       "labels": {
         "schedule": "排程",
         "next": "下次",
-        "origin": "關聯對話",
+        "origin": "關聯執行",
         "created": "建立時間",
         "updated": "更新時間"
       },
@@ -678,7 +678,7 @@
       },
       "origin": {
         "system": "系統",
-        "unknown": "沒有關聯的對話"
+        "unknown": "沒有關聯的執行"
       },
       "channels": {
         "api": "API",
@@ -805,15 +805,15 @@
     }
   },
   "chat": {
-    "fallbackTitle": "話題 {{id}}",
+    "fallbackTitle": "執行 {{id}}",
     "forkTitle": "分支：{{title}}",
     "loading": "載入中…",
-    "noSessions": "目前還沒有話題。",
+    "noSessions": "目前還沒有執行。",
     "showMore": "再顯示 {{count}} 個",
-    "collapsed": "已隱藏 {{count}} 個話題",
+    "collapsed": "已隱藏 {{count}} 個執行",
     "showLess": "收起",
-    "actions": "「{{title}}」的話題操作",
-    "newInProject": "在 {{project}} 中開始新話題",
+    "actions": "「{{title}}」的執行操作",
+    "newInProject": "在 {{project}} 中開始新執行",
     "activity": {
       "running": "Agent 正在執行",
       "complete": "Agent 已完成",
@@ -940,19 +940,19 @@
     },
     "header": {
       "toggleSidebar": "切換側邊欄",
-      "newChat": "開始新話題",
+      "newChat": "開始新執行",
       "toggleTheme": "切換佈景主題",
       "settings": "開啟設定",
-      "sessionInfo": "對話詳細資料"
+      "sessionInfo": "執行詳細資料"
     },
     "sessionInfo": {
-      "title": "對話",
-      "untitled": "未命名話題",
+      "title": "執行",
+      "untitled": "未命名執行",
       "automations": "自動任務",
       "count": "{{count}}",
       "loading": "正在載入自動任務…",
       "loadFailed": "無法載入自動任務。",
-      "empty": "這個對話目前沒有自動任務。",
+      "empty": "這個執行目前沒有自動任務。",
       "disabled": "已關閉",
       "schedule": {
         "at": "{{time}}",
@@ -973,7 +973,7 @@
     "composer": {
       "placeholderThread": "輸入訊息…",
       "placeholderHero": "任何問題都可以問…",
-      "placeholderOpening": "正在開啟新話題…",
+      "placeholderOpening": "正在開啟新執行…",
       "placeholderStreaming": "模型正在回覆…",
       "inputAria": "訊息輸入框",
       "sendHint": "Enter 送出 · Shift+Enter 換行",
@@ -1042,12 +1042,12 @@
         "closeHint": "Esc 關閉",
         "commands": {
           "new": {
-            "title": "新增話題",
-            "description": "重置目前話題，並開始新的話題。"
+            "title": "新增執行",
+            "description": "重置目前執行，並開始新的執行。"
           },
           "stop": {
             "title": "停止目前任務",
-            "description": "取消這個對話中正在執行的 Agent 回合。"
+            "description": "取消這個執行中正在執行的 Agent 回合。"
           },
           "restart": {
             "title": "重新啟動 mira",
@@ -1062,8 +1062,8 @@
             "description": "顯示目前使用的模型設定，或切換至其他設定。"
           },
           "history": {
-            "title": "檢視對話歷史",
-            "description": "列印最近 N 則已儲存的對話訊息。"
+            "title": "檢視執行歷史",
+            "description": "列印最近 N 則已儲存的執行訊息。"
           },
           "dream": {
             "title": "執行 Dream",
@@ -1087,7 +1087,7 @@
           },
           "trigger": {
             "title": "建立本機觸發器",
-            "description": "建立綁定到目前對話的 CLI 觸發器。"
+            "description": "建立綁定到目前執行的 CLI 觸發器。"
           },
           "help": {
             "title": "檢視說明",
