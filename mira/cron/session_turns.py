@@ -13,7 +13,6 @@ from mira.session.automation_turns import (
 
 CRON_TRIGGER_META = "_cron_trigger"
 CRON_DEFER_UNTIL_IDLE_META = "_cron_defer_until_session_idle"
-CRON_HISTORY_META = "_cron_turn"
 
 
 def _cron_history_text(trigger: Mapping[str, Any]) -> str | None:
@@ -28,7 +27,6 @@ def _cron_history_text(trigger: Mapping[str, Any]) -> str | None:
 CRON_AUTOMATION_SPEC = AutomationTurnSpec(
     kind="cron",
     trigger_meta_key=CRON_TRIGGER_META,
-    legacy_history_meta_key=CRON_HISTORY_META,
     history_fields={
         "cron_job_id": "job_id",
         "cron_job_name": "job_name",
