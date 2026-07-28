@@ -16,11 +16,14 @@
 <a name="english"></a>
 ## English
 
-**Mira** is a lightweight, self-hosted AI agent execution kernel. Run a personal AI assistant that connects to your chat apps, uses tools, maintains memory, and automates tasks — all under your control.
+**Mira** is a lightweight, self-hosted execution kernel for serious AI agents. It keeps the runtime small, pushes product-specific behavior to thin shells, and ships with a Codex-style engineering workbench for operating tools, sessions, runtime state, and faults under your control.
 
 ### What is Mira?
 
-- **Web UI** — full browser-based workbench with topics, tools, and settings
+- **Execution kernel** — reusable agent loop, tool runtime, memory, automations, and provider routing
+- **Engineering shell** — browser workbench for sessions, runtime control, operator actions, and settings
+- **Kernel console** — inspect runtime state, faults, bridges, modules, dispatch lanes, and operator commands
+- **Privilege-aware runtime** — root/user shell posture, privileged controls, and recovery-oriented operations
 - **Chat channels** — Telegram, Discord, Slack, WeChat, Feishu, Email, Mattermost, and more
 - **Terminal** — interactive CLI agent and one-shot mode
 - **Tools** — file system, shell, web search, web fetch, MCP, cron, image generation, sub-agents
@@ -82,14 +85,16 @@ mira gateway              # Long-running service
 
 ### Architecture
 
-Mira keeps the core small: messages arrive from chat channels, the LLM decides when tools are needed, and memory or skills are loaded on demand.
+Mira keeps the core small: channels and shells feed the same execution kernel, the LLM decides when tools are needed, and shell-specific behavior stays outside the runtime loop.
 
 ```
-  Telegram / Discord / WeChat / Slack / WebUI / API
+  Channels / Engineering Shell / Terminal / API
                     |
-            Mira Agent Loop
+             Mira Execution Kernel
                     |
-    LLM Routing | Tools | Memory | Skills | Automations
+  Agent Loop | Tools | Memory | Skills | Automations | Runtime Control
+                    |
+        Shell Contracts | Operator Console | Provider Routing
 ```
 
 ### Documentation
@@ -123,11 +128,14 @@ MIT — see [LICENSE](./LICENSE).
 <a name="chinese"></a>
 ## 中文
 
-**Mira** 是一个轻量级、可自托管的 AI Agent 执行内核。运行一个专属于你的 AI 助手，连接你的聊天应用、调用工具、持久记忆、自动执行任务——一切尽在掌控。
+**Mira** 是一个轻量级、可自托管的 AI Agent 通用执行内核。它把运行时内核保持得尽可能小，把产品化差异下沉到薄外壳，并内置一个接近 Codex 风格的工程工作台，用来操作会话、工具、运行时状态和故障恢复。
 
 ### Mira 是什么？
 
-- **Web 界面** — 全功能浏览器工作台，支持话题、工具和设置
+- **执行内核** — 可复用的 Agent 循环、工具运行时、记忆、自动化和模型路由
+- **工程外壳** — 面向工程场景的浏览器工作台，统一管理会话、运行控制和设置
+- **内核控制台** — 查看运行时状态、故障、桥接器、模块、调度队列和操作命令
+- **权限感知运行时** — 区分 root/user 壳层姿态，支持受限与特权恢复操作
 - **聊天接入** — Telegram、Discord、Slack、微信、飞书、邮件、Mattermost 等
 - **终端** — 交互式命令行 Agent 和单次查询模式
 - **工具** — 文件系统、Shell、网页搜索、网页抓取、MCP、定时任务、图片生成、子 Agent
@@ -189,14 +197,16 @@ mira gateway              # 长期运行的服务
 
 ### 架构
 
-Mira 保持内核精简：消息从各聊天渠道流入，LLM 决策何时调用工具，记忆和技能按需加载。
+Mira 保持内核精简：聊天渠道和工程外壳都接入同一个执行内核，LLM 负责决策何时调用工具，而壳层特有行为不进入运行时主循环。
 
 ```
-  Telegram / Discord / 微信 / Slack / WebUI / API
+  Channels / Engineering Shell / Terminal / API
                       |
-              Mira Agent Loop
+               Mira Execution Kernel
                       |
-      LLM 路由 | 工具 | 记忆 | 技能 | 自动化
+ Agent Loop | 工具 | 记忆 | 技能 | 自动化 | Runtime Control
+                      |
+      Shell Contract | Operator Console | Provider Routing
 ```
 
 ### 文档
