@@ -521,9 +521,23 @@ export function MiraKernelConsole({
   const faultEventCount = executionTimeline.filter((event) => event.type.includes("fault") || event.type.includes("maintenance")).length;
   const runtimeEventCount = executionTimeline.filter((event) => event.type.includes("turn") || event.type.includes("execution") || event.type.includes("session")).length;
   const bridgeEventCount = executionTimeline.filter((event) => event.type.includes("bridge") || event.type.includes("adapter") || event.type.includes("board")).length;
+  const privilegeSummary = privilegeRole === "root"
+    ? "root shell with live runtime control"
+    : canElevate
+      ? "user shell with controlled elevation"
+      : "user shell in observe-first posture";
+  const maturitySummary = [
+    runtimeCapabilities?.threads ? "threads" : null,
+    runtimeCapabilities?.api ? "api" : null,
+    runtimeCapabilities?.gui ? "gui" : null,
+    runtimeCapabilities?.approvals ? "approvals" : null,
+  ].filter(Boolean).join(" · ") || "minimal kernel";
+  const faultSummary = nativeFaultModules.length || faultedBridges.length || faultEventCount
+    ? `${nativeFaultModules.length} native / ${faultedBridges.length} bridge / ${faultEventCount} events`
+    : "no active kernel faults";
 
   return (
-    <aside className="hidden w-[320px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] xl:flex xl:flex-col">
+    <aside className="hidden w-[332px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[356px]">
       <div className="border-b border-border/70 px-4 py-3">
         <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           {appIdentity} Kernel Console
@@ -604,6 +618,9 @@ export function MiraKernelConsole({
                     {shellAllowsPrivilegedControls ? (canElevate && privilegeRole !== "root" ? "elevation-capable" : operatorReadyLabel) : "restricted shell"}
                   </span>
                 </div>
+                <div className="mt-2 text-xs text-slate-300">
+                  {privilegeSummary}
+                </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Runtime</div>
@@ -613,21 +630,21 @@ export function MiraKernelConsole({
                 </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Module focus</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Kernel maturity</div>
                 <div className="mt-2 text-lg font-semibold text-white">
-                  {selectedModule?.name ?? "unfocused"}
+                  {profileName}
                 </div>
                 <div className="text-xs text-slate-300">
-                  native queue {(nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0)} / modules {nativeSnapshot?.module_count ?? runtimeModules.length}
+                  {maturitySummary}
                 </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Board target</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Fault posture</div>
                 <div className="mt-2 text-lg font-semibold text-white">
-                  {boardTargetLabel}
+                  {nativeFaultModules.length || faultedBridges.length || faultEventCount ? "attention" : "stable"}
                 </div>
                 <div className="text-xs text-slate-300">
-                  {boardTransportLabel} · {boardSnapshot?.port ?? "auto"}
+                  {faultSummary}
                 </div>
               </div>
             </div>

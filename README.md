@@ -16,7 +16,7 @@
 <a name="english"></a>
 ## English
 
-**Mira** is a lightweight, self-hosted execution kernel for serious AI agents. It keeps the runtime small, pushes product-specific behavior to thin shells, and ships with a Codex-style engineering workbench for operating tools, sessions, runtime state, and faults under your control.
+**Mira** is a lightweight, self-hosted execution kernel for serious AI agents. It keeps the runtime small, pushes product-specific behavior to thin shells, and ships with a Codex-style engineering workbench for operating tools, sessions, runtime state, root/user posture, and fault recovery under your control.
 
 ### What is Mira?
 
@@ -24,6 +24,7 @@
 - **Engineering shell** — browser workbench for sessions, runtime control, operator actions, and settings
 - **Kernel console** — inspect runtime state, faults, bridges, modules, dispatch lanes, and operator commands
 - **Privilege-aware runtime** — root/user shell posture, privileged controls, and recovery-oriented operations
+- **Engineering-first GUI** — default operator workbench with a visible shell-side control window, not a hidden demo panel
 - **Chat channels** — Telegram, Discord, Slack, WeChat, Feishu, Email, Mattermost, and more
 - **Terminal** — interactive CLI agent and one-shot mode
 - **Tools** — file system, shell, web search, web fetch, MCP, cron, image generation, sub-agents
@@ -128,7 +129,7 @@ MIT — see [LICENSE](./LICENSE).
 <a name="chinese"></a>
 ## 中文
 
-**Mira** 是一个轻量级、可自托管的 AI Agent 通用执行内核。它把运行时内核保持得尽可能小，把产品化差异下沉到薄外壳，并内置一个接近 Codex 风格的工程工作台，用来操作会话、工具、运行时状态和故障恢复。
+**Mira** 是一个轻量级、可自托管的 AI Agent 通用执行内核。它把运行时内核保持得尽可能小，把产品化差异下沉到薄外壳，并内置一个接近 Codex 风格的工程工作台，用来统一操作会话、工具、运行时状态、root/user 权限姿态和故障恢复。
 
 ### Mira 是什么？
 
@@ -136,6 +137,7 @@ MIT — see [LICENSE](./LICENSE).
 - **工程外壳** — 面向工程场景的浏览器工作台，统一管理会话、运行控制和设置
 - **内核控制台** — 查看运行时状态、故障、桥接器、模块、调度队列和操作命令
 - **权限感知运行时** — 区分 root/user 壳层姿态，支持受限与特权恢复操作
+- **工程优先 GUI** — 默认就是可操作工作台，控制窗口直接可见，不是藏起来的演示面板
 - **聊天接入** — Telegram、Discord、Slack、微信、飞书、邮件、Mattermost 等
 - **终端** — 交互式命令行 Agent 和单次查询模式
 - **工具** — 文件系统、Shell、网页搜索、网页抓取、MCP、定时任务、图片生成、子 Agent
