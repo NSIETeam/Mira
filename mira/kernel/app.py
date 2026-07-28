@@ -3675,14 +3675,17 @@ class KernelApp:
                 self._runtime_bridges,
                 adapter_name=target_adapter,
             )
-            return self._commit_runtime_control_action(
+            self._dispatch_native_control(
                 target=target_adapter,
                 action="clear_fault",
                 value="clear",
-                event_action="clear_fault",
-                event_state="ok",
-                event_message=f"{target_adapter or 'runtime'} fault cleared",
             )
+            self._record_kernel_event(
+                "clear_fault",
+                state="ok",
+                message=f"{target_adapter or 'runtime'} fault cleared",
+            )
+            return self.runtime_control
         self._record_kernel_event(
             "clear_fault",
             state="ok",
