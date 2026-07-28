@@ -2189,7 +2189,7 @@ export function MiraKernelConsole({
             />
             <Row
               label="Native queue"
-              value={`${nativeSnapshot?.command_depth ?? 0}`}
+              value={`${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0}`}
             />
             <Row
               label="Native modules"
@@ -2207,8 +2207,8 @@ export function MiraKernelConsole({
               </div>
               <ConsoleBadge
                 label="queue"
-                value={`${nativeSnapshot?.command_depth ?? 0}`}
-                tone={nativeSnapshot?.command_depth ? "amber" : "slate"}
+                value={`${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0}`}
+                tone={(nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth) ? "amber" : "slate"}
               />
             </div>
             <div className="grid gap-2 md:grid-cols-2">

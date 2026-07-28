@@ -3434,6 +3434,7 @@ class KernelApp:
         last_command = dict(self._native_last_command or {})
         return {
             "health": str(last_command.get("health") or "ready"),
+            "queue_depth": self._native_queue_depth,
             "bridge_artifact": self._native_bridge_artifact,
             "module_count": self._native_module_count or len(self._native_module_states),
             "command_depth": self._native_command_depth,

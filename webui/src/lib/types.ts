@@ -620,6 +620,7 @@ export interface KernelManifestPayload {
       };
       native?: {
         health?: string | null;
+        queue_depth?: number;
         bridge_artifact?: string | null;
         module_count?: number;
         command_depth?: number;
