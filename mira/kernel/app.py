@@ -3093,6 +3093,9 @@ class KernelApp:
                     "family_counts": queue_snapshot.get("families", "none")
                     if dispatch_handoff_lane == "sustained_goal" and dispatch_depth
                     else "none",
+                    "family_rows": queue_snapshot.get("family_rows", [])
+                    if dispatch_handoff_lane == "sustained_goal" and dispatch_depth
+                    else [],
                     "dispatch_contract": {
                         "owner": "goal",
                         "mode": "handoff" if dispatch_handoff_lane == "sustained_goal" and dispatch_depth else "resident",
@@ -3118,6 +3121,9 @@ class KernelApp:
                     "family_counts": queue_snapshot.get("families", "none")
                     if dispatch_handoff_lane == "subagent" and dispatch_depth
                     else "none",
+                    "family_rows": queue_snapshot.get("family_rows", [])
+                    if dispatch_handoff_lane == "subagent" and dispatch_depth
+                    else [],
                     "dispatch_contract": {
                         "owner": "subagent",
                         "mode": "handoff" if dispatch_handoff_lane == "subagent" and dispatch_depth else "resident",
@@ -3144,6 +3150,7 @@ class KernelApp:
                         for item in dispatch_items[:4]
                     ],
                     "family_counts": queue_snapshot.get("families", "none"),
+                    "family_rows": queue_snapshot.get("family_rows", []),
                     "dispatch_contract": {
                         "owner": (
                             "goal"
@@ -3650,6 +3657,10 @@ class KernelApp:
             {"state": name, "count": count}
             for name, count in lifecycle_counts.items()
         ]
+        family_rows = [
+            {"family": name, "count": count}
+            for name, count in sorted(family_counts.items())
+        ]
         return {
             "queue_depth": len(self._dispatch_queue),
             "priority": "on" if dispatch_priority else "off",
@@ -3665,6 +3676,7 @@ class KernelApp:
             "queue_items": queue_items,
             "root_items": roots[:limit],
             "lifecycle_rows": lifecycle_rows,
+            "family_rows": family_rows,
         }
 
     def switch_runtime_adapter(self, adapter_name: str) -> dict[str, Any]:

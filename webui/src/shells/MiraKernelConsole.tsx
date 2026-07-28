@@ -3341,7 +3341,18 @@ export function MiraKernelConsole({
                         contract {queue.dispatch_contract.owner ?? "interactive"} · {queue.dispatch_contract.mode ?? "direct"} · {queue.dispatch_contract.lane ?? queue.lane}
                       </div>
                     ) : null}
-                    {queue.family_counts && queue.family_counts !== "none" ? (
+                    {Array.isArray(queue.family_rows) && queue.family_rows.length ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {queue.family_rows.map((entry) => (
+                          <span
+                            key={`${queue.id}-${entry.family}`}
+                            className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700"
+                          >
+                            {entry.family}:{entry.count}
+                          </span>
+                        ))}
+                      </div>
+                    ) : queue.family_counts && queue.family_counts !== "none" ? (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {String(queue.family_counts).split(",").map((entry) => (
                           <span
