@@ -504,6 +504,55 @@ export function MiraKernelConsole({
       commands: ["maintenance status", "enter-maintenance", "exit-maintenance", "goal reset"],
     },
   ];
+  const operatorPlaybooks = useMemo(() => {
+    const recoveryCommands = [
+      inspectFaultsAction?.command ?? "fault show",
+      clearFaultsAction?.command ?? "fault clear",
+      dispatchDrainAction?.command ?? "tool drain",
+      "runtime health",
+    ];
+    const embeddedCommands = [
+      embeddedBoardStatusAction?.command ?? "board status",
+      embeddedRefreshPortsAction?.command ?? "board ports",
+      "board mode",
+      "board transport",
+      embeddedInspectAction?.command ?? "topology embedded",
+    ];
+    const moduleCommand = selectedModuleInspectNativeAction?.command
+      ?? selectedModuleFillNativeInspectAction?.command
+      ?? "native inspect memory";
+    return [
+      {
+        label: "operator bring-up",
+        tone: "border-cyan-700 bg-cyan-950 text-cyan-100",
+        detail: "runtime / scheduler / workspace",
+        commands: ["runtime health", "scheduler status", "workspace status", "repo tools"],
+      },
+      {
+        label: "fault recovery",
+        tone: "border-rose-700 bg-rose-950 text-rose-100",
+        detail: privilegeRole === "root" || canElevate ? "fault lane / drain / recover" : "observe-first recovery path",
+        commands: recoveryCommands.filter(Boolean),
+      },
+      {
+        label: "embedded attach",
+        tone: "border-amber-700 bg-amber-950 text-amber-100",
+        detail: "board / ports / native module",
+        commands: [...embeddedCommands.filter(Boolean), moduleCommand].filter(Boolean),
+      },
+    ];
+  }, [
+    canElevate,
+    clearFaultsAction,
+    dispatchDrainAction,
+    embeddedBoardStatusAction,
+    embeddedInspectAction,
+    embeddedRefreshPortsAction,
+    inspectFaultsAction,
+    privilegeRole,
+    selectedModuleFillNativeInspectAction,
+    selectedModuleInspectNativeAction,
+  ]);
   const nativeReplayCommands = useMemo(() => {
     const commands = ["native status", "native last-command", "native replay-last", "native inspect memory", "native focus memory", "native modules"];
     const openLastTargetCommand = nativeAction("open_last_target")?.command;
@@ -1294,6 +1343,53 @@ export function MiraKernelConsole({
                 ) : null}
               </div>
               <div className="mt-3 space-y-2">
+                <div className="grid gap-2 md:grid-cols-3">
+                  {operatorPlaybooks.map((playbook) => (
+                    <div
+                      key={playbook.label}
+                      className="rounded-md border border-slate-800 bg-slate-900/80 p-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
+                            {playbook.label}
+                          </div>
+                          <div className="mt-1 text-[10px] text-slate-500">
+                            {playbook.detail}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => runQuickCommand(playbook.commands[0] ?? "runtime health")}
+                          disabled={operatorPending || !playbook.commands.length}
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] transition-colors",
+                            playbook.tone,
+                            operatorPending ? "opacity-60" : "",
+                          )}
+                        >
+                          start
+                        </button>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {playbook.commands.map((command) => (
+                          <button
+                            key={`${playbook.label}-${command}`}
+                            type="button"
+                            onClick={() => runQuickCommand(command)}
+                            disabled={operatorPending}
+                            className={cn(
+                              "rounded-full border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-200 transition-colors hover:bg-slate-900",
+                              operatorPending ? "opacity-60" : "",
+                            )}
+                          >
+                            {command}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 {quickCommandGroups.map((group) => (
                   <div key={group.label} className="space-y-1">
                     <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
