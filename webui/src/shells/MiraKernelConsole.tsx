@@ -182,7 +182,6 @@ export function MiraKernelConsole({
   const unresolvedRuntimeLabel = "unresolved";
   const boardAttachmentLabel = boardSnapshot?.attached ? "attached" : "detached";
   const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
-  const nativeArtifactLabel = nativeSnapshot?.bridge_artifact ?? "none";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
   const sessionControls = kernelManifest?.session_controls?.actions ?? [];
   const workerControls = kernelManifest?.worker_controls?.actions ?? [];
@@ -582,7 +581,7 @@ export function MiraKernelConsole({
     { label: "Native health", value: nativeHealthLabel },
     { label: "Native queue", value: `${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0}` },
     { label: "Native modules", value: `${nativeSnapshot?.module_count ?? nativeModuleEntries.length}` },
-    { label: "Native bridge", value: nativeArtifactLabel },
+    { label: "Native bridge", value: nativeSnapshot?.bridge_artifact ?? "none" },
   ];
   const faultSummaryRows = [
     { label: "Supervisor", value: runtimeControl?.fault_posture.supervisor ?? diagnostics?.supervisor ?? "unknown" },
@@ -2401,7 +2400,7 @@ export function MiraKernelConsole({
                 { label: "Last status", value: lastNativeContext.status },
                 { label: "Last code", value: String(lastNativeContext.code) },
                 { label: "Last value", value: nativeLastCommand?.value || "none" },
-                { label: "Artifact", value: nativeLastCommand?.artifact ?? nativeArtifactLabel },
+                { label: "Artifact", value: nativeLastCommand?.artifact ?? (nativeSnapshot?.bridge_artifact ?? "none") },
                 { label: "Module focus", value: runtimeControl?.module_focus ?? "none" },
                 { label: "Command backlog", value: `${nativeSnapshot?.command_depth ?? 0}` },
                 { label: "Updated", value: lastNativeContext.updatedAt ? formatKernelTimestamp(lastNativeContext.updatedAt) : "none" },
