@@ -183,7 +183,6 @@ export function MiraKernelConsole({
   const boardAttachmentLabel = boardSnapshot?.attached ? "attached" : "detached";
   const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
   const boardHealthLabel = boardSnapshot?.health ?? "unknown";
-  const boardTargetLabel = boardSnapshot?.target ?? embeddedTargetHint ?? "host";
   const nativeArtifactLabel = nativeSnapshot?.bridge_artifact ?? "none";
   const profileName = profile?.name ?? "unknown";
   const activeAdapterName = runtimeControl?.active_adapter ?? "unset";
@@ -2751,7 +2750,7 @@ export function MiraKernelConsole({
               </div>
             </div>
             <div className="grid gap-2 md:grid-cols-2">
-              <Row label="Target" value={boardTargetLabel} />
+              <Row label="Target" value={boardSnapshot?.target ?? embeddedTargetHint ?? "host"} />
               <Row label="Transport" value={boardTransportLabel} />
               <Row label="Runtime mode" value={boardSnapshot?.runtime_mode ?? "userland"} />
               <Row label="Health" value={boardHealthLabel} />
