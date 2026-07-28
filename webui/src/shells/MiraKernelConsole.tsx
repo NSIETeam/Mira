@@ -183,7 +183,6 @@ export function MiraKernelConsole({
   const boardAttachmentLabel = boardSnapshot?.attached ? "attached" : "detached";
   const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
   const nativeArtifactLabel = nativeSnapshot?.bridge_artifact ?? "none";
-  const profileName = profile?.name ?? "unknown";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
   const sessionControls = kernelManifest?.session_controls?.actions ?? [];
   const workerControls = kernelManifest?.worker_controls?.actions ?? [];
@@ -538,7 +537,7 @@ export function MiraKernelConsole({
     ? actionRestrictionReason(clearFaultsAction)
     : null;
   const controlPlaneRows = [
-    { label: "Profile", value: profileName },
+    { label: "Profile", value: profile?.name ?? "unknown" },
     { label: "Shell", value: shellDescriptor?.display_name ?? "Mira" },
     { label: "Mode", value: shellMode },
     { label: "Status", value: connectionStatus },
@@ -552,7 +551,7 @@ export function MiraKernelConsole({
   const kernelIdentityRows = [
     { label: "App", value: kernelManifest?.identity?.app_name ?? "Mira" },
     { label: "CLI", value: kernelManifest?.identity?.cli_name ?? "mira" },
-    { label: "Profile", value: profileName },
+    { label: "Profile", value: profile?.name ?? "unknown" },
     { label: "Privilege", value: privilegePosture.roleLabel },
     { label: "Privileged shell", value: shellAllowsPrivilegedControls ? "enabled" : "restricted" },
     { label: "Elevation", value: canElevate ? "allowed" : "fixed" },
@@ -602,7 +601,7 @@ export function MiraKernelConsole({
           Inspect runtime, modules, workspace, and shell posture
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <ConsoleBadge label="profile" value={profileName} tone="slate" />
+          <ConsoleBadge label="profile" value={profile?.name ?? "unknown"} tone="slate" />
           <ConsoleBadge label="shell" value={shellMode} tone="slate" />
           <ConsoleBadge label="status" value={connectionStatus} tone={connectionStatus === "connected" ? "emerald" : "amber"} />
           <ConsoleBadge label="runs" value={`${runningExecutionCount}`} tone="slate" />
@@ -688,7 +687,7 @@ export function MiraKernelConsole({
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Kernel maturity</div>
                 <div className="mt-2 text-lg font-semibold text-white">
-                  {profileName}
+                  {profile?.name ?? "unknown"}
                 </div>
                 <div className="text-xs text-slate-300">
                   {maturitySummary}
