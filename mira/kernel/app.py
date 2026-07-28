@@ -3698,13 +3698,16 @@ class KernelApp:
             self._runtime_bridges,
             adapter_name=target_adapter,
         )
-        return self._commit_runtime_control_action(
+        self._dispatch_native_control(
             target=target_adapter,
             action="restart_bridge",
-            event_action="restart_bridge",
-            event_state="ok",
-            event_message=f"bridge restarted -> {target_adapter}",
         )
+        self._record_kernel_event(
+            "restart_bridge",
+            state="ok",
+            message=f"bridge restarted -> {target_adapter}",
+        )
+        return self.runtime_control
 
     def pause_runtime(self, reason: str | None = None) -> dict[str, Any]:
         pause_reason = reason or "operator-paused"
