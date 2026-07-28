@@ -39,6 +39,19 @@ function operatorPanelTone(subject: string | null | undefined): string {
   }
 }
 
+function formatKernelTimestamp(value: unknown): string {
+  const timestamp = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return "unknown";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
 export function MiraKernelConsole({
   kernelManifest,
   shellDescriptor,
@@ -1172,7 +1185,7 @@ export function MiraKernelConsole({
                     {"native_updated_at_ms" in selectedModule && selectedModule.native_updated_at_ms ? (
                       <ConsoleBadge
                         label="updated"
-                        value={String(selectedModule.native_updated_at_ms)}
+                        value={formatKernelTimestamp(selectedModule.native_updated_at_ms)}
                         tone="slate"
                       />
                     ) : null}
