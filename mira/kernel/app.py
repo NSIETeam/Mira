@@ -3086,7 +3086,7 @@ class KernelApp:
                     ),
                     "job_class": "goal_slice",
                     "active_tasks": (
-                        [f"dispatch:{item['label']}:{item['lifecycle']}" for item in dispatch_items[:3]]
+                        [f"dispatch:{item['label']}[{item.get('family', 'core')}]:{item['lifecycle']}" for item in dispatch_items[:3]]
                         if dispatch_handoff_lane == "sustained_goal" and dispatch_depth
                         else []
                     ),
@@ -3108,7 +3108,7 @@ class KernelApp:
                     ),
                     "job_class": "cron_or_trigger",
                     "active_tasks": (
-                        [f"dispatch:{item['label']}:{item['lifecycle']}" for item in dispatch_items[:3]]
+                        [f"dispatch:{item['label']}[{item.get('family', 'core')}]:{item['lifecycle']}" for item in dispatch_items[:3]]
                         if dispatch_handoff_lane == "subagent" and dispatch_depth
                         else [row["label"] for row in subagent_rows[:4]]
                     ),
