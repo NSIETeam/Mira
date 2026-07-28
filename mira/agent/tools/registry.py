@@ -83,6 +83,24 @@ class ToolRegistry:
         name = schema.get("name")
         return name if isinstance(name, str) else ""
 
+    @classmethod
+    def _schema_family(cls, schema: dict[str, Any]) -> str:
+        """Classify tool schemas into stable operator-facing families."""
+        name = cls._schema_name(schema).lower()
+        if name.startswith("mcp_"):
+            return "mcp"
+        if name.startswith(("web_", "search_", "fetch_")):
+            return "web"
+        if name.startswith(("read_", "write_", "edit_", "list_", "glob_", "grep_", "filesystem_")):
+            return "filesystem"
+        if name.startswith(("shell_", "exec_", "run_")):
+            return "shell"
+        if "subagent" in name:
+            return "subagent"
+        if "goal" in name or "task" in name:
+            return "long-task"
+        return "core"
+
     def get_definitions(self) -> list[dict[str, Any]]:
         """Get tool definitions with stable ordering for cache-friendly prompts.
 
@@ -103,8 +121,8 @@ class ToolRegistry:
             else:
                 builtins.append(schema)
 
-        builtins.sort(key=self._schema_name)
-        mcp_tools.sort(key=self._schema_name)
+        builtins.sort(key=lambda schema: (self._schema_family(schema), self._schema_name(schema)))
+        mcp_tools.sort(key=lambda schema: (self._schema_family(schema), self._schema_name(schema)))
         self._cached_definitions = builtins + mcp_tools
         return self._cached_definitions
 
