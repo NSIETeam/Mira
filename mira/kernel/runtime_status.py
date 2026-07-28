@@ -22,6 +22,9 @@ def runtime_probe_payload(
     runtime_mode: object,
     abi: object,
     status_symbol: object,
+    kernel_surface: object = None,
+    free_symbol: object = None,
+    attach_symbol: object = None,
     runtime: object = None,
     version: object = None,
     queue_depth: object = None,
@@ -42,6 +45,12 @@ def runtime_probe_payload(
         "status_symbol": status_symbol,
         "last_error": None if health != "fault" else str(error or "runtime probe fault"),
     }
+    if kernel_surface is not None:
+        payload["kernel_surface"] = kernel_surface
+    if free_symbol is not None:
+        payload["free_symbol"] = free_symbol
+    if attach_symbol is not None:
+        payload["attach_symbol"] = attach_symbol
     if runtime is not None:
         payload["runtime"] = runtime
     if version is not None:

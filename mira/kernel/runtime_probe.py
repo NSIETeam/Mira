@@ -83,6 +83,10 @@ def probe_runtime_bridge(adapter: dict[str, object]) -> dict[str, Any] | None:
             runtime_mode=None,
             abi=adapter.get("abi"),
             status_symbol=status_symbol,
+            kernel_surface=adapter.get("kernel_surface"),
+            free_symbol=adapter.get("free_symbol"),
+            attach_symbol=adapter.get("attach_symbol"),
+            runtime=adapter.get("name"),
             error=f"missing status symbol: {status_symbol}",
         )
 
@@ -99,6 +103,10 @@ def probe_runtime_bridge(adapter: dict[str, object]) -> dict[str, Any] | None:
                 runtime_mode=None,
                 abi=adapter.get("abi"),
                 status_symbol=status_symbol,
+                kernel_surface=adapter.get("kernel_surface"),
+                free_symbol=adapter.get("free_symbol"),
+                attach_symbol=adapter.get("attach_symbol"),
+                runtime=adapter.get("name"),
                 error="rust runtime returned null status pointer",
             )
         raw_json = ctypes.cast(payload_ptr, ctypes.c_char_p).value
@@ -118,6 +126,10 @@ def probe_runtime_bridge(adapter: dict[str, object]) -> dict[str, Any] | None:
             runtime_mode=None,
             abi=adapter.get("abi"),
             status_symbol=status_symbol,
+            kernel_surface=adapter.get("kernel_surface"),
+            free_symbol=adapter.get("free_symbol"),
+            attach_symbol=adapter.get("attach_symbol"),
+            runtime=adapter.get("name"),
             error="runtime probe returned empty status payload",
         )
     try:
@@ -130,6 +142,10 @@ def probe_runtime_bridge(adapter: dict[str, object]) -> dict[str, Any] | None:
             runtime_mode=None,
             abi=adapter.get("abi"),
             status_symbol=status_symbol,
+            kernel_surface=adapter.get("kernel_surface"),
+            free_symbol=adapter.get("free_symbol"),
+            attach_symbol=adapter.get("attach_symbol"),
+            runtime=adapter.get("name"),
             error="runtime probe returned invalid JSON",
         )
     return runtime_probe_payload(
@@ -139,6 +155,17 @@ def probe_runtime_bridge(adapter: dict[str, object]) -> dict[str, Any] | None:
         runtime_mode=payload.get("mode"),
         abi=payload.get("abi") or adapter.get("abi"),
         status_symbol=status_symbol,
+        kernel_surface=payload.get("kernel_surface") or adapter.get("kernel_surface"),
+        free_symbol=payload.get("free_symbol") or adapter.get("free_symbol"),
+        attach_symbol=payload.get("attach_symbol") or adapter.get("attach_symbol"),
+        runtime=payload.get("runtime") or adapter.get("name"),
+        version=payload.get("version"),
+        queue_depth=payload.get("queue_depth"),
+        module_count=payload.get("module_count"),
+        updated_at_ms=payload.get("updated_at_ms"),
+        capabilities=payload.get("capabilities"),
+        module_states=payload.get("module_states"),
+        last_command=payload.get("last_command"),
         error=payload.get("error") or "runtime probe fault",
     )
 
