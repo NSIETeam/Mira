@@ -174,8 +174,6 @@ export function MiraKernelConsole({
   const runtimeTargets = kernelManifest?.targets.runtime.slice(0, 4) ?? [];
   const runtimeLanguages = kernelManifest?.targets.languages.slice(0, 4) ?? [];
   const adapterContract = kernelManifest?.targets.adapter ?? null;
-  const adapterTransports = adapterContract?.transport_modes.slice(0, 5) ?? [];
-  const adapterControlPlane = adapterContract?.control_plane.slice(0, 5) ?? [];
   const runtimeAdapters = kernelManifest?.runtime_adapters.slice(0, 3) ?? [];
   const runtimeBridges = kernelManifest?.runtime_bridges.slice(0, 4) ?? [];
   const runtimeModules = kernelManifest?.runtime_modules.slice(0, 6) ?? [];
@@ -1888,7 +1886,7 @@ export function MiraKernelConsole({
               Transport
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
-              {adapterTransports.length ? adapterTransports.map((transport) => (
+              {adapterContract?.transport_modes?.length ? adapterContract.transport_modes.slice(0, 5).map((transport) => (
                 <span
                   key={transport}
                   className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700"
@@ -1903,7 +1901,7 @@ export function MiraKernelConsole({
               Control plane
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
-              {adapterControlPlane.length ? adapterControlPlane.map((item) => (
+              {adapterContract?.control_plane?.length ? adapterContract.control_plane.slice(0, 5).map((item) => (
                 <span
                   key={item}
                   className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2.5 py-1 text-xs text-cyan-700"
