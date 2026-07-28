@@ -920,7 +920,7 @@ describe("App layout", () => {
       ).toBeInTheDocument(),
     );
 
-    fireEvent.pointerDown(screen.getByLabelText(/First chat.*话题操作/), {
+    fireEvent.pointerDown(screen.getByLabelText(/First chat.*执行操作/), {
       button: 0,
     });
     fireEvent.click(await screen.findByRole("menuitem", { name: "删除" }));
@@ -930,7 +930,7 @@ describe("App layout", () => {
     );
     expect(getSessionAutomationsSpy).toHaveBeenCalledWith("websocket:chat-a");
     expect(
-      screen.getByText("这个话题有关联的自动任务。删除话题也会删除这些自动任务。"),
+      screen.getByText("这个执行有关联的自动任务。删除执行也会删除这些自动任务。"),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("This execution has scheduled automations. Deleting it will also delete them."),
@@ -1261,7 +1261,7 @@ describe("App layout", () => {
         chatId: "chat-a",
         createdAt: "2026-04-16T10:00:00Z",
         updatedAt: "2026-04-16T10:00:00Z",
-        preview: "Open chat",
+        preview: "Open workbench",
       },
       {
         key: "websocket:chat-b",
