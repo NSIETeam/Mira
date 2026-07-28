@@ -22,6 +22,29 @@ function metadataNumber(row: Record<string, unknown> | null, key: string): numbe
   return typeof value === "number" ? value : null;
 }
 
+function statusEvent(
+  state: string,
+  metadata: InboundEvent,
+  text?: string,
+): KernelEventPayload {
+  return text
+    ? { type: "status", text, state, metadata }
+    : { type: "status", state, metadata };
+}
+
+function errorEvent(
+  metadata: InboundEvent,
+  action: string,
+  text: string,
+): KernelEventPayload {
+  return {
+    type: "error",
+    text,
+    action,
+    metadata,
+  };
+}
+
 function goalSummary(goal: unknown): string {
   const blob = metadataRow(goal);
   const uiSummary = metadataString(blob, "ui_summary");
@@ -174,80 +197,59 @@ export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
     case "file_edit":
       return { type: "tool_result", action: "file_edit", metadata: ev };
     case "stream_end":
-      return { type: "status", state: "stream_end", metadata: ev };
+      return statusEvent("stream_end", ev);
     case "turn_end":
-      return {
-        type: "status",
-        text: goalSummary("goal_state" in ev ? ev.goal_state : undefined) || "turn completed",
-        state: "turn_end",
-        metadata: ev,
-      };
+      return statusEvent(
+        "turn_end",
+        ev,
+        goalSummary("goal_state" in ev ? ev.goal_state : undefined) || "turn completed",
+      );
     case "goal_status":
-      return {
-        type: "status",
-        text: ev.status === "running" ? "goal runtime active" : "goal runtime idle",
-        state: ev.status,
-        metadata: ev,
-      };
+      return statusEvent(
+        ev.status,
+        ev,
+        ev.status === "running" ? "goal runtime active" : "goal runtime idle",
+      );
     case "goal_state":
-      return {
-        type: "status",
-        text: goalSummary(ev.goal_state) || (ev.goal_state.active ? "active sustained goal" : "goal state cleared"),
-        state: ev.goal_state.active ? "running" : "done",
-        metadata: ev,
-      };
+      return statusEvent(
+        ev.goal_state.active ? "running" : "done",
+        ev,
+        goalSummary(ev.goal_state) || (ev.goal_state.active ? "active sustained goal" : "goal state cleared"),
+      );
     case "ready":
-      return { type: "status", text: "kernel transport ready", state: "ready", metadata: ev };
+      return statusEvent("ready", ev, "kernel transport ready");
     case "attached":
-      return { type: "status", text: "shell attached to kernel", state: "ready", metadata: ev };
+      return statusEvent("ready", ev, "shell attached to kernel");
     case "runtime_model_updated":
-      return {
-        type: "status",
-        text: typeof ev.model_name === "string" && ev.model_name.trim()
+      return statusEvent(
+        "ready",
+        ev,
+        typeof ev.model_name === "string" && ev.model_name.trim()
           ? `runtime model ${ev.model_name}`
           : "runtime model updated",
-        state: "ready",
-        metadata: ev,
-      };
+      );
     case "turn_model_updated":
-      return {
-        type: "status",
-        text: typeof ev.model_name === "string" && ev.model_name.trim()
+      return statusEvent(
+        "running",
+        ev,
+        typeof ev.model_name === "string" && ev.model_name.trim()
           ? `turn model ${ev.model_name}`
           : "turn model updated",
-        state: "running",
-        metadata: ev,
-      };
+      );
     case "session_updated":
-      return {
-        type: "status",
-        text: typeof ev.scope === "string" && ev.scope.trim()
+      return statusEvent(
+        "ready",
+        ev,
+        typeof ev.scope === "string" && ev.scope.trim()
           ? `session ${ev.scope} updated`
           : "session updated",
-        state: "ready",
-        metadata: ev,
-      };
+      );
     case "transcription_result":
-      return {
-        type: "status",
-        text: "audio transcription ready",
-        state: "done",
-        metadata: ev,
-      };
+      return statusEvent("done", ev, "audio transcription ready");
     case "transcription_error":
-      return {
-        type: "error",
-        text: "detail" in ev ? (ev.detail ?? "") : "",
-        action: "transcription_error",
-        metadata: ev,
-      };
+      return errorEvent(ev, "transcription_error", "detail" in ev ? (ev.detail ?? "") : "");
     case "error":
-      return {
-        type: "error",
-        text: "detail" in ev ? (ev.detail ?? "") : "",
-        action: "error",
-        metadata: ev,
-      };
+      return errorEvent(ev, "error", "detail" in ev ? (ev.detail ?? "") : "");
     case "message":
       if (ev.kind === "reasoning") {
         return { type: "reasoning", text: ev.text, action: "message", metadata: ev };
@@ -257,7 +259,7 @@ export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
       }
       return { type: "message", text: ev.text, action: "complete", metadata: ev };
     default:
-      return { type: "status", state: String((ev as { event?: string }).event ?? "unknown"), metadata: ev };
+      return statusEvent(String((ev as { event?: string }).event ?? "unknown"), ev);
   }
 }
 
