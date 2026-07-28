@@ -31,6 +31,10 @@ def _host_contract(
     read_only_execution: bool,
     privilege_role: str,
     privilege_can_elevate: bool,
+    privilege_elevation_mode: str,
+    privilege_elevate_hint: str | None,
+    privilege_drop_hint: str | None,
+    privilege_session_policy: str,
 ) -> dict[str, object]:
     return {
         "schema": HOST_CONTRACT_SCHEMA,
@@ -57,16 +61,36 @@ def _host_contract(
         "privilege": {
             "role": privilege_role,
             "canElevate": privilege_can_elevate,
+            "elevationMode": privilege_elevation_mode,
+            "elevateHint": privilege_elevate_hint,
+            "dropHint": privilege_drop_hint,
+            "sessionPolicy": privilege_session_policy,
         },
     }
 
 
-def _runtime_privilege() -> tuple[str, bool]:
+def _runtime_privilege() -> tuple[str, bool, str, str | None, str | None, str]:
     geteuid = getattr(os, "geteuid", None)
     if callable(geteuid):
         uid = int(geteuid())
-        return ("root" if uid == 0 else "user", uid != 0)
-    return ("user", False)
+        if uid == 0:
+            return (
+                "root",
+                False,
+                "live",
+                None,
+                "restart Mira under a non-root service account when privileged recovery is no longer needed",
+                "root-active",
+            )
+        return (
+            "user",
+            True,
+            "relaunch",
+            "sudo -E mira webui",
+            None,
+            "relaunch-required",
+        )
+    return ("user", False, "none", None, None, "observe-only")
 
 
 def _shell_metadata(**entries: str) -> dict[str, str]:
@@ -109,7 +133,14 @@ class ShellDescriptor:
 
 def default_engineering_shell() -> ShellDescriptor:
     """Default shell for a mature, generic execution layer."""
-    privilege_role, privilege_can_elevate = _runtime_privilege()
+    (
+        privilege_role,
+        privilege_can_elevate,
+        privilege_elevation_mode,
+        privilege_elevate_hint,
+        privilege_drop_hint,
+        privilege_session_policy,
+    ) = _runtime_privilege()
     return ShellDescriptor(
         name="engineering",
         host_contract=_host_contract(
@@ -126,6 +157,10 @@ def default_engineering_shell() -> ShellDescriptor:
             read_only_execution=False,
             privilege_role=privilege_role,
             privilege_can_elevate=privilege_can_elevate,
+            privilege_elevation_mode=privilege_elevation_mode,
+            privilege_elevate_hint=privilege_elevate_hint,
+            privilege_drop_hint=privilege_drop_hint,
+            privilege_session_policy=privilege_session_policy,
         ),
         metadata=_shell_metadata(posture="engineering"),
     )
@@ -133,7 +168,14 @@ def default_engineering_shell() -> ShellDescriptor:
 
 def single_execution_shell() -> ShellDescriptor:
     """Single-workbench shell without thread-management affordances."""
-    privilege_role, privilege_can_elevate = _runtime_privilege()
+    (
+        privilege_role,
+        privilege_can_elevate,
+        privilege_elevation_mode,
+        privilege_elevate_hint,
+        privilege_drop_hint,
+        privilege_session_policy,
+    ) = _runtime_privilege()
     return ShellDescriptor(
         name="single-execution",
         display_name="Mira Workbench",
@@ -157,6 +199,10 @@ def single_execution_shell() -> ShellDescriptor:
             read_only_execution=False,
             privilege_role=privilege_role,
             privilege_can_elevate=privilege_can_elevate,
+            privilege_elevation_mode=privilege_elevation_mode,
+            privilege_elevate_hint=privilege_elevate_hint,
+            privilege_drop_hint=privilege_drop_hint,
+            privilege_session_policy=privilege_session_policy,
         ),
         metadata=_shell_metadata(posture="single-execution"),
     )
@@ -164,7 +210,14 @@ def single_execution_shell() -> ShellDescriptor:
 
 def review_shell() -> ShellDescriptor:
     """Read-heavy review shell that suppresses runtime tuning during analysis."""
-    privilege_role, privilege_can_elevate = _runtime_privilege()
+    (
+        privilege_role,
+        privilege_can_elevate,
+        privilege_elevation_mode,
+        privilege_elevate_hint,
+        privilege_drop_hint,
+        privilege_session_policy,
+    ) = _runtime_privilege()
     return ShellDescriptor(
         name="review",
         display_name="Mira Review",
@@ -188,6 +241,10 @@ def review_shell() -> ShellDescriptor:
             read_only_execution=True,
             privilege_role=privilege_role,
             privilege_can_elevate=privilege_can_elevate,
+            privilege_elevation_mode=privilege_elevation_mode,
+            privilege_elevate_hint=privilege_elevate_hint,
+            privilege_drop_hint=privilege_drop_hint,
+            privilege_session_policy=privilege_session_policy,
         ),
         metadata=_shell_metadata(posture="review"),
     )

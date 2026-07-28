@@ -66,6 +66,10 @@ const DEFAULT_HOST_CONTRACT = buildHostContract({
   privilege: {
     role: "user",
     canElevate: false,
+    elevationMode: "none",
+    elevateHint: null,
+    dropHint: null,
+    sessionPolicy: "observe-only",
   },
 });
 
@@ -91,6 +95,10 @@ function buildUserShellContract({
     privilege: {
       role: "user",
       canElevate: false,
+      elevationMode: "none",
+      elevateHint: null,
+      dropHint: null,
+      sessionPolicy: "observe-only",
     },
   });
 }
@@ -167,6 +175,22 @@ function coerceHostContract(
     raw.privilege?.canElevate,
     fallback.privilege.canElevate,
   );
+  const privilegeElevationMode = readNonEmptyStringOr(
+    typeof raw.privilege?.elevationMode === "string" ? raw.privilege.elevationMode : undefined,
+    fallback.privilege.elevationMode ?? "none",
+  );
+  const privilegeElevateHint =
+    typeof raw.privilege?.elevateHint === "string" && raw.privilege.elevateHint.trim()
+      ? raw.privilege.elevateHint
+      : (fallback.privilege.elevateHint ?? null);
+  const privilegeDropHint =
+    typeof raw.privilege?.dropHint === "string" && raw.privilege.dropHint.trim()
+      ? raw.privilege.dropHint
+      : (fallback.privilege.dropHint ?? null);
+  const privilegeSessionPolicy = readNonEmptyStringOr(
+    typeof raw.privilege?.sessionPolicy === "string" ? raw.privilege.sessionPolicy : undefined,
+    fallback.privilege.sessionPolicy ?? "observe-only",
+  );
   const contract = buildHostContract({
     mode:
       raw.mode === "single-execution" || raw.mode === "review" || raw.mode === "engineering"
@@ -193,6 +217,10 @@ function coerceHostContract(
     privilege: {
       role: privilegeRole,
       canElevate: privilegeCanElevate,
+      elevationMode: privilegeElevationMode,
+      elevateHint: privilegeElevateHint,
+      dropHint: privilegeDropHint,
+      sessionPolicy: privilegeSessionPolicy,
     },
   });
   return {

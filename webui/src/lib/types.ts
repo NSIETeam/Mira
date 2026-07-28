@@ -923,6 +923,10 @@ export interface ShellHostContractPayload {
   privilege?: {
     role?: "root" | "user" | string;
     canElevate?: boolean;
+    elevationMode?: string;
+    elevateHint?: string | null;
+    dropHint?: string | null;
+    sessionPolicy?: string | null;
   };
 }
 

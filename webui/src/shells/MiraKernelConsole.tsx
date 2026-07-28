@@ -160,6 +160,12 @@ export function MiraKernelConsole({
         ? "user shell with controlled elevation"
         : "user shell in observe-first posture",
   };
+  const privilegeWorkflow = {
+    mode: hostContract.privilege.elevationMode ?? "none",
+    elevateHint: hostContract.privilege.elevateHint ?? "none",
+    dropHint: hostContract.privilege.dropHint ?? "none",
+    sessionPolicy: hostContract.privilege.sessionPolicy ?? "observe-only",
+  };
   const actionAllowed = (
     action?: { privileged?: boolean | null; required_role?: string | null } | null,
   ) => {
@@ -2092,6 +2098,47 @@ export function MiraKernelConsole({
                       />
                     ))}
                   </>
+                ) : null}
+              </div>
+            </div>
+            <div className="rounded-lg border border-cyan-200/80 bg-cyan-50/60 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700">
+                  Privilege workflow
+                </div>
+                <ConsoleBadge
+                  label="role"
+                  value={privilegeRole}
+                  tone={privilegeRole === "root" ? "emerald" : "amber"}
+                />
+              </div>
+              <ConsoleRowGrid
+                className="mt-2 grid gap-2 md:grid-cols-2"
+                items={[
+                  { label: "Session policy", value: privilegeWorkflow.sessionPolicy },
+                  { label: "Elevation mode", value: privilegeWorkflow.mode },
+                  { label: "Privileged controls", value: shellAllowsPrivilegedControls ? "contract-on" : "contract-off" },
+                  { label: "Access posture", value: privilegePosture.accessLabel },
+                  { label: "Elevate route", value: privilegeWorkflow.elevateHint },
+                  { label: "Drop route", value: privilegeWorkflow.dropHint },
+                ]}
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => runQuickCommand("privilege status")}
+                  className="rounded-full border border-cyan-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
+                >
+                  privilege status
+                </button>
+                {shellAllowsPrivilegedControls ? (
+                  <button
+                    type="button"
+                    onClick={() => runQuickCommand("maintenance status")}
+                    className="rounded-full border border-cyan-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
+                  >
+                    gated controls
+                  </button>
                 ) : null}
               </div>
             </div>

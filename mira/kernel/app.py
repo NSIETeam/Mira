@@ -1249,6 +1249,7 @@ class KernelApp:
                 ("session", "status"): ("session-status", tail),
                 ("session", "goal"): ("session-goal", tail),
                 ("session", "continuation"): ("session-continuation", tail),
+                ("privilege", "status"): ("privilege-status", tail),
                 ("goal", "reset"): ("goal-reset", tail),
                 ("kernel", "profile"): ("kernel-profile", tail),
                 ("kernel", "manifest"): ("kernel-manifest", tail),
@@ -1294,14 +1295,14 @@ class KernelApp:
                 "output": (
                     "commands: help, pane <name>, switch-adapter [name], focus-module <name>, "
                     "adapter-status [name], adapter-list, module-status [name], module-list, module-actions [name], board-status, board-ports, board-target, board-transport, board-mode, native-status, native-last-command, native-replay-last, native-replay <target> <action> [value], native-focus <module>, native-inspect <module>, native-modules, bridge-status [name], bridge-list, bridge-fault [name], runtime-status, runtime-gate, runtime-health, runtime-orchestration, runtime-queues, runtime-adapters, runtime-bridges, fault-status, scheduler-status, lane-status, lane-list, maintenance-status, worker-status, worker-list, "
-                    "event-status, event-tail [count], session-status, session-goal, session-continuation, goal-reset, kernel-profile, kernel-manifest, runtime-topology, embedded-topology, workspace-status, workspace-scope, workspace-modules, workspace-focus-module <name>, repo-status, repo-root, repo-tools, repo-prepare-tool <name>, tool-inspect <name>, tool-dispatch <name>, tool-queue, tool-clear-queue, tool-prioritize, tool-drain, tool-delegate-goal, tool-delegate-subagent, tool-complete, tool-fail, tool-status, "
+                    "event-status, event-tail [count], session-status, session-goal, session-continuation, privilege-status, goal-reset, kernel-profile, kernel-manifest, runtime-topology, embedded-topology, workspace-status, workspace-scope, workspace-modules, workspace-focus-module <name>, repo-status, repo-root, repo-tools, repo-prepare-tool <name>, tool-inspect <name>, tool-dispatch <name>, tool-queue, tool-clear-queue, tool-prioritize, tool-drain, tool-delegate-goal, tool-delegate-subagent, tool-complete, tool-fail, tool-status, "
                     "attach-board [port] [transport], detach-board, restart-bridge [adapter], "
                     "clear-fault [adapter], record-fault [level] [adapter], pause-runtime [reason], "
                     "resume-runtime, degrade-runtime [reason], drain-background, "
                     "prioritize-goal-lane, enter-maintenance [reason], exit-maintenance; "
                     "aliases: adapter switch|status|list <name>, module focus|show|list|actions <name>, "
                     "board attach|detach|status|ports|target|transport|mode [port] [transport], native status|last-command|replay-last|replay <target> <action> [value]|focus <module>|inspect <module>|modules, bridge status|list|fault <name>, runtime pause|resume|degrade|drain|status|gate|health|orchestration|queues|adapters|bridges, fault clear|record|show, "
-                    "scheduler status, worker show|list, maintenance enter|exit|status, lane prioritize-goal|show|list, event show|tail [count], session status|goal|continuation, goal reset, kernel profile|manifest, topology runtime|embedded, workspace status|scope|modules|focus-module <name>, repo status|root|tools|prepare-tool <name>, tool inspect|dispatch <name>, tool queue|clear-queue|prioritize|drain|delegate-goal|delegate-subagent|complete|fail|status"
+                    "scheduler status, worker show|list, maintenance enter|exit|status, lane prioritize-goal|show|list, event show|tail [count], session status|goal|continuation, privilege status, goal reset, kernel profile|manifest, topology runtime|embedded, workspace status|scope|modules|focus-module <name>, repo status|root|tools|prepare-tool <name>, tool inspect|dispatch <name>, tool queue|clear-queue|prioritize|drain|delegate-goal|delegate-subagent|complete|fail|status"
                 ),
                 "runtime_control": self.runtime_control_snapshot(),
                 "details": {
@@ -2129,6 +2130,36 @@ class KernelApp:
                     "session": self._active_session_key or "none",
                     "memory": "on" if self._profile.memory_enabled else "off",
                     "metadata_keys": len(metadata),
+                },
+            )
+        elif command == "privilege-status":
+            host_contract = self._shell.host_contract if isinstance(self._shell.host_contract, dict) else {}
+            surfaces = host_contract.get("surfaces", {}) if isinstance(host_contract.get("surfaces", {}), dict) else {}
+            privilege = host_contract.get("privilege", {}) if isinstance(host_contract.get("privilege", {}), dict) else {}
+            privilege_role = str(privilege.get("role") or self._operator_privilege_role())
+            can_elevate = bool(privilege.get("canElevate"))
+            elevation_mode = str(privilege.get("elevationMode") or ("live" if privilege_role == "root" else "none"))
+            elevate_hint = str(privilege.get("elevateHint") or "").strip() or "none"
+            drop_hint = str(privilege.get("dropHint") or "").strip() or "none"
+            session_policy = str(privilege.get("sessionPolicy") or "observe-only")
+            controls_enabled = bool(surfaces.get("allowPrivilegedRuntimeControls"))
+            target_pane = "control_plane"
+            state = self.runtime_control_snapshot()
+            output, details = (
+                f"privilege role={privilege_role}"
+                f" can_elevate={'yes' if can_elevate else 'no'}"
+                f" mode={elevation_mode}"
+                f" controls={'enabled' if controls_enabled else 'restricted'}",
+                {
+                    "subject": "privilege",
+                    "action": "status",
+                    "role": privilege_role,
+                    "can_elevate": can_elevate,
+                    "elevation_mode": elevation_mode,
+                    "controls_enabled": controls_enabled,
+                    "session_policy": session_policy,
+                    "elevate_hint": elevate_hint,
+                    "drop_hint": drop_hint,
                 },
             )
         elif command == "goal-reset":
