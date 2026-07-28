@@ -546,6 +546,50 @@ export function MiraKernelConsole({
   const clearFaultRestrictionHint = clearFaultsAction
     ? actionRestrictionReason(clearFaultsAction)
     : null;
+  const dispatchActionButtons = [
+    {
+      action: dispatchPrioritizeAction,
+      pane: "runtime",
+      label: "prioritize",
+      className: "rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100",
+    },
+    {
+      action: dispatchDelegateGoalAction,
+      pane: "runtime",
+      label: "goal lane",
+      className: "rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100",
+    },
+    {
+      action: dispatchDelegateSubagentAction,
+      pane: "runtime",
+      label: "subagent",
+      className: "rounded-full border border-violet-300/80 bg-violet-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100",
+    },
+    {
+      action: dispatchCompleteAction,
+      pane: "runtime",
+      label: "complete",
+      className: "rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100",
+    },
+    {
+      action: dispatchFailAction,
+      pane: "faults",
+      label: "fail",
+      className: "rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100",
+    },
+    {
+      action: dispatchDrainAction,
+      pane: "runtime",
+      label: "drain",
+      className: "rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200",
+    },
+    {
+      action: dispatchClearAction,
+      pane: "runtime",
+      label: "clear",
+      className: "rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200",
+    },
+  ] as const;
   const faultLaneRoute = firstEventRoute("faults");
   const runtimeLaneRoute = firstEventRoute("runtime");
   const adapterLaneRoute = firstEventRoute("adapters");
@@ -1379,62 +1423,17 @@ export function MiraKernelConsole({
                 </button>
                 {actionAllowed(dispatchPrioritizeAction) ? (
                   <>
-                    <button
-                      type="button"
-                      onClick={() => runContractAction(dispatchPrioritizeAction, "runtime")}
-                      disabled={operatorPending || !dispatchPrioritizeAction?.command}
-                      className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
-                    >
-                      prioritize
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => runContractAction(dispatchDelegateGoalAction, "runtime")}
-                      disabled={operatorPending || !dispatchDelegateGoalAction?.command}
-                      className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
-                    >
-                      goal lane
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => runContractAction(dispatchDelegateSubagentAction, "runtime")}
-                      disabled={operatorPending || !dispatchDelegateSubagentAction?.command}
-                      className="rounded-full border border-violet-300/80 bg-violet-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
-                    >
-                      subagent
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => runContractAction(dispatchCompleteAction, "runtime")}
-                      disabled={operatorPending || !dispatchCompleteAction?.command}
-                      className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
-                    >
-                      complete
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => runContractAction(dispatchFailAction, "faults")}
-                      disabled={operatorPending || !dispatchFailAction?.command}
-                      className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
-                    >
-                      fail
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => runContractAction(dispatchDrainAction, "runtime")}
-                      disabled={operatorPending || !dispatchDrainAction?.command}
-                      className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
-                    >
-                      drain
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => runContractAction(dispatchClearAction, "runtime")}
-                      disabled={operatorPending || !dispatchClearAction?.command}
-                      className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
-                    >
-                      clear
-                    </button>
+                    {dispatchActionButtons.map(({ action, pane, label, className }) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => runContractAction(action, pane)}
+                        disabled={operatorPending || !action?.command}
+                        className={className}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </>
                 ) : null}
               </div>
