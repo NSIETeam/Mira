@@ -1767,6 +1767,11 @@ class KernelApp:
                     "health": health,
                     "status": status,
                     "mode": mode,
+                    "runtime": bridge.get("runtime") or bridge_name or "unknown",
+                    "version": bridge.get("version") or "unknown",
+                    "queue_depth": int(bridge.get("queue_depth") or 0),
+                    "module_count": int(bridge.get("module_count") or 0),
+                    "updated_at_ms": bridge.get("updated_at_ms"),
                     "manifest": bridge.get("manifest") or "none",
                     "abi": bridge.get("abi") or "unknown",
                     "status_symbol": bridge.get("status_symbol") or "none",
@@ -1774,6 +1779,18 @@ class KernelApp:
                     "runtime_stage": bridge.get("runtime_stage") or "unknown",
                     "free_symbol": bridge.get("free_symbol") or "none",
                     "attach_symbol": bridge.get("attach_symbol") or "none",
+                    "capabilities": ", ".join(bridge.get("capabilities") or []) or "none",
+                    "module_states": ", ".join(
+                        f"{name}:{row.get('status', 'unknown')}:{row.get('last_code', 0)}"
+                        for name, row in dict(bridge.get("module_states") or {}).items()
+                        if isinstance(row, dict)
+                    ) or "none",
+                    "last_command": (
+                        f"{dict(bridge.get('last_command') or {}).get('target', 'runtime')}:"
+                        f"{dict(bridge.get('last_command') or {}).get('action', 'status')}:"
+                        f"{dict(bridge.get('last_command') or {}).get('status', 'unknown')}:"
+                        f"{dict(bridge.get('last_command') or {}).get('code', 0)}"
+                    ),
                     "board_capable": bool(bridge.get("board_capable")),
                 },
             )
