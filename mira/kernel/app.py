@@ -1358,15 +1358,24 @@ class KernelApp:
             if not module_name:
                 raise ValueError("missing module")
             self._dispatch_native_control(target=module_name, action="inspect", value="status")
+            native_state = dict(self._native_module_states.get(module_name) or {})
             target_pane = "modules"
             state = self.runtime_control_snapshot()
-            output = f"native inspect module={module_name} depth={self._native_command_depth}"
+            output = (
+                f"native inspect module={module_name}"
+                f" status={native_state.get('status') or 'unknown'}"
+                f" code={native_state.get('last_code') if native_state else 0}"
+                f" depth={self._native_command_depth}"
+            )
             details = {
                 "subject": "native",
                 "action": "inspect",
                 "target": module_name,
                 "command": "inspect",
                 "value": "status",
+                "status": native_state.get("status") or "unknown",
+                "last_code": native_state.get("last_code") if native_state else 0,
+                "updated_at_ms": native_state.get("updated_at_ms") if native_state else None,
                 "queue_depth": self._native_command_depth,
                 "artifact": self._native_bridge_artifact or "none",
             }
