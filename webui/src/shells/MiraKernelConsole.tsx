@@ -616,6 +616,26 @@ export function MiraKernelConsole({
       className: "rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100",
     },
   ] as const;
+  const bridgeActionButtons = [
+    {
+      action: selectedBridgeRestartAction,
+      pane: "adapters",
+      label: "restart",
+      className: "rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100",
+    },
+    {
+      action: selectedBridgeMarkFaultAction,
+      pane: "faults",
+      label: "mark fault",
+      className: "rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100",
+    },
+    {
+      action: selectedBridgeClearFaultAction,
+      pane: "faults",
+      label: "clear fault",
+      className: "rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100",
+    },
+  ] as const;
   const faultLaneRoute = firstEventRoute("faults");
   const runtimeLaneRoute = firstEventRoute("runtime");
   const adapterLaneRoute = firstEventRoute("adapters");
@@ -1854,40 +1874,27 @@ export function MiraKernelConsole({
               ]}
             />
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => runContractAction(selectedBridgeInspectAction, "adapters")}
-                disabled={operatorPending || !selectedBridgeInspectAction?.command}
+              <ConsoleActionButton
+                action={selectedBridgeInspectAction}
+                pane="adapters"
+                label="inspect"
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                inspect
-              </button>
+                disabled={operatorPending}
+                onRun={runContractAction}
+              />
               {actionAllowed(selectedBridgeRestartAction) ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(selectedBridgeRestartAction, "adapters")}
-                    disabled={operatorPending || !selectedBridgeRestartAction?.command}
-                    className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
-                  >
-                    restart
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(selectedBridgeMarkFaultAction, "faults")}
-                    disabled={operatorPending || !selectedBridgeMarkFaultAction?.command}
-                    className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
-                  >
-                    mark fault
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(selectedBridgeClearFaultAction, "faults")}
-                    disabled={operatorPending || !selectedBridgeClearFaultAction?.command}
-                    className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
-                  >
-                    clear fault
-                  </button>
+                  {bridgeActionButtons.map(({ action, pane, label, className }) => (
+                    <ConsoleActionButton
+                      key={label}
+                      action={action}
+                      pane={pane}
+                      label={label}
+                      className={className}
+                      disabled={operatorPending}
+                      onRun={runContractAction}
+                    />
+                  ))}
                 </>
               ) : selectedBridgeRestartAction ? (
                 <span className="text-xs text-muted-foreground">
