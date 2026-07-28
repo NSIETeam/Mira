@@ -154,6 +154,7 @@ export function MiraKernelConsole({
       ? action.privileged_reason ?? "requires elevated privileges"
       : null;
   };
+  const diagnostics = kernelManifest?.diagnostics ?? null;
   const boardSnapshot = diagnostics?.snapshot.board;
   const nativeSnapshot = diagnostics?.snapshot.native;
   const nativeLastCommand = nativeSnapshot?.last_command;
@@ -175,7 +176,6 @@ export function MiraKernelConsole({
   const operatorActionRegistry = operatorConsole?.action_registry ?? [];
   const runtimeCapabilities = kernelManifest?.capabilities ?? null;
   const executionContract = kernelManifest?.execution ?? null;
-  const diagnostics = kernelManifest?.diagnostics ?? null;
   const goalState = diagnostics?.snapshot.goal_state;
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
   const sessionControls = kernelManifest?.session_controls?.actions ?? [];
