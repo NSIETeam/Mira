@@ -1394,6 +1394,16 @@ class KernelApp:
                     for name, row in native_modules.items()
                     if isinstance(row, dict)
                 ) or "none",
+                "codes": ", ".join(
+                    f"{name}:{row.get('last_code', 0)}"
+                    for name, row in native_modules.items()
+                    if isinstance(row, dict)
+                ) or "none",
+                "updated": ", ".join(
+                    f"{name}:{row.get('updated_at_ms', 0)}"
+                    for name, row in native_modules.items()
+                    if isinstance(row, dict)
+                ) or "none",
             }
         elif command == "bridge-status":
             bridge_name = str(args[0] if args else self._runtime_control.get("active_adapter") or "")
