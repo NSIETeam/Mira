@@ -92,10 +92,6 @@ export function createDefaultHostKernelStatus(): HostKernelStatus {
   return createHostKernelStatus(DEFAULT_HOST_KERNEL_STATUS_INPUT);
 }
 
-export function formatHostChromeTagline(appName: string, status: HostKernelStatus): string {
-  return `${appName} universal execution kernel · engineering shell · ${status.privilege} · ${status.health} · ${status.maintenance}`;
-}
-
 export function deriveHostChromePresentation(
   status: HostKernelStatus,
   appName: string,
@@ -142,7 +138,7 @@ export function deriveHostChromePresentation(
     healthBadge?.label,
     maintenanceBadge?.label === "maintenance" ? "maintenance" : null,
   ].filter(Boolean).join(" / ");
-  const appTagline = formatHostChromeTagline(appName, status);
+  const appTagline = `${appName} universal execution kernel · engineering shell · ${status.privilege} · ${status.health} · ${status.maintenance}`;
   const visibleTagline = privilegeBadge || healthBadge || maintenanceBadge
     ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention|offline)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "")
     : appTagline;
