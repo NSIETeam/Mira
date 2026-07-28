@@ -30,8 +30,8 @@ function Show-InstallFailureHint {
     [Console]::Error.WriteLine("If pip mentioned externally-managed-environment, use uv, pipx, or a virtual environment instead of system pip.")
     [Console]::Error.WriteLine("You can also run manually:")
     [Console]::Error.WriteLine("  uv tool install --force --upgrade $InstallTarget")
-    [Console]::Error.WriteLine("  $Python -m venv `$HOME\.nanobot\venv")
-    [Console]::Error.WriteLine("  `$HOME\.nanobot\venv\Scripts\python.exe -m pip install --upgrade $InstallTarget")
+    [Console]::Error.WriteLine("  $Python -m venv `$HOME\.mira\venv")
+    [Console]::Error.WriteLine("  `$HOME\.mira\venv\Scripts\python.exe -m pip install --upgrade $InstallTarget")
     [Console]::Error.WriteLine("Then start setup with:")
     [Console]::Error.WriteLine("  mira onboard --wizard")
     throw "could not install Mira from $InstallSource"
@@ -138,7 +138,7 @@ function Test-FreshMiraInstall {
     if (-not $HomeDir) {
         return $false
     }
-    return -not (Test-Path -LiteralPath (Join-Path $HomeDir ".nanobot\config.json"))
+    return -not (Test-Path -LiteralPath (Join-Path $HomeDir ".mira\config.json"))
 }
 
 function Test-BrowserSession {
@@ -192,7 +192,7 @@ function Install-WithManagedVenv {
         Fail "HOME is not set; cannot create a managed virtual environment."
     }
 
-    $VenvDir = if ($env:NANOBOT_VENV) { $env:NANOBOT_VENV } else { Join-Path $HomeDir ".nanobot\venv" }
+    $VenvDir = if ($env:MIRA_VENV) { $env:MIRA_VENV } elseif ($env:NANOBOT_VENV) { $env:NANOBOT_VENV } else { Join-Path $HomeDir ".mira\venv" }
     $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 
     if (-not (Test-Path $VenvPython)) {
@@ -208,7 +208,7 @@ function Install-WithManagedVenv {
     }
 
     if (-not (Test-Python $VenvPython)) {
-        Fail "The managed venv uses Python older than 3.11. Remove it or set NANOBOT_VENV to a new path."
+        Fail "The managed venv uses Python older than 3.11. Remove it or set MIRA_VENV to a new path."
     }
 
     Write-Info "Installing or upgrading Mira from $InstallSource in $VenvDir..."
@@ -266,13 +266,13 @@ if ($DryRun) {
         Write-Info "Dry run: would run Mira as: pipx run --spec $InstallTarget mira"
     } else {
         $HomeDir = if ($env:HOME) { $env:HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { "~" }
-        $VenvDir = if ($env:NANOBOT_VENV) { $env:NANOBOT_VENV } else { Join-Path $HomeDir ".nanobot\venv" }
+        $VenvDir = if ($env:MIRA_VENV) { $env:MIRA_VENV } elseif ($env:NANOBOT_VENV) { $env:NANOBOT_VENV } else { Join-Path $HomeDir ".mira\venv" }
         Write-Info "Dry run: would create or reuse a dedicated virtual environment: $VenvDir"
         Write-Info "Dry run: would run: $VenvDir\Scripts\python.exe -m pip install --upgrade $InstallTarget"
         Write-Info "Dry run: would run Mira as: $VenvDir\Scripts\python.exe -m mira"
     }
-    if ($env:NANOBOT_SKIP_WIZARD -eq "1") {
-        Write-Info "Dry run: would skip automatic setup because NANOBOT_SKIP_WIZARD=1."
+    if ($env:MIRA_SKIP_WIZARD -eq "1" -or $env:NANOBOT_SKIP_WIZARD -eq "1") {
+        Write-Info "Dry run: would skip automatic setup because MIRA_SKIP_WIZARD=1."
     } elseif ((Test-FreshMiraInstall) -and (Test-BrowserSession)) {
         Write-Info "Dry run: would start the WebUI for this fresh desktop install."
         Write-Info "Dry run: would fall back to the setup wizard for older releases."
@@ -316,8 +316,8 @@ if ($LASTEXITCODE -ne 0) {
     Fail "Mira was installed, but the command could not be started."
 }
 
-if ($env:NANOBOT_SKIP_WIZARD -eq "1") {
-    Write-Info "Skipping automatic setup because NANOBOT_SKIP_WIZARD=1."
+if ($env:MIRA_SKIP_WIZARD -eq "1" -or $env:NANOBOT_SKIP_WIZARD -eq "1") {
+    Write-Info "Skipping automatic setup because MIRA_SKIP_WIZARD=1."
     Write-Info "Run this later: $(Get-MiraCommand) webui"
     return
 }
