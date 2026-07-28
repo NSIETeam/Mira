@@ -3512,6 +3512,21 @@ export function MiraKernelConsole({
                 {workspaceError}
               </div>
             ) : null}
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {toolFamilySurface.map((item) => (
+                <div
+                  key={`workspace-${item.family}`}
+                  className="rounded-md border border-slate-200/80 bg-slate-50/80 px-2.5 py-2"
+                >
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    {item.family}
+                  </div>
+                  <div className="mt-1 text-[10px] text-slate-600">
+                    {item.examples}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
