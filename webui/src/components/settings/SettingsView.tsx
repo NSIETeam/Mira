@@ -5822,7 +5822,7 @@ function AutomationDetailPanel({
             >
               {formatAutomationNext(job, tx)}
             </AutomationDetail>
-            <AutomationDetail label={tx("settings.automations.labels.origin", "Linked chat")} title={origin}>
+            <AutomationDetail label={tx("settings.automations.labels.origin", "Linked execution")} title={origin}>
               {originHref ? (
                 <a
                   className="inline-flex max-w-full items-center gap-1 text-foreground/80 underline-offset-2 hover:underline"
@@ -6272,7 +6272,7 @@ function AutomationDeleteDialog({
           <DialogDescription>
             {tx(
               "settings.automations.deleteDescription",
-              "This removes {{name}} from automations. Past chat messages stay in the session.",
+              "This removes {{name}} from automations. Past execution history stays in the session.",
               { name: job?.name || job?.id || "" },
             )}
           </DialogDescription>
@@ -6755,7 +6755,7 @@ function automationOriginLabel(
 ): string {
   if (job.protected) return tx("settings.automations.origin.system", "System");
   const origin = job.origin;
-  if (!origin) return tx("settings.automations.origin.unknown", "No linked chat");
+  if (!origin) return tx("settings.automations.origin.unknown", "No linked execution");
   if (origin.channel !== "websocket") return automationChannelLabel(origin.channel, tx);
   return origin.title || origin.preview || origin.session_key || automationChannelLabel(origin.channel, tx);
 }
