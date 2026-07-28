@@ -1345,22 +1345,22 @@ export function MiraKernelConsole({
                 <Row label="Objective" value={goalState?.objective ?? "none"} />
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => runContractAction(sessionControls[1], "runtime")}
-                  disabled={operatorPending || !sessionControls[1]?.command}
+                <ConsoleActionButton
+                  action={sessionControls[1]}
+                  pane="runtime"
+                  label="inspect goal"
                   className="rounded-full border border-violet-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
-                >
-                  inspect goal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runContractAction(sessionControls[2], "runtime")}
-                  disabled={operatorPending || !sessionControls[2]?.command}
+                  disabled={operatorPending}
+                  onRun={runContractAction}
+                />
+                <ConsoleActionButton
+                  action={sessionControls[2]}
+                  pane="runtime"
+                  label="inspect continuation"
                   className="rounded-full border border-violet-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
-                >
-                  inspect continuation
-                </button>
+                  disabled={operatorPending}
+                  onRun={runContractAction}
+                />
               </div>
             </div>
             <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/60 p-3">
