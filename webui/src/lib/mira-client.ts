@@ -10,7 +10,9 @@ import type {
   WorkspaceScopePayload,
 } from "./types";
 import {
+  attachedChatIdFromKernelMetadata,
   goalStateFromKernelMetadata,
+  readyChatIdFromKernelMetadata,
   runStartedAtFromKernelMetadata,
   toKernelEventPayload,
 } from "./kernel-events";
@@ -538,30 +540,26 @@ export class miraClient {
       return;
     }
 
-    if (
-      kernelEvent.type === "status"
-      && kernelEvent.state === "ready"
-      && "chat_id" in parsed
-      && !("turn_id" in parsed)
-    ) {
-      this.readyChatId = parsed.chat_id;
-      this.knownChats.add(parsed.chat_id);
+    const readyChatId = kernelEvent.type === "status" && kernelEvent.state === "ready"
+      ? readyChatIdFromKernelMetadata(parsed)
+      : null;
+    if (readyChatId) {
+      this.readyChatId = readyChatId;
+      this.knownChats.add(readyChatId);
       return;
     }
 
-    if (
-      kernelEvent.type === "status"
-      && kernelEvent.state === "ready"
-      && "chat_id" in parsed
-      && "session_id" in parsed
-    ) {
-      this.knownChats.add(parsed.chat_id);
+    const attachedChatId = kernelEvent.type === "status" && kernelEvent.state === "ready"
+      ? attachedChatIdFromKernelMetadata(parsed)
+      : null;
+    if (attachedChatId) {
+      this.knownChats.add(attachedChatId);
       if (this.pendingNewChat) {
         clearTimeout(this.pendingNewChat.timer);
-        this.pendingNewChat.resolve(parsed.chat_id);
+        this.pendingNewChat.resolve(attachedChatId);
         this.pendingNewChat = null;
       }
-      this.dispatch(parsed.chat_id, parsed);
+      this.dispatch(attachedChatId, parsed);
       return;
     }
 

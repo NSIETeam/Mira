@@ -46,6 +46,23 @@ export function turnCompletionFromKernelMetadata(metadata: unknown): {
   };
 }
 
+export function readyChatIdFromKernelMetadata(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const row = metadata as Record<string, unknown>;
+  const chatId = typeof row.chat_id === "string" ? row.chat_id : null;
+  if (!chatId || "turn_id" in row) return null;
+  return chatId;
+}
+
+export function attachedChatIdFromKernelMetadata(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const row = metadata as Record<string, unknown>;
+  const chatId = typeof row.chat_id === "string" ? row.chat_id : null;
+  const sessionId = typeof row.session_id === "string" ? row.session_id : null;
+  if (!chatId || !sessionId) return null;
+  return chatId;
+}
+
 export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
   switch (ev.event) {
     case "delta":
