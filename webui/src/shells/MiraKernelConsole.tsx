@@ -747,6 +747,58 @@ export function MiraKernelConsole({
     { label: "Maintenance", value: runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off" },
     { label: "Gate", value: runtimeControl?.execution_gate?.state ?? "open" },
   ];
+  const cockpitOverviewCards = [
+    {
+      label: "Execution fabric",
+      value: `${runningExecutionCount} active`,
+      detail: `${executionLanes.length} lanes · ${diagPendingToolCalls} tool waits`,
+      tone: "border-cyan-200/80 bg-cyan-50/70",
+    },
+    {
+      label: "Kernel graph",
+      value: `${runtimeModules.length} modules`,
+      detail: `${runtimeBridges.length} bridges · ${runtimeAdapters.length} adapters`,
+      tone: "border-emerald-200/80 bg-emerald-50/70",
+    },
+    {
+      label: "Fault domain",
+      value: nativeFaultModules.length || faultedBridges.length || eventLaneCounts.fault ? "attention" : "clear",
+      detail: `${nativeFaultModules.length} modules · ${faultedBridges.length} bridges · ${eventLaneCounts.fault} lane`,
+      tone: "border-rose-200/80 bg-rose-50/70",
+    },
+    {
+      label: "Embedded target",
+      value: embeddedTargetHint ?? boardSnapshot?.label ?? boardSnapshot?.target ?? "not attached",
+      detail: `${boardAttachmentLabel} · ${boardSnapshot?.transport ?? "transport unknown"}`,
+      tone: "border-amber-200/80 bg-amber-50/70",
+    },
+  ] as const;
+  const cockpitQuickRoutes = [
+    {
+      label: "Inspect runtime",
+      pane: "runtime",
+      command: inspectRuntimeAction?.command ?? "runtime health",
+      tone: "border-cyan-300/80 bg-cyan-50 text-cyan-700 hover:bg-cyan-100",
+    },
+    {
+      label: "Focus faults",
+      pane: "faults",
+      command: inspectFaultsAction?.command ?? faultLaneRoute?.command ?? "fault inspect",
+      tone: "border-rose-300/80 bg-rose-50 text-rose-700 hover:bg-rose-100",
+    },
+    {
+      label: "Open module graph",
+      pane: "modules",
+      command: selectedModuleShowModuleAction?.command ?? moduleShowCommand(selectedModuleName ?? "") ?? "module list",
+      tone: "border-emerald-300/80 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+    },
+    {
+      label: "Board status",
+      pane: "adapters",
+      command: embeddedBoardStatusAction?.command ?? "board status",
+      tone: "border-amber-300/80 bg-amber-50 text-amber-700 hover:bg-amber-100",
+    },
+  ].filter((item) => item.command);
 
   return (
     <aside className="hidden w-[332px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[356px]">
@@ -766,6 +818,62 @@ export function MiraKernelConsole({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 py-4 text-sm">
+        <section className="space-y-3">
+          <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Kernel cockpit
+                </div>
+                <div className="mt-1 text-base font-semibold text-foreground">
+                  Universal execution frontplane
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  One surface for runtime command, module routing, fault recovery, and embedded attachment.
+                </div>
+              </div>
+              <div className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700">
+                {privilegePosture.summary}
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 xl:grid-cols-2">
+              {cockpitOverviewCards.map((card) => (
+                <div key={card.label} className={cn("rounded-xl border p-3", card.tone)}>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    {card.label}
+                  </div>
+                  <div className="mt-1.5 text-sm font-semibold text-slate-900">
+                    {card.value}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    {card.detail}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {cockpitQuickRoutes.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => {
+                    onSelectPane(item.pane);
+                    setOperatorCommand(item.command);
+                  }}
+                  disabled={operatorPending}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors",
+                    item.tone,
+                    operatorPending ? "opacity-60" : "",
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="space-y-2">
           <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Pane routing
