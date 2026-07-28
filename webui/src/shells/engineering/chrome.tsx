@@ -100,6 +100,14 @@ export function HostChrome({
         : healthBadge?.label === "attention"
           ? "attention"
           : "healthy";
+  const runtimeSeverity =
+    maintenanceBadge?.label === "maintenance"
+      ? "warning"
+      : healthBadge?.label === "offline"
+        ? "critical"
+        : healthBadge?.label === "attention"
+          ? "warning"
+          : "normal";
 
   return (
     <header className="host-drag-region pointer-events-none absolute inset-x-0 top-0 z-40 h-12 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(248,250,252,0.84)_100%)] text-foreground/90 backdrop-blur-xl">
@@ -137,6 +145,7 @@ export function HostChrome({
           data-runtime-maintenance={maintenanceBadge?.label ?? "unknown"}
           data-shell-privilege={privilegeBadge?.label ?? "unknown"}
           data-runtime-state={runtimeState}
+          data-runtime-severity={runtimeSeverity}
           data-kernel-status-summary={chromeStatusTitle || undefined}
           title={chromeStatusTitle || undefined}
         >
