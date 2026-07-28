@@ -562,7 +562,7 @@
       "restartRequired": "Restart Mira to apply updated apps and integrations."
     },
     "channels": {
-      "description": "Connect chat apps, email, and WebUI to Mira.",
+      "description": "Connect channels, email, and WebUI to Mira.",
       "caption": "{{enabled}} running · {{total}} channels",
       "searchPlaceholder": "Search channels",
       "backToChannels": "All channels",

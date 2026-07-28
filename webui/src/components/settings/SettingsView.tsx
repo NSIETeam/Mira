@@ -7111,10 +7111,10 @@ function ChannelsSettings({
         <section className="shrink-0 space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <p className="max-w-[680px] text-[13px] leading-5 text-muted-foreground">
-              {tx(
-                "settings.channels.description",
-                "Connect chat apps, email, and WebUI to Mira.",
-              )}
+            {tx(
+              "settings.channels.description",
+              "Connect channels, email, and WebUI to Mira.",
+            )}
             </p>
             <div className="flex flex-wrap gap-2 text-[12px] font-medium text-muted-foreground">
               <span className="rounded-full bg-muted/70 px-2.5 py-1">
