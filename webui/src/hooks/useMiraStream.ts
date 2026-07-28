@@ -11,6 +11,7 @@ import {
 import { hasPendingAgentActivity } from "@/lib/activity-timeline";
 import type { StreamError } from "@/lib/mira-client";
 import { formatQuotedUserMessage } from "@/lib/user-message-quote";
+import { goalStateFromKernelMetadata } from "@/lib/kernel-events";
 import type {
   InboundEvent,
   KernelEventPayload,
@@ -1157,8 +1158,9 @@ export function usemiraStream(
 
       if (event.type !== "status") return;
 
-      if ("goal_state" in metadata && metadata.goal_state && typeof metadata.goal_state === "object") {
-        setGoalState(metadata.goal_state as GoalStateWsPayload);
+      const goalStatePayload = goalStateFromKernelMetadata(metadata);
+      if (goalStatePayload) {
+        setGoalState(goalStatePayload);
       }
 
       if (state === "running" || state === "idle") {

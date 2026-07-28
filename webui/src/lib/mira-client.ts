@@ -9,7 +9,7 @@ import type {
   GoalStateWsPayload,
   WorkspaceScopePayload,
 } from "./types";
-import { toKernelEventPayload } from "./kernel-events";
+import { goalStateFromKernelMetadata, toKernelEventPayload } from "./kernel-events";
 import { createHostWebSocket } from "./runtime";
 
 /** WebSocket readyState constants, referenced by value to stay portable
@@ -257,13 +257,9 @@ export class miraClient {
 
   private recordGoalStateSnapshot(executionId: string, ev: InboundEvent): void {
     const kernelEvent = toKernelEventPayload(ev);
-    if (
-      "goal_state" in ev
-      && ev.goal_state != null
-      && typeof ev.goal_state === "object"
-      && kernelEvent.type === "status"
-    ) {
-      this.goalStateByChatId.set(executionId, ev.goal_state);
+    const goalState = goalStateFromKernelMetadata(ev);
+    if (goalState && kernelEvent.type === "status") {
+      this.goalStateByChatId.set(executionId, goalState);
       return;
     }
   }

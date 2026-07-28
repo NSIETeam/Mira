@@ -1,4 +1,5 @@
 import type {
+  GoalStateWsPayload,
   InboundEvent,
   KernelEventPayload,
 } from "./types";
@@ -9,6 +10,15 @@ function goalSummary(goal: unknown): string {
   if (typeof blob.ui_summary === "string" && blob.ui_summary.trim()) return blob.ui_summary;
   if (typeof blob.objective === "string" && blob.objective.trim()) return blob.objective;
   return "";
+}
+
+export function goalStateFromKernelMetadata(metadata: unknown): GoalStateWsPayload | undefined {
+  if (!metadata || typeof metadata !== "object") return undefined;
+  const row = metadata as Record<string, unknown>;
+  if (!("goal_state" in row) || !row.goal_state || typeof row.goal_state !== "object") {
+    return undefined;
+  }
+  return row.goal_state as GoalStateWsPayload;
 }
 
 export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
