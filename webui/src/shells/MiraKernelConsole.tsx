@@ -3402,16 +3402,16 @@ export function MiraKernelConsole({
             <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Kernel event log
             </div>
-            {eventLog.length ? (
+            {executionTimeline.length ? (
               <div className="space-y-2">
-                {eventLog.map((event) => (
+                {executionTimeline.map((event) => (
                   <div
                     key={event.id}
                     className="rounded-md border border-slate-200/80 bg-slate-50/80 px-3 py-2"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
-                        {event.action}
+                        {event.type}
                       </span>
                       <span className="text-[11px] text-slate-500">{event.state}</span>
                     </div>
