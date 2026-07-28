@@ -132,6 +132,7 @@ export function MiraKernelConsole({
     roleLabel: privilegeRole,
     contractLabel: shellAllowsPrivilegedControls ? "runtime control contract enabled" : "restricted shell contract",
     accessLabel: allowsPrivilegedControls ? "root-enabled" : "observe-only",
+    recoveryLabel: allowsPrivilegedControls ? "recovery-enabled" : "inspection-only",
     capabilityLabel: shellAllowsPrivilegedControls
       ? (canElevate && privilegeRole !== "root" ? "elevation-capable" : operatorReadyLabel)
       : "restricted shell",
@@ -543,6 +544,15 @@ export function MiraKernelConsole({
   const faultSummary = nativeFaultModules.length || faultedBridges.length || faultEventCount
     ? `${nativeFaultModules.length} native / ${faultedBridges.length} bridge / ${faultEventCount} events`
     : "no active kernel faults";
+  const dispatchRestrictionHint = dispatchPrioritizeAction
+    ? actionRestrictionReason(dispatchPrioritizeAction)
+    : null;
+  const bridgeRestrictionHint = selectedBridgeRestartAction
+    ? actionRestrictionReason(selectedBridgeRestartAction)
+    : null;
+  const clearFaultRestrictionHint = clearFaultsAction
+    ? actionRestrictionReason(clearFaultsAction)
+    : null;
 
   return (
     <aside className="hidden w-[332px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[356px]">
@@ -718,11 +728,11 @@ export function MiraKernelConsole({
                 </span>
               )) : selectedBridgeRestartAction ? (
                 <span className="text-xs text-muted-foreground">
-                  {actionRestrictionReason(selectedBridgeRestartAction)}
+                  {bridgeRestrictionHint}
                 </span>
               ) : clearFaultsAction ? (
                 <span className="text-xs text-muted-foreground">
-                  {actionRestrictionReason(clearFaultsAction)}
+                  {clearFaultRestrictionHint}
                 </span>
               ) : null}
             </div>
@@ -873,7 +883,7 @@ export function MiraKernelConsole({
                   </>
                 ) : dispatchPrioritizeAction ? (
                   <span className="text-xs text-muted-foreground">
-                    {actionRestrictionReason(dispatchPrioritizeAction)}
+                    {dispatchRestrictionHint}
                   </span>
                 ) : null}
               </div>
@@ -1829,7 +1839,7 @@ export function MiraKernelConsole({
                 </>
               ) : selectedBridgeRestartAction ? (
                 <span className="text-xs text-muted-foreground">
-                  {actionRestrictionReason(selectedBridgeRestartAction)}
+                  {bridgeRestrictionHint}
                 </span>
               ) : null}
             </div>
@@ -2540,7 +2550,7 @@ export function MiraKernelConsole({
                 </>
               ) : clearFaultsAction ? (
                 <span className="text-xs text-muted-foreground">
-                  {actionRestrictionReason(clearFaultsAction)}
+                  {clearFaultRestrictionHint}
                 </span>
               ) : null}
               {selectedModule?.name ? (
@@ -3317,7 +3327,7 @@ export function MiraKernelConsole({
               <div className="rounded-lg border border-slate-200/80 bg-white/80 p-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Privilege gate</div>
                 <div className="mt-2 text-sm font-semibold text-slate-950">
-                  {allowsPrivilegedControls ? "recovery-enabled" : "inspection-only"}
+                  {privilegePosture.recoveryLabel}
                 </div>
               </div>
               <div className="rounded-lg border border-rose-200/80 bg-rose-50/80 p-3">
