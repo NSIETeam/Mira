@@ -68,7 +68,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SkillsCatalogSettings } from "@/components/settings/SkillsCatalogSettings";
 import { TokenUsageHeatmap } from "@/components/settings/TokenUsageHeatmap";
 import { ToggleButton } from "@/components/settings/ToggleButton";
-import { shellDescriptorAllowsKernelConsole } from "@/shells/contract";
+import { resolveShellRegistration } from "@/shells/registry";
 import {
   channelIsRunning,
   channelMatchesFilter,
@@ -2689,7 +2689,7 @@ function OverviewSettings({
   const shellCaption = activeShell
     ? [
         activeShell.theme,
-        shellDescriptorAllowsKernelConsole(activeShell)
+        resolveShellRegistration(activeShell).hostContract.surfaces.allowKernelConsole
           ? tx("settings.values.kernelConsole", "Kernel console")
           : tx("settings.values.minimalHost", "Minimal host"),
         activeShell.supports_threads

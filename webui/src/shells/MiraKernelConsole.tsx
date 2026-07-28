@@ -10,7 +10,6 @@ import type {
 import { cn } from "@/lib/utils";
 import {
   normalizedShellHostContract,
-  shellAllowsPrivilegedRuntimeControls,
   shellCanElevate,
   shellPrivilegeRole,
 } from "./contract";
@@ -131,7 +130,7 @@ export function MiraKernelConsole({
   const shellMode = hostContract.mode;
   const privilegeRole = shellPrivilegeRole(hostContract);
   const canElevate = shellCanElevate(hostContract);
-  const shellAllowsPrivilegedControls = shellAllowsPrivilegedRuntimeControls(hostContract);
+  const shellAllowsPrivilegedControls = hostContract.surfaces.allowPrivilegedRuntimeControls;
   const allowsPrivilegedControls = shellAllowsPrivilegedControls && (privilegeRole === "root" || canElevate);
   const actionAllowed = (
     action?: { privileged?: boolean | null; required_role?: string | null } | null,

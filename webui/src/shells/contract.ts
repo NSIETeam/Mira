@@ -8,16 +8,6 @@ export function normalizedShellHostContract(
   return resolveShellRegistration(shellDescriptor).hostContract;
 }
 
-export function shellDescriptorAllowsKernelConsole(
-  shellDescriptor: ShellDescriptorPayload | null,
-): boolean {
-  return normalizedShellHostContract(shellDescriptor).surfaces.allowKernelConsole;
-}
-
-export function shellAllowsPrivilegedRuntimeControls(contract: ShellHostContract): boolean {
-  return contract.surfaces.allowPrivilegedRuntimeControls;
-}
-
 export function shellDataAttributes({
   shellDescriptor,
   shellSupportsThreads,
