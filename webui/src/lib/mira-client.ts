@@ -541,7 +541,8 @@ export class miraClient {
     if (
       kernelEvent.type === "status"
       && kernelEvent.state === "ready"
-      && parsed.event === "ready"
+      && "chat_id" in parsed
+      && !("turn_id" in parsed)
     ) {
       this.readyChatId = parsed.chat_id;
       this.knownChats.add(parsed.chat_id);
@@ -551,7 +552,8 @@ export class miraClient {
     if (
       kernelEvent.type === "status"
       && kernelEvent.state === "ready"
-      && parsed.event === "attached"
+      && "chat_id" in parsed
+      && "session_id" in parsed
     ) {
       this.knownChats.add(parsed.chat_id);
       if (this.pendingNewChat) {
