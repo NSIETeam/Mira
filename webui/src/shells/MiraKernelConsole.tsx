@@ -190,13 +190,10 @@ export function MiraKernelConsole({
   const boardAttachmentLabel = boardSnapshot?.attached ? "attached" : "detached";
   const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
   const boardHealthLabel = boardSnapshot?.health ?? "unknown";
-  const selectedBridgeHealthLabel = selectedBridge?.health ?? "unknown";
-  const selectedBridgeStatusLabel = selectedBridge?.status ?? "unknown";
   const boardTargetLabel = boardSnapshot?.target ?? embeddedTargetHint ?? "host";
   const nativeArtifactLabel = nativeSnapshot?.bridge_artifact ?? "none";
   const profileName = profile?.name ?? "unknown";
   const activeAdapterName = runtimeControl?.active_adapter ?? "unset";
-  const selectedBridgeAdapterLabel = selectedBridge?.adapter ?? activeAdapterName;
   const boardTransportLabel = boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
   const sessionControls = kernelManifest?.session_controls?.actions ?? [];
@@ -1826,9 +1823,9 @@ export function MiraKernelConsole({
           <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
             <ConsoleRowGrid
               items={[
-                { label: "Adapter", value: selectedBridgeAdapterLabel },
-                { label: "Health", value: selectedBridgeHealthLabel },
-                { label: "Status", value: selectedBridgeStatusLabel },
+                { label: "Adapter", value: selectedBridge?.adapter ?? activeAdapterName },
+                { label: "Health", value: selectedBridge?.health ?? "unknown" },
+                { label: "Status", value: selectedBridge?.status ?? "unknown" },
                 { label: "Maintenance", value: runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off" },
               ]}
             />
