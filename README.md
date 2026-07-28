@@ -79,7 +79,7 @@ Prerequisites: Python 3.11+, and optionally `bun`/`npm` for building the WebUI f
 mira webui
 ```
 
-Opens `http://127.0.0.1:8765` in your browser. Configure your first model in **Settings -> Models**, then start chatting.
+Opens `http://127.0.0.1:8765` in your browser. Configure your first model in **Settings -> Models**, then start your first execution.
 
 ```bash
 mira webui --background   # Keep running after closing terminal
@@ -196,7 +196,7 @@ pip install .
 mira webui
 ```
 
-浏览器自动打开 `http://127.0.0.1:8765`，在 **设置 -> 模型** 中配置第一个模型即可开始对话。
+浏览器自动打开 `http://127.0.0.1:8765`，在 **设置 -> 模型** 中配置第一个模型即可开始第一次执行。
 
 ```bash
 mira webui --background   # 后台持续运行

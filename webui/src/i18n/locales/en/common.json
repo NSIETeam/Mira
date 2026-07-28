@@ -984,10 +984,11 @@
         "none": "No next run"
       }
     },
+    "heroSubtitle": "Operate a reusable execution kernel with visible runtime posture, operator controls, and room for native or embedded hosts.",
     "composer": {
       "placeholderThread": "Type your message…",
-      "placeholderHero": "Ask anything...",
-      "placeholderOpening": "Opening a new topic…",
+      "placeholderHero": "Describe the execution you want to run…",
+      "placeholderOpening": "Opening a new execution…",
       "placeholderStreaming": "Model is responding…",
       "inputAria": "Message input",
       "sendHint": "Enter to send · Shift+Enter for newline",

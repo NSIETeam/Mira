@@ -694,7 +694,7 @@ function Shell({
       t("app.restart.completed", { seconds }),
   });
   const { connectionStatus, runtimeModel, recentErrors } = useKernelConsoleState(client);
-  const appTagline = `${kernelManifest?.identity?.app_name ?? "Mira"} execution kernel`;
+  const appTagline = `${kernelManifest?.identity?.app_name ?? "Mira"} universal execution kernel`;
   const kernelControl = useKernelControlState({
     kernelManifest,
     token,

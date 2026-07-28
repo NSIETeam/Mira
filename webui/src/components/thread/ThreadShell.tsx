@@ -1094,6 +1094,9 @@ export function ThreadShell({
   ) : (
     <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
       <HeroGreeting text={t(heroGreetingKey)} />
+      <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+        {t("thread.heroSubtitle")}
+      </p>
     </div>
   );
   const sessionInfoAction = supportsThreads && historyKey ? (

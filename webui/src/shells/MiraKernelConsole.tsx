@@ -3465,7 +3465,7 @@ export function MiraKernelConsole({
           </div>
           <div className="rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">
             <div className="font-medium text-foreground">
-              {embeddedTargetHint ?? "Desktop execution kernel with room for embedded targets"}
+              {embeddedTargetHint ?? "Universal execution kernel with desktop, service, and embedded headroom"}
             </div>
             {runtimeControl ? (
               <div className="mt-2 grid gap-2 rounded-md border border-slate-300/70 bg-slate-50/80 p-3">
@@ -3493,9 +3493,9 @@ export function MiraKernelConsole({
               </div>
             ) : null}
             <div className="mt-2">
-              Mira is being shaped as a reusable execution kernel, so the operator surface can eventually
-              supervise constrained runtimes, firmware workflows, and board-level automation instead of
-              only desktop execution sessions.
+              Mira keeps the shell thin and the kernel visible, so the same operator surface can supervise
+              desktop runtime faults, service modules, firmware flows, and board-level automation without
+              turning the core into product-specific UI code.
             </div>
           </div>
         </section>

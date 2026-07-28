@@ -984,9 +984,10 @@
         "none": "没有下次运行"
       }
     },
+    "heroSubtitle": "直接操作一个可复用执行内核，运行时姿态、操控入口和未来的原生/嵌入式宿主路径都保持可见。",
     "composer": {
       "placeholderThread": "输入消息…",
-      "placeholderHero": "问任何问题...",
+      "placeholderHero": "描述你要发起的执行…",
       "placeholderOpening": "正在打开新执行…",
       "placeholderStreaming": "模型正在回复…",
       "inputAria": "消息输入框",
