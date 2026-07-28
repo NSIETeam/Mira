@@ -3278,22 +3278,24 @@ class KernelApp:
 
     def drain_background(self) -> dict[str, Any]:
         self._scheduler_state = request_background_drain(self._scheduler_state)
-        return self._commit_runtime_event_action(
-            event_action="drain_background",
-            event_state="ok",
-            event_message="background queues drained by operator request",
+        self._record_kernel_event(
+            "drain_background",
+            state="ok",
+            message="background queues drained by operator request",
         )
+        return self.runtime_control
 
     def prioritize_goal_lane(self) -> dict[str, Any]:
         self._scheduler_state = prioritize_lane(
             self._scheduler_state,
             lane="sustained_goal",
         )
-        return self._commit_runtime_event_action(
-            event_action="prioritize_goal_lane",
-            event_state="ok",
-            event_message="scheduler priority shifted toward sustained goal lane",
+        self._record_kernel_event(
+            "prioritize_goal_lane",
+            state="ok",
+            message="scheduler priority shifted toward sustained goal lane",
         )
+        return self.runtime_control
 
     def _record_kernel_event(
         self,
