@@ -548,6 +548,9 @@ export function MiraKernelConsole({
   const clearFaultRestrictionHint = clearFaultsAction
     ? actionRestrictionReason(clearFaultsAction)
     : null;
+  const faultLaneRoute = firstEventRoute("faults");
+  const runtimeLaneRoute = firstEventRoute("runtime");
+  const adapterLaneRoute = firstEventRoute("adapters");
   const controlPlaneRows = [
     { label: "Profile", value: profile?.name ?? "unknown" },
     { label: "Shell", value: shellDescriptor?.display_name ?? "Mira" },
@@ -1494,24 +1497,24 @@ export function MiraKernelConsole({
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => void handleTimelineRoute(firstEventRoute("faults"))}
-                    disabled={operatorPending || !firstEventRoute("faults")?.command}
+                    onClick={() => void handleTimelineRoute(faultLaneRoute)}
+                    disabled={operatorPending || !faultLaneRoute?.command}
                     className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
                   >
                     fault lane {eventLaneCounts.fault}
                   </button>
                   <button
                     type="button"
-                    onClick={() => void handleTimelineRoute(firstEventRoute("runtime"))}
-                    disabled={operatorPending || !firstEventRoute("runtime")?.command}
+                    onClick={() => void handleTimelineRoute(runtimeLaneRoute)}
+                    disabled={operatorPending || !runtimeLaneRoute?.command}
                     className="rounded-full border border-cyan-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
                   >
                     runtime lane {eventLaneCounts.runtime}
                   </button>
                   <button
                     type="button"
-                    onClick={() => void handleTimelineRoute(firstEventRoute("adapters"))}
-                    disabled={operatorPending || !firstEventRoute("adapters")?.command}
+                    onClick={() => void handleTimelineRoute(adapterLaneRoute)}
+                    disabled={operatorPending || !adapterLaneRoute?.command}
                     className="rounded-full border border-amber-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
                   >
                     bridge lane {eventLaneCounts.bridge}
