@@ -69,19 +69,15 @@ const DEFAULT_HOST_CONTRACT = buildHostContract({
   },
 });
 
-function readCompatBoolean(
-  grouped: unknown,
-  fallback: boolean,
-): boolean {
-  if (typeof grouped === "boolean") return grouped;
-  return fallback;
+function readBooleanOr(primary: unknown, fallback: boolean): boolean {
+  return typeof primary === "boolean" ? primary : fallback;
 }
 
-function readCompatNumber(primary: unknown, fallback: number): number {
+function readFiniteNumberOr(primary: unknown, fallback: number): number {
   return typeof primary === "number" && Number.isFinite(primary) ? primary : fallback;
 }
 
-function readCompatString(primary: unknown, fallback: string): string {
+function readNonEmptyStringOr(primary: unknown, fallback: string): string {
   return typeof primary === "string" && primary.trim() ? primary : fallback;
 }
 
@@ -95,53 +91,53 @@ function coerceHostContract(
   const rawSurfaces = raw.surfaces;
   const rawActions = raw.actions;
   const rawComposer = raw.composer;
-  const schema = readCompatString(raw.schema, fallback.schema);
-  const version = readCompatNumber(raw.version, fallback.version);
-  const showSidebarChrome = readCompatBoolean(
+  const schema = readNonEmptyStringOr(raw.schema, fallback.schema);
+  const version = readFiniteNumberOr(raw.version, fallback.version);
+  const showSidebarChrome = readBooleanOr(
     rawChrome?.showSidebarChrome,
     fallback.chrome.showSidebarChrome,
   );
-  const showSearchDialog = readCompatBoolean(
+  const showSearchDialog = readBooleanOr(
     rawChrome?.showSearchDialog,
     fallback.chrome.showSearchDialog,
   );
-  const allowUtilitySurface = readCompatBoolean(
+  const allowUtilitySurface = readBooleanOr(
     rawSurfaces?.allowUtilitySurface,
     fallback.surfaces.allowUtilitySurface,
   );
-  const allowExecutionFork = readCompatBoolean(
+  const allowExecutionFork = readBooleanOr(
     rawActions?.allowExecutionFork,
     fallback.actions.allowExecutionFork,
   );
-  const allowWorkspaceControls = readCompatBoolean(
+  const allowWorkspaceControls = readBooleanOr(
     rawSurfaces?.allowWorkspaceControls,
     fallback.surfaces.allowWorkspaceControls,
   );
-  const allowRuntimeModelControls = readCompatBoolean(
+  const allowRuntimeModelControls = readBooleanOr(
     rawSurfaces?.allowRuntimeModelControls,
     fallback.surfaces.allowRuntimeModelControls,
   );
-  const allowKernelConsole = readCompatBoolean(
+  const allowKernelConsole = readBooleanOr(
     rawSurfaces?.allowKernelConsole,
     fallback.surfaces.allowKernelConsole,
   );
-  const allowPrivilegedRuntimeControls = readCompatBoolean(
+  const allowPrivilegedRuntimeControls = readBooleanOr(
     rawSurfaces?.allowPrivilegedRuntimeControls,
     fallback.surfaces.allowPrivilegedRuntimeControls,
   );
-  const allowComposer = readCompatBoolean(
+  const allowComposer = readBooleanOr(
     rawComposer?.allowComposer,
     fallback.composer.allowComposer,
   );
-  const readOnlyExecution = readCompatBoolean(
+  const readOnlyExecution = readBooleanOr(
     rawComposer?.readOnlyExecution,
     fallback.composer.readOnlyExecution,
   );
-  const privilegeRole = readCompatString(
+  const privilegeRole = readNonEmptyStringOr(
     typeof raw.privilege?.role === "string" ? raw.privilege.role : undefined,
     fallback.privilege.role,
   );
-  const privilegeCanElevate = readCompatBoolean(
+  const privilegeCanElevate = readBooleanOr(
     raw.privilege?.canElevate,
     fallback.privilege.canElevate,
   );
