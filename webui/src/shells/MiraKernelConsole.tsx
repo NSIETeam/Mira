@@ -1241,6 +1241,27 @@ export function MiraKernelConsole({
                   </span>
                 </div>
               </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Mission control</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <div className="text-lg font-semibold text-white">
+                    {goalState?.active ? "active" : "idle"}
+                  </div>
+                  <ConsoleBadge
+                    label="lane"
+                    value={diagnostics?.snapshot.dispatch_handoff_lane ?? "none"}
+                    tone={goalState?.active ? "amber" : "slate"}
+                  />
+                </div>
+                <div className="text-xs text-slate-300">
+                  {goalState?.ui_summary ?? goalState?.objective ?? "no sustained objective recorded"}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {goalState?.active
+                    ? `continuations ${goalState?.continuation_rounds ?? 0} · progress ${goalState?.last_progress_at ?? "pending"}`
+                    : "goal runtime is cold"}
+                </div>
+              </div>
             </div>
           </div>
           <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
@@ -1919,6 +1940,19 @@ export function MiraKernelConsole({
                 <Row label="Continuation rounds" value={`${goalState?.continuation_rounds ?? 0}`} />
                 <Row label="Last progress" value={goalState?.last_progress_at ?? "none"} />
                 <Row label="Objective" value={goalState?.objective ?? "none"} />
+                <Row label="Dispatch lane" value={diagnostics?.snapshot.dispatch_handoff_lane ?? "none"} />
+                <Row
+                  label="Contract"
+                  value={`${diagnostics?.snapshot.dispatch_contract?.owner ?? "interactive"} / ${diagnostics?.snapshot.dispatch_contract?.mode ?? "direct"}`}
+                />
+                <Row
+                  label="Takeover route"
+                  value={
+                    goalState?.active
+                      ? (diagSubagentWorkers > 0 ? "goal + subagent warm handoff" : "goal lane warm handoff")
+                      : "inspect before resume"
+                  }
+                />
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <ConsoleActionButton
