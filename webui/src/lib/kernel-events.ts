@@ -111,7 +111,7 @@ export function turnCompletionFromKernelMetadata(metadata: unknown): {
 }
 
 export function assistantCompletionFromKernelMetadata(
-  metadata: unknown,
+  metadata: unknown | KernelMetadataSnapshot,
   extra: {
     content: string;
     media?: unknown;
@@ -123,7 +123,9 @@ export function assistantCompletionFromKernelMetadata(
   media?: unknown;
   source?: unknown;
 } {
-  const completion = turnCompletionFromKernelMetadata(metadata);
+  const completion = "completion" in (metadata as Record<string, unknown>)
+    ? (metadata as KernelMetadataSnapshot).completion
+    : turnCompletionFromKernelMetadata(metadata);
   return {
     content: extra.content,
     ...(extra.media !== undefined ? { media: extra.media } : {}),

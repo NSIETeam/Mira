@@ -881,6 +881,7 @@ export function usemiraStream(
     const handleKernelEvent = (event: KernelEventPayload) => {
       const metadata = event.metadata as Record<string, unknown> | undefined;
       if (!metadata || typeof metadata !== "object") return;
+      const snapshot = kernelMetadataSnapshot(metadata);
       const action = typeof event.action === "string" ? event.action : "";
       const state = typeof event.state === "string" ? event.state : "";
       const turn = turnFieldsFromEvent({
@@ -1134,7 +1135,7 @@ export function usemiraStream(
           return absorbCompleteAssistantMessage(
             filtered,
             {
-              ...assistantCompletionFromKernelMetadata(metadata, {
+              ...assistantCompletionFromKernelMetadata(snapshot, {
                 content: event.text ?? "",
                 ...(hasMedia ? { media } : {}),
                 ...(normalizedSource ? { source: normalizedSource } : {}),
@@ -1161,7 +1162,6 @@ export function usemiraStream(
 
       if (event.type !== "status") return;
 
-      const snapshot = kernelMetadataSnapshot(metadata);
       const goalStatePayload = snapshot.goalState;
       if (goalStatePayload) {
         setGoalState(goalStatePayload);
