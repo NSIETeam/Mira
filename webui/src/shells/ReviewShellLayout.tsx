@@ -22,7 +22,6 @@ export function ReviewShellLayout({
     shellSupportsRuntimeControls,
     shellSupportsFileActivity,
     hostContract,
-    fallbackTheme: "review",
     layout: "review",
   });
 

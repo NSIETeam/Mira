@@ -22,7 +22,6 @@ export function SingleExecutionShellLayout({
     shellSupportsRuntimeControls,
     shellSupportsFileActivity,
     hostContract,
-    fallbackTheme: "workbench",
     layout: "single-execution",
   });
 
