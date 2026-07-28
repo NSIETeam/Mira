@@ -812,6 +812,7 @@ export function MiraKernelConsole({
                 <ConsoleBadge label="role" value={privilegePosture.roleLabel} tone={privilegeRole === "root" ? "emerald" : "amber"} />
                 <ConsoleBadge label="access" value={privilegePosture.accessLabel} tone={allowsPrivilegedControls ? "emerald" : "amber"} />
                 <ConsoleBadge label="recovery" value={privilegePosture.recoveryLabel} tone={allowsPrivilegedControls ? "emerald" : "amber"} />
+                <ConsoleBadge label="maintenance" value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"} tone={runtimeControl?.maintenance_mode?.enabled ? "amber" : "slate"} />
                 <ConsoleBadge label="gate" value={runtimeControl?.execution_gate?.state ?? "open"} tone={runtimeControl?.execution_gate?.state === "open" ? "emerald" : "amber"} />
                 <ConsoleBadge label="board" value={boardAttachmentLabel} tone={boardSnapshot?.attached ? "emerald" : "amber"} />
                 <ConsoleBadge label="native" value={nativeHealthLabel} tone={nativeSnapshot?.health === "ready" ? "emerald" : "amber"} />
@@ -879,6 +880,9 @@ export function MiraKernelConsole({
                 </div>
                 <div className="text-xs text-slate-300">
                   {faultSummary}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {runtimeControl?.maintenance_mode?.enabled ? "maintenance gate is active" : "maintenance gate is clear"}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.14em] text-slate-300">
                   <span className={cn(
