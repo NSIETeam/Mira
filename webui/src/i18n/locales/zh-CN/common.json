@@ -285,7 +285,7 @@
       "readyTry": "试试 @{{name}}",
       "readyCopied": "已复制",
       "readyPrompt": "让 mira 在这个任务中使用 @{{name}}。",
-      "openChat": "回到对话",
+      "openChat": "回到工作台",
       "unsupported": "暂不支持",
       "unavailable": "不可用",
       "noDescription": "暂无描述。"
@@ -479,7 +479,7 @@
       "includesEstimates": "包含估算",
       "cellTitle": "{{date}}：{{tokens}} tokens，{{requests}} 次请求",
       "sources": {
-        "user": "对话",
+        "user": "互动",
         "api": "API",
         "cron": "自动任务",
         "dream": "记忆整理",
@@ -544,7 +544,7 @@
       "enable": "启用追踪支持"
     },
     "apps": {
-      "description": "把工具连接到 mira，然后在对话中 @ 使用。",
+      "description": "把工具连接到 mira，然后从工作台调用它们。",
       "cliLabel": "应用",
       "mcpLabel": "集成",
       "channelLabel": "渠道",
@@ -786,7 +786,7 @@
       "finishSignIn": "完成登录"
     },
     "skills": {
-      "description": "查看此 agent 在对话中可以加载的指令技能。",
+      "description": "查看此 agent 在执行中可以加载的指令技能。",
       "caption": "{{available}} 个可用 · 共 {{total}} 个",
       "featured": "Agent 技能",
       "empty": "暂无可用技能。",
@@ -940,7 +940,7 @@
         },
         "product": {
           "title": "产品样机",
-          "prompt": "生成一张对话式 AI Web 应用的干净产品样机图，极简界面，高级光影，真实设备边框。"
+          "prompt": "生成一张执行式 AI Web 应用的干净产品样机图，极简界面，高级光影，真实设备边框。"
         },
         "portrait": {
           "title": "风格化头像",
@@ -1085,8 +1085,8 @@
             "description": "查看或切换当前模型预设。"
           },
           "history": {
-            "title": "查看对话历史",
-            "description": "打印最近 N 条已持久化的对话消息。"
+            "title": "查看执行历史",
+            "description": "打印最近 N 条已持久化的执行消息。"
           },
           "dream": {
             "title": "运行 Dream",
