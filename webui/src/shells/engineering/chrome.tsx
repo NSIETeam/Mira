@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import {
   createDefaultHostChromeViewModel,
   createDefaultHostKernelStatus,
-  formatHostChromeTagline,
   deriveHostChromeViewModel,
   type HostKernelStatus,
 } from "./kernel-status";
@@ -67,7 +66,6 @@ export function HostChrome({
         status: resolvedStatus,
       })
     : createDefaultHostChromeViewModel(appName);
-  const visibleTaglineText = visibleTagline || formatHostChromeTagline(appName, resolvedStatus);
 
   return (
     <header className="host-drag-region pointer-events-none absolute inset-x-0 top-0 z-40 h-12 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(248,250,252,0.84)_100%)] text-foreground/90 backdrop-blur-xl">
@@ -113,7 +111,7 @@ export function HostChrome({
           {chromeStatusTitle ? <span className="sr-only">{chromeStatusTitle}</span> : null}
           <span className="text-slate-900">{appName}</span>
           <span className={cn("h-1.5 w-1.5 rounded-full", healthDotClass)} />
-          <span>{visibleTaglineText}</span>
+          <span>{visibleTagline}</span>
           {chromeStatusLabel ? (
             <span className="rounded-full border border-current/15 bg-black/[0.03] px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]">
               {chromeStatusLabel}
