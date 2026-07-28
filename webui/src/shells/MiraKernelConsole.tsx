@@ -1277,14 +1277,17 @@ export function MiraKernelConsole({
                   }
                 />
               </div>
-              <div className="mt-2 grid gap-2 md:grid-cols-2">
-                <Row label="Session" value={activeExecution?.chatId ? "attached" : "detached"} />
-                <Row label="Goal state" value={goalState?.active ? "recoverable" : "idle"} />
-                <Row label="Dispatch backlog" value={`${diagnostics?.snapshot.dispatch_queue_depth ?? 0}`} />
-                <Row label="Handoff lane" value={diagnostics?.snapshot.dispatch_handoff_lane ?? "none"} />
-                <Row label="Subagent workers" value={`${diagSubagentWorkers}`} />
-                <Row label="Pending tools" value={`${diagPendingToolCalls}`} />
-              </div>
+              <ConsoleRowGrid
+                className="mt-2 grid gap-2 md:grid-cols-2"
+                items={[
+                  { label: "Session", value: activeExecution?.chatId ? "attached" : "detached" },
+                  { label: "Goal state", value: goalState?.active ? "recoverable" : "idle" },
+                  { label: "Dispatch backlog", value: `${diagnostics?.snapshot.dispatch_queue_depth ?? 0}` },
+                  { label: "Handoff lane", value: diagnostics?.snapshot.dispatch_handoff_lane ?? "none" },
+                  { label: "Subagent workers", value: `${diagSubagentWorkers}` },
+                  { label: "Pending tools", value: `${diagPendingToolCalls}` },
+                ]}
+              />
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -1323,14 +1326,17 @@ export function MiraKernelConsole({
                   tone={dispatchQueue?.depth ? "amber" : "slate"}
                 />
               </div>
-              <div className="mt-2 grid gap-2 md:grid-cols-2">
-                <Row label="Depth" value={`${dispatchQueue?.depth ?? 0}`} />
-                <Row label="Lane" value={dispatchQueue?.lane ?? "interactive"} />
-                <Row label="Class" value={dispatchQueue?.job_class ?? "tool_contract_dispatch"} />
-                <Row label="Handoff" value={diagnostics?.snapshot.dispatch_handoff_lane ?? "none"} />
-                <Row label="Owner" value={dispatchQueue?.dispatch_contract?.owner ?? diagnostics?.snapshot.dispatch_contract?.owner ?? "interactive"} />
-                <Row label="Mode" value={dispatchQueue?.dispatch_contract?.mode ?? diagnostics?.snapshot.dispatch_contract?.mode ?? "direct"} />
-              </div>
+              <ConsoleRowGrid
+                className="mt-2 grid gap-2 md:grid-cols-2"
+                items={[
+                  { label: "Depth", value: `${dispatchQueue?.depth ?? 0}` },
+                  { label: "Lane", value: dispatchQueue?.lane ?? "interactive" },
+                  { label: "Class", value: dispatchQueue?.job_class ?? "tool_contract_dispatch" },
+                  { label: "Handoff", value: diagnostics?.snapshot.dispatch_handoff_lane ?? "none" },
+                  { label: "Owner", value: dispatchQueue?.dispatch_contract?.owner ?? diagnostics?.snapshot.dispatch_contract?.owner ?? "interactive" },
+                  { label: "Mode", value: dispatchQueue?.dispatch_contract?.mode ?? diagnostics?.snapshot.dispatch_contract?.mode ?? "direct" },
+                ]}
+              />
               <div className="mt-3 flex flex-wrap gap-2">
                 {dispatchQueueTasks.length ? dispatchQueueTasks.map((task) => (
                   <span
@@ -1795,12 +1801,14 @@ export function MiraKernelConsole({
             Bridge control
           </div>
           <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
-            <div className="grid gap-2 md:grid-cols-2">
-              <Row label="Adapter" value={selectedBridgeAdapterLabel} />
-              <Row label="Health" value={selectedBridgeHealthLabel} />
-              <Row label="Status" value={selectedBridgeStatusLabel} />
-              <Row label="Maintenance" value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"} />
-            </div>
+            <ConsoleRowGrid
+              items={[
+                { label: "Adapter", value: selectedBridgeAdapterLabel },
+                { label: "Health", value: selectedBridgeHealthLabel },
+                { label: "Status", value: selectedBridgeStatusLabel },
+                { label: "Maintenance", value: runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off" },
+              ]}
+            />
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -2438,18 +2446,20 @@ export function MiraKernelConsole({
                 tone={(nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth) ? "amber" : "slate"}
               />
             </div>
-            <div className="grid gap-2 md:grid-cols-2">
-              <Row label="Last target" value={nativeLastCommand?.target ?? "none"} />
-              <Row label="Last action" value={nativeLastCommand?.action ?? "none"} />
-              <Row label="Last command" value={lastNativeContext.command} />
-              <Row label="Last status" value={lastNativeContext.status} />
-              <Row label="Last code" value={String(lastNativeContext.code)} />
-              <Row label="Last value" value={nativeLastCommand?.value || "none"} />
-              <Row label="Artifact" value={nativeLastCommand?.artifact ?? nativeArtifactLabel} />
-              <Row label="Module focus" value={runtimeControl?.module_focus ?? "none"} />
-              <Row label="Command backlog" value={`${nativeSnapshot?.command_depth ?? 0}`} />
-              <Row label="Updated" value={lastNativeContext.updatedAt ? formatKernelTimestamp(lastNativeContext.updatedAt) : "none"} />
-            </div>
+            <ConsoleRowGrid
+              items={[
+                { label: "Last target", value: nativeLastCommand?.target ?? "none" },
+                { label: "Last action", value: nativeLastCommand?.action ?? "none" },
+                { label: "Last command", value: lastNativeContext.command },
+                { label: "Last status", value: lastNativeContext.status },
+                { label: "Last code", value: String(lastNativeContext.code) },
+                { label: "Last value", value: nativeLastCommand?.value || "none" },
+                { label: "Artifact", value: nativeLastCommand?.artifact ?? nativeArtifactLabel },
+                { label: "Module focus", value: runtimeControl?.module_focus ?? "none" },
+                { label: "Command backlog", value: `${nativeSnapshot?.command_depth ?? 0}` },
+                { label: "Updated", value: lastNativeContext.updatedAt ? formatKernelTimestamp(lastNativeContext.updatedAt) : "none" },
+              ]}
+            />
             <div className="space-y-2">
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Native modules</div>
               <div className="flex flex-wrap gap-2">
@@ -3564,6 +3574,22 @@ function ConsoleInfoCard({
           {detail}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function ConsoleRowGrid({
+  items,
+  className = "grid gap-2 md:grid-cols-2",
+}: {
+  items: Array<{ label: string; value: string }>;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      {items.map((item) => (
+        <Row key={`${item.label}:${item.value}`} label={item.label} value={item.value} />
+      ))}
     </div>
   );
 }
