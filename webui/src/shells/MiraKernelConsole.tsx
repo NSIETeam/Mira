@@ -185,6 +185,39 @@ function renderConsoleEmptyState(message: string, className = "text-xs text-mute
   return <span className={className}>{message}</span>;
 }
 
+function buildNativeControlRows(input: {
+  nativeLastCommand: {
+    target?: string | null;
+    action?: string | null;
+    value?: string | null;
+    artifact?: string | null;
+  } | null | undefined;
+  lastNativeContext: {
+    command: string;
+    status: string;
+    code: number;
+    updatedAt: number | null;
+  };
+  nativeSnapshot: {
+    bridge_artifact?: string | null;
+    command_depth?: number | null;
+  } | null | undefined;
+  moduleFocus: string | null | undefined;
+}) {
+  return [
+    { label: "Last target", value: input.nativeLastCommand?.target ?? "none" },
+    { label: "Last action", value: input.nativeLastCommand?.action ?? "none" },
+    { label: "Last command", value: input.lastNativeContext.command },
+    { label: "Last status", value: input.lastNativeContext.status },
+    { label: "Last code", value: String(input.lastNativeContext.code) },
+    { label: "Last value", value: input.nativeLastCommand?.value || "none" },
+    { label: "Artifact", value: input.nativeLastCommand?.artifact ?? (input.nativeSnapshot?.bridge_artifact ?? "none") },
+    { label: "Module focus", value: input.moduleFocus ?? "none" },
+    { label: "Command backlog", value: `${input.nativeSnapshot?.command_depth ?? 0}` },
+    { label: "Updated", value: input.lastNativeContext.updatedAt ? formatKernelTimestamp(input.lastNativeContext.updatedAt) : "none" },
+  ];
+}
+
 export function MiraKernelConsole({
   kernelManifest,
   shellDescriptor,
@@ -3289,18 +3322,12 @@ export function MiraKernelConsole({
               />
             </div>
             <ConsoleRowGrid
-              items={[
-                { label: "Last target", value: nativeLastCommand?.target ?? "none" },
-                { label: "Last action", value: nativeLastCommand?.action ?? "none" },
-                { label: "Last command", value: lastNativeContext.command },
-                { label: "Last status", value: lastNativeContext.status },
-                { label: "Last code", value: String(lastNativeContext.code) },
-                { label: "Last value", value: nativeLastCommand?.value || "none" },
-                { label: "Artifact", value: nativeLastCommand?.artifact ?? (nativeSnapshot?.bridge_artifact ?? "none") },
-                { label: "Module focus", value: runtimeControl?.module_focus ?? "none" },
-                { label: "Command backlog", value: `${nativeSnapshot?.command_depth ?? 0}` },
-                { label: "Updated", value: lastNativeContext.updatedAt ? formatKernelTimestamp(lastNativeContext.updatedAt) : "none" },
-              ]}
+              items={buildNativeControlRows({
+                nativeLastCommand,
+                lastNativeContext,
+                nativeSnapshot,
+                moduleFocus: runtimeControl?.module_focus,
+              })}
             />
             <div className="space-y-2">
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Native modules</div>
