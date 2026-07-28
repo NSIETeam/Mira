@@ -897,18 +897,24 @@ class KernelApp:
                         f" pending={len(pending_tool_names)}"
                         f" completed={len(completed_tool_names)}"
                     ),
+                    session_key=session_key,
+                    iteration=int(checkpoint.get("iteration", 0) or 0),
                 )
                 if pending_tool_names:
                     self._record_kernel_event(
                         "tool_pending",
                         state=str(checkpoint.get("phase") or "awaiting_tools"),
                         message=", ".join(pending_tool_names[:4]),
+                        session_key=session_key,
+                        iteration=int(checkpoint.get("iteration", 0) or 0),
                     )
                 if completed_tool_names:
                     self._record_kernel_event(
                         "tool_completed",
                         state=str(checkpoint.get("phase") or "tools_completed"),
                         message=", ".join(completed_tool_names[:4]),
+                        session_key=session_key,
+                        iteration=int(checkpoint.get("iteration", 0) or 0),
                     )
         subagent_rows = self._subagent_snapshot(session_key)
         if subagent_rows:
@@ -940,6 +946,8 @@ class KernelApp:
                         f"{len(subagent_rows)} delegated worker(s) active;"
                         f" head={top.get('label', 'subagent')} iter {top.get('iteration', 0)}"
                     ),
+                    session_key=session_key,
+                    iteration=int(top.get("iteration", 0) or 0),
                 )
                 for event in list(top.get("tool_events", []))[:3]:
                     if not isinstance(event, dict):
@@ -951,6 +959,8 @@ class KernelApp:
                         "subagent_tool",
                         state=tool_state,
                         message=f"{top.get('label', 'subagent')}: {tool_detail}",
+                        session_key=session_key,
+                        iteration=int(top.get("iteration", 0) or 0),
                     )
 
     def _handle_session_turn_started(self, event: SessionTurnStarted) -> None:
@@ -961,6 +971,8 @@ class KernelApp:
             "session_turn_started",
             state="running",
             message=f"session {session_key} admitted to kernel",
+            session_key=session_key,
+            event_type="session",
         )
 
     def _handle_run_status_changed(self, event: TurnRunStatusChanged) -> None:
@@ -973,6 +985,8 @@ class KernelApp:
             "turn_run_status_changed",
             state=event.status,
             message=f"session {session_key} status -> {event.status}",
+            session_key=session_key,
+            event_type="turn",
         )
 
     def _handle_turn_completed(self, event: TurnCompleted) -> None:
@@ -999,6 +1013,9 @@ class KernelApp:
             "turn_completed",
             state="ok",
             message=f"session {session_key} completed",
+            session_key=session_key,
+            event_type="turn",
+            latency_ms=event.latency_ms,
         )
 
     def _handle_goal_state_changed(self, event: GoalStateChanged) -> None:
@@ -1010,6 +1027,8 @@ class KernelApp:
             "goal_state_changed",
             state="active" if goal_blob.get("active") else "idle",
             message=str(goal_blob.get("ui_summary") or goal_blob.get("objective") or "goal state updated"),
+            session_key=session_key,
+            event_type="goal",
         )
 
     def _handle_runtime_model_changed(self, event: RuntimeModelChanged) -> None:
@@ -3488,12 +3507,20 @@ class KernelApp:
         *,
         state: str,
         message: str,
+        event_type: str | None = None,
+        session_key: str | None = None,
+        iteration: int | None = None,
+        latency_ms: int | None = None,
     ) -> None:
         self._event_log = append_kernel_event(
             self._event_log,
             action=action,
             state=state,
             message=message,
+            event_type=event_type,
+            session_key=session_key,
+            iteration=iteration,
+            latency_ms=latency_ms,
         )
 
     def _store_native_command_state(

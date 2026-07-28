@@ -42,6 +42,10 @@ def append_kernel_event(
     action: str,
     state: str,
     message: str,
+    event_type: str | None = None,
+    session_key: str | None = None,
+    iteration: int | None = None,
+    latency_ms: int | None = None,
 ) -> list[dict[str, Any]]:
     route_command = "event show"
     route_pane = "workspace"
@@ -62,6 +66,7 @@ def append_kernel_event(
         route_pane = "runtime"
     row = {
         "id": f"{len(event_log) + 1}",
+        "type": event_type or action,
         "action": action,
         "state": state,
         "message": message,
@@ -74,4 +79,10 @@ def append_kernel_event(
             }
         ],
     }
+    if session_key:
+        row["session_key"] = session_key
+    if iteration is not None:
+        row["iteration"] = iteration
+    if latency_ms is not None:
+        row["latency_ms"] = latency_ms
     return [row, *event_log][:KERNEL_EVENT_LOG_LIMIT]
