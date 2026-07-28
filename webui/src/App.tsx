@@ -1168,7 +1168,6 @@ function Shell({
               supportsFileActivity={shellSupportsFileActivity}
               allowComposer={shellComposerEnabled}
               readOnlyExecution={shellExecutionReadOnly}
-              shellTitle={shellTitle}
               shellDescription={shellDescriptor?.description ?? null}
               skills={skills}
             />

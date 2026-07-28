@@ -169,7 +169,6 @@ interface ThreadShellProps {
   supportsFileActivity?: boolean;
   allowComposer?: boolean;
   readOnlyExecution?: boolean;
-  shellTitle?: string;
   shellDescription?: string | null;
   skills?: SkillSummary[];
 }
@@ -438,7 +437,6 @@ export function ThreadShell({
   supportsFileActivity = true,
   allowComposer = true,
   readOnlyExecution = false,
-  shellTitle,
   shellDescription = null,
   skills = [],
 }: ThreadShellProps) {
@@ -1113,6 +1111,11 @@ export function ThreadShell({
     supportsFileActivity ? "files" : "no-files",
     readOnlyExecution ? "read-only" : "interactive",
   ];
+  const shellPosture = [
+    shellDescription,
+    allowComposer ? "operator shell" : "viewer shell",
+    readOnlyExecution ? "locked execution" : "live execution",
+  ].filter(Boolean).join(" · ");
 
   return (
     <section ref={shellRef} className="relative flex min-h-0 flex-1 overflow-hidden">
@@ -1127,7 +1130,7 @@ export function ThreadShell({
             hostChromeTitleInset={hostChromeTitleInset}
             hideThemeButton={hideThemeButton}
             minimal={!session && !loading}
-            subtitle={shellDescription || shellTitle || null}
+            subtitle={shellPosture || null}
             capabilityBadges={capabilityBadges}
             promptNavigatorAction={promptNavigatorAction}
             sessionInfoAction={sessionInfoAction}
