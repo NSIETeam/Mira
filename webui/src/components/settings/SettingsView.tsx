@@ -4891,7 +4891,7 @@ function ImageGenerationSettings({
         <SettingsGroup>
           <SettingsRow
             title={tx("settings.rows.imageGeneration", "Image generation")}
-            description={tx("settings.help.imageGeneration", "Expose generate_image in chats when a configured image provider is available.")}
+            description={tx("settings.help.imageGeneration", "Expose generate_image in executions when a configured image provider is available.")}
           >
             <ToggleButton
               checked={form.enabled}
@@ -8825,8 +8825,8 @@ function AdvancedSettings({
             description={tx(
               isNativeHostSurface ? "settings.help.webuiDefaultAccessNative" : "settings.help.webuiDefaultAccess",
               isNativeHostSurface
-                ? "Used by native chats without a project-specific permission."
-                : "Used by web chats without a project-specific permission.",
+                ? "Used by native executions without a project-specific permission."
+                : "Used by web executions without a project-specific permission.",
             )}
           >
             <SegmentedControl
