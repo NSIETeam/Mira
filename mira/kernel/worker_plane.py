@@ -32,26 +32,3 @@ def build_worker_registry() -> list[dict[str, Any]]:
             "summary": "Delegated worker pool for parallel or specialized execution.",
         },
     ]
-
-
-def project_worker_registry(
-    *,
-    preferred_lane: str,
-    goal_active: bool,
-    goal_continuing: bool,
-) -> list[dict[str, Any]]:
-    workers = build_worker_registry()
-    for worker in workers:
-        lane = str(worker.get("lane") or "")
-        if lane == "interactive":
-            worker["state"] = "preferred" if preferred_lane == "interactive" else "ready"
-        elif lane == "sustained_goal":
-            if goal_continuing:
-                worker["state"] = "continuing"
-            elif goal_active:
-                worker["state"] = "active"
-            elif preferred_lane == "sustained_goal":
-                worker["state"] = "preferred"
-        elif lane == "subagent" and preferred_lane == "subagent":
-            worker["state"] = "preferred"
-    return workers

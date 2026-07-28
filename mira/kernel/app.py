@@ -74,7 +74,7 @@ from .scheduler import (
     request_background_drain,
 )
 from .observability import append_kernel_event, build_diagnostics_snapshot
-from .worker_plane import project_worker_registry
+from .worker_plane import build_worker_registry
 from .runtime_topology import build_runtime_topology
 from .embedded_plane import build_board_snapshot, build_embedded_topology
 
@@ -484,11 +484,13 @@ def build_kernel_manifest(
                 },
             ],
         },
-        "workers": project_worker_registry(
-            preferred_lane="interactive",
-            goal_active=False,
-            goal_continuing=False,
-        ),
+        "workers": [
+            {
+                **worker,
+                "state": "preferred" if str(worker.get("lane") or "") == "interactive" else worker.get("state"),
+            }
+            for worker in build_worker_registry()
+        ],
         "embedded_topology": build_embedded_topology(
             board=build_board_snapshot(
                 attached=False,
@@ -3221,11 +3223,20 @@ class KernelApp:
         dispatch_items = [dict(item) for item in list(queue_snapshot.get("queue_items") or [])]
         if any(status == "running" for status in self._session_status.values()):
             preferred_lane = "interactive"
-        workers = project_worker_registry(
-            preferred_lane=preferred_lane,
-            goal_active=bool(goal_blob.get("active")),
-            goal_continuing=continuation,
-        )
+        workers = build_worker_registry()
+        for worker in workers:
+            lane = str(worker.get("lane") or "")
+            if lane == "interactive":
+                worker["state"] = "preferred" if preferred_lane == "interactive" else "ready"
+            elif lane == "sustained_goal":
+                if continuation:
+                    worker["state"] = "continuing"
+                elif bool(goal_blob.get("active")):
+                    worker["state"] = "active"
+                elif preferred_lane == "sustained_goal":
+                    worker["state"] = "preferred"
+            elif lane == "subagent" and preferred_lane == "subagent":
+                worker["state"] = "preferred"
         checkpoint = self._active_checkpoint()
         subagent_rows = self._subagent_snapshot(self._active_session_key)
         active_adapter_name = str(self._runtime_control.get("active_adapter") or "")
