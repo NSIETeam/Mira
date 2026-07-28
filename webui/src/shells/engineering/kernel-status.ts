@@ -67,3 +67,38 @@ export function deriveFallbackKernelStatus(appTagline: string): HostKernelStatus
     ].filter(Boolean).join(" · "),
   };
 }
+
+export function createHostKernelStatus(input: {
+  privilege: "root" | "user";
+  health: "healthy" | "attention" | "offline";
+  maintenance: "maintenance" | "live";
+}): HostKernelStatus {
+  const runtimeState =
+    input.maintenance === "maintenance"
+      ? "maintenance"
+      : input.health;
+  const runtimeSeverity =
+    input.maintenance === "maintenance"
+      ? "warning"
+      : input.health === "offline"
+        ? "critical"
+        : input.health === "attention"
+          ? "warning"
+          : "normal";
+
+  return {
+    privilege: input.privilege,
+    health: input.health,
+    maintenance: input.maintenance,
+    runtimeState,
+    runtimeSeverity,
+    privilegeSeverity: input.privilege === "root" ? "elevated" : "restricted",
+    connected: input.health !== "offline",
+    alert: input.maintenance === "maintenance" || input.health === "attention",
+    summary: [
+      `privilege ${input.privilege}`,
+      `kernel ${input.health}`,
+      `runtime ${input.maintenance}`,
+    ].join(" · "),
+  };
+}
