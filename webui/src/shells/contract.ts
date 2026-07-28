@@ -16,24 +16,24 @@ function shellThemeFallback(contract: ShellHostContract): string {
 
 export function shellDataAttributes({
   shellDescriptor,
-  shellSupportsThreads,
-  shellSupportsRuntimeControls,
-  shellSupportsFileActivity,
+  shellCapabilities,
   hostContract,
 }: {
   shellDescriptor: ShellDescriptorPayload | null;
-  shellSupportsThreads: boolean;
-  shellSupportsRuntimeControls: boolean;
-  shellSupportsFileActivity: boolean;
+  shellCapabilities: {
+    supportsThreads: boolean;
+    supportsRuntimeControls: boolean;
+    supportsFileActivity: boolean;
+  };
   hostContract: ShellHostContract;
 }): Record<string, string> {
   return {
     "data-shell-name": shellDescriptor?.name ?? hostContract.mode,
     "data-shell-theme": shellDescriptor?.theme ?? shellThemeFallback(hostContract),
     "data-shell-description": shellDescriptor?.description ?? "",
-    "data-shell-supports-threads": dataFlag(shellSupportsThreads),
-    "data-shell-supports-runtime-controls": dataFlag(shellSupportsRuntimeControls),
-    "data-shell-supports-file-activity": dataFlag(shellSupportsFileActivity),
+    "data-shell-supports-threads": dataFlag(shellCapabilities.supportsThreads),
+    "data-shell-supports-runtime-controls": dataFlag(shellCapabilities.supportsRuntimeControls),
+    "data-shell-supports-file-activity": dataFlag(shellCapabilities.supportsFileActivity),
     ...(hostContract.mode !== "engineering" ? { "data-shell-layout": hostContract.mode } : {}),
     "data-shell-mode": hostContract.mode,
     "data-shell-read-only": dataFlag(hostContract.composer.readOnlyExecution),

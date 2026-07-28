@@ -558,6 +558,11 @@ function Shell({
   const shellSupportsThreads = shellDescriptor?.supports_threads ?? true;
   const shellSupportsRuntimeControls = shellDescriptor?.supports_runtime_controls ?? true;
   const shellSupportsFileActivity = shellDescriptor?.supports_file_activity ?? true;
+  const shellCapabilities = useMemo(() => ({
+    supportsThreads: shellSupportsThreads,
+    supportsRuntimeControls: shellSupportsRuntimeControls,
+    supportsFileActivity: shellSupportsFileActivity,
+  }), [shellSupportsFileActivity, shellSupportsRuntimeControls, shellSupportsThreads]);
   const shellTitle = shellDescriptor?.display_name ?? appName;
   const shellRegistration = useMemo(
     () => resolveShellRegistration(shellDescriptor),
@@ -965,9 +970,7 @@ function Shell({
         showHostChrome={showHostChrome}
         shellDescriptor={shellDescriptor}
         shellTitle={shellTitle}
-        shellSupportsThreads={shellSupportsThreads}
-        shellSupportsRuntimeControls={shellSupportsRuntimeControls}
-        shellSupportsFileActivity={shellSupportsFileActivity}
+        shellCapabilities={shellCapabilities}
         hostContract={shellHostContract}
         topChrome={showHostChrome ? (
           <HostChrome

@@ -7,9 +7,7 @@ export function ReviewShellLayout({
   showHostChrome,
   shellDescriptor,
   shellTitle,
-  shellSupportsThreads,
-  shellSupportsRuntimeControls,
-  shellSupportsFileActivity,
+  shellCapabilities,
   hostContract,
   topChrome,
   chatView,
@@ -18,9 +16,7 @@ export function ReviewShellLayout({
 }: ShellViewProps) {
   const shellAttrs = shellDataAttributes({
     shellDescriptor,
-    shellSupportsThreads,
-    shellSupportsRuntimeControls,
-    shellSupportsFileActivity,
+    shellCapabilities,
     hostContract,
   });
 

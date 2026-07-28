@@ -46,9 +46,11 @@ export interface ShellViewProps {
   showHostChrome: boolean;
   shellDescriptor: ShellDescriptorPayload | null;
   shellTitle: string;
-  shellSupportsThreads: boolean;
-  shellSupportsRuntimeControls: boolean;
-  shellSupportsFileActivity: boolean;
+  shellCapabilities: {
+    supportsThreads: boolean;
+    supportsRuntimeControls: boolean;
+    supportsFileActivity: boolean;
+  };
   hostContract: ShellHostContract;
   topChrome?: ReactNode;
   hostSidebarFlow?: ReactNode;

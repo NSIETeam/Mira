@@ -6,9 +6,7 @@ export function EngineeringShellLayout({
   showHostChrome,
   shellDescriptor,
   shellTitle,
-  shellSupportsThreads,
-  shellSupportsRuntimeControls,
-  shellSupportsFileActivity,
+  shellCapabilities,
   hostContract,
   topChrome,
   hostSidebarFlow,
@@ -22,9 +20,7 @@ export function EngineeringShellLayout({
 }: ShellViewProps) {
   const shellAttrs = shellDataAttributes({
     shellDescriptor,
-    shellSupportsThreads,
-    shellSupportsRuntimeControls,
-    shellSupportsFileActivity,
+    shellCapabilities,
     hostContract,
   });
 
