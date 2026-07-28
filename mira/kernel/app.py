@@ -3802,14 +3802,17 @@ class KernelApp:
             enabled=True,
             reason=maintenance_reason,
         )
-        return self._commit_runtime_control_action(
+        self._dispatch_native_control(
             target="runtime",
             action="enter_maintenance",
             value=maintenance_reason,
-            event_action="enter_maintenance",
-            event_state="maintenance",
-            event_message=maintenance_reason,
         )
+        self._record_kernel_event(
+            "enter_maintenance",
+            state="maintenance",
+            message=maintenance_reason,
+        )
+        return self.runtime_control
 
     def exit_maintenance(self) -> dict[str, Any]:
         self._runtime_control = set_maintenance_mode(self._runtime_control, enabled=False)
