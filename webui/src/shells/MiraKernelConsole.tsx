@@ -85,6 +85,15 @@ function formatKernelTimestampList(value: string): string {
     .join(", ");
 }
 
+function formatBridgeCommandSummary(command: {
+  target?: string | null;
+  action?: string | null;
+  status?: string | null;
+  code?: number | null;
+} | null | undefined): string {
+  return `${command?.target ?? "runtime"}:${command?.action ?? "status"}:${command?.status ?? "ready"}:${command?.code ?? 0}`;
+}
+
 export function MiraKernelConsole({
   kernelManifest,
   shellDescriptor,
@@ -2853,7 +2862,7 @@ export function MiraKernelConsole({
                     {bridge.last_command ? (
                       <Row
                         label="Last command"
-                        value={`${bridge.last_command.target ?? "runtime"}:${bridge.last_command.action ?? "status"}:${bridge.last_command.status ?? "ready"}:${bridge.last_command.code ?? 0}`}
+                        value={formatBridgeCommandSummary(bridge.last_command)}
                       />
                     ) : null}
                     {bridge.recent_commands?.length ? (
@@ -2872,8 +2881,7 @@ export function MiraKernelConsole({
                                 <span>{row.action ?? "status"}</span>
                               </div>
                               <div className="flex flex-wrap items-center gap-2 text-[12px] text-slate-700">
-                                <span>Status {row.status ?? "ready"}</span>
-                                <span>Code {row.code ?? 0}</span>
+                                <span>{formatBridgeCommandSummary(row)}</span>
                                 {typeof row.updated_at_ms === "number" ? (
                                   <span>{formatRuntimeTimestamp(row.updated_at_ms)}</span>
                                 ) : null}
