@@ -255,7 +255,6 @@ function shellRegistryKey(
     return contractMode;
   }
   const shellName = shellDescriptor?.name?.trim() ?? "";
-  if (shellName === "engineering-shell") return "engineering";
   if (shellName === "single-execution") return "single-execution";
   if (shellName === "review") return "review";
   return shellName;

@@ -81,7 +81,7 @@ def _shell_metadata(**entries: str) -> dict[str, str]:
 class ShellDescriptor:
     """Minimal shell contract layered on top of the execution kernel."""
 
-    name: str = "engineering-shell"
+    name: str = "engineering"
     display_name: str = "Mira"
     description: str = "General-purpose engineering shell for the Mira execution kernel."
     theme: str = "engineering"
@@ -111,7 +111,7 @@ def default_engineering_shell() -> ShellDescriptor:
     """Default shell for a mature, generic execution layer."""
     privilege_role, privilege_can_elevate = _runtime_privilege()
     return ShellDescriptor(
-        name="engineering-shell",
+        name="engineering",
         host_contract=_host_contract(
             mode="engineering",
             show_sidebar_chrome=True,
