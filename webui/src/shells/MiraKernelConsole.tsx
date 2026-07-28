@@ -2617,20 +2617,23 @@ export function MiraKernelConsole({
             <div className="space-y-2">
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Adapters</div>
               <div className="flex flex-wrap gap-2">
-                {runtimeTopologyAdapters.length ? runtimeTopologyAdapters.map((adapter) => (
-                  <button
-                    key={adapter.name}
-                    type="button"
-                    onClick={() => {
-                      onSelectAdapter(adapter.name);
-                      runContractAction(adapter.actions?.find((action) => action.id === "inspect_adapter"), "adapters");
-                    }}
-                    disabled={operatorPending || !adapter.actions?.find((action) => action.id === "inspect_adapter")?.command}
-                    className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
-                  >
-                    {adapter.name}
-                  </button>
-                )) : (
+                {runtimeTopologyAdapters.length ? runtimeTopologyAdapters.map((adapter) => {
+                  const inspectAdapterAction = adapter.actions?.find((action) => action.id === "inspect_adapter");
+                  return (
+                    <button
+                      key={adapter.name}
+                      type="button"
+                      onClick={() => {
+                        onSelectAdapter(adapter.name);
+                        runContractAction(inspectAdapterAction, "adapters");
+                      }}
+                      disabled={operatorPending || !inspectAdapterAction?.command}
+                      className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+                    >
+                      {adapter.name}
+                    </button>
+                  );
+                }) : (
                   <span className="text-xs text-muted-foreground">No adapter topology exposed.</span>
                 )}
               </div>
@@ -2638,17 +2641,20 @@ export function MiraKernelConsole({
             <div className="space-y-2">
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Lanes</div>
               <div className="flex flex-wrap gap-2">
-                {runtimeTopologyLanes.length ? runtimeTopologyLanes.map((lane) => (
-                  <button
-                    key={lane.id}
-                    type="button"
-                    onClick={() => runContractAction(lane.actions?.find((action) => action.id === "open_lane"), "runtime")}
-                    disabled={operatorPending || !lane.actions?.find((action) => action.id === "open_lane")?.command}
-                    className="rounded-full border border-blue-300/80 bg-blue-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-blue-700 transition-colors hover:bg-blue-100"
-                  >
-                    {lane.id}
-                  </button>
-                )) : (
+                {runtimeTopologyLanes.length ? runtimeTopologyLanes.map((lane) => {
+                  const openLaneAction = lane.actions?.find((action) => action.id === "open_lane");
+                  return (
+                    <button
+                      key={lane.id}
+                      type="button"
+                      onClick={() => runContractAction(openLaneAction, "runtime")}
+                      disabled={operatorPending || !openLaneAction?.command}
+                      className="rounded-full border border-blue-300/80 bg-blue-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-blue-700 transition-colors hover:bg-blue-100"
+                    >
+                      {lane.id}
+                    </button>
+                  );
+                }) : (
                   <span className="text-xs text-muted-foreground">No lane topology exposed.</span>
                 )}
               </div>
@@ -2656,40 +2662,44 @@ export function MiraKernelConsole({
             <div className="space-y-2">
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Modules</div>
               <div className="flex flex-wrap gap-2">
-                {runtimeTopologyModules.length ? runtimeTopologyModules.map((module) => (
-                  <div key={module.name} className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectModule(module.name);
-                        runContractAction(module.actions?.find((action) => action.id === "show_module"), "modules");
-                      }}
-                      disabled={operatorPending || !module.actions?.find((action) => action.id === "show_module")?.command}
-                      className={cn(
-                        "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] transition-colors",
-                        module.native_status === "fault"
-                          ? "border-rose-300/80 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                          : module.native_status === "busy"
-                            ? "border-amber-300/80 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                            : module.native_status
-                              ? "border-fuchsia-300/80 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100"
-                              : "border-slate-300/80 bg-slate-50 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      {module.name}
-                    </button>
-                    {module.native_status ? (
+                {runtimeTopologyModules.length ? runtimeTopologyModules.map((module) => {
+                  const showModuleAction = module.actions?.find((action) => action.id === "show_module");
+                  const focusNativeAction = module.actions?.find((action) => action.id === "focus_native");
+                  return (
+                    <div key={module.name} className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => runContractAction(module.actions?.find((action) => action.id === "focus_native"), "modules")}
-                        disabled={operatorPending || !module.actions?.find((action) => action.id === "focus_native")?.command}
-                        className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                        onClick={() => {
+                          onSelectModule(module.name);
+                          runContractAction(showModuleAction, "modules");
+                        }}
+                        disabled={operatorPending || !showModuleAction?.command}
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] transition-colors",
+                          module.native_status === "fault"
+                            ? "border-rose-300/80 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                            : module.native_status === "busy"
+                              ? "border-amber-300/80 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                              : module.native_status
+                                ? "border-fuchsia-300/80 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100"
+                                : "border-slate-300/80 bg-slate-50 text-slate-700 hover:bg-slate-100",
+                        )}
                       >
-                        inspect
+                        {module.name}
                       </button>
-                    ) : null}
-                  </div>
-                )) : (
+                      {module.native_status ? (
+                        <button
+                          type="button"
+                          onClick={() => runContractAction(focusNativeAction, "modules")}
+                          disabled={operatorPending || !focusNativeAction?.command}
+                          className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                        >
+                          inspect
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                }) : (
                   <span className="text-xs text-muted-foreground">No module topology exposed.</span>
                 )}
               </div>
@@ -3210,17 +3220,20 @@ export function MiraKernelConsole({
                 <ConsoleBadge label="modules" value={`${nativeFaultModules.length}`} tone="amber" />
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {nativeFaultModules.length ? nativeFaultModules.slice(0, 6).map(([name, state]) => (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => runContractAction(state?.actions?.find((action) => action.id === "inspect_native_module"), "modules")}
-                    disabled={operatorPending || !state?.actions?.find((action) => action.id === "inspect_native_module")?.command}
-                    className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
-                  >
-                    {name}:{state?.last_code ?? 0}
-                  </button>
-                )) : (
+                {nativeFaultModules.length ? nativeFaultModules.slice(0, 6).map(([name, state]) => {
+                  const inspectNativeModuleAction = state?.actions?.find((action) => action.id === "inspect_native_module");
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => runContractAction(inspectNativeModuleAction, "modules")}
+                      disabled={operatorPending || !inspectNativeModuleAction?.command}
+                      className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+                    >
+                      {name}:{state?.last_code ?? 0}
+                    </button>
+                  );
+                }) : (
                   <span className="text-xs text-rose-700/80">No native module faults.</span>
                 )}
               </div>
@@ -3233,17 +3246,20 @@ export function MiraKernelConsole({
                 <ConsoleBadge label="bridges" value={`${faultedBridges.length}`} tone="amber" />
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {faultedBridges.length ? faultedBridges.slice(0, 6).map((bridge) => (
-                  <button
-                    key={bridge.adapter}
-                    type="button"
-                    onClick={() => runContractAction(bridge.actions?.find((action) => action.id === "inspect_bridge"), "adapters")}
-                    disabled={operatorPending || !bridge.actions?.find((action) => action.id === "inspect_bridge")?.command}
-                    className="rounded-full border border-amber-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
-                  >
-                    {bridge.adapter}:{bridge.runtime_stage ?? bridge.health}
-                  </button>
-                )) : (
+                {faultedBridges.length ? faultedBridges.slice(0, 6).map((bridge) => {
+                  const inspectBridgeAction = bridge.actions?.find((action) => action.id === "inspect_bridge");
+                  return (
+                    <button
+                      key={bridge.adapter}
+                      type="button"
+                      onClick={() => runContractAction(inspectBridgeAction, "adapters")}
+                      disabled={operatorPending || !inspectBridgeAction?.command}
+                      className="rounded-full border border-amber-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
+                    >
+                      {bridge.adapter}:{bridge.runtime_stage ?? bridge.health}
+                    </button>
+                  );
+                }) : (
                   <span className="text-xs text-amber-700/80">No bridge faults.</span>
                 )}
               </div>
