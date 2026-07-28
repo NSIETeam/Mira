@@ -843,6 +843,9 @@ export interface KernelManifestPayload {
     action: string;
     state: string;
     message: string;
+    session_key?: string;
+    iteration?: number;
+    latency_ms?: number;
     actions?: Array<{
       id: string;
       label: string;
