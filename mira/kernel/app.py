@@ -2890,13 +2890,6 @@ class KernelApp:
                 lane["summary"] = f"{dispatch_depth} dispatch task(s) handed to subagent lane"
         return lanes
 
-    def execution_lanes_snapshot(
-        self,
-        *,
-        session_metadata: dict[str, Any] | None = None,
-    ) -> list[dict[str, Any]]:
-        return self.execution_lanes(session_metadata=session_metadata)
-
     def scheduler_snapshot(
         self,
         *,
