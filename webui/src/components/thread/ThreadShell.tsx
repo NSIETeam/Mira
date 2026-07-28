@@ -1098,6 +1098,23 @@ export function ThreadShell({
     allowComposer ? "operator shell" : "observer shell",
     readOnlyExecution ? "locked execution" : "live execution lane",
   ].filter(Boolean).join(" · ");
+  const toolingSurface = [
+    {
+      label: "Slash",
+      value: `${slashCommands.length}`,
+      detail: slashCommands.slice(0, 2).map((command) => command.command).join(" · ") || "no commands",
+    },
+    {
+      label: "CLI",
+      value: `${cliApps.length}`,
+      detail: cliApps.slice(0, 2).map((app) => app.name).join(" · ") || "no apps",
+    },
+    {
+      label: "MCP",
+      value: `${mcpPresets.length}`,
+      detail: mcpPresets.slice(0, 2).map((preset) => preset.name).join(" · ") || "no presets",
+    },
+  ];
   const emptyState = loading ? (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
       {t("thread.loadingConversation")}
@@ -1169,19 +1186,34 @@ export function ThreadShell({
           </div>
           <div className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Operator posture
+              Tooling surface
             </div>
-            <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-1">
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Execution</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">
-                  {readOnlyExecution ? "locked" : "live"}
+            <div className="mt-2 grid gap-2">
+              {toolingSurface.map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                      {item.label}
+                    </div>
+                    <div className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700">
+                      {item.value}
+                    </div>
+                  </div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    {item.detail}
+                  </div>
                 </div>
-              </div>
+              ))}
               <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Composer</div>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Shell posture</div>
                 <div className="mt-1 text-sm font-semibold text-slate-900">
-                  {allowComposer ? "operator ready" : "viewer only"}
+                  {allowComposer ? "operator ready" : "observer only"}
+                </div>
+                <div className="mt-1 text-xs text-slate-600">
+                  {readOnlyExecution ? "locked execution lane" : "live execution lane"}
                 </div>
               </div>
             </div>
