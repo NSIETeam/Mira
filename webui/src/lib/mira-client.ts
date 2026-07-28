@@ -566,7 +566,7 @@ export class miraClient {
     if (
       kernelEvent.type === "status"
       && kernelEvent.state === "ready"
-      && parsed.event === "runtime_model_updated"
+      && "model_name" in parsed
     ) {
       this.emitRuntimeModelUpdate(parsed.model_name || null, parsed.model_preset ?? null);
       return;
@@ -575,7 +575,8 @@ export class miraClient {
     if (
       kernelEvent.type === "status"
       && kernelEvent.state === "done"
-      && parsed.event === "transcription_result"
+      && "request_id" in parsed
+      && "text" in parsed
     ) {
       this.resolveTranscription(parsed.request_id, parsed.text);
       return;
@@ -584,7 +585,7 @@ export class miraClient {
     if (
       kernelEvent.type === "error"
       && kernelEvent.action === "transcription_error"
-      && parsed.event === "transcription_error"
+      && "detail" in parsed
     ) {
       this.rejectTranscription(parsed.request_id, parsed.detail || "error");
       return;
@@ -593,7 +594,7 @@ export class miraClient {
     if (
       kernelEvent.type === "status"
       && kernelEvent.state === "ready"
-      && parsed.event === "session_updated"
+      && "workspace_scope" in parsed
     ) {
       this.emitSessionUpdate(parsed.chat_id, parsed.scope, parsed.workspace_scope);
       return;
@@ -601,7 +602,6 @@ export class miraClient {
 
     if (
       kernelEvent.type === "error"
-      && parsed.event === "error"
       && parsed.detail === "workspace_scope_rejected"
     ) {
       this.emitError({
