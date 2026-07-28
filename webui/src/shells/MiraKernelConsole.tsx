@@ -543,6 +543,71 @@ export function MiraKernelConsole({
           <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Control plane
           </div>
+          <div className="grid gap-3 rounded-2xl border border-slate-900 bg-[linear-gradient(135deg,#020617_0%,#0f172a_55%,#111827_100%)] p-4 text-slate-100 shadow-[0_24px_80px_rgba(15,23,42,0.28)]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-2">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-200/80">
+                  Mira kernel shell
+                </div>
+                <div className="text-2xl font-semibold tracking-[-0.03em] text-white">
+                  {kernelManifest?.identity?.app_name ?? "Mira"} operator console
+                </div>
+                <div className="max-w-2xl text-sm text-slate-300">
+                  General execution layer with runtime supervision, native bridge control, module focus,
+                  board operations, and fault posture in one shell.
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <ConsoleBadge label="shell" value={shellMode} tone="slate" />
+                <ConsoleBadge label="gate" value={runtimeControl?.execution_gate?.state ?? "open"} tone={runtimeControl?.execution_gate?.state === "open" ? "emerald" : "amber"} />
+                <ConsoleBadge label="board" value={boardSnapshot?.attached ? "attached" : "detached"} tone={boardSnapshot?.attached ? "emerald" : "amber"} />
+                <ConsoleBadge label="native" value={nativeSnapshot?.health ?? "unknown"} tone={nativeSnapshot?.health === "ready" ? "emerald" : "amber"} />
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Privilege</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className={cn(
+                    "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em]",
+                    privilegeRole === "root"
+                      ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
+                      : "border-amber-400/40 bg-amber-500/15 text-amber-100",
+                  )}>
+                    {privilegeRole}
+                  </span>
+                  <span className="text-xs text-slate-300">
+                    {shellAllowsPrivilegedControls ? (canElevate && privilegeRole !== "root" ? "elevation-capable" : "operator-ready") : "restricted shell"}
+                  </span>
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Runtime</div>
+                <div className="mt-2 text-lg font-semibold text-white">{runtimeModel ?? "unresolved"}</div>
+                <div className="text-xs text-slate-300">
+                  {runtimeControl?.execution_gate?.reason ?? "operator-ready"}
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Module focus</div>
+                <div className="mt-2 text-lg font-semibold text-white">
+                  {selectedModule?.name ?? selectedModuleName ?? "unfocused"}
+                </div>
+                <div className="text-xs text-slate-300">
+                  native queue {(nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0)} / modules {nativeSnapshot?.module_count ?? runtimeModules.length}
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Board target</div>
+                <div className="mt-2 text-lg font-semibold text-white">
+                  {boardSnapshot?.target ?? embeddedTargetHint ?? "host"}
+                </div>
+                <div className="text-xs text-slate-300">
+                  {boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"} · {boardSnapshot?.port ?? "auto"}
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
             <Row label="Profile" value={profile?.name ?? "unknown"} />
             <Row label="Shell" value={shellDescriptor?.display_name ?? "Mira"} />
@@ -577,6 +642,7 @@ export function MiraKernelConsole({
             <Row label="Compat alias" value={kernelManifest?.identity?.legacy_cli_name ?? "mira"} />
             <Row label="Profile" value={profile?.name ?? "unknown"} />
             <Row label="Privilege" value={privilegeRole} />
+            <Row label="Privileged shell" value={shellAllowsPrivilegedControls ? "enabled" : "restricted"} />
             <Row label="Elevation" value={canElevate ? "allowed" : "fixed"} />
             <Row label="GUI" value={runtimeCapabilities?.gui ? "enabled" : "off"} />
             <Row label="API" value={runtimeCapabilities?.api ? "enabled" : "off"} />
