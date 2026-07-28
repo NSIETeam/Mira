@@ -3550,14 +3550,17 @@ class KernelApp:
             module_name=module_name,
             module_names=[module["name"] for module in self._runtime_modules],
         )
-        return self._commit_runtime_control_action(
+        self._dispatch_native_control(
             target=module_name,
             action="focus_module",
             value=module_name,
-            event_action="focus_module",
-            event_state="ok",
-            event_message=f"module focus -> {module_name}",
         )
+        self._record_kernel_event(
+            "focus_module",
+            state="ok",
+            message=f"module focus -> {module_name}",
+        )
+        return self.runtime_control
 
     def attach_board(
         self,
