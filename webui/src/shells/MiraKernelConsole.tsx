@@ -1550,6 +1550,32 @@ export function MiraKernelConsole({
                 <div className="mt-1 text-xs text-muted-foreground">
                   {selectedModule.category} · {selectedModule.summary}
                 </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-4">
+                  <div className="rounded-lg border border-lime-200/70 bg-lime-50/80 p-3">
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-lime-700">Focus status</div>
+                    <div className="mt-2 text-sm font-semibold text-lime-950">
+                      {runtimeControl?.module_focus === selectedModule.name ? "active" : "standby"}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-200/70 bg-white/80 p-3">
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-slate-600">Operator actions</div>
+                    <div className="mt-2 text-lg font-semibold text-slate-950">
+                      {selectedModule.operator_actions.length}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-fuchsia-200/70 bg-fuchsia-50/80 p-3">
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-fuchsia-700">Native posture</div>
+                    <div className="mt-2 text-sm font-semibold text-fuchsia-950">
+                      {"native_status" in selectedModule ? String(selectedModule.native_status ?? "unknown") : "not-wired"}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-amber-200/70 bg-amber-50/80 p-3">
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Last code</div>
+                    <div className="mt-2 text-sm font-semibold text-amber-950">
+                      {"native_last_code" in selectedModule ? String(selectedModule.native_last_code ?? 0) : "n/a"}
+                    </div>
+                  </div>
+                </div>
                 {"native_status" in selectedModule ? (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <ConsoleBadge
@@ -2708,6 +2734,35 @@ export function MiraKernelConsole({
                 )}
               </div>
             </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-slate-200/80 bg-white/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Control posture</div>
+                <div className="mt-2 text-sm font-semibold text-slate-950">
+                  {allowsPrivilegedControls ? "root-enabled" : "observe-only"}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {allowsPrivilegedControls ? "board attachment and recovery actions are writable" : "this shell can inspect board state but not mutate hardware posture"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Attach target</div>
+                <div className="mt-2 text-sm font-semibold text-amber-950">
+                  {boardSnapshot?.port ?? embeddedPorts[0] ?? "no-port"}
+                </div>
+                <div className="mt-1 text-xs text-amber-700/80">
+                  transport {boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-cyan-200/80 bg-cyan-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-cyan-700">Next action</div>
+                <div className="mt-2 text-sm font-semibold text-cyan-950">
+                  {boardSnapshot?.attached ? "stabilize board" : "attach board"}
+                </div>
+                <div className="mt-1 text-xs text-cyan-700/80">
+                  {boardSnapshot?.attached ? "inspect runtime mode or refresh ports before switching" : "refresh ports first, then attach on the target transport"}
+                </div>
+              </div>
+            </div>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -2725,7 +2780,28 @@ export function MiraKernelConsole({
               >
                 refresh ports
               </button>
+              <button
+                type="button"
+                onClick={() => runQuickCommand(boardSnapshot?.attached ? "board detach" : `board attach ${boardSnapshot?.port ?? embeddedPorts[0] ?? ""}`.trim())}
+                disabled={operatorPending || !allowsPrivilegedControls || (!boardSnapshot?.attached && !boardSnapshot?.port && !embeddedPorts.length)}
+                className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
+              >
+                {boardSnapshot?.attached ? "detach board" : "attach board"}
+              </button>
+              <button
+                type="button"
+                onClick={() => runQuickCommand("board mode")}
+                disabled={operatorPending}
+                className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
+              >
+                board mode
+              </button>
             </div>
+            {!allowsPrivilegedControls ? (
+              <div className="rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-800">
+                Board mutation is locked in this shell. Promote to a root-capable shell to attach, detach, or recover hardware targets.
+              </div>
+            ) : null}
           </div>
           <div className="rounded-xl border border-border/70 bg-background/80 p-3">
             <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -3164,6 +3240,26 @@ export function MiraKernelConsole({
               <Row label="Maintenance" value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"} />
               <Row label="Gate" value={runtimeControl?.execution_gate?.state ?? "open"} />
             </div>
+            <div className="mb-3 grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-slate-200/80 bg-white/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Privilege gate</div>
+                <div className="mt-2 text-sm font-semibold text-slate-950">
+                  {allowsPrivilegedControls ? "recovery-enabled" : "inspection-only"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-rose-200/80 bg-rose-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-rose-700">Escalation path</div>
+                <div className="mt-2 text-sm font-semibold text-rose-950">
+                  {runtimeControl?.fault_posture.supervisor ?? diagnostics?.supervisor ?? "kernel-supervisor"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 p-3">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Recommended move</div>
+                <div className="mt-2 text-sm font-semibold text-amber-950">
+                  {recentErrors.length || nativeFaultModules.length || faultedBridges.length ? "inspect then clear" : "hold steady"}
+                </div>
+              </div>
+            </div>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -3210,6 +3306,11 @@ export function MiraKernelConsole({
                 </>
               ) : null}
             </div>
+            {!allowsPrivilegedControls ? (
+              <div className="mt-3 rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-800">
+                This shell can audit faults, but clear, record, and maintenance transitions stay locked until the runtime is elevated.
+              </div>
+            ) : null}
           </div>
           <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Recent faults
