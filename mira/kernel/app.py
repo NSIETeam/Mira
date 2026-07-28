@@ -1791,6 +1791,16 @@ class KernelApp:
                         f"{dict(bridge.get('last_command') or {}).get('status', 'unknown')}:"
                         f"{dict(bridge.get('last_command') or {}).get('code', 0)}"
                     ),
+                    "status_row": {
+                        "bridge": bridge_name or "unset",
+                        "runtime": bridge.get("runtime") or bridge_name or "unknown",
+                        "health": health,
+                        "status": status,
+                        "mode": mode,
+                        "queue_depth": int(bridge.get("queue_depth") or 0),
+                        "module_count": int(bridge.get("module_count") or 0),
+                        "updated_at_ms": bridge.get("updated_at_ms"),
+                    },
                     "board_capable": bool(bridge.get("board_capable")),
                 },
             )
