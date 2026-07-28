@@ -119,6 +119,36 @@ function findActionById<T extends { id?: string | null }>(
   return actions?.find((action) => action.id === id);
 }
 
+function renderNativeModuleChip({
+  name,
+  state,
+  operatorPending,
+  pane,
+  className,
+  label,
+  onRun,
+}: {
+  name: string;
+  state: { status?: string | null; last_code?: number | null; actions?: Array<{ id?: string | null; command?: string | null }> | null } | null | undefined;
+  operatorPending: boolean;
+  pane: string;
+  className: string;
+  label: string;
+  onRun: (action: { command?: string | null } | undefined, pane: string) => void;
+}) {
+  const inspectNativeModuleAction = findActionById(state?.actions, "inspect_native_module");
+  return (
+    <button
+      type="button"
+      onClick={() => onRun(inspectNativeModuleAction, pane)}
+      disabled={operatorPending || !inspectNativeModuleAction?.command}
+      className={className}
+    >
+      {label}
+    </button>
+  );
+}
+
 export function MiraKernelConsole({
   kernelManifest,
   shellDescriptor,
@@ -3240,20 +3270,17 @@ export function MiraKernelConsole({
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Native modules</div>
               <div className="flex flex-wrap gap-2">
                 {nativeModuleEntries.length ? nativeModuleEntries.slice(0, 8).map(([name, state]) => (
-                  (() => {
-                    const inspectNativeModuleAction = findActionById(state?.actions, "inspect_native_module");
-                    return (
-                      <button
-                        key={name}
-                        type="button"
-                        onClick={() => runContractAction(inspectNativeModuleAction, "modules")}
-                        disabled={operatorPending || !inspectNativeModuleAction?.command}
-                        className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
-                      >
-                        {name}:{state?.status ?? "unknown"}
-                      </button>
-                    );
-                  })()
+                  <div key={name}>
+                    {renderNativeModuleChip({
+                      name,
+                      state,
+                      operatorPending,
+                      pane: "modules",
+                      className: "rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100",
+                      label: `${name}:${state?.status ?? "unknown"}`,
+                      onRun: runContractAction,
+                    })}
+                  </div>
                 )) : (
                   <span className="text-xs text-muted-foreground">No native modules observed.</span>
                 )}
@@ -4051,17 +4078,18 @@ export function MiraKernelConsole({
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {nativeFaultModules.length ? nativeFaultModules.slice(0, 6).map(([name, state]) => {
-                  const inspectNativeModuleAction = findActionById(state?.actions, "inspect_native_module");
                   return (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => runContractAction(inspectNativeModuleAction, "modules")}
-                      disabled={operatorPending || !inspectNativeModuleAction?.command}
-                      className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
-                    >
-                      {name}:{state?.last_code ?? 0}
-                    </button>
+                    <div key={name}>
+                      {renderNativeModuleChip({
+                        name,
+                        state,
+                        operatorPending,
+                        pane: "modules",
+                        className: "rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100",
+                        label: `${name}:${state?.last_code ?? 0}`,
+                        onRun: runContractAction,
+                      })}
+                    </div>
                   );
                 }) : (
                   <span className="text-xs text-rose-700/80">No native module faults.</span>
