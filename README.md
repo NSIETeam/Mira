@@ -28,6 +28,7 @@ Mira is designed as execution infrastructure first, product shell second: the lo
 - **Engineering shell** — browser workbench for sessions, runtime control, operator actions, and settings
 - **Kernel console** — inspect runtime state, faults, bridges, modules, dispatch lanes, and operator commands
 - **Privilege-aware runtime** — root/user shell posture, privileged controls, and recovery-oriented operations
+- **Goal lifecycle control** — inspect, resume, complete, or cancel sustained objectives from the operator shell
 - **Operator cockpit** — engineering-first GUI with visible shell control, execution stream, and status surfaces
 - **Host boundary** — shell contracts keep GUI, channel, and product customization outside the core loop
 - **Embedded posture** — runtime topology, board controls, and native module views keep the path open for MCU / device-host scenarios
@@ -94,6 +95,8 @@ mira gateway              # Long-running service
 
 Mira keeps the core small: channels and shells feed the same execution kernel, the LLM decides when tools are needed, and shell-specific behavior stays outside the runtime loop. The default workbench is intentionally engineering-heavy, but the kernel contract itself stays generic enough for future Rust/C-native host bridges, embedded control surfaces, and thinner custom shells.
 
+The operator shell now exposes the same long-task lifecycle the kernel persists internally: sustained goals can be inspected, resumed, completed, or cancelled from the workbench, and root/user privilege workflow stays explicit through the same host contract.
+
 ```
   Channels / Engineering Shell / Terminal / API
                     |
@@ -147,6 +150,7 @@ Mira 优先被设计成执行基础设施，而不是某个单一产品：主循
 - **工程外壳** — 面向工程场景的浏览器工作台，统一管理会话、运行控制和设置
 - **内核控制台** — 查看运行时状态、故障、桥接器、模块、调度队列和操作命令
 - **权限感知运行时** — 区分 root/user 壳层姿态，支持受限与特权恢复操作
+- **目标生命周期控制** — 直接在 operator shell 中查看、恢复、完成或取消持续目标
 - **操作者驾驶舱** — 工程优先 GUI，直接暴露 shell 控制、执行流和状态面板
 - **宿主边界** — 用 shell contract 把 GUI、渠道接入和产品定制隔离在核心循环之外
 - **嵌入式姿态** — 提供运行拓扑、板级控制和 native 模块视图，为 MCU / 设备宿主预留路径
@@ -212,6 +216,8 @@ mira gateway              # 长期运行的服务
 ### 架构
 
 Mira 保持内核精简：聊天渠道和工程外壳都接入同一个执行内核，LLM 负责决策何时调用工具，而壳层特有行为不进入运行时主循环。默认工作台刻意偏工程化，但内核契约本身仍保持通用，后续可以继续接入 Rust/C 原生宿主桥接、更轻的嵌入式控制面和更薄的定制外壳。
+
+现在 operator shell 已经把内核内部持久化的长任务生命周期直接暴露出来：持续目标可以在工作台内 inspect、resume、complete、cancel，root/user 权限工作流也通过同一份 host contract 保持显式一致。
 
 ```
   Channels / Engineering Shell / Terminal / API
