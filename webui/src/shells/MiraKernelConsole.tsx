@@ -169,8 +169,6 @@ export function MiraKernelConsole({
   const nativeRecentCommands = nativeSnapshot?.recent_commands?.slice(-6).reverse() ?? [];
   const nativeModuleEntries = Object.entries(nativeSnapshot?.modules ?? {});
   const profile = kernelManifest?.profile ?? null;
-  const featureRows = profile?.features.slice(0, 6) ?? [];
-  const toolRows = profile?.tools.slice(0, 6) ?? [];
   const runtimeTargets = kernelManifest?.targets.runtime.slice(0, 4) ?? [];
   const runtimeLanguages = kernelManifest?.targets.languages.slice(0, 4) ?? [];
   const adapterContract = kernelManifest?.targets.adapter ?? null;
@@ -1617,7 +1615,7 @@ export function MiraKernelConsole({
                     </button>
                   ) : null}
                 </div>
-              )) : featureRows.map((feature) => (
+              )) : profile?.features?.slice(0, 6).map((feature) => (
                 <span
                   key={feature}
                   className="rounded-full border border-slate-300/80 bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
@@ -2374,7 +2372,7 @@ export function MiraKernelConsole({
             Tools
           </div>
           <div className="flex flex-wrap gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
-            {toolRows.length ? toolRows.map((tool) => (
+            {profile?.tools?.length ? profile.tools.slice(0, 6).map((tool) => (
               <span
                 key={tool}
                 className="rounded-full border border-sky-300/80 bg-sky-50 px-2.5 py-1 text-xs text-sky-700"
