@@ -149,6 +149,38 @@ function renderNativeModuleChip({
   );
 }
 
+function renderNativeCommandChip({
+  command,
+  index,
+  operatorPending,
+  onRun,
+}: {
+  command: {
+    updated_at_ms?: number | null;
+    target?: string | null;
+    action?: string | null;
+    actions?: Array<{ id?: string | null; command?: string | null }> | null;
+    status?: string | null;
+    queue_depth?: number | null;
+  };
+  index: number;
+  operatorPending: boolean;
+  onRun: (action: { command?: string | null } | undefined, pane: string) => void;
+}) {
+  const replayRecentAction = findActionById(command.actions, "replay_recent_command");
+  return (
+    <button
+      key={`${command.updated_at_ms ?? "native"}-${command.target ?? "target"}-${command.action ?? index}`}
+      type="button"
+      onClick={() => onRun(replayRecentAction, "adapters")}
+      disabled={operatorPending || !replayRecentAction?.command}
+      className="rounded-full border border-slate-300/80 bg-slate-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-100"
+    >
+      {formatNativeCommandSummary(command)}
+    </button>
+  );
+}
+
 export function MiraKernelConsole({
   kernelManifest,
   shellDescriptor,
@@ -3290,20 +3322,14 @@ export function MiraKernelConsole({
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Recent commands</div>
               <div className="flex flex-wrap gap-2">
                 {nativeSnapshot?.recent_commands?.length ? nativeSnapshot.recent_commands.slice(-6).reverse().map((command, index) => (
-                  (() => {
-                    const replayRecentAction = findActionById(command.actions, "replay_recent_command");
-                    return (
-                      <button
-                        key={`${command.updated_at_ms ?? "native"}-${command.target ?? "target"}-${command.action ?? index}`}
-                        type="button"
-                        onClick={() => runContractAction(replayRecentAction, "adapters")}
-                        disabled={operatorPending || !replayRecentAction?.command}
-                        className="rounded-full border border-slate-300/80 bg-slate-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-100"
-                      >
-                        {formatNativeCommandSummary(command)}
-                      </button>
-                    );
-                  })()
+                  <div key={`${command.updated_at_ms ?? "native"}-${command.target ?? "target"}-${command.action ?? index}`}>
+                    {renderNativeCommandChip({
+                      command,
+                      index,
+                      operatorPending,
+                      onRun: runContractAction,
+                    })}
+                  </div>
                 )) : (
                   <span className="text-xs text-muted-foreground">No recent native commands.</span>
                 )}
