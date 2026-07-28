@@ -61,7 +61,7 @@ describe("normalizeLegacyLongTaskMessages", () => {
       isModelCommandText("/modelish"),
     ]).toEqual([true, false]);
     expect(visibleSessionPreview("Switched model preset to `fast`.")).toBe("");
-    expect(deriveTitle("## Model\n- Current model: `gpt-5.5`", "New chat")).toBe("New chat");
+    expect(deriveTitle("## Model\n- Current model: `gpt-5.5`", "New execution")).toBe("New execution");
   });
 });
 

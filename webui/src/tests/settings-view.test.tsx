@@ -569,7 +569,7 @@ describe("SettingsView Apps catalog", () => {
 
     renderSettingsView({ initialSection: "apps" });
 
-    expect(await screen.findByText("Add tools to mira, then @ them in chat.")).toBeInTheDocument();
+    expect(await screen.findByText("Add tools to mira, then invoke them from the workbench.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ready" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "Apps" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Integrations" })).toBeInTheDocument();
