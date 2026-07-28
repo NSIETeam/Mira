@@ -37,7 +37,7 @@
       "chat": "{{title}} · Mira"
     },
     "meta": {
-      "description": "Mira Web UI —— 与你的执行工作区对话。"
+      "description": "Mira 工作台 UI —— 操作你的执行工作区。"
     }
   },
   "sidebar": {
@@ -47,8 +47,8 @@
     "searchAria": "搜索",
     "searchPlaceholder": "搜索",
     "searchResults": "搜索结果",
-    "noSearchResults": "没有匹配的话题。",
-    "recent": "最近话题",
+    "noSearchResults": "没有匹配的执行。",
+    "recent": "最近执行",
     "settings": "设置",
     "language": {
       "label": "语言",
@@ -679,7 +679,7 @@
       "editTitle": "编辑自动任务",
       "save": "保存",
       "deleteTitle": "删除自动任务",
-      "deleteDescription": "这会从 cron 存储中删除 {{name}}，历史聊天消息会保留在会话中。",
+      "deleteDescription": "这会从 cron 存储中删除 {{name}}，历史执行记录会保留在会话中。",
       "cancel": "取消",
       "status": {
         "system": "系统",
@@ -819,15 +819,15 @@
     }
   },
   "chat": {
-    "fallbackTitle": "话题 {{id}}",
+    "fallbackTitle": "执行 {{id}}",
     "forkTitle": "分叉：{{title}}",
     "loading": "加载中…",
-    "noSessions": "还没有话题。",
+    "noSessions": "还没有执行。",
     "showMore": "再显示 {{count}} 个",
-    "collapsed": "已折叠 {{count}} 个话题",
+    "collapsed": "已折叠 {{count}} 个执行",
     "showLess": "收起",
-    "actions": "“{{title}}” 的话题操作",
-    "newInProject": "在 {{project}} 中开始新话题",
+    "actions": "“{{title}}” 的执行操作",
+    "newInProject": "在 {{project}} 中开始新执行",
     "activity": {
       "running": "Agent 正在运行",
       "complete": "Agent 已完成",
@@ -836,9 +836,9 @@
     "pin": "置顶",
     "unpin": "取消置顶",
     "rename": "重命名",
-    "renameTitle": "重命名话题",
+    "renameTitle": "重命名执行",
     "renameDescription": "为这个执行设置一个仅用于 WebUI 侧边栏的名称。",
-    "renamePlaceholder": "话题名称",
+    "renamePlaceholder": "执行名称",
     "renameProjectTitle": "重命名项目",
     "renameProjectDescription": "为这个项目设置一个仅用于 WebUI 侧边栏的名称。",
     "renameProjectPlaceholder": "项目名称",
@@ -851,7 +851,7 @@
     "newChat": "新建执行",
     "groups": {
       "pinned": "置顶",
-      "all": "话题",
+      "all": "执行",
       "projects": "项目",
       "today": "今天",
       "yesterday": "昨天",
@@ -891,7 +891,7 @@
     "error": "连接出错"
   },
   "thread": {
-    "loadingConversation": "正在加载话题…",
+    "loadingConversation": "正在加载执行…",
     "empty": {
       "greetings": {
         "workOn": "我们要一起做点什么？",
@@ -961,7 +961,7 @@
     },
     "sessionInfo": {
       "title": "会话",
-      "untitled": "未命名话题",
+      "untitled": "未命名执行",
       "automations": "自动任务",
       "count": "{{count}}",
       "loading": "正在加载自动任务...",
@@ -987,7 +987,7 @@
     "composer": {
       "placeholderThread": "输入消息…",
       "placeholderHero": "问任何问题...",
-      "placeholderOpening": "正在打开新话题…",
+      "placeholderOpening": "正在打开新执行…",
       "placeholderStreaming": "模型正在回复…",
       "inputAria": "消息输入框",
       "sendHint": "Enter 发送 · Shift+Enter 换行",
