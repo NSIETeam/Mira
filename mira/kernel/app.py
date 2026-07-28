@@ -3631,14 +3631,17 @@ class KernelApp:
         self._runtime_control = detach_runtime_board(self._runtime_control)
         active_adapter_name = str(self._runtime_control.get("active_adapter") or "")
         self._board_signatures.pop(active_adapter_name, None)
-        return self._commit_runtime_control_action(
+        self._dispatch_native_control(
             target="board",
             action="detach",
             value=active_adapter_name,
-            event_action="detach_board",
-            event_state="ok",
-            event_message="board detached",
         )
+        self._record_kernel_event(
+            "detach_board",
+            state="ok",
+            message="board detached",
+        )
+        return self.runtime_control
 
     def record_fault(self, level: str = "fault", adapter_name: str | None = None) -> dict[str, Any]:
         self._runtime_control = set_fault_level(self._runtime_control, level=level)
