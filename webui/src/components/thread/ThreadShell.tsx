@@ -147,7 +147,6 @@ interface ThreadShellProps {
   onNewExecution?: () => void;
   onCreateExecution?: (workspaceScope?: WorkspaceScopePayload | null) => Promise<string | null>;
   onForkExecution?: (sourceChatId: string, beforeUserIndex: number) => Promise<string | null>;
-  onNewChat?: () => void;
   onCreateChat?: (workspaceScope?: WorkspaceScopePayload | null) => Promise<string | null>;
   onForkChat?: (sourceChatId: string, beforeUserIndex: number) => Promise<string | null>;
   onTurnEnd?: () => void;
@@ -1089,15 +1088,15 @@ export function ThreadShell({
   ) : null;
 
   const capabilityBadges = [
-    supportsThreads ? "threads" : "workbench",
-    supportsRuntimeControls ? "runtime" : "fixed-runtime",
-    supportsFileActivity ? "files" : "no-files",
+    supportsThreads ? "multi-session" : "single-session",
+    supportsRuntimeControls ? "runtime-control" : "fixed-runtime",
+    supportsFileActivity ? "file-activity" : "no-file-activity",
     readOnlyExecution ? "read-only" : "interactive",
   ];
   const shellPosture = [
     shellDescription,
-    allowComposer ? "operator shell" : "viewer shell",
-    readOnlyExecution ? "locked execution" : "live execution",
+    allowComposer ? "operator shell" : "observer shell",
+    readOnlyExecution ? "locked execution" : "live execution lane",
   ].filter(Boolean).join(" · ");
   const emptyState = loading ? (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -1111,7 +1110,7 @@ export function ThreadShell({
       <div className="mt-5 rounded-[28px] border border-slate-200/80 bg-white/90 px-8 py-8 shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
         <HeroGreeting text={t(heroGreetingKey)} />
         <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-          {t("thread.heroSubtitle")}
+          Unified execution entry for operator flow, runtime control, and module supervision.
         </p>
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em]">
           {capabilityBadges.map((badge) => (
