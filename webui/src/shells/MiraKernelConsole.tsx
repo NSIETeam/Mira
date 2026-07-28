@@ -636,6 +636,60 @@ export function MiraKernelConsole({
       className: "rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100",
     },
   ] as const;
+  const nativeActionButtons = [
+    {
+      action: nativeStatusAction,
+      pane: "adapters",
+      label: "inspect native",
+      className: "rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50",
+    },
+    {
+      action: nativeLastCommandAction,
+      pane: "adapters",
+      label: "last command",
+      className: "rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50",
+    },
+    {
+      action: nativeModulesAction,
+      pane: "modules",
+      label: "native modules",
+      className: "rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50",
+    },
+  ] as const;
+  const nativeLastTargetActionButtons = [
+    {
+      action: nativeFocusLastTargetAction,
+      pane: "modules",
+      label: "focus last target",
+      className: "rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100",
+    },
+    {
+      action: nativeReplayLastAction,
+      pane: "adapters",
+      label: "replay last",
+      className: "rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100",
+    },
+    {
+      action: nativeOpenLastTargetAction,
+      pane: "modules",
+      label: "open target",
+      className: "rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100",
+    },
+  ] as const;
+  const selectedNativeModuleActionButtons = [
+    {
+      action: selectedModuleFocusNativeAction,
+      pane: "modules",
+      label: "focus selected",
+      className: "rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100",
+    },
+    {
+      action: selectedModuleInspectNativeAction,
+      pane: "modules",
+      label: "inspect selected",
+      className: "rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100",
+    },
+  ] as const;
   const faultLaneRoute = firstEventRoute("faults");
   const runtimeLaneRoute = firstEventRoute("runtime");
   const adapterLaneRoute = firstEventRoute("adapters");
@@ -2499,56 +2553,30 @@ export function MiraKernelConsole({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => runContractAction(nativeStatusAction, "adapters")}
-                disabled={operatorPending || !nativeStatusAction?.command}
-                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                inspect native
-              </button>
-              <button
-                type="button"
-                onClick={() => runContractAction(nativeLastCommandAction, "adapters")}
-                disabled={operatorPending || !nativeLastCommandAction?.command}
-                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                last command
-              </button>
-              <button
-                type="button"
-                onClick={() => runContractAction(nativeModulesAction, "modules")}
-                disabled={operatorPending || !nativeModulesAction?.command}
-                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                native modules
-              </button>
+              {nativeActionButtons.map(({ action, pane, label, className }) => (
+                <ConsoleActionButton
+                  key={label}
+                  action={action}
+                  pane={pane}
+                  label={label}
+                  className={className}
+                  disabled={operatorPending}
+                  onRun={runContractAction}
+                />
+              ))}
               {nativeLastCommand?.target && nativeLastCommand?.action ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(nativeFocusLastTargetAction, "modules")}
-                    disabled={operatorPending || !nativeFocusLastTargetAction?.command}
-                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
-                  >
-                    focus last target
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(nativeReplayLastAction, "adapters")}
-                    disabled={operatorPending || !nativeReplayLastAction?.command}
-                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
-                  >
-                    replay last
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(nativeOpenLastTargetAction, "modules")}
-                    disabled={operatorPending || !nativeOpenLastTargetAction?.command}
-                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
-                  >
-                    open target
-                  </button>
+                  {nativeLastTargetActionButtons.map(({ action, pane, label, className }) => (
+                    <ConsoleActionButton
+                      key={label}
+                      action={action}
+                      pane={pane}
+                      label={label}
+                      className={className}
+                      disabled={operatorPending}
+                      onRun={runContractAction}
+                    />
+                  ))}
                 </>
               ) : clearFaultsAction ? (
                 <span className="text-xs text-muted-foreground">
@@ -2557,22 +2585,17 @@ export function MiraKernelConsole({
               ) : null}
               {selectedModule?.name ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(selectedModuleFocusNativeAction, "modules")}
-                    disabled={operatorPending || !selectedModuleFocusNativeAction?.command}
-                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
-                  >
-                    focus selected
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(selectedModuleInspectNativeAction, "modules")}
-                    disabled={operatorPending || !selectedModuleInspectNativeAction?.command}
-                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
-                  >
-                    inspect selected
-                  </button>
+                  {selectedNativeModuleActionButtons.map(({ action, pane, label, className }) => (
+                    <ConsoleActionButton
+                      key={label}
+                      action={action}
+                      pane={pane}
+                      label={label}
+                      className={className}
+                      disabled={operatorPending}
+                      onRun={runContractAction}
+                    />
+                  ))}
                   <button
                     type="button"
                     onClick={() => {
