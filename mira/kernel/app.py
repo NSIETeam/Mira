@@ -3419,26 +3419,29 @@ class KernelApp:
             self._native_queue_depth = queue_depth
         if command_depth is not None:
             self._native_command_depth = command_depth
-        if artifact:
-            self._native_bridge_artifact = artifact
+        if artifact is not None:
+            self._native_bridge_artifact = artifact or None
         if recent_commands is not None:
             self._native_recent_commands = [dict(row) for row in recent_commands[:8]]
         if module_count is not None:
             self._native_module_count = module_count
-        if module_states:
-            self._native_module_states.update(module_states)
+        if module_states is not None:
+            self._native_module_states = {
+                str(name): dict(state)
+                for name, state in module_states.items()
+            }
         if last_command is not None:
             self._native_last_command = dict(last_command)
 
     def _reset_native_command_state(self) -> None:
-        self._native_module_states = {}
-        self._native_bridge_artifact = None
-        self._native_recent_commands = []
-        self._native_last_command = None
         self._store_native_command_state(
             queue_depth=0,
             command_depth=0,
+            artifact=None,
+            recent_commands=[],
             module_count=0,
+            module_states={},
+            last_command={},
         )
 
     def _dispatch_native_control(
