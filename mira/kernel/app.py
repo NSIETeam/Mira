@@ -3716,14 +3716,17 @@ class KernelApp:
             gate_state="paused",
             reason=pause_reason,
         )
-        return self._commit_runtime_control_action(
+        self._dispatch_native_control(
             target="runtime",
             action="pause",
             value=pause_reason,
-            event_action="pause_runtime",
-            event_state="paused",
-            event_message=reason or "runtime paused by operator",
         )
+        self._record_kernel_event(
+            "pause_runtime",
+            state="paused",
+            message=reason or "runtime paused by operator",
+        )
+        return self.runtime_control
 
     def resume_runtime(self) -> dict[str, Any]:
         self._runtime_control = set_execution_gate(
