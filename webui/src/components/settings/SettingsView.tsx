@@ -5064,7 +5064,7 @@ function TranscriptionSettings({
       <SettingsGroup>
         <SettingsRow
           title={tx("settings.rows.transcription", "Transcription")}
-          description={tx("settings.help.transcription", "Transcribe microphone input before sending it. Chat channel voice messages use the same settings.")}
+          description={tx("settings.help.transcription", "Transcribe microphone input before sending it. Channel voice messages use the same settings.")}
         >
           <ToggleButton
             checked={form.enabled}

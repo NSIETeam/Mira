@@ -248,7 +248,7 @@
       "localServiceAccessNative": "Allow Full Access shell commands to reach services on this Mac.",
       "webuiDefaultAccessNative": "Used by native executions without a project-specific permission.",
       "contextWindow": "Choose the default context budget for this model configuration.",
-      "transcription": "Transcribe microphone input before sending it. Chat channel voice messages use the same settings.",
+      "transcription": "Transcribe microphone input before sending it. Channel voice messages use the same settings.",
       "transcriptionProvider": "Uses the matching provider credentials from Providers.",
       "transcriptionProviderStatus": "API keys stay under providers, not in transcription settings.",
       "transcriptionModel": "Leave as the resolved default unless your provider needs a custom model id.",
