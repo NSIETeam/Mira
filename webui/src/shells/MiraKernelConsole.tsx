@@ -218,6 +218,13 @@ function buildNativeControlRows(input: {
   ];
 }
 
+function nativeQueueDepth(snapshot: {
+  queue_depth?: number | null;
+  command_depth?: number | null;
+} | null | undefined): number {
+  return snapshot?.queue_depth ?? snapshot?.command_depth ?? 0;
+}
+
 export function MiraKernelConsole({
   kernelManifest,
   shellDescriptor,
@@ -3317,8 +3324,8 @@ export function MiraKernelConsole({
               </div>
               <ConsoleBadge
                 label="queue"
-                value={`${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0}`}
-                tone={(nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth) ? "amber" : "slate"}
+                value={`${nativeQueueDepth(nativeSnapshot)}`}
+                tone={nativeQueueDepth(nativeSnapshot) ? "amber" : "slate"}
               />
             </div>
             <ConsoleRowGrid
