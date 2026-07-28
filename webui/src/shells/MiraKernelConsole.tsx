@@ -1646,6 +1646,10 @@ export function MiraKernelConsole({
                     value={diagnostics?.snapshot.dispatch_handoff_lane ?? "none"}
                   />
                   <Row
+                    label="Tool families"
+                    value={dispatchQueue?.family_counts ?? "none"}
+                  />
+                  <Row
                     label="Contract owner"
                     value={diagnostics?.snapshot.dispatch_contract?.owner ?? "interactive"}
                   />
