@@ -20,6 +20,7 @@ import {
   kernelStatusMatchesLifecycle,
   kernelToolCallActionMatches,
   kernelToolResultActionMatches,
+  turnFieldsFromKernelMetadata,
 } from "@/lib/kernel-events";
 import type {
   InboundEvent,
@@ -889,13 +890,7 @@ export function usemiraStream(
       if (!metadata || typeof metadata !== "object") return;
       const snapshot = kernelMetadataSnapshot(metadata);
       const state = typeof event.state === "string" ? event.state : "";
-      const turn = turnFieldsFromEvent({
-        turn_id: typeof metadata.turn_id === "string" ? metadata.turn_id : undefined,
-        turn_phase: typeof metadata.turn_phase === "string"
-          ? metadata.turn_phase as UITurnPhase
-          : undefined,
-        turn_seq: typeof metadata.turn_seq === "number" ? metadata.turn_seq : undefined,
-      });
+      const turn = turnFieldsFromEvent(turnFieldsFromKernelMetadata(metadata));
       const sideChannelEvent =
         turn.turnId !== undefined && sideChannelTurnIdsRef.current.has(turn.turnId);
 

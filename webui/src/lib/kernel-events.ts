@@ -2,6 +2,7 @@ import type {
   GoalStateWsPayload,
   InboundEvent,
   KernelEventPayload,
+  UITurnPhase,
 } from "./types";
 
 function metadataRow(metadata: unknown): Record<string, unknown> | null {
@@ -28,6 +29,11 @@ function metadataChatId(row: Record<string, unknown> | null): string | null {
 
 function metadataRequestId(row: Record<string, unknown> | null): string | null {
   return metadataString(row, "request_id");
+}
+
+function metadataTurnPhase(row: Record<string, unknown> | null): UITurnPhase | undefined {
+  const value = metadataString(row, "turn_phase");
+  return value as UITurnPhase | undefined;
 }
 
 function statusEvent(
@@ -107,6 +113,22 @@ export function turnCompletionFromKernelMetadata(metadata: unknown): {
   return {
     ...(latencyMs !== undefined ? { latencyMs } : {}),
     ...(turnId ? { turnId } : {}),
+  };
+}
+
+export function turnFieldsFromKernelMetadata(metadata: unknown): {
+  turn_id?: string;
+  turn_phase?: UITurnPhase;
+  turn_seq?: number;
+} {
+  const row = metadataRow(metadata);
+  const turnId = metadataString(row, "turn_id") ?? undefined;
+  const turnPhase = metadataTurnPhase(row);
+  const turnSeq = metadataNumber(row, "turn_seq") ?? undefined;
+  return {
+    ...(turnId ? { turn_id: turnId } : {}),
+    ...(turnPhase ? { turn_phase: turnPhase } : {}),
+    ...(turnSeq !== undefined ? { turn_seq: turnSeq } : {}),
   };
 }
 
