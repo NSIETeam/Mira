@@ -1902,13 +1902,13 @@ export function MiraKernelConsole({
             Board attachment
           </div>
           <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
-            <Row label="Target" value={boardSnapshot?.target ?? boardAttachment.target ?? "unknown"} />
+            <Row label="Target" value={boardSnapshot?.target ?? "unknown"} />
             <Row label="Attach" value={boardSnapshot?.attached ? "attached" : "detached"} />
             <Row
               label="Transport"
-              value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? boardAttachment.transport ?? "unset"}
+              value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"}
             />
-            <Row label="Port" value={boardSnapshot?.port ?? boardAttachment.port ?? "not bound"} />
+            <Row label="Port" value={boardSnapshot?.port ?? "not bound"} />
             <Row
               label="Supervisor"
               value={runtimeControl?.fault_posture.supervisor ?? "unknown"}
@@ -1919,12 +1919,12 @@ export function MiraKernelConsole({
             />
             <Row
               label="Runtime mode"
-              value={boardSnapshot?.runtime_mode ?? boardAttachment.runtime_mode ?? "unprobed"}
+              value={boardSnapshot?.runtime_mode ?? "unprobed"}
             />
             <Row label="Health" value={boardSnapshot?.health ?? "unknown"} />
             <Row
               label="Bridge artifact"
-              value={boardSnapshot?.bridge_artifact ?? boardAttachment.bridge_artifact ?? "none"}
+              value={boardSnapshot?.bridge_artifact ?? "none"}
             />
             <div className="grid gap-2 rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2">
               <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
