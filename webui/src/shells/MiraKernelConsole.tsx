@@ -1384,10 +1384,17 @@ export function MiraKernelConsole({
                             tone="emerald"
                           />
                         ) : null}
+                        {"family" in entry.details ? (
+                          <ConsoleBadge
+                            label="family"
+                            value={String(entry.details.family)}
+                            tone="amber"
+                          />
+                        ) : null}
                       </div>
                       <div className="mt-2 grid gap-1.5 text-[10px] text-slate-500">
                         {Object.entries(entry.details)
-                          .filter(([key]) => key !== "subject" && key !== "action")
+                          .filter(([key]) => key !== "subject" && key !== "action" && key !== "family")
                           .map(([key, value]) => (
                             key === "items" || key === "codes" || key === "updated" ? (
                               <div
