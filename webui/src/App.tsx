@@ -696,7 +696,8 @@ function Shell({
   const { connectionStatus, runtimeModel, recentErrors } = useKernelConsoleState(client);
   const shellPrivilegeRole = shellDescriptor?.host_contract?.privilege?.role ?? "user";
   const kernelHealthLabel = connectionStatus !== "connected" || recentErrors.length > 0 ? "attention" : "healthy";
-  const appTagline = `${kernelManifest?.identity?.app_name ?? "Mira"} universal execution kernel · engineering shell · ${shellPrivilegeRole} · ${kernelHealthLabel}`;
+  const maintenanceLabel = kernelManifest?.runtime_control?.maintenance_mode?.enabled ? "maintenance" : "live";
+  const appTagline = `${kernelManifest?.identity?.app_name ?? "Mira"} universal execution kernel · engineering shell · ${shellPrivilegeRole} · ${kernelHealthLabel} · ${maintenanceLabel}`;
   const kernelControl = useKernelControlState({
     kernelManifest,
     token,

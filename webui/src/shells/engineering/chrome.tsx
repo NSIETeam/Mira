@@ -44,8 +44,13 @@ export function HostChrome({
   const { t } = useTranslation();
   const healthBadge = appTagline.endsWith("· attention")
     ? { label: "attention", className: "border-rose-300/80 bg-rose-50 text-rose-700" }
-    : appTagline.endsWith("· healthy")
+    : appTagline.includes("· healthy")
       ? { label: "healthy", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
+      : null;
+  const maintenanceBadge = appTagline.endsWith("· maintenance")
+    ? { label: "maintenance", className: "border-amber-300/80 bg-amber-50 text-amber-700" }
+    : appTagline.endsWith("· live")
+      ? { label: "live", className: "border-slate-300/80 bg-slate-50 text-slate-700" }
       : null;
   const healthDotClass = healthBadge?.label === "attention"
     ? "bg-rose-500 shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
@@ -55,8 +60,8 @@ export function HostChrome({
     : appTagline.includes("· user")
       ? { label: "user", className: "border-amber-300/80 bg-amber-50 text-amber-700" }
       : null;
-  const visibleTagline = privilegeBadge || healthBadge
-    ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention)\s*$/, "").replace(/\s*·\s*$/, "")
+  const visibleTagline = privilegeBadge || healthBadge || maintenanceBadge
+    ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "")
     : appTagline;
 
   return (
@@ -91,6 +96,11 @@ export function HostChrome({
           {healthBadge ? (
             <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]", healthBadge.className)}>
               {healthBadge.label}
+            </span>
+          ) : null}
+          {maintenanceBadge ? (
+            <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]", maintenanceBadge.className)}>
+              {maintenanceBadge.label}
             </span>
           ) : null}
         </div>
