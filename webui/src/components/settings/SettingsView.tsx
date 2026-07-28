@@ -2373,7 +2373,7 @@ export function SettingsView({
                 className="touch-target mb-4 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground lg:hidden"
               >
                 <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-                {t("settings.backToChat")}
+                {t("settings.backToChat", { defaultValue: "Back to workbench" })}
               </button>
               <h1 className="text-[24px] font-normal leading-tight tracking-normal text-foreground sm:text-[28px]">
                 {t(`settings.nav.${activeSection}`, {
@@ -2473,7 +2473,7 @@ function SettingsSidebar({
         className="touch-target mb-2 inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground lg:mb-3"
       >
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-        {t("settings.backToChat")}
+        {t("settings.backToChat", { defaultValue: "Back to workbench" })}
       </button>
       <div className="mb-3 px-1 lg:mb-4 lg:px-2">
         <h2 className="text-[18px] font-normal tracking-normal text-foreground">
@@ -8266,7 +8266,7 @@ function CliAppReadyPanel({
             onClick={onBackToChat}
             className="h-8 rounded-full px-3 text-[12px] font-semibold"
           >
-            {t("settings.cliApps.openChat", { defaultValue: "Open chat" })}
+            {t("settings.cliApps.openChat", { defaultValue: "Open workbench" })}
             <ChevronRight className="ml-1.5 h-3.5 w-3.5" aria-hidden />
           </Button>
         </div>

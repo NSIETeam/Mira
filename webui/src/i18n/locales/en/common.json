@@ -61,7 +61,7 @@
     }
   },
   "settings": {
-    "backToChat": "Back to chat",
+    "backToChat": "Back to workbench",
     "sidebar": {
       "title": "Settings",
       "ariaLabel": "Settings sections"
@@ -285,7 +285,7 @@
       "readyTry": "Try @{{name}}",
       "readyCopied": "Copied",
       "readyPrompt": "Ask Mira to use @{{name}} for this task.",
-      "openChat": "Open chat",
+      "openChat": "Open workbench",
       "unsupported": "Unsupported",
       "unavailable": "Unavailable",
       "noDescription": "No description available."
