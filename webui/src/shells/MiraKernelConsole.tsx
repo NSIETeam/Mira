@@ -590,6 +590,32 @@ export function MiraKernelConsole({
       className: "rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200",
     },
   ] as const;
+  const faultActionButtons = [
+    {
+      action: clearFaultsAction,
+      pane: "faults",
+      label: "clear",
+      className: "rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100",
+    },
+    {
+      action: recordFaultAction,
+      pane: "faults",
+      label: "record",
+      className: "rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100",
+    },
+    {
+      action: enterMaintenanceAction,
+      pane: "control_plane",
+      label: "maintenance on",
+      className: "rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100",
+    },
+    {
+      action: exitMaintenanceAction,
+      pane: "control_plane",
+      label: "maintenance off",
+      className: "rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100",
+    },
+  ] as const;
   const faultLaneRoute = firstEventRoute("faults");
   const runtimeLaneRoute = firstEventRoute("runtime");
   const adapterLaneRoute = firstEventRoute("adapters");
@@ -3321,38 +3347,17 @@ export function MiraKernelConsole({
               </button>
               {actionAllowed(clearFaultsAction) ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(clearFaultsAction, "faults")}
-                    disabled={operatorPending || !clearFaultsAction?.command}
-                    className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
-                  >
-                    clear
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(recordFaultAction, "faults")}
-                    disabled={operatorPending || !recordFaultAction?.command}
-                    className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
-                  >
-                    record
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(enterMaintenanceAction, "control_plane")}
-                    disabled={operatorPending || !enterMaintenanceAction?.command}
-                    className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
-                  >
-                    maintenance on
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => runContractAction(exitMaintenanceAction, "control_plane")}
-                    disabled={operatorPending || !exitMaintenanceAction?.command}
-                    className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
-                  >
-                    maintenance off
-                  </button>
+                  {faultActionButtons.map(({ action, pane, label, className }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => runContractAction(action, pane)}
+                      disabled={operatorPending || !action?.command}
+                      className={className}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </>
               ) : null}
             </div>
