@@ -1767,6 +1767,13 @@ class KernelApp:
                     "health": health,
                     "status": status,
                     "mode": mode,
+                    "manifest": bridge.get("manifest") or "none",
+                    "abi": bridge.get("abi") or "unknown",
+                    "status_symbol": bridge.get("status_symbol") or "none",
+                    "kernel_surface": bridge.get("kernel_surface") or "mira",
+                    "runtime_stage": bridge.get("runtime_stage") or "unknown",
+                    "free_symbol": bridge.get("free_symbol") or "none",
+                    "attach_symbol": bridge.get("attach_symbol") or "none",
                     "board_capable": bool(bridge.get("board_capable")),
                 },
             )

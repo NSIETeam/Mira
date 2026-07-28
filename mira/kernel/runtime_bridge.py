@@ -29,7 +29,7 @@ def _manifest_probe(adapter: dict[str, object]) -> dict[str, object] | None:
             status_symbol=adapter.get("status_symbol"),
             error="invalid runtime manifest",
         )
-    return runtime_probe_payload(
+    payload = runtime_probe_payload(
         status=raw.get("status"),
         artifact=manifest,
         manifest=manifest,
@@ -38,6 +38,10 @@ def _manifest_probe(adapter: dict[str, object]) -> dict[str, object] | None:
         status_symbol=raw.get("status_symbol") or adapter.get("status_symbol"),
         error=raw.get("error") or "runtime manifest fault",
     )
+    payload["kernel_surface"] = raw.get("kernel_surface")
+    payload["free_symbol"] = raw.get("free_symbol")
+    payload["attach_symbol"] = raw.get("attach_symbol")
+    return payload
 
 
 def _artifact_status(adapter: dict[str, object]) -> tuple[str, str, dict[str, object] | None]:
@@ -84,6 +88,9 @@ def build_runtime_bridges(
                 "manifest": (probe or {}).get("manifest", adapter.get("runtime_manifest")),
                 "abi": (probe or {}).get("abi", adapter.get("abi")),
                 "status_symbol": (probe or {}).get("status_symbol", adapter.get("status_symbol")),
+                "kernel_surface": (probe or {}).get("kernel_surface"),
+                "free_symbol": (probe or {}).get("free_symbol"),
+                "attach_symbol": (probe or {}).get("attach_symbol"),
                 "runtime_mode": (probe or {}).get("runtime_mode"),
                 "runtime_stage": adapter.get("runtime_stage"),
                 "build_hint": adapter.get("build_hint"),
