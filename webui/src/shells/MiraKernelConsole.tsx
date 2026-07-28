@@ -1902,13 +1902,13 @@ export function MiraKernelConsole({
             Board attachment
           </div>
           <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
-            <Row label="Target" value={boardAttachment.target ?? "unknown"} />
-            <Row label="Attach" value={boardAttachment.attached ? "attached" : "detached"} />
+            <Row label="Target" value={boardSnapshot?.target ?? boardAttachment.target ?? "unknown"} />
+            <Row label="Attach" value={boardSnapshot?.attached ? "attached" : "detached"} />
             <Row
               label="Transport"
-              value={boardAttachment.transport ?? boardAttachment.preferred_transport ?? "unset"}
+              value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? boardAttachment.transport ?? "unset"}
             />
-            <Row label="Port" value={boardAttachment.port ?? "not bound"} />
+            <Row label="Port" value={boardSnapshot?.port ?? boardAttachment.port ?? "not bound"} />
             <Row
               label="Supervisor"
               value={runtimeControl?.fault_posture.supervisor ?? "unknown"}
@@ -1919,11 +1919,12 @@ export function MiraKernelConsole({
             />
             <Row
               label="Runtime mode"
-              value={boardAttachment.runtime_mode ?? "unprobed"}
+              value={boardSnapshot?.runtime_mode ?? boardAttachment.runtime_mode ?? "unprobed"}
             />
+            <Row label="Health" value={boardSnapshot?.health ?? "unknown"} />
             <Row
               label="Bridge artifact"
-              value={boardAttachment.bridge_artifact ?? "none"}
+              value={boardSnapshot?.bridge_artifact ?? boardAttachment.bridge_artifact ?? "none"}
             />
             <div className="grid gap-2 rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2">
               <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -1956,7 +1957,7 @@ export function MiraKernelConsole({
                   className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900"
                 >
                   <option value="">auto-detect</option>
-                  {(boardAttachment.available_ports ?? []).map((port) => (
+                  {(boardSnapshot?.available_ports ?? boardAttachment.available_ports ?? []).map((port) => (
                     <option key={port} value={port}>
                       {port}
                     </option>
@@ -1983,13 +1984,13 @@ export function MiraKernelConsole({
                 </button>
               </div>
             </div>
-            {boardAttachment.available_ports?.length ? (
+            {(boardSnapshot?.available_ports?.length ?? boardAttachment.available_ports?.length) ? (
               <div className="rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                   Candidate ports
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {boardAttachment.available_ports.slice(0, 6).map((port) => (
+                  {(boardSnapshot?.available_ports ?? boardAttachment.available_ports ?? []).slice(0, 6).map((port) => (
                     <button
                       key={port}
                       type="button"
@@ -2007,9 +2008,9 @@ export function MiraKernelConsole({
                 </div>
               </div>
             ) : null}
-            {boardAttachment.last_error ? (
+            {(boardSnapshot?.last_error ?? boardAttachment.last_error) ? (
               <div className="rounded-md border border-rose-300/60 bg-rose-50 px-2.5 py-2 text-[11px] text-rose-800">
-                {boardAttachment.last_error}
+                {boardSnapshot?.last_error ?? boardAttachment.last_error}
               </div>
             ) : null}
           </div>
