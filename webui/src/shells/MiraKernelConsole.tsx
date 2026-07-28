@@ -63,6 +63,10 @@ function formatKernelTimestamp(value: unknown): string {
   const timestamp = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(timestamp) || timestamp <= 0) return "unknown";
   const date = new Date(timestamp);
+  return formatClockTime(date);
+}
+
+function formatClockTime(date: Date): string {
   if (Number.isNaN(date.getTime())) return "unknown";
   return date.toLocaleTimeString([], {
     hour: "2-digit",
@@ -70,6 +74,11 @@ function formatKernelTimestamp(value: unknown): string {
     second: "2-digit",
     hour12: false,
   });
+}
+
+function formatIsoTimestamp(value: string | null | undefined): string {
+  if (!value) return "unknown";
+  return formatClockTime(new Date(value));
 }
 
 function formatKernelTimestampList(value: string): string {
@@ -4241,7 +4250,7 @@ export function MiraKernelConsole({
                         {error.kind}
                       </span>
                       <span className="text-[11px] text-rose-500">
-                        {new Date(error.at).toLocaleTimeString()}
+                        {formatIsoTimestamp(error.at)}
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-rose-900">{error.message}</div>
