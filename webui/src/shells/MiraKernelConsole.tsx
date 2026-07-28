@@ -184,8 +184,11 @@ export function MiraKernelConsole({
   const boardHealthLabel = boardSnapshot?.health ?? "unknown";
   const selectedBridgeHealthLabel = selectedBridge?.health ?? "unknown";
   const selectedBridgeStatusLabel = selectedBridge?.status ?? "unknown";
+  const boardTargetLabel = boardSnapshot?.target ?? embeddedTargetHint ?? "host";
+  const nativeArtifactLabel = nativeSnapshot?.bridge_artifact ?? "none";
   const profileName = profile?.name ?? "unknown";
   const activeAdapterName = runtimeControl?.active_adapter ?? "unset";
+  const selectedBridgeAdapterLabel = selectedBridge?.adapter ?? activeAdapterName;
   const boardTransportLabel = boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
   const sessionControls = kernelManifest?.session_controls?.actions ?? [];
@@ -608,7 +611,7 @@ export function MiraKernelConsole({
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Board target</div>
                 <div className="mt-2 text-lg font-semibold text-white">
-                  {boardSnapshot?.target ?? embeddedTargetHint ?? "host"}
+                  {boardTargetLabel}
                 </div>
                 <div className="text-xs text-slate-300">
                   {boardTransportLabel} · {boardSnapshot?.port ?? "auto"}
@@ -1746,7 +1749,7 @@ export function MiraKernelConsole({
           </div>
           <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
             <div className="grid gap-2 md:grid-cols-2">
-              <Row label="Adapter" value={selectedBridge?.adapter ?? runtimeControl?.active_adapter ?? "unset"} />
+              <Row label="Adapter" value={selectedBridgeAdapterLabel} />
               <Row label="Health" value={selectedBridgeHealthLabel} />
               <Row label="Status" value={selectedBridgeStatusLabel} />
               <Row label="Maintenance" value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"} />
@@ -2374,7 +2377,7 @@ export function MiraKernelConsole({
             />
             <Row
               label="Native bridge"
-              value={nativeSnapshot?.bridge_artifact ?? "none"}
+              value={nativeArtifactLabel}
             />
           </div>
           <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
@@ -2395,7 +2398,7 @@ export function MiraKernelConsole({
               <Row label="Last status" value={lastNativeContext.status} />
               <Row label="Last code" value={String(lastNativeContext.code)} />
               <Row label="Last value" value={nativeLastCommand?.value || "none"} />
-              <Row label="Artifact" value={nativeLastCommand?.artifact ?? nativeSnapshot?.bridge_artifact ?? "none"} />
+              <Row label="Artifact" value={nativeLastCommand?.artifact ?? nativeArtifactLabel} />
               <Row label="Module focus" value={runtimeControl?.module_focus ?? "none"} />
               <Row label="Command backlog" value={`${nativeSnapshot?.command_depth ?? 0}`} />
               <Row label="Updated" value={lastNativeContext.updatedAt ? formatKernelTimestamp(lastNativeContext.updatedAt) : "none"} />
@@ -2727,7 +2730,7 @@ export function MiraKernelConsole({
               </div>
             </div>
             <div className="grid gap-2 md:grid-cols-2">
-              <Row label="Target" value={boardSnapshot?.target ?? embeddedTargetHint ?? "host"} />
+              <Row label="Target" value={boardTargetLabel} />
               <Row label="Transport" value={boardTransportLabel} />
               <Row label="Runtime mode" value={boardSnapshot?.runtime_mode ?? "userland"} />
               <Row label="Health" value={boardHealthLabel} />
