@@ -1920,6 +1920,8 @@ export function MiraKernelConsole({
               <Row label="Last action" value={nativeLastCommand?.action ?? "none"} />
               <Row label="Last value" value={nativeLastCommand?.value || "none"} />
               <Row label="Artifact" value={nativeLastCommand?.artifact ?? diagnostics?.snapshot.native_bridge_artifact ?? "none"} />
+              <Row label="Module focus" value={runtimeControl?.module_focus ?? "none"} />
+              <Row label="Command depth" value={`${diagnostics?.snapshot.native_command_depth ?? 0}`} />
             </div>
             <div className="space-y-2">
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Native modules</div>
