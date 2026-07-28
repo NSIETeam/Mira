@@ -1352,7 +1352,7 @@ describe("App layout", () => {
     window.history.replaceState(
       null,
       "",
-      `/#/chat/${encodeURIComponent("websocket:chat-a")}`,
+      `/#/workbench/${encodeURIComponent("websocket:chat-a")}`,
     );
 
     render(<App />);
@@ -1364,7 +1364,7 @@ describe("App layout", () => {
       within(sidebar).getByRole("button", { name: /^Active after reload$/ }),
     ).toBeInTheDocument();
     expect(window.location.hash).toBe(
-      `#/chat/${encodeURIComponent("websocket:chat-a")}`,
+      `#/workbench/${encodeURIComponent("websocket:chat-a")}`,
     );
   });
 

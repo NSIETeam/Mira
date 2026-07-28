@@ -5715,7 +5715,7 @@ function AutomationDetailPanel({
   const status = automationStatus(job, tx);
   const origin = automationOriginLabel(job, tx);
   const originHref = job.origin?.channel === "websocket" && job.origin.session_key
-    ? `#/chat/${encodeURIComponent(job.origin.session_key)}`
+    ? `#/workbench/${encodeURIComponent(job.origin.session_key)}`
     : null;
   const created = job.created_at_ms ? fmtDateTime(job.created_at_ms, locale) : null;
   const updated = job.updated_at_ms ? fmtDateTime(job.updated_at_ms, locale) : null;

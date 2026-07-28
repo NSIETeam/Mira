@@ -38,7 +38,7 @@ function isSettingsSectionKey(value: string | null): value is SettingsSectionKey
 }
 
 function readExecutionKey(params: URLSearchParams): string | null {
-  return params.get("execution")?.trim() || params.get("chat")?.trim() || null;
+  return params.get("execution")?.trim() || null;
 }
 
 export function loadSelectedShellRegistryName(): string {
@@ -155,10 +155,8 @@ export function readShellRoute(): ShellRoute {
   if (path === "/skills") {
     return { view: "skills", activeKey, settingsSection: "skills" };
   }
-  if (path.startsWith("/workbench/") || path.startsWith("/chat/")) {
-    const encoded = path.startsWith("/workbench/")
-      ? path.slice("/workbench/".length)
-      : path.slice("/chat/".length);
+  if (path.startsWith("/workbench/")) {
+    const encoded = path.slice("/workbench/".length);
     try {
       const key = decodeURIComponent(encoded).trim();
       return key
