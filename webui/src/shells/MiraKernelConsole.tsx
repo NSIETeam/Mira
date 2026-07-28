@@ -3353,6 +3353,21 @@ export function MiraKernelConsole({
                     {queue.active_tasks?.length ? (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {queue.active_tasks.map((task) => (
+                          (() => {
+                            const familyMatch = task.match(/\[([^\]]+)\]/);
+                            const family = familyMatch?.[1] ?? "";
+                            const chipClass = family === "filesystem"
+                              ? "border-emerald-300/80 bg-emerald-50 text-emerald-700"
+                              : family === "shell"
+                                ? "border-slate-300/80 bg-slate-100 text-slate-700"
+                                : family === "web"
+                                  ? "border-cyan-300/80 bg-cyan-50 text-cyan-700"
+                                  : family === "subagent" || family === "long-task"
+                                    ? "border-violet-300/80 bg-violet-50 text-violet-700"
+                                    : family === "mcp"
+                                      ? "border-amber-300/80 bg-amber-50 text-amber-700"
+                                      : "border-slate-300/80 bg-white text-slate-700";
+                            return (
                           <button
                             key={task}
                             type="button"
@@ -3371,10 +3386,15 @@ export function MiraKernelConsole({
                               }
                             }}
                             disabled={operatorPending}
-                            className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[11px] text-slate-700 transition-colors hover:bg-slate-50"
+                            className={cn(
+                              "rounded-full border px-2 py-0.5 text-[11px] transition-colors hover:brightness-[0.98]",
+                              chipClass,
+                            )}
                           >
                             {task.replace("dispatch:", "")}
                           </button>
+                            );
+                          })()
                         ))}
                       </div>
                     ) : null}
