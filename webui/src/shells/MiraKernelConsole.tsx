@@ -2220,7 +2220,7 @@ export function MiraKernelConsole({
               <Row label="Last value" value={nativeLastCommand?.value || "none"} />
               <Row label="Artifact" value={nativeLastCommand?.artifact ?? nativeSnapshot?.bridge_artifact ?? "none"} />
               <Row label="Module focus" value={runtimeControl?.module_focus ?? "none"} />
-              <Row label="Command depth" value={`${nativeSnapshot?.command_depth ?? 0}`} />
+              <Row label="Command backlog" value={`${nativeSnapshot?.command_depth ?? 0}`} />
               <Row label="Updated" value={lastNativeUpdated ? formatKernelTimestamp(lastNativeUpdated) : "none"} />
             </div>
             <div className="space-y-2">
