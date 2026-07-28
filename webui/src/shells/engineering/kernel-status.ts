@@ -115,6 +115,10 @@ export function createHostKernelStatus(input: {
   };
 }
 
+export function formatHostChromeTagline(appName: string, status: HostKernelStatus): string {
+  return `${appName} universal execution kernel · engineering shell · ${status.privilege} · ${status.health} · ${status.maintenance}`;
+}
+
 export function deriveHostChromePresentation(
   status: HostKernelStatus,
   appTagline: string,
