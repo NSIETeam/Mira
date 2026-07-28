@@ -1976,7 +1976,7 @@ describe("ThreadShell", () => {
     });
     expect(await screen.findByRole("alert")).toBeInTheDocument();
 
-    // Switch to a different chat. The banner was about the *previous* send
+    // Switch to a different execution. The banner was about the *previous* send
     // in chat-a; it must not leak into chat-b's view.
     await act(async () => {
       rerender(
