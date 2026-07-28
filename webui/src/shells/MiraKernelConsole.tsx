@@ -1378,22 +1378,22 @@ export function MiraKernelConsole({
                 ]}
               />
               <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => runContractAction(sessionControls[0], "runtime")}
-                  disabled={operatorPending || !sessionControls[0]?.command}
+                <ConsoleActionButton
+                  action={sessionControls[0]}
+                  pane="runtime"
+                  label="inspect session"
                   className="rounded-full border border-emerald-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
-                >
-                  inspect session
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runContractAction(sessionControls[2], "runtime")}
-                  disabled={operatorPending || !sessionControls[2]?.command}
+                  disabled={operatorPending}
+                  onRun={runContractAction}
+                />
+                <ConsoleActionButton
+                  action={sessionControls[2]}
+                  pane="runtime"
+                  label="inspect resume path"
                   className="rounded-full border border-emerald-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
-                >
-                  inspect resume path
-                </button>
+                  disabled={operatorPending}
+                  onRun={runContractAction}
+                />
                 <button
                   type="button"
                   onClick={() => runTopologyCommand("runtime", "tool status")}
@@ -1439,26 +1439,26 @@ export function MiraKernelConsole({
                 )}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => runContractAction(dispatchInspectAction, "runtime")}
-                  disabled={operatorPending || !dispatchInspectAction?.command}
+                <ConsoleActionButton
+                  action={dispatchInspectAction}
+                  pane="runtime"
+                  label="inspect"
                   className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  inspect
-                </button>
+                  disabled={operatorPending}
+                  onRun={runContractAction}
+                />
                 {actionAllowed(dispatchPrioritizeAction) ? (
                   <>
                     {dispatchActionButtons.map(({ action, pane, label, className }) => (
-                      <button
+                      <ConsoleActionButton
                         key={label}
-                        type="button"
-                        onClick={() => runContractAction(action, pane)}
-                        disabled={operatorPending || !action?.command}
+                        action={action}
+                        pane={pane}
+                        label={label}
                         className={className}
-                      >
-                        {label}
-                      </button>
+                        disabled={operatorPending}
+                        onRun={runContractAction}
+                      />
                     ))}
                   </>
                 ) : null}
@@ -3337,26 +3337,26 @@ export function MiraKernelConsole({
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => runContractAction(inspectFaultsAction, "faults")}
-                disabled={operatorPending || !inspectFaultsAction?.command}
+              <ConsoleActionButton
+                action={inspectFaultsAction}
+                pane="faults"
+                label="inspect"
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                inspect
-              </button>
+                disabled={operatorPending}
+                onRun={runContractAction}
+              />
               {actionAllowed(clearFaultsAction) ? (
                 <>
                   {faultActionButtons.map(({ action, pane, label, className }) => (
-                    <button
+                    <ConsoleActionButton
                       key={label}
-                      type="button"
-                      onClick={() => runContractAction(action, pane)}
-                      disabled={operatorPending || !action?.command}
+                      action={action}
+                      pane={pane}
+                      label={label}
                       className={className}
-                    >
-                      {label}
-                    </button>
+                      disabled={operatorPending}
+                      onRun={runContractAction}
+                    />
                   ))}
                 </>
               ) : null}
@@ -3550,6 +3550,33 @@ function ConsoleRowGrid({
         <Row key={`${item.label}:${item.value}`} label={item.label} value={item.value} />
       ))}
     </div>
+  );
+}
+
+function ConsoleActionButton({
+  action,
+  pane,
+  label,
+  className,
+  disabled,
+  onRun,
+}: {
+  action?: { command?: string | null } | null;
+  pane: string;
+  label: string;
+  className: string;
+  disabled: boolean;
+  onRun: (action: { command?: string | null } | null | undefined, pane: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onRun(action, pane)}
+      disabled={disabled || !action?.command}
+      className={className}
+    >
+      {label}
+    </button>
   );
 }
 
