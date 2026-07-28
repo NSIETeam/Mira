@@ -527,7 +527,11 @@ export class miraClient {
       ? parsed.turn_id
       : null;
     if (isSystemCommandTurnId(turnId)) {
-      if (parsed.event === "message" || parsed.event === "turn_end") {
+      const kernelEvent = toKernelEventPayload(parsed);
+      if (
+        kernelEvent.type === "message"
+        || (kernelEvent.type === "status" && kernelEvent.state === "turn_end")
+      ) {
         this.resolveSystemCommand(turnId);
       }
       return;
