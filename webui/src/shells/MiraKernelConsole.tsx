@@ -1957,7 +1957,7 @@ export function MiraKernelConsole({
                   className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900"
                 >
                   <option value="">auto-detect</option>
-                  {(boardSnapshot?.available_ports ?? boardAttachment.available_ports ?? []).map((port) => (
+                  {(boardSnapshot?.available_ports ?? []).map((port) => (
                     <option key={port} value={port}>
                       {port}
                     </option>
@@ -1984,13 +1984,13 @@ export function MiraKernelConsole({
                 </button>
               </div>
             </div>
-            {(boardSnapshot?.available_ports?.length ?? boardAttachment.available_ports?.length) ? (
+            {boardSnapshot?.available_ports?.length ? (
               <div className="rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                   Candidate ports
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {(boardSnapshot?.available_ports ?? boardAttachment.available_ports ?? []).slice(0, 6).map((port) => (
+                  {(boardSnapshot?.available_ports ?? []).slice(0, 6).map((port) => (
                     <button
                       key={port}
                       type="button"
@@ -2008,9 +2008,9 @@ export function MiraKernelConsole({
                 </div>
               </div>
             ) : null}
-            {(boardSnapshot?.last_error ?? boardAttachment.last_error) ? (
+            {boardSnapshot?.last_error ? (
               <div className="rounded-md border border-rose-300/60 bg-rose-50 px-2.5 py-2 text-[11px] text-rose-800">
-                {boardSnapshot?.last_error ?? boardAttachment.last_error}
+                {boardSnapshot.last_error}
               </div>
             ) : null}
           </div>
