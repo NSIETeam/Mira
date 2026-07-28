@@ -698,6 +698,7 @@ def build_kernel_manifest(
         "embedded_topology": build_embedded_topology(
             board=build_board_snapshot(
                 attached=False,
+                health="detached",
                 transport=None,
                 port=None,
                 target="embedded" if "embedded-lab" in profile.runtime_targets else "desktop",
@@ -3243,6 +3244,7 @@ class KernelApp:
             snapshot["snapshot"]["subagent_workers"] = len(subagent_rows)
         board_snapshot = self._board_runtime_snapshot(board)
         native_snapshot = self._native_runtime_snapshot()
+        session_metadata = self._active_session_metadata()
         snapshot["snapshot"]["board"] = board_snapshot
         snapshot["snapshot"]["native"] = native_snapshot
         snapshot["snapshot"]["goal_state"] = goal_state_ws_blob(session_metadata) if session_metadata else {"active": False}
