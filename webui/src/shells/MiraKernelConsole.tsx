@@ -41,6 +41,24 @@ function operatorPanelTone(subject: string | null | undefined): string {
   }
 }
 
+function toolFamilyChipTone(family: string): string {
+  switch (family) {
+    case "filesystem":
+      return "border-emerald-300/80 bg-emerald-50 text-emerald-700";
+    case "shell":
+      return "border-slate-300/80 bg-slate-100 text-slate-700";
+    case "web":
+      return "border-cyan-300/80 bg-cyan-50 text-cyan-700";
+    case "subagent":
+    case "long-task":
+      return "border-violet-300/80 bg-violet-50 text-violet-700";
+    case "mcp":
+      return "border-amber-300/80 bg-amber-50 text-amber-700";
+    default:
+      return "border-slate-300/80 bg-white text-slate-700";
+  }
+}
+
 function formatKernelTimestamp(value: unknown): string {
   const timestamp = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(timestamp) || timestamp <= 0) return "unknown";
@@ -3356,17 +3374,6 @@ export function MiraKernelConsole({
                           (() => {
                             const familyMatch = task.match(/\[([^\]]+)\]/);
                             const family = familyMatch?.[1] ?? "";
-                            const chipClass = family === "filesystem"
-                              ? "border-emerald-300/80 bg-emerald-50 text-emerald-700"
-                              : family === "shell"
-                                ? "border-slate-300/80 bg-slate-100 text-slate-700"
-                                : family === "web"
-                                  ? "border-cyan-300/80 bg-cyan-50 text-cyan-700"
-                                  : family === "subagent" || family === "long-task"
-                                    ? "border-violet-300/80 bg-violet-50 text-violet-700"
-                                    : family === "mcp"
-                                      ? "border-amber-300/80 bg-amber-50 text-amber-700"
-                                      : "border-slate-300/80 bg-white text-slate-700";
                             return (
                           <button
                             key={task}
@@ -3388,7 +3395,7 @@ export function MiraKernelConsole({
                             disabled={operatorPending}
                             className={cn(
                               "rounded-full border px-2 py-0.5 text-[11px] transition-colors hover:brightness-[0.98]",
-                              chipClass,
+                              toolFamilyChipTone(family),
                             )}
                           >
                             {task.replace("dispatch:", "")}
