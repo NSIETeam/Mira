@@ -879,7 +879,7 @@ export function usemiraStream(
       if (!metadata || typeof metadata !== "object") return;
       const action = typeof event.action === "string" ? event.action : "";
       const rawEvent = typeof metadata.event === "string" ? metadata.event : "";
-      const state = typeof event.state === "string" ? event.state : rawEvent;
+      const state = typeof event.state === "string" ? event.state : "";
       const turn = turnFieldsFromEvent({
         turn_id: typeof metadata.turn_id === "string" ? metadata.turn_id : undefined,
         turn_phase: typeof metadata.turn_phase === "string"
