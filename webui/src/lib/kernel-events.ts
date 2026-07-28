@@ -193,6 +193,17 @@ export interface KernelMetadataSnapshot {
   } | null;
 }
 
+export interface KernelStreamPayloadSnapshot {
+  text?: string;
+  resuming: boolean;
+  mergeNext: boolean;
+  toolEvents?: unknown[];
+  edits?: unknown[];
+  mediaUrls?: Array<{ url: string; name?: string }>;
+  media?: string[];
+  source?: unknown;
+}
+
 export function kernelMetadataSnapshot(metadata: unknown): KernelMetadataSnapshot {
   return {
     goalState: goalStateFromKernelMetadata(metadata),
@@ -206,6 +217,30 @@ export function kernelMetadataSnapshot(metadata: unknown): KernelMetadataSnapsho
     transcriptionResult: transcriptionResultFromKernelMetadata(metadata),
     transcriptionError: transcriptionErrorFromKernelMetadata(metadata),
     workspaceScopeRejection: workspaceScopeRejectionFromKernelMetadata(metadata),
+  };
+}
+
+export function kernelStreamPayloadSnapshot(metadata: unknown): KernelStreamPayloadSnapshot {
+  const row = metadataRow(metadata);
+  const text = metadataString(row, "text") ?? undefined;
+  const resuming = row?.resuming === true;
+  const mergeNext = row?.merge_next === true;
+  const toolEvents = Array.isArray(row?.tool_events) ? row.tool_events : undefined;
+  const edits = Array.isArray(row?.edits) ? row.edits : undefined;
+  const mediaUrls = Array.isArray(row?.media_urls)
+    ? row.media_urls as Array<{ url: string; name?: string }>
+    : undefined;
+  const media = Array.isArray(row?.media) ? row.media as string[] : undefined;
+  const source = row?.source;
+  return {
+    ...(text !== undefined ? { text } : {}),
+    resuming,
+    mergeNext,
+    ...(toolEvents ? { toolEvents } : {}),
+    ...(edits ? { edits } : {}),
+    ...(mediaUrls ? { mediaUrls } : {}),
+    ...(media ? { media } : {}),
+    ...(source !== undefined ? { source } : {}),
   };
 }
 

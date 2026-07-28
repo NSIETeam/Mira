@@ -18,6 +18,7 @@ import {
   kernelMetadataSnapshot,
   kernelReasoningActionMatches,
   kernelStatusMatchesLifecycle,
+  kernelStreamPayloadSnapshot,
   kernelToolCallActionMatches,
   kernelToolResultActionMatches,
   turnFieldsFromKernelMetadata,
@@ -889,6 +890,7 @@ export function usemiraStream(
       const metadata = event.metadata as Record<string, unknown> | undefined;
       if (!metadata || typeof metadata !== "object") return;
       const snapshot = kernelMetadataSnapshot(metadata);
+      const payload = kernelStreamPayloadSnapshot(metadata);
       const turn = turnFieldsFromEvent(snapshot.turnFields);
       const sideChannelEvent =
         turn.turnId !== undefined && sideChannelTurnIdsRef.current.has(turn.turnId);
@@ -902,7 +904,7 @@ export function usemiraStream(
       }
 
       if (kernelReasoningActionMatches(event, "message")) {
-        const line = typeof metadata.text === "string" ? metadata.text : "";
+        const line = payload.text ?? "";
         if (!line) return;
         if (fileEditSegmentRef.current) clearActivitySegment();
         setMessages((prev) => closeReasoningStream(attachReasoningChunk(
@@ -946,11 +948,9 @@ export function usemiraStream(
 
       if (kernelToolCallActionMatches(event, "trace")) {
         flushPendingStreamEvents({ closeAnswerSegment: true });
-        const rawToolEvents = Array.isArray(metadata.tool_events)
-          ? metadata.tool_events as ToolProgressEvent[]
-          : undefined;
+        const rawToolEvents = payload.toolEvents as ToolProgressEvent[] | undefined;
         const structuredEvents = normalizeToolProgressEvents(rawToolEvents);
-        const text = typeof metadata.text === "string" ? metadata.text : "";
+        const text = payload.text ?? "";
         setMessages((prev) => {
           const segmentId = ensureActivitySegmentId();
           const base = prev;
@@ -1013,7 +1013,7 @@ export function usemiraStream(
 
       if (kernelToolResultActionMatches(event, "file_edit")) {
         flushPendingStreamEvents({ closeAnswerSegment: true });
-        const edits = Array.isArray(metadata.edits) ? metadata.edits : [];
+        const edits = payload.edits ?? [];
         if (edits.length === 0) return;
         const normalized = mergeFileEdits(undefined, edits);
         if (normalized.length === 0) return;
@@ -1067,14 +1067,14 @@ export function usemiraStream(
       }
 
       if (kernelStatusMatchesLifecycle(event, "stream_end")) {
-        const mergeNext = metadata.resuming === true && metadata.merge_next === true;
+        const mergeNext = payload.resuming && payload.mergeNext;
         flushPendingStreamEvents({
           closeAnswerSegment: !mergeNext,
-          ...(typeof metadata.text === "string" ? { finalAnswerText: metadata.text } : {}),
+          ...(payload.text !== undefined ? { finalAnswerText: payload.text } : {}),
           turn: { ...turn, turnPhase: turn.turnPhase ?? "answer" },
         });
         if (suppressStreamUntilTurnEndRef.current) return;
-        if (metadata.resuming === true) {
+        if (payload.resuming) {
           cancelStreamEndTimer();
           setIsStreaming(true);
           if (!mergeNext) {
@@ -1091,17 +1091,13 @@ export function usemiraStream(
 
       if (kernelMessageActionMatches(event, "complete")) {
         if (suppressStreamUntilTurnEndRef.current) return;
-        const mediaUrls = Array.isArray(metadata.media_urls)
-          ? metadata.media_urls as Array<{ url: string; name?: string }>
-          : undefined;
-        const mediaList = Array.isArray(metadata.media)
-          ? metadata.media as string[]
-          : undefined;
+        const mediaUrls = payload.mediaUrls;
+        const mediaList = payload.media;
         const media = mediaUrls?.length
           ? mediaUrls.map((m) => toMediaAttachment(m))
           : mediaList?.map((url) => toMediaAttachment({ url }));
         const hasMedia = !!media && media.length > 0;
-        const source = metadata.source;
+        const source = payload.source;
         const normalizedSource = source && typeof source === "object"
           ? source as UIMessageSource
           : undefined;
