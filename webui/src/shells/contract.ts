@@ -18,15 +18,14 @@ export function shellDataAttributes({
   shellSupportsRuntimeControls,
   shellSupportsFileActivity,
   hostContract,
-  layout,
 }: {
   shellDescriptor: ShellDescriptorPayload | null;
   shellSupportsThreads: boolean;
   shellSupportsRuntimeControls: boolean;
   shellSupportsFileActivity: boolean;
   hostContract: ShellHostContract;
-  layout?: string;
 }): Record<string, string> {
+  const layout = hostContract.mode === "engineering" ? null : hostContract.mode;
   return {
     "data-shell-name": shellDescriptor?.name ?? hostContract.mode,
     "data-shell-theme": shellDescriptor?.theme ?? shellThemeFallback(hostContract),

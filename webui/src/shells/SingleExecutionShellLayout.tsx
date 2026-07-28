@@ -22,7 +22,6 @@ export function SingleExecutionShellLayout({
     shellSupportsRuntimeControls,
     shellSupportsFileActivity,
     hostContract,
-    layout: "single-execution",
   });
 
   return (
