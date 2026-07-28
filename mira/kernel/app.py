@@ -804,13 +804,6 @@ class KernelApp:
         except Exception:
             return []
 
-    def _active_bridge(self) -> dict[str, Any] | None:
-        active_adapter_name = str(self._runtime_control.get("active_adapter") or "")
-        for bridge in self._runtime_bridges:
-            if str(bridge.get("adapter") or "") == active_adapter_name:
-                return dict(bridge)
-        return None
-
     def _refresh_live_event_log(self) -> None:
         native_snapshot = snapshot_native_bridge()
         if native_snapshot is not None:
@@ -2920,7 +2913,15 @@ class KernelApp:
         preferred_lane = str(scheduler_state.get("preferred_lane") or "interactive")
         checkpoint = self._active_checkpoint()
         subagent_rows = self._subagent_snapshot(self._active_session_key)
-        active_bridge = self._active_bridge()
+        active_adapter_name = str(self._runtime_control.get("active_adapter") or "")
+        active_bridge = next(
+            (
+                dict(bridge)
+                for bridge in self._runtime_bridges
+                if str(bridge.get("adapter") or "") == active_adapter_name
+            ),
+            None,
+        )
         interactive_depth = sum(
             1 for status in self._session_status.values() if status in {"queued", "running"}
         )
@@ -3123,7 +3124,15 @@ class KernelApp:
         )
         checkpoint = self._active_checkpoint()
         subagent_rows = self._subagent_snapshot(self._active_session_key)
-        active_bridge = self._active_bridge()
+        active_adapter_name = str(self._runtime_control.get("active_adapter") or "")
+        active_bridge = next(
+            (
+                dict(bridge)
+                for bridge in self._runtime_bridges
+                if str(bridge.get("adapter") or "") == active_adapter_name
+            ),
+            None,
+        )
         for worker in workers:
             lane = str(worker.get("lane") or "")
             if lane == "interactive" and checkpoint:
