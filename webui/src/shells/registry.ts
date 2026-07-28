@@ -254,10 +254,7 @@ function shellRegistryKey(
   ) {
     return contractMode;
   }
-  const shellName = shellDescriptor?.name?.trim() ?? "";
-  if (shellName === "single-execution") return "single-execution";
-  if (shellName === "review") return "review";
-  return shellName;
+  return shellDescriptor?.name?.trim() ?? "";
 }
 
 export function resolveShellRegistration(
