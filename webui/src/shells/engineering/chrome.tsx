@@ -47,6 +47,9 @@ export function HostChrome({
     : appTagline.endsWith("· healthy")
       ? { label: "healthy", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
       : null;
+  const healthDotClass = healthBadge?.label === "attention"
+    ? "bg-rose-500 shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
+    : "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.16)]";
   const privilegeBadge = appTagline.includes("· root")
     ? { label: "root", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
     : appTagline.includes("· user")
@@ -78,7 +81,7 @@ export function HostChrome({
       <div className="pointer-events-none absolute inset-x-0 top-0 flex h-12 items-center justify-center">
         <div className="flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/75 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500 shadow-sm">
           <span className="text-slate-900">{appName}</span>
-          <span className="h-1 w-1 rounded-full bg-emerald-500" />
+          <span className={cn("h-1.5 w-1.5 rounded-full", healthDotClass)} />
           <span>{visibleTagline}</span>
           {privilegeBadge ? (
             <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]", privilegeBadge.className)}>
