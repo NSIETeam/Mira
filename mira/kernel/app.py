@@ -1678,6 +1678,16 @@ class KernelApp:
                 for name, row in native_modules.items()
                 if isinstance(row, dict)
             ) or "none"
+            details["module_rows"] = [
+                {
+                    "name": name,
+                    "status": row.get("status", "unknown"),
+                    "code": row.get("last_code", 0),
+                    "updated_at_ms": row.get("updated_at_ms"),
+                }
+                for name, row in native_modules.items()
+                if isinstance(row, dict)
+            ]
             output, details = (
                 f"native modules count={module_count}",
                 details,
