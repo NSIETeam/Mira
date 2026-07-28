@@ -881,13 +881,28 @@ export function MiraKernelConsole({
                   {faultSummary}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.14em] text-slate-300">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+                  <span className={cn(
+                    "rounded-full border px-2 py-1",
+                    nativeFaultModules.length > 0
+                      ? "border-amber-300/50 bg-amber-500/10 text-amber-100"
+                      : "border-white/10 bg-white/5",
+                  )}>
                     modules {nativeFaultModules.length}
                   </span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+                  <span className={cn(
+                    "rounded-full border px-2 py-1",
+                    faultedBridges.length > 0
+                      ? "border-amber-300/50 bg-amber-500/10 text-amber-100"
+                      : "border-white/10 bg-white/5",
+                  )}>
                     bridges {faultedBridges.length}
                   </span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+                  <span className={cn(
+                    "rounded-full border px-2 py-1",
+                    eventLaneCounts.fault > 0
+                      ? "border-amber-300/50 bg-amber-500/10 text-amber-100"
+                      : "border-white/10 bg-white/5",
+                  )}>
                     lane {eventLaneCounts.fault}
                   </span>
                 </div>
