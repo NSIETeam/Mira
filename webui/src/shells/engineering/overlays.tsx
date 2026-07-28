@@ -11,7 +11,7 @@ const DeleteConfirm = lazy(async () => {
 });
 
 const RenameExecutionDialog = lazy(async () => {
-  const module = await import("@/components/RenameChatDialog");
+  const module = await import("@/components/RenameExecutionDialog");
   return { default: module.RenameExecutionDialog };
 });
 
