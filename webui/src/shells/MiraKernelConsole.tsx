@@ -760,33 +760,33 @@ export function MiraKernelConsole({
               Operator shell
             </div>
             <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-lg border border-slate-800 bg-slate-950/95 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Command path</div>
-                <div className="mt-2 text-sm font-semibold text-slate-50">
-                  {selectedPane}
-                </div>
-                <div className="text-xs text-slate-400">
-                  {operatorPending ? "foreground execution active" : "operator shell ready"}
-                </div>
-              </div>
-              <div className="rounded-lg border border-slate-800 bg-slate-950/95 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Privilege posture</div>
-                <div className="mt-2 text-sm font-semibold text-slate-50">
-                  {privilegePosture.roleLabel}
-                </div>
-                <div className="text-xs text-slate-400">
-                  {privilegePosture.contractLabel}
-                </div>
-              </div>
-              <div className="rounded-lg border border-slate-800 bg-slate-950/95 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Native replay</div>
-                <div className="mt-2 text-sm font-semibold text-slate-50">
-                  {nativeLastCommand?.target ?? "none"}:{nativeLastCommand?.action ?? "idle"}
-                </div>
-                <div className="text-xs text-slate-400">
-                  queue {(nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0)} · health {nativeHealthLabel}
-                </div>
-              </div>
+              <ConsoleInfoCard
+                label="Command path"
+                value={selectedPane}
+                detail={operatorPending ? "foreground execution active" : "operator shell ready"}
+                className="rounded-lg border border-slate-800 bg-slate-950/95 px-3 py-2"
+                labelClassName="text-[10px] uppercase tracking-[0.14em] text-slate-500"
+                valueClassName="mt-2 text-sm font-semibold text-slate-50"
+                detailClassName="text-xs text-slate-400"
+              />
+              <ConsoleInfoCard
+                label="Privilege posture"
+                value={privilegePosture.roleLabel}
+                detail={privilegePosture.contractLabel}
+                className="rounded-lg border border-slate-800 bg-slate-950/95 px-3 py-2"
+                labelClassName="text-[10px] uppercase tracking-[0.14em] text-slate-500"
+                valueClassName="mt-2 text-sm font-semibold text-slate-50"
+                detailClassName="text-xs text-slate-400"
+              />
+              <ConsoleInfoCard
+                label="Native replay"
+                value={`${nativeLastCommand?.target ?? "none"}:${nativeLastCommand?.action ?? "idle"}`}
+                detail={`queue ${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0} · health ${nativeHealthLabel}`}
+                className="rounded-lg border border-slate-800 bg-slate-950/95 px-3 py-2"
+                labelClassName="text-[10px] uppercase tracking-[0.14em] text-slate-500"
+                valueClassName="mt-2 text-sm font-semibold text-slate-50"
+                detailClassName="text-xs text-slate-400"
+              />
             </div>
             <div className="rounded-md border border-slate-300/80 bg-slate-950 px-3 py-2 font-mono text-[11px] text-slate-100">
               <div className="mb-2 flex items-center justify-between gap-3 text-slate-400">
@@ -3324,24 +3324,27 @@ export function MiraKernelConsole({
               <Row label="Gate" value={runtimeControl?.execution_gate?.state ?? "open"} />
             </div>
             <div className="mb-3 grid gap-3 md:grid-cols-3">
-              <div className="rounded-lg border border-slate-200/80 bg-white/80 p-3">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Privilege gate</div>
-                <div className="mt-2 text-sm font-semibold text-slate-950">
-                  {privilegePosture.recoveryLabel}
-                </div>
-              </div>
-              <div className="rounded-lg border border-rose-200/80 bg-rose-50/80 p-3">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-rose-700">Escalation path</div>
-                <div className="mt-2 text-sm font-semibold text-rose-950">
-                  {runtimeControl?.fault_posture.supervisor ?? diagnostics?.supervisor ?? "kernel-supervisor"}
-                </div>
-              </div>
-              <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 p-3">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Recommended move</div>
-                <div className="mt-2 text-sm font-semibold text-amber-950">
-                  {recentErrors.length || nativeFaultModules.length || faultedBridges.length ? "inspect then clear" : "hold steady"}
-                </div>
-              </div>
+              <ConsoleInfoCard
+                label="Privilege gate"
+                value={privilegePosture.recoveryLabel}
+                className="rounded-lg border border-slate-200/80 bg-white/80 p-3"
+                labelClassName="text-[10px] uppercase tracking-[0.14em] text-slate-500"
+                valueClassName="mt-2 text-sm font-semibold text-slate-950"
+              />
+              <ConsoleInfoCard
+                label="Escalation path"
+                value={runtimeControl?.fault_posture.supervisor ?? diagnostics?.supervisor ?? "kernel-supervisor"}
+                className="rounded-lg border border-rose-200/80 bg-rose-50/80 p-3"
+                labelClassName="text-[10px] uppercase tracking-[0.14em] text-rose-700"
+                valueClassName="mt-2 text-sm font-semibold text-rose-950"
+              />
+              <ConsoleInfoCard
+                label="Recommended move"
+                value={recentErrors.length || nativeFaultModules.length || faultedBridges.length ? "inspect then clear" : "hold steady"}
+                className="rounded-lg border border-amber-200/80 bg-amber-50/80 p-3"
+                labelClassName="text-[10px] uppercase tracking-[0.14em] text-amber-700"
+                valueClassName="mt-2 text-sm font-semibold text-amber-950"
+              />
             </div>
             <div className="flex flex-wrap gap-2">
               <button
@@ -3532,6 +3535,36 @@ function ConsoleBadge({
     <span className={cn("rounded-md border px-2 py-1 text-[10px] uppercase tracking-[0.14em]", toneClass)}>
       {label}: <span className="font-semibold">{value}</span>
     </span>
+  );
+}
+
+function ConsoleInfoCard({
+  label,
+  value,
+  detail,
+  className,
+  labelClassName,
+  valueClassName,
+  detailClassName,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  className: string;
+  labelClassName: string;
+  valueClassName: string;
+  detailClassName?: string;
+}) {
+  return (
+    <div className={className}>
+      <div className={labelClassName}>{label}</div>
+      <div className={valueClassName}>{value}</div>
+      {detail ? (
+        <div className={detailClassName ?? "mt-1 text-xs text-slate-500"}>
+          {detail}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
