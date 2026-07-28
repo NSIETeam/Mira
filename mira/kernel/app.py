@@ -650,9 +650,7 @@ class KernelApp:
                 row["native_last_code"] = native_state.get("last_code")
                 row["native_updated_at_ms"] = native_state.get("updated_at_ms")
                 summary = str(row.get("summary") or "").strip()
-                native_summary = f"native bridge {status}"
-                if native_state.get("last_code") not in (None, 0):
-                    native_summary += f" · code {native_state.get('last_code')}"
+                native_summary = str(native_state.get("summary") or f"native bridge {status}").strip()
                 row["summary"] = f"{summary} · {native_summary}" if summary else native_summary
                 row["actions"].append(
                     {

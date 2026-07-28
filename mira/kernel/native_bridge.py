@@ -277,16 +277,22 @@ def _native_module_row(raw_state: NativeKernelModuleState) -> tuple[str | None, 
     module_name = _decode_buffer(raw_state.name)
     if not module_name:
         return None, None
+    status = _native_phase_state(
+        int(raw_state.status),
+        code=int(raw_state.last_code),
+        ready_state=1,
+        active_label="busy",
+    )
+    last_code = int(raw_state.last_code)
+    summary = f"native bridge {status}"
+    if last_code not in (0,):
+        summary += f" · code {last_code}"
     return module_name, {
-        "status": _native_phase_state(
-            int(raw_state.status),
-            code=int(raw_state.last_code),
-            ready_state=1,
-            active_label="busy",
-        ),
+        "status": status,
         "status_code": int(raw_state.status),
-        "last_code": int(raw_state.last_code),
+        "last_code": last_code,
         "updated_at_ms": int(raw_state.updated_at_ms),
+        "summary": summary,
         "actions": _native_module_actions(module_name),
     }
 
