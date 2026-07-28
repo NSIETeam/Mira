@@ -1,19 +1,17 @@
 import type { ShellHostContract } from "./types";
 import type { ShellDescriptorPayload } from "@/lib/types";
 
+const SHELL_THEME_FALLBACKS: Partial<Record<ShellHostContract["mode"], string>> = {
+  "single-execution": "workbench",
+  review: "review",
+};
+
 function dataFlag(value: boolean): string {
   return value ? "true" : "false";
 }
 
 function shellThemeFallback(contract: ShellHostContract): string {
-  switch (contract.mode) {
-    case "single-execution":
-      return "workbench";
-    case "review":
-      return "review";
-    default:
-      return contract.mode;
-  }
+  return SHELL_THEME_FALLBACKS[contract.mode] ?? contract.mode;
 }
 
 export function shellDataAttributes({
