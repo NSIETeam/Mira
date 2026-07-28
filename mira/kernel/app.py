@@ -302,6 +302,11 @@ def _merge_module_native_state(
     row["summary"] = f"{summary} · {native_summary}" if summary else native_summary
     row["actions"].extend(_native_module_actions(module_name))
     return row
+
+
+def _copy_rows(rows: list[dict[str, Any]], *, limit: int | None = None) -> list[dict[str, Any]]:
+    source = rows[:limit] if isinstance(limit, int) else rows
+    return [dict(row) for row in source]
 _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
     "attach-board",
     "detach-board",
@@ -1306,7 +1311,7 @@ class KernelApp:
         manifest["runtime_topology"] = self.runtime_topology_snapshot(
             session_metadata=self._active_session_metadata()
         )
-        manifest["event_log"] = [dict(row) for row in self._event_log]
+        manifest["event_log"] = _copy_rows(self._event_log)
         targets = manifest.get("targets", {})
         adapter_target = dict(targets.get("adapter", {}))
         adapter_target["default_adapter"] = self._runtime_control.get("active_adapter")
@@ -2143,7 +2148,7 @@ class KernelApp:
                 },
             )
         elif command == "event-status":
-            event_rows = [dict(row) for row in self._event_log]
+            event_rows = _copy_rows(self._event_log)
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
             head = event_rows[0] if event_rows else {}
@@ -2161,7 +2166,7 @@ class KernelApp:
                 },
             )
         elif command == "event-tail":
-            event_rows = [dict(row) for row in self._event_log]
+            event_rows = _copy_rows(self._event_log)
             limit = 5
             if args:
                 try:
@@ -3769,7 +3774,7 @@ class KernelApp:
         if artifact is not None:
             self._native_bridge_artifact = artifact or None
         if recent_commands is not None:
-            self._native_recent_commands = [dict(row) for row in recent_commands[:8]]
+            self._native_recent_commands = _copy_rows(recent_commands, limit=8)
         if module_count is not None:
             self._native_module_count = module_count
         if module_states is not None:
@@ -3857,7 +3862,7 @@ class KernelApp:
             "bridge_artifact": self._native_bridge_artifact,
             "module_count": self._native_module_count or len(self._native_module_states),
             "command_depth": self._native_command_depth,
-            "recent_commands": [dict(row) for row in self._native_recent_commands[:8]],
+            "recent_commands": _copy_rows(self._native_recent_commands, limit=8),
             "last_command": last_command,
             "modules": {
                 name: dict(state)
