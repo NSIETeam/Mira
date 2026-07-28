@@ -2729,6 +2729,14 @@ export function MiraKernelConsole({
                     {bridge.capabilities?.length ? (
                       <Row label="Capabilities" value={bridge.capabilities.join(", ")} />
                     ) : null}
+                    {bridge.module_states ? (
+                      <Row
+                        label="Module states"
+                        value={Object.entries(bridge.module_states)
+                          .map(([name, row]) => `${name}:${row?.status ?? "unknown"}:${row?.last_code ?? 0}`)
+                          .join(", ")}
+                      />
+                    ) : null}
                     {bridge.build_hint ? (
                       <Row label="Build hint" value={bridge.build_hint} />
                     ) : null}

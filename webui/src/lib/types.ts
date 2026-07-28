@@ -510,6 +510,10 @@ export interface KernelManifestPayload {
     queue_depth?: number | null;
     module_count?: number | null;
     capabilities?: string[] | null;
+    module_states?: Record<string, {
+      status?: string | null;
+      last_code?: number | null;
+    }> | null;
     runtime_mode?: string | null;
     runtime_stage?: string;
     build_hint?: string | null;
