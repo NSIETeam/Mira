@@ -98,10 +98,6 @@ export function useKernelControlState({
     }, "adapters");
   };
 
-  const detachBoard = async () => {
-    await runControlAction("detach_board", {}, "adapters");
-  };
-
   const focusModule = async (moduleName: string | null) => {
     if (!moduleName) return;
     await runControlAction("focus_module", { module: moduleName });
@@ -172,7 +168,6 @@ export function useKernelControlState({
       setSelectedBoardPort,
       cycleAdapter,
       attachBoard,
-      detachBoard,
       focusModule,
       clearFault,
       recordFault,
