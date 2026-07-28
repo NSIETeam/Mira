@@ -40,8 +40,10 @@ def _manifest_probe(adapter: dict[str, object]) -> dict[str, object] | None:
         version=raw.get("version"),
         queue_depth=raw.get("queue_depth"),
         module_count=raw.get("module_count"),
+        updated_at_ms=raw.get("updated_at_ms"),
         capabilities=raw.get("capabilities"),
         module_states=raw.get("module_states"),
+        last_command=raw.get("last_command"),
         error=raw.get("error") or "runtime manifest fault",
     )
     payload["kernel_surface"] = raw.get("kernel_surface")
@@ -101,8 +103,10 @@ def build_runtime_bridges(
                 "version": (probe or {}).get("version"),
                 "queue_depth": (probe or {}).get("queue_depth"),
                 "module_count": (probe or {}).get("module_count"),
+                "updated_at_ms": (probe or {}).get("updated_at_ms"),
                 "capabilities": (probe or {}).get("capabilities"),
                 "module_states": (probe or {}).get("module_states"),
+                "last_command": (probe or {}).get("last_command"),
                 "runtime_mode": (probe or {}).get("runtime_mode"),
                 "runtime_stage": adapter.get("runtime_stage"),
                 "build_hint": adapter.get("build_hint"),

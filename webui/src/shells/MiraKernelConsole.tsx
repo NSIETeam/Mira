@@ -2673,12 +2673,13 @@ export function MiraKernelConsole({
                   <Row label="ABI" value={bridge.abi} />
                   <Row label="Artifact" value={bridge.manifest ?? bridge.entrypoint} />
                 </div>
-                {(bridge.runtime || bridge.version || bridge.queue_depth !== undefined || bridge.module_count !== undefined) ? (
+                {(bridge.runtime || bridge.version || bridge.queue_depth !== undefined || bridge.module_count !== undefined || bridge.updated_at_ms !== undefined) ? (
                   <div className="mt-2 grid gap-2 md:grid-cols-4">
                     {bridge.runtime ? <Row label="Runtime" value={bridge.runtime} /> : null}
                     {bridge.version ? <Row label="Version" value={bridge.version} /> : null}
                     {bridge.queue_depth !== undefined ? <Row label="Queue depth" value={String(bridge.queue_depth ?? 0)} /> : null}
                     {bridge.module_count !== undefined ? <Row label="Module count" value={String(bridge.module_count ?? 0)} /> : null}
+                    {bridge.updated_at_ms !== undefined ? <Row label="Updated" value={formatKernelTimestamp(bridge.updated_at_ms)} /> : null}
                   </div>
                 ) : null}
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -2735,6 +2736,12 @@ export function MiraKernelConsole({
                         value={Object.entries(bridge.module_states)
                           .map(([name, row]) => `${name}:${row?.status ?? "unknown"}:${row?.last_code ?? 0}`)
                           .join(", ")}
+                      />
+                    ) : null}
+                    {bridge.last_command ? (
+                      <Row
+                        label="Last command"
+                        value={`${bridge.last_command.target ?? "runtime"}:${bridge.last_command.action ?? "status"}:${bridge.last_command.status ?? "ready"}:${bridge.last_command.code ?? 0}`}
                       />
                     ) : null}
                     {bridge.build_hint ? (

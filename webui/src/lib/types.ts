@@ -509,11 +509,19 @@ export interface KernelManifestPayload {
     version?: string | null;
     queue_depth?: number | null;
     module_count?: number | null;
+    updated_at_ms?: number | null;
     capabilities?: string[] | null;
     module_states?: Record<string, {
       status?: string | null;
       last_code?: number | null;
     }> | null;
+    last_command?: {
+      target?: string | null;
+      action?: string | null;
+      status?: string | null;
+      code?: number | null;
+      updated_at_ms?: number | null;
+    } | null;
     runtime_mode?: string | null;
     runtime_stage?: string;
     build_hint?: string | null;

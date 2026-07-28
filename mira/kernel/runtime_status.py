@@ -26,8 +26,10 @@ def runtime_probe_payload(
     version: object = None,
     queue_depth: object = None,
     module_count: object = None,
+    updated_at_ms: object = None,
     capabilities: object = None,
     module_states: object = None,
+    last_command: object = None,
     error: object = None,
 ) -> dict[str, Any]:
     health = runtime_health(status)
@@ -48,8 +50,12 @@ def runtime_probe_payload(
         payload["queue_depth"] = queue_depth
     if module_count is not None:
         payload["module_count"] = module_count
+    if updated_at_ms is not None:
+        payload["updated_at_ms"] = updated_at_ms
     if capabilities is not None:
         payload["capabilities"] = capabilities
     if module_states is not None:
         payload["module_states"] = module_states
+    if last_command is not None:
+        payload["last_command"] = last_command
     return payload
