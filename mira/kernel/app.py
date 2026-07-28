@@ -3758,14 +3758,17 @@ class KernelApp:
             gate_state="degraded",
             reason=degrade_reason,
         )
-        return self._commit_runtime_control_action(
+        self._dispatch_native_control(
             target="runtime",
             action="degrade",
             value=degrade_reason,
-            event_action="degrade_runtime",
-            event_state="degraded",
-            event_message=reason or "runtime degraded for containment",
         )
+        self._record_kernel_event(
+            "degrade_runtime",
+            state="degraded",
+            message=reason or "runtime degraded for containment",
+        )
+        return self.runtime_control
 
     def enter_maintenance(self, reason: str | None = None) -> dict[str, Any]:
         maintenance_reason = reason or "operator-maintenance-window"
