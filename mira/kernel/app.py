@@ -97,6 +97,21 @@ _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
     "enter-maintenance",
     "exit-maintenance",
 }
+_PRIVILEGED_CONTROL_ACTIONS = {
+    "switch_adapter",
+    "attach_board",
+    "detach_board",
+    "clear_fault",
+    "record_fault",
+    "restart_bridge",
+    "pause_runtime",
+    "resume_runtime",
+    "degrade_runtime",
+    "drain_background",
+    "prioritize_goal_lane",
+    "enter_maintenance",
+    "exit_maintenance",
+}
 
 
 def active_kernel_app() -> KernelApp | None:
@@ -2668,6 +2683,11 @@ class KernelApp:
     def _assert_operator_command_allowed(self, command: str, *, raw: str) -> None:
         if command not in _PRIVILEGED_OPERATOR_COMMAND_PREFIXES:
             return
+        self.assert_control_action_allowed(command.replace("-", "_"), raw=raw)
+
+    def assert_control_action_allowed(self, action: str, *, raw: str | None = None) -> None:
+        if action not in _PRIVILEGED_CONTROL_ACTIONS:
+            return
         host_contract = self._shell.host_contract if isinstance(self._shell.host_contract, dict) else {}
         surfaces = host_contract.get("surfaces", {}) if isinstance(host_contract.get("surfaces", {}), dict) else {}
         privilege = host_contract.get("privilege", {}) if isinstance(host_contract.get("privilege", {}), dict) else {}
@@ -2676,7 +2696,7 @@ class KernelApp:
         can_elevate = bool(privilege.get("canElevate"))
         if allows_privileged_controls and (privilege_role == "root" or can_elevate):
             return
-        raise PermissionError(f"operator command requires root privileges: {raw}")
+        raise PermissionError(f"operator action requires root privileges: {raw or action}")
 
     def _refresh_board_runtime_status(self) -> None:
         board = dict(self._runtime_control.get("board", {}))

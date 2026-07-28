@@ -926,6 +926,7 @@ class GatewayHTTPHandler:
         if not action:
             return _http_error(400, "missing action")
         try:
+            kernel.assert_control_action_allowed(action, raw=action)
             if action == "switch_adapter":
                 adapter = (_query_first(query, "adapter") or "").strip()
                 if not adapter:
@@ -984,6 +985,8 @@ class GatewayHTTPHandler:
                 return _http_json_response({"ok": True, **payload, "kernel": kernel.describe()})
             else:
                 return _http_error(404, "unknown kernel action")
+        except PermissionError as e:
+            return _http_error(403, str(e))
         except ValueError as e:
             return _http_error(400, str(e))
         return _http_json_response({"ok": True, "runtime_control": state, "kernel": kernel.describe()})
