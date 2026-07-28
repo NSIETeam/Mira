@@ -235,7 +235,9 @@ export class miraClient {
   }
 
   private recordGoalStatusForRunStrip(executionId: string, ev: InboundEvent): void {
-    if (ev.event === "turn_end") {
+    const kernelEvent = toKernelEventPayload(ev);
+    if (kernelEvent.type !== "status") return;
+    if (kernelEvent.state === "turn_end") {
       if (this.runStartedAtByChatId.has(executionId)) {
         this.runStartedAtByChatId.delete(executionId);
         this.emitRunStatus(executionId, null);
@@ -254,12 +256,15 @@ export class miraClient {
   }
 
   private recordGoalStateSnapshot(executionId: string, ev: InboundEvent): void {
-    if (ev.event === "goal_state") {
+    const kernelEvent = toKernelEventPayload(ev);
+    if (
+      "goal_state" in ev
+      && ev.goal_state != null
+      && typeof ev.goal_state === "object"
+      && kernelEvent.type === "status"
+    ) {
       this.goalStateByChatId.set(executionId, ev.goal_state);
       return;
-    }
-    if (ev.event === "turn_end" && ev.goal_state != null && typeof ev.goal_state === "object") {
-      this.goalStateByChatId.set(executionId, ev.goal_state);
     }
   }
 
