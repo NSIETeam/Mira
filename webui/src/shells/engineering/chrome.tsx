@@ -133,6 +133,7 @@ export function HostChrome({
           aria-label={chromeStatusTitle || `${appName} kernel status`}
           data-kernel-health={healthBadge?.label ?? "unknown"}
           data-kernel-connected={healthBadge?.label === "offline" ? "false" : "true"}
+          data-kernel-alert={healthBadge?.label === "attention" || maintenanceBadge?.label === "maintenance" ? "true" : "false"}
           data-runtime-maintenance={maintenanceBadge?.label ?? "unknown"}
           data-shell-privilege={privilegeBadge?.label ?? "unknown"}
           data-runtime-state={runtimeState}
