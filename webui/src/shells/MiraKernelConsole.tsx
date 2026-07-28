@@ -128,6 +128,19 @@ export function MiraKernelConsole({
   const canElevate = hostContract.privilege.canElevate;
   const shellAllowsPrivilegedControls = hostContract.surfaces.allowPrivilegedRuntimeControls;
   const allowsPrivilegedControls = shellAllowsPrivilegedControls && (privilegeRole === "root" || canElevate);
+  const privilegePosture = {
+    roleLabel: privilegeRole,
+    contractLabel: shellAllowsPrivilegedControls ? "runtime control contract enabled" : "restricted shell contract",
+    accessLabel: allowsPrivilegedControls ? "root-enabled" : "observe-only",
+    capabilityLabel: shellAllowsPrivilegedControls
+      ? (canElevate && privilegeRole !== "root" ? "elevation-capable" : operatorReadyLabel)
+      : "restricted shell",
+    summary: privilegeRole === "root"
+      ? "root shell with live runtime control"
+      : canElevate
+        ? "user shell with controlled elevation"
+        : "user shell in observe-first posture",
+  };
   const actionAllowed = (
     action?: { privileged?: boolean | null; required_role?: string | null } | null,
   ) => {
@@ -521,11 +534,6 @@ export function MiraKernelConsole({
   const faultEventCount = executionTimeline.filter((event) => event.type.includes("fault") || event.type.includes("maintenance")).length;
   const runtimeEventCount = executionTimeline.filter((event) => event.type.includes("turn") || event.type.includes("execution") || event.type.includes("session")).length;
   const bridgeEventCount = executionTimeline.filter((event) => event.type.includes("bridge") || event.type.includes("adapter") || event.type.includes("board")).length;
-  const privilegeSummary = privilegeRole === "root"
-    ? "root shell with live runtime control"
-    : canElevate
-      ? "user shell with controlled elevation"
-      : "user shell in observe-first posture";
   const maturitySummary = [
     runtimeCapabilities?.threads ? "threads" : null,
     runtimeCapabilities?.api ? "api" : null,
@@ -612,14 +620,14 @@ export function MiraKernelConsole({
                       ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
                       : "border-amber-400/40 bg-amber-500/15 text-amber-100",
                   )}>
-                    {privilegeRole}
+                    {privilegePosture.roleLabel}
                   </span>
                   <span className="text-xs text-slate-300">
-                    {shellAllowsPrivilegedControls ? (canElevate && privilegeRole !== "root" ? "elevation-capable" : operatorReadyLabel) : "restricted shell"}
+                    {privilegePosture.capabilityLabel}
                   </span>
                 </div>
                 <div className="mt-2 text-xs text-slate-300">
-                  {privilegeSummary}
+                  {privilegePosture.summary}
                 </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
@@ -681,7 +689,7 @@ export function MiraKernelConsole({
             <Row label="App" value={kernelManifest?.identity?.app_name ?? "Mira"} />
             <Row label="CLI" value={kernelManifest?.identity?.cli_name ?? "mira"} />
             <Row label="Profile" value={profileName} />
-            <Row label="Privilege" value={privilegeRole} />
+            <Row label="Privilege" value={privilegePosture.roleLabel} />
             <Row label="Privileged shell" value={shellAllowsPrivilegedControls ? "enabled" : "restricted"} />
             <Row label="Elevation" value={canElevate ? "allowed" : "fixed"} />
             <Row label="GUI" value={runtimeCapabilities?.gui ? "enabled" : "off"} />
@@ -754,10 +762,10 @@ export function MiraKernelConsole({
               <div className="rounded-lg border border-slate-800 bg-slate-950/95 px-3 py-2">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Privilege posture</div>
                 <div className="mt-2 text-sm font-semibold text-slate-50">
-                  {privilegeRole}
+                  {privilegePosture.roleLabel}
                 </div>
                 <div className="text-xs text-slate-400">
-                  {shellAllowsPrivilegedControls ? "runtime control contract enabled" : "restricted shell contract"}
+                  {privilegePosture.contractLabel}
                 </div>
               </div>
               <div className="rounded-lg border border-slate-800 bg-slate-950/95 px-3 py-2">
@@ -2803,7 +2811,7 @@ export function MiraKernelConsole({
               <div className="rounded-lg border border-slate-200/80 bg-white/80 p-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Control posture</div>
                 <div className="mt-2 text-sm font-semibold text-slate-950">
-                  {allowsPrivilegedControls ? "root-enabled" : "observe-only"}
+                  {privilegePosture.accessLabel}
                 </div>
                 <div className="mt-1 text-xs text-slate-500">
                   {allowsPrivilegedControls ? "board attachment and recovery actions are writable" : "this shell can inspect board state but not mutate hardware posture"}
