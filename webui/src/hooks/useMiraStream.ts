@@ -11,7 +11,10 @@ import {
 import { hasPendingAgentActivity } from "@/lib/activity-timeline";
 import type { StreamError } from "@/lib/mira-client";
 import { formatQuotedUserMessage } from "@/lib/user-message-quote";
-import { goalStateFromKernelMetadata } from "@/lib/kernel-events";
+import {
+  goalStateFromKernelMetadata,
+  runStartedAtFromKernelMetadata,
+} from "@/lib/kernel-events";
 import type {
   InboundEvent,
   KernelEventPayload,
@@ -1164,9 +1167,8 @@ export function usemiraStream(
       }
 
       if (state === "running" || state === "idle") {
-        const status = "status" in metadata ? metadata.status : undefined;
-        const startedAt = "started_at" in metadata ? metadata.started_at : undefined;
-        if (status === "running" && typeof startedAt === "number") {
+        const startedAt = runStartedAtFromKernelMetadata(metadata);
+        if (startedAt !== null) {
           setRunStartedAt(startedAt);
           setIsStreaming(true);
         } else {

@@ -9,7 +9,11 @@ import type {
   GoalStateWsPayload,
   WorkspaceScopePayload,
 } from "./types";
-import { goalStateFromKernelMetadata, toKernelEventPayload } from "./kernel-events";
+import {
+  goalStateFromKernelMetadata,
+  runStartedAtFromKernelMetadata,
+  toKernelEventPayload,
+} from "./kernel-events";
 import { createHostWebSocket } from "./runtime";
 
 /** WebSocket readyState constants, referenced by value to stay portable
@@ -244,11 +248,11 @@ export class miraClient {
       }
       return;
     }
-    if (ev.event !== "goal_status") return;
-    if (ev.status === "running" && typeof ev.started_at === "number") {
+    const startedAt = runStartedAtFromKernelMetadata(ev);
+    if (startedAt !== null) {
       const previous = this.runStartedAtByChatId.get(executionId);
-      this.runStartedAtByChatId.set(executionId, ev.started_at);
-      if (previous !== ev.started_at) this.emitRunStatus(executionId, ev.started_at);
+      this.runStartedAtByChatId.set(executionId, startedAt);
+      if (previous !== startedAt) this.emitRunStatus(executionId, startedAt);
     } else if (this.runStartedAtByChatId.has(executionId)) {
       this.runStartedAtByChatId.delete(executionId);
       this.emitRunStatus(executionId, null);

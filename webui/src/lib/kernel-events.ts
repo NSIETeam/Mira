@@ -21,6 +21,15 @@ export function goalStateFromKernelMetadata(metadata: unknown): GoalStateWsPaylo
   return row.goal_state as GoalStateWsPayload;
 }
 
+export function runStartedAtFromKernelMetadata(metadata: unknown): number | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const row = metadata as Record<string, unknown>;
+  const status = typeof row.status === "string" ? row.status : "";
+  const startedAt = typeof row.started_at === "number" ? row.started_at : null;
+  if (status === "running" && startedAt !== null) return startedAt;
+  return null;
+}
+
 export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
   switch (ev.event) {
     case "delta":
