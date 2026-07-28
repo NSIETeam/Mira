@@ -3652,14 +3652,17 @@ class KernelApp:
                 adapter_name=target_adapter,
                 error=level,
             )
-            return self._commit_runtime_control_action(
+            self._dispatch_native_control(
                 target=target_adapter,
                 action="record_fault",
                 value=level,
-                event_action="record_fault",
-                event_state="fault",
-                event_message=f"{target_adapter or 'runtime'} marked {level}",
             )
+            self._record_kernel_event(
+                "record_fault",
+                state="fault",
+                message=f"{target_adapter or 'runtime'} marked {level}",
+            )
+            return self.runtime_control
         self._record_kernel_event(
             "record_fault",
             state="fault",
