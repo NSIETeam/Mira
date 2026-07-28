@@ -565,7 +565,7 @@ export function MiraKernelConsole({
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Module focus</div>
                 <div className="mt-2 text-lg font-semibold text-white">
-                  {selectedModule?.name ?? selectedModuleName ?? "unfocused"}
+                  {selectedModule?.name ?? "unfocused"}
                 </div>
                 <div className="text-xs text-slate-300">
                   native queue {(nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0)} / modules {nativeSnapshot?.module_count ?? runtimeModules.length}
@@ -1805,7 +1805,7 @@ export function MiraKernelConsole({
               />
               <Row
                 label="Active"
-                value={runtimeControl?.active_adapter ?? selectedAdapterName ?? "unset"}
+                value={runtimeControl?.active_adapter ?? "unset"}
               />
             </div>
           </div>
