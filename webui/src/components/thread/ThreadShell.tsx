@@ -1118,6 +1118,12 @@ export function ThreadShell({
       action: mcpPresets[0] ? `@${mcpPresets[0].name}` : null,
     },
   ];
+  const primitiveSurface = [
+    supportsRuntimeControls ? "runtime control" : "fixed runtime",
+    supportsFileActivity ? "file activity" : "no file activity",
+    supportsThreads ? "forkable sessions" : "single session",
+    allowComposer ? "live operator input" : "observer only",
+  ];
   const emptyState = loading ? (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
       {t("thread.loadingConversation")}
@@ -1220,6 +1226,19 @@ export function ThreadShell({
                 </div>
                 <div className="mt-1 text-xs text-slate-600">
                   {readOnlyExecution ? "locked execution lane" : "live execution lane"}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Execution primitives</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {primitiveSurface.map((primitive) => (
+                    <span
+                      key={primitive}
+                      className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700"
+                    >
+                      {primitive}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
