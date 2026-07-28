@@ -478,11 +478,6 @@ class SessionManager:
         """Get the collision-resistant workspace path for a session."""
         return self.sessions_dir / f"{self._storage_key(key)}.jsonl"
 
-    def _resolve_session_path(self, key: str, *, migrate: bool = False) -> Path | None:
-        """Resolve a session path in the active workspace."""
-        path = self._get_session_path(key)
-        return path if migrate or path.exists() else None
-
     def get_or_create(self, key: str) -> Session:
         """
         Get an existing session or create a new one.
@@ -506,8 +501,8 @@ class SessionManager:
 
     def _load(self, key: str) -> Session | None:
         """Load a session from disk."""
-        path = self._resolve_session_path(key, migrate=True)
-        if path is None:
+        path = self._get_session_path(key)
+        if not path.exists():
             return None
 
         try:
@@ -780,8 +775,8 @@ class SessionManager:
         Returns ``{"key", "created_at", "updated_at", "metadata", "messages"}`` or
         ``None`` when the session file does not exist or fails to parse.
         """
-        path = self._resolve_session_path(key)
-        if path is None:
+        path = self._get_session_path(key)
+        if not path.exists():
             return None
         try:
             messages: list[dict[str, Any]] = []
@@ -823,8 +818,8 @@ class SessionManager:
         This is used by WebUI routes that need session-level metadata but not the
         full conversation transcript.
         """
-        path = self._resolve_session_path(key)
-        if path is None:
+        path = self._get_session_path(key)
+        if not path.exists():
             return None
         try:
             with open(path, encoding="utf-8") as f:
