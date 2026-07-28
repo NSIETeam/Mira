@@ -188,6 +188,46 @@ def _fault_posture_actions() -> list[dict[str, Any]]:
             "privileged_reason": "requires elevated maintenance control",
         },
     ]
+
+
+def _adapter_actions(adapter_name: str) -> list[dict[str, str]]:
+    return [
+        {
+            "id": "inspect_adapter",
+            "label": "inspect",
+            "pane": "adapters",
+            "command": f"adapter status {adapter_name}".strip(),
+        }
+    ]
+
+
+def _module_actions(module_name: str) -> list[dict[str, str]]:
+    return [
+        {
+            "id": "show_module",
+            "label": "open",
+            "pane": "modules",
+            "command": f"module show {module_name}".strip(),
+        },
+        {
+            "id": "focus_native",
+            "label": "focus",
+            "pane": "modules",
+            "command": f"native focus {module_name}".strip(),
+        },
+        {
+            "id": "fill_native_inspect",
+            "label": "fill inspect",
+            "pane": "modules",
+            "command": f"native inspect {module_name}".strip(),
+        },
+        {
+            "id": "fill_native_replay",
+            "label": "fill replay",
+            "pane": "modules",
+            "command": f"native replay {module_name} inspect status".strip(),
+        },
+    ]
 _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
     "attach-board",
     "detach-board",
@@ -681,14 +721,7 @@ class KernelApp:
         for adapter in self._runtime_adapters:
             row = dict(adapter)
             adapter_name = str(row.get("name") or "")
-            row["actions"] = [
-                {
-                    "id": "inspect_adapter",
-                    "label": "inspect",
-                    "pane": "adapters",
-                    "command": f"adapter status {adapter_name}".strip(),
-                }
-            ]
+            row["actions"] = _adapter_actions(adapter_name)
             rows.append(row)
         return rows
 
@@ -697,32 +730,7 @@ class KernelApp:
         for module in self._runtime_modules:
             row = dict(module)
             module_name = str(row.get("name") or "")
-            row["actions"] = [
-                {
-                    "id": "show_module",
-                    "label": "open",
-                    "pane": "modules",
-                    "command": f"module show {module_name}".strip(),
-                },
-                {
-                    "id": "focus_native",
-                    "label": "focus",
-                    "pane": "modules",
-                    "command": f"native focus {module_name}".strip(),
-                },
-                {
-                    "id": "fill_native_inspect",
-                    "label": "fill inspect",
-                    "pane": "modules",
-                    "command": f"native inspect {module_name}".strip(),
-                },
-                {
-                    "id": "fill_native_replay",
-                    "label": "fill replay",
-                    "pane": "modules",
-                    "command": f"native replay {module_name} inspect status".strip(),
-                }
-            ]
+            row["actions"] = _module_actions(module_name)
             native_state = self._native_module_states.get(str(row.get("name") or ""))
             if native_state:
                 status = str(native_state.get("status") or row.get("status") or "ready")
