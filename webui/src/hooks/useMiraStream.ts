@@ -877,8 +877,8 @@ export function usemiraStream(
     const handleKernelEvent = (event: KernelEventPayload) => {
       const metadata = event.metadata as Record<string, unknown> | undefined;
       if (!metadata || typeof metadata !== "object") return;
-      const rawEvent = typeof metadata.event === "string" ? metadata.event : "";
       const action = typeof event.action === "string" ? event.action : "";
+      const rawEvent = typeof metadata.event === "string" ? metadata.event : "";
       const state = typeof event.state === "string" ? event.state : rawEvent;
       const turn = turnFieldsFromEvent({
         turn_id: typeof metadata.turn_id === "string" ? metadata.turn_id : undefined,
@@ -1158,12 +1158,12 @@ export function usemiraStream(
 
       if (event.type !== "status") return;
 
-      if (state === "goal_state" && "goal_state" in metadata) {
+      if ("goal_state" in metadata && metadata.goal_state && typeof metadata.goal_state === "object") {
         setGoalState(metadata.goal_state as GoalStateWsPayload);
-        return;
+        if (rawEvent === "goal_state") return;
       }
 
-      if (state === "goal_status") {
+      if (rawEvent === "goal_status" || (rawEvent === "" && (state === "running" || state === "idle"))) {
         const status = "status" in metadata ? metadata.status : undefined;
         const startedAt = "started_at" in metadata ? metadata.started_at : undefined;
         if (status === "running" && typeof startedAt === "number") {
@@ -1176,10 +1176,7 @@ export function usemiraStream(
         return;
       }
 
-      if (state === "turn_end") {
-        if ("goal_state" in metadata && metadata.goal_state && typeof metadata.goal_state === "object") {
-          setGoalState(metadata.goal_state as GoalStateWsPayload);
-        }
+      if (rawEvent === "turn_end" || state === "turn_end") {
         setRunStartedAt(null);
         cancelStreamEndTimer();
         setIsStreaming(false);
