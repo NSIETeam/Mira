@@ -177,6 +177,9 @@ export function MiraKernelConsole({
   const runtimeCapabilities = kernelManifest?.capabilities ?? null;
   const executionContract = kernelManifest?.execution ?? null;
   const goalState = diagnostics?.snapshot.goal_state;
+  const operatorReadyLabel = "operator-ready";
+  const unresolvedRuntimeLabel = "unresolved";
+  const boardAttachmentLabel = boardSnapshot?.attached ? "attached" : "detached";
   const profileName = profile?.name ?? "unknown";
   const activeAdapterName = runtimeControl?.active_adapter ?? "unset";
   const boardTransportLabel = boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset";
@@ -559,7 +562,7 @@ export function MiraKernelConsole({
               <div className="flex flex-wrap gap-2">
                 <ConsoleBadge label="shell" value={shellMode} tone="slate" />
                 <ConsoleBadge label="gate" value={runtimeControl?.execution_gate?.state ?? "open"} tone={runtimeControl?.execution_gate?.state === "open" ? "emerald" : "amber"} />
-                <ConsoleBadge label="board" value={boardSnapshot?.attached ? "attached" : "detached"} tone={boardSnapshot?.attached ? "emerald" : "amber"} />
+                <ConsoleBadge label="board" value={boardAttachmentLabel} tone={boardSnapshot?.attached ? "emerald" : "amber"} />
                 <ConsoleBadge label="native" value={nativeSnapshot?.health ?? "unknown"} tone={nativeSnapshot?.health === "ready" ? "emerald" : "amber"} />
               </div>
             </div>
@@ -576,15 +579,15 @@ export function MiraKernelConsole({
                     {privilegeRole}
                   </span>
                   <span className="text-xs text-slate-300">
-                    {shellAllowsPrivilegedControls ? (canElevate && privilegeRole !== "root" ? "elevation-capable" : "operator-ready") : "restricted shell"}
+                    {shellAllowsPrivilegedControls ? (canElevate && privilegeRole !== "root" ? "elevation-capable" : operatorReadyLabel) : "restricted shell"}
                   </span>
                 </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Runtime</div>
-                <div className="mt-2 text-lg font-semibold text-white">{runtimeModel ?? "unresolved"}</div>
+                <div className="mt-2 text-lg font-semibold text-white">{runtimeModel ?? unresolvedRuntimeLabel}</div>
                 <div className="text-xs text-slate-300">
-                  {runtimeControl?.execution_gate?.reason ?? "operator-ready"}
+                  {runtimeControl?.execution_gate?.reason ?? operatorReadyLabel}
                 </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
@@ -612,7 +615,7 @@ export function MiraKernelConsole({
             <Row label="Shell" value={shellDescriptor?.display_name ?? "Mira"} />
             <Row label="Mode" value={shellMode} />
             <Row label="Status" value={connectionStatus} />
-            <Row label="Model" value={runtimeModel ?? "unresolved"} />
+            <Row label="Model" value={runtimeModel ?? unresolvedRuntimeLabel} />
             <Row label="Running" value={`${runningExecutionCount}`} />
             <Row label="Gate" value={runtimeControl?.execution_gate?.state ?? "open"} />
             <Row
@@ -621,7 +624,7 @@ export function MiraKernelConsole({
             />
             <Row
               label="Gate reason"
-              value={runtimeControl?.execution_gate?.reason ?? "operator-ready"}
+              value={runtimeControl?.execution_gate?.reason ?? operatorReadyLabel}
             />
             <Row
               label="Supervisor"
@@ -1138,7 +1141,7 @@ export function MiraKernelConsole({
                   />
                   <Row
                     label="Reason"
-                    value={runtimeControl?.execution_gate?.reason ?? "operator-ready"}
+                    value={runtimeControl?.execution_gate?.reason ?? operatorReadyLabel}
                   />
                   <Row
                     label="Dispatch handoff"
@@ -2328,7 +2331,7 @@ export function MiraKernelConsole({
             <Row label="Subagents" value={`${diagSubagentWorkers}`} />
             <Row
               label="Board"
-              value={boardSnapshot?.attached ? "attached" : "detached"}
+              value={boardAttachmentLabel}
             />
             <Row
               label="Board mode"
@@ -3372,11 +3375,11 @@ export function MiraKernelConsole({
             </div>
             {runtimeControl ? (
               <div className="mt-2 grid gap-2 rounded-md border border-slate-300/70 bg-slate-50/80 p-3">
-                <Row label="Active adapter" value={runtimeControl.active_adapter ?? "unset"} />
+                <Row label="Active adapter" value={activeAdapterName} />
                 <Row label="Execution gate" value={runtimeControl.execution_gate?.state ?? "open"} />
                 <Row
                   label="Gate reason"
-                  value={runtimeControl.execution_gate?.reason ?? "operator-ready"}
+                  value={runtimeControl.execution_gate?.reason ?? operatorReadyLabel}
                 />
                 <Row
                   label="Maintenance"
