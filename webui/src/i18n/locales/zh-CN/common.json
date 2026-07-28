@@ -61,7 +61,7 @@
     }
   },
   "settings": {
-    "backToChat": "返回聊天",
+    "backToChat": "返回工作台",
     "sidebar": {
       "title": "设置",
       "ariaLabel": "设置分区"
@@ -228,7 +228,7 @@
       "maxResults": "每次 web_search 调用返回的结果数。",
       "timeout": "搜索提供商请求超时前的秒数。",
       "jinaReader": "可用时为 web_fetch 使用 Jina Reader。",
-      "imageGeneration": "配置图片提供商后，在聊天中开放 generate_image。",
+      "imageGeneration": "配置图片提供商后，在执行中开放 generate_image。",
       "imageProvider": "选择 generate_image 使用的注册提供商。",
       "imageProviderStatus": "图片生成会复用「提供商」里的凭据。",
       "imageModel": "选择当前图片提供商支持的模型。",
@@ -241,14 +241,14 @@
       "cliAppsCatalog": "只安装 mira 可本地运行的应用 CLI 适配器；不会改动原生应用。",
       "cliAppsFilter": "按应用、类别或能力搜索。",
       "localServiceAccess": "允许完全访问权限下的 shell 命令访问 localhost 服务。",
-      "webuiDefaultAccess": "用于没有单独项目权限的 Web 聊天。",
+      "webuiDefaultAccess": "用于没有单独项目权限的 Web 执行。",
       "securityManagedControls": "网页抓取始终保护本机、内网和元数据服务。核心渠道安全仍由 config.json 管理。",
       "logs": "打开原生引擎日志文件夹。",
       "diagnostics": "导出一份用于支持排查的小型运行报告。",
       "localServiceAccessNative": "允许完全访问权限下的 shell 命令访问这台 Mac 上的服务。",
-      "webuiDefaultAccessNative": "用于没有单独项目权限的原生聊天。",
+      "webuiDefaultAccessNative": "用于没有单独项目权限的原生执行。",
       "contextWindow": "选择此模型配置的默认上下文预算。",
-      "transcription": "发送前先把麦克风输入转写到输入框。聊天渠道里的语音消息也使用同一套设置。",
+      "transcription": "发送前先把麦克风输入转写到输入框。渠道里的语音消息也使用同一套设置。",
       "transcriptionProvider": "使用「提供商」中对应提供商的凭据。",
       "transcriptionProviderStatus": "API Key 仍保存在 providers 里，不写进 transcription 设置。",
       "transcriptionModel": "除非提供商需要自定义模型 ID，否则保持解析后的默认值即可。",
@@ -562,7 +562,7 @@
       "restartRequired": "重启 mira 以应用更新后的应用和集成。"
     },
     "channels": {
-      "description": "把聊天应用、邮箱和 WebUI 连接到 mira。",
+      "description": "把渠道、邮箱和 WebUI 连接到 mira。",
       "caption": "{{enabled}} 个运行中 · 共 {{total}} 个渠道",
       "searchPlaceholder": "搜索渠道",
       "backToChannels": "所有渠道",
@@ -1065,12 +1065,12 @@
         },
         "commands": {
           "new": {
-            "title": "新建话题",
-            "description": "重置当前话题，并开始一个新的话题。"
+            "title": "新建执行",
+            "description": "重置当前执行，并开始一次新的运行。"
           },
           "stop": {
             "title": "停止当前任务",
-            "description": "取消这个对话中正在运行的 agent 回合。"
+            "description": "取消这个执行中正在运行的 agent 回合。"
           },
           "restart": {
             "title": "重启 mira",
@@ -1110,7 +1110,7 @@
           },
           "trigger": {
             "title": "创建本地触发器",
-            "description": "创建绑定到当前聊天会话的 CLI 触发器。"
+            "description": "创建绑定到当前执行会话的 CLI 触发器。"
           },
           "help": {
             "title": "查看帮助",

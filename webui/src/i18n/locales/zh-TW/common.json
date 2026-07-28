@@ -61,7 +61,7 @@
     }
   },
   "settings": {
-    "backToChat": "返回聊天",
+    "backToChat": "返回工作台",
     "sidebar": {
       "title": "設定",
       "ariaLabel": "設定區段"
@@ -172,7 +172,7 @@
       "maxResults": "每次呼叫 web_search 所回傳的結果數。",
       "timeout": "搜尋供應商請求逾時前的秒數。",
       "jinaReader": "若可用，則讓 web_fetch 使用 Jina Reader。",
-      "imageGeneration": "設定圖片供應商後，即可在聊天中使用 generate_image。",
+      "imageGeneration": "設定圖片供應商後，即可在執行中使用 generate_image。",
       "imageProvider": "選擇 generate_image 使用的註冊供應商。",
       "imageProviderStatus": "圖片生成功能會沿用 [供應商] 中的憑證。",
       "imageModel": "傳送給所選圖片供應商的模型名稱。",
@@ -183,7 +183,7 @@
       "botIcon": "顯示在 Bot 名稱旁的短 emoji 或文字。",
       "timezone": "用於排程，以及需要時間資訊的回覆。",
       "localServiceAccess": "允許具有完整存取權的 shell 命令存取 localhost 服務。",
-      "webuiDefaultAccess": "用於未指定個別專案權限的 Web 聊天。",
+      "webuiDefaultAccess": "用於未指定個別專案權限的 Web 執行。",
       "securityManagedControls": "網頁擷取一律會阻擋對本機、私人網路及中繼資料服務的存取。核心通訊管道的安全性仍由 config.json 管理。",
       "currentModel": "用於新的回覆。",
       "selectedModelProvider": "由選取的模型決定。",
@@ -194,9 +194,9 @@
       "logs": "開啟原生引擎日誌資料夾。",
       "diagnostics": "匯出一份簡短的執行階段報告，以供疑難排解。",
       "localServiceAccessNative": "允許具有完整存取權的 shell 命令存取這臺 Mac 上的服務。",
-      "webuiDefaultAccessNative": "用於未指定個別專案權限的原生聊天。",
+      "webuiDefaultAccessNative": "用於未指定個別專案權限的原生執行。",
       "contextWindow": "選擇此模型設定的預設上下文預算。",
-      "transcription": "送出前先將麥克風輸入轉寫至輸入框。聊天通訊管道的語音訊息也會使用同一組設定。",
+      "transcription": "送出前先將麥克風輸入轉寫至輸入框。通訊管道的語音訊息也會使用同一組設定。",
       "transcriptionProvider": "使用 [供應商] 中對應供應商的憑證。",
       "transcriptionProviderStatus": "API 金鑰仍儲存在 providers 中，不會寫入 transcription 設定。",
       "transcriptionModel": "除非供應商需要自訂模型 ID，否則保留解析後的預設值即可。",
@@ -530,7 +530,7 @@
       "thirdPartyBrands": "產品名稱、Logo 與品牌均為各自擁有者的財產。僅供識別之用，不代表任何形式的背書。"
     },
     "apps": {
-      "description": "將工具新增至 mira，再於聊天中使用 @ 指定工具。",
+      "description": "將工具新增至 mira，再從工作台呼叫它們。",
       "cliLabel": "應用程式",
       "mcpLabel": "整合",
       "channelLabel": "通訊管道",
@@ -548,7 +548,7 @@
       "restartRequired": "重新啟動 mira 以套用更新後的應用程式與整合服務。"
     },
     "channels": {
-      "description": "將聊天應用程式、電子郵件與 WebUI 連線至 mira。",
+      "description": "將通訊管道、電子郵件與 WebUI 連線至 mira。",
       "caption": "已啟用 {{enabled}} 個 · 共 {{total}} 個通訊管道",
       "searchPlaceholder": "搜尋通訊管道",
       "backToChannels": "所有通訊管道",
@@ -665,7 +665,7 @@
       "editTitle": "編輯自動任務",
       "save": "儲存",
       "deleteTitle": "刪除自動任務",
-      "deleteDescription": "這會從 cron 儲存區移除 {{name}}，過往的聊天訊息仍會保留在該對話中。",
+      "deleteDescription": "這會從 cron 儲存區移除 {{name}}，過往的執行歷史仍會保留在該工作階段中。",
       "cancel": "取消",
       "status": {
         "system": "系統",
