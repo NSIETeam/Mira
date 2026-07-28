@@ -18,12 +18,16 @@
 
 **Mira** is a lightweight, self-hosted execution kernel for serious AI agents. It keeps the runtime small, pushes product-specific behavior to thin shells, and ships with a Codex-style engineering workbench for operating tools, sessions, runtime state, root/user posture, and fault recovery under your control.
 
+Mira is designed as a reusable execution layer first: shells stay thin, the operator console stays visible, and the kernel surface can target desktop, server, and constrained embedded hosts without turning the core into product-specific UI code.
+
 ### What is Mira?
 
 - **Execution kernel** — reusable agent loop, tool runtime, memory, automations, and provider routing
 - **Engineering shell** — browser workbench for sessions, runtime control, operator actions, and settings
 - **Kernel console** — inspect runtime state, faults, bridges, modules, dispatch lanes, and operator commands
 - **Privilege-aware runtime** — root/user shell posture, privileged controls, and recovery-oriented operations
+- **Host boundary** — shell contracts keep GUI, channel, and product customization outside the core loop
+- **Embedded posture** — runtime topology, board controls, and native module views keep the path open for MCU / device-host scenarios
 - **Engineering-first GUI** — default operator workbench with a visible shell-side control window, not a hidden demo panel
 - **Chat channels** — Telegram, Discord, Slack, WeChat, Feishu, Email, Mattermost, and more
 - **Terminal** — interactive CLI agent and one-shot mode
@@ -86,7 +90,7 @@ mira gateway              # Long-running service
 
 ### Architecture
 
-Mira keeps the core small: channels and shells feed the same execution kernel, the LLM decides when tools are needed, and shell-specific behavior stays outside the runtime loop.
+Mira keeps the core small: channels and shells feed the same execution kernel, the LLM decides when tools are needed, and shell-specific behavior stays outside the runtime loop. The current workbench is intentionally engineering-heavy, while the kernel contract stays generic enough for future Rust/C-native host bridges and embedded control surfaces.
 
 ```
   Channels / Engineering Shell / Terminal / API
@@ -131,12 +135,16 @@ MIT — see [LICENSE](./LICENSE).
 
 **Mira** 是一个轻量级、可自托管的 AI Agent 通用执行内核。它把运行时内核保持得尽可能小，把产品化差异下沉到薄外壳，并内置一个接近 Codex 风格的工程工作台，用来统一操作会话、工具、运行时状态、root/user 权限姿态和故障恢复。
 
+Mira 优先被设计成可复用执行层：外壳保持很薄，操控窗口直接可见，内核接口可以同时服务桌面、服务端和受限嵌入式宿主，而不会把产品界面逻辑反灌进运行时核心。
+
 ### Mira 是什么？
 
 - **执行内核** — 可复用的 Agent 循环、工具运行时、记忆、自动化和模型路由
 - **工程外壳** — 面向工程场景的浏览器工作台，统一管理会话、运行控制和设置
 - **内核控制台** — 查看运行时状态、故障、桥接器、模块、调度队列和操作命令
 - **权限感知运行时** — 区分 root/user 壳层姿态，支持受限与特权恢复操作
+- **宿主边界** — 用 shell contract 把 GUI、渠道接入和产品定制隔离在核心循环之外
+- **嵌入式姿态** — 提供运行拓扑、板级控制和 native 模块视图，为 MCU / 设备宿主预留路径
 - **工程优先 GUI** — 默认就是可操作工作台，控制窗口直接可见，不是藏起来的演示面板
 - **聊天接入** — Telegram、Discord、Slack、微信、飞书、邮件、Mattermost 等
 - **终端** — 交互式命令行 Agent 和单次查询模式
@@ -199,7 +207,7 @@ mira gateway              # 长期运行的服务
 
 ### 架构
 
-Mira 保持内核精简：聊天渠道和工程外壳都接入同一个执行内核，LLM 负责决策何时调用工具，而壳层特有行为不进入运行时主循环。
+Mira 保持内核精简：聊天渠道和工程外壳都接入同一个执行内核，LLM 负责决策何时调用工具，而壳层特有行为不进入运行时主循环。当前默认工作台偏工程化，但内核契约本身保持通用，后续可以继续接入 Rust/C 原生宿主桥接和更轻的嵌入式控制面。
 
 ```
   Channels / Engineering Shell / Terminal / API
