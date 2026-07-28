@@ -207,6 +207,13 @@ export function MiraKernelConsole({
   const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
   const sessionControls = kernelManifest?.session_controls?.actions ?? [];
+  const sessionControlAction = (id: string) => sessionControls.find((action) => action.id === id);
+  const inspectSessionAction = sessionControlAction("inspect_session");
+  const inspectGoalAction = sessionControlAction("inspect_goal");
+  const inspectContinuationAction = sessionControlAction("inspect_continuation");
+  const resumeGoalAction = sessionControlAction("resume_goal");
+  const completeGoalAction = sessionControlAction("complete_goal");
+  const cancelGoalAction = sessionControlAction("cancel_goal");
   const scheduler = kernelManifest?.scheduler ?? null;
   const schedulerQueues = scheduler?.queues.slice(0, 4) ?? [];
   const dispatchQueue = schedulerQueues.find((queue) => queue.id === "tool_dispatch") ?? null;
@@ -1962,7 +1969,7 @@ export function MiraKernelConsole({
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <ConsoleActionButton
-                  action={sessionControls[1]}
+                  action={inspectGoalAction}
                   pane="runtime"
                   label="inspect goal"
                   className="rounded-full border border-violet-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
@@ -1970,10 +1977,34 @@ export function MiraKernelConsole({
                   onRun={runContractAction}
                 />
                 <ConsoleActionButton
-                  action={sessionControls[2]}
+                  action={inspectContinuationAction}
                   pane="runtime"
                   label="inspect continuation"
                   className="rounded-full border border-violet-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
+                  disabled={operatorPending}
+                  onRun={runContractAction}
+                />
+                <ConsoleActionButton
+                  action={resumeGoalAction}
+                  pane="runtime"
+                  label="resume goal"
+                  className="rounded-full border border-violet-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
+                  disabled={operatorPending}
+                  onRun={runContractAction}
+                />
+                <ConsoleActionButton
+                  action={completeGoalAction}
+                  pane="runtime"
+                  label="complete goal"
+                  className="rounded-full border border-emerald-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+                  disabled={operatorPending}
+                  onRun={runContractAction}
+                />
+                <ConsoleActionButton
+                  action={cancelGoalAction}
+                  pane="runtime"
+                  label="cancel goal"
+                  className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
                   disabled={operatorPending}
                   onRun={runContractAction}
                 />
@@ -2015,7 +2046,7 @@ export function MiraKernelConsole({
               />
               <div className="mt-3 flex flex-wrap gap-2">
                 <ConsoleActionButton
-                  action={sessionControls[0]}
+                  action={inspectSessionAction}
                   pane="runtime"
                   label="inspect session"
                   className="rounded-full border border-emerald-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
@@ -2023,7 +2054,7 @@ export function MiraKernelConsole({
                   onRun={runContractAction}
                 />
                 <ConsoleActionButton
-                  action={sessionControls[2]}
+                  action={inspectContinuationAction}
                   pane="runtime"
                   label="inspect resume path"
                   className="rounded-full border border-emerald-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"

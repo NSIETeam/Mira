@@ -7,6 +7,7 @@ thin GUI.
 
 from __future__ import annotations
 
+from datetime import datetime
 import os
 from pathlib import Path
 import shlex
@@ -16,6 +17,7 @@ from mira.agent.loop import AgentLoop
 from mira import __app_name__, __cli_name__
 from mira.bus.runtime_events import (
     GoalStateChanged,
+    RuntimeEventContext,
     RuntimeEventBus,
     RuntimeModelChanged,
     SessionTurnStarted,
@@ -26,7 +28,7 @@ from mira.config.schema import Config
 from mira.mira import mira, RunResult, RunStream
 from mira.providers.image_generation import image_gen_provider_configs
 from .execution_plane import build_execution_lanes
-from mira.session.goal_state import goal_state_ws_blob, sustained_goal_active
+from mira.session.goal_state import GOAL_STATE_KEY, goal_state_ws_blob, parse_goal_state, sustained_goal_active
 from mira.session.turn_continuation import (
     internal_continuation_pending,
     reset_goal_continuation_rounds,
@@ -425,6 +427,24 @@ def build_kernel_manifest(
                     "pane": "runtime",
                     "command": "session continuation",
                 },
+                {
+                    "id": "resume_goal",
+                    "label": "resume goal",
+                    "pane": "runtime",
+                    "command": "goal resume",
+                },
+                {
+                    "id": "complete_goal",
+                    "label": "complete goal",
+                    "pane": "runtime",
+                    "command": "goal complete",
+                },
+                {
+                    "id": "cancel_goal",
+                    "label": "cancel goal",
+                    "pane": "runtime",
+                    "command": "goal cancel",
+                },
             ],
         },
         "worker_controls": {
@@ -813,6 +833,94 @@ class KernelApp:
             return None
         return self._session_metadata.get(self._active_session_key)
 
+    def _active_session_record(self) -> Any | None:
+        loop = self._loop
+        sessions = getattr(loop, "sessions", None) if loop is not None else None
+        session_key = self._active_session_key
+        if sessions is None or not session_key or not hasattr(sessions, "get_or_create"):
+            return None
+        return sessions.get_or_create(session_key)
+
+    def _publish_goal_state_change(self, session_key: str, session_metadata: dict[str, Any]) -> None:
+        self._session_metadata[session_key] = dict(session_metadata)
+        loop = self._loop
+        runtime_events = getattr(loop, "runtime_events", None) if loop is not None else None
+        context = RuntimeEventContext(
+            channel="webui",
+            chat_id=session_key,
+            session_key=session_key,
+            metadata={},
+        )
+        if not isinstance(runtime_events, RuntimeEventBus):
+            self._handle_goal_state_changed(
+                GoalStateChanged(
+                    context=context,
+                    session_metadata=dict(session_metadata),
+                )
+            )
+            return
+        runtime_events.publish_nowait(
+            GoalStateChanged(
+                context=context,
+                session_metadata=dict(session_metadata),
+            )
+        )
+
+    def _operator_goal_update(self, action: str) -> tuple[str, dict[str, Any]]:
+        session_key = self._active_session_key
+        if not session_key:
+            raise ValueError("no active session")
+        metadata = dict(self._active_session_metadata() or {})
+        prior = parse_goal_state(metadata.get(GOAL_STATE_KEY))
+        if not isinstance(prior, dict) or prior.get("status") != "active":
+            raise ValueError("no active goal")
+        now = datetime.now().isoformat()
+        if action == "resume":
+            reset_goal_continuation_rounds(metadata)
+            self.prioritize_goal_lane()
+            message = "goal continuation budget reopened and scheduler pointed back to sustained goal lane"
+            details = {
+                "subject": "goal",
+                "action": "resume",
+                "status": "active",
+                "session": session_key,
+            }
+        else:
+            next_status = "completed" if action == "complete" else "cancelled"
+            next_goal = {
+                **prior,
+                "status": next_status,
+                "ended_at": now,
+                "recap": f"operator shell marked goal {next_status}",
+            }
+            if action == "complete":
+                next_goal["completed_at"] = now
+            metadata[GOAL_STATE_KEY] = next_goal
+            reset_goal_continuation_rounds(metadata)
+            message = f"goal marked {next_status} by operator shell"
+            details = {
+                "subject": "goal",
+                "action": action,
+                "status": next_status,
+                "session": session_key,
+            }
+        session = self._active_session_record()
+        if session is not None:
+            session.metadata.clear()
+            session.metadata.update(metadata)
+            sessions = getattr(self._loop, "sessions", None) if self._loop is not None else None
+            if sessions is not None and hasattr(sessions, "save"):
+                sessions.save(session)
+        self._publish_goal_state_change(session_key, metadata)
+        self._record_kernel_event(
+            f"goal_{action}",
+            state="ok" if action == "resume" else ("done" if action == "complete" else "cancelled"),
+            message=message,
+            session_key=session_key,
+            event_type="goal",
+        )
+        return message, details
+
     def _loop_runtime_var(self, key: str, default: Any) -> Any:
         loop = self._loop
         if loop is None:
@@ -1165,6 +1273,24 @@ class KernelApp:
                     "pane": "runtime",
                     "command": "session continuation",
                 },
+                {
+                    "id": "resume_goal",
+                    "label": "resume goal",
+                    "pane": "runtime",
+                    "command": "goal resume",
+                },
+                {
+                    "id": "complete_goal",
+                    "label": "complete goal",
+                    "pane": "runtime",
+                    "command": "goal complete",
+                },
+                {
+                    "id": "cancel_goal",
+                    "label": "cancel goal",
+                    "pane": "runtime",
+                    "command": "goal cancel",
+                },
             ],
         }
         manifest["worker_controls"] = {
@@ -1249,6 +1375,9 @@ class KernelApp:
                 ("session", "status"): ("session-status", tail),
                 ("session", "goal"): ("session-goal", tail),
                 ("session", "continuation"): ("session-continuation", tail),
+                ("goal", "resume"): ("goal-resume", tail),
+                ("goal", "complete"): ("goal-complete", tail),
+                ("goal", "cancel"): ("goal-cancel", tail),
                 ("privilege", "status"): ("privilege-status", tail),
                 ("goal", "reset"): ("goal-reset", tail),
                 ("kernel", "profile"): ("kernel-profile", tail),
@@ -1295,14 +1424,14 @@ class KernelApp:
                 "output": (
                     "commands: help, pane <name>, switch-adapter [name], focus-module <name>, "
                     "adapter-status [name], adapter-list, module-status [name], module-list, module-actions [name], board-status, board-ports, board-target, board-transport, board-mode, native-status, native-last-command, native-replay-last, native-replay <target> <action> [value], native-focus <module>, native-inspect <module>, native-modules, bridge-status [name], bridge-list, bridge-fault [name], runtime-status, runtime-gate, runtime-health, runtime-orchestration, runtime-queues, runtime-adapters, runtime-bridges, fault-status, scheduler-status, lane-status, lane-list, maintenance-status, worker-status, worker-list, "
-                    "event-status, event-tail [count], session-status, session-goal, session-continuation, privilege-status, goal-reset, kernel-profile, kernel-manifest, runtime-topology, embedded-topology, workspace-status, workspace-scope, workspace-modules, workspace-focus-module <name>, repo-status, repo-root, repo-tools, repo-prepare-tool <name>, tool-inspect <name>, tool-dispatch <name>, tool-queue, tool-clear-queue, tool-prioritize, tool-drain, tool-delegate-goal, tool-delegate-subagent, tool-complete, tool-fail, tool-status, "
+                    "event-status, event-tail [count], session-status, session-goal, session-continuation, privilege-status, goal-reset, goal-resume, goal-complete, goal-cancel, kernel-profile, kernel-manifest, runtime-topology, embedded-topology, workspace-status, workspace-scope, workspace-modules, workspace-focus-module <name>, repo-status, repo-root, repo-tools, repo-prepare-tool <name>, tool-inspect <name>, tool-dispatch <name>, tool-queue, tool-clear-queue, tool-prioritize, tool-drain, tool-delegate-goal, tool-delegate-subagent, tool-complete, tool-fail, tool-status, "
                     "attach-board [port] [transport], detach-board, restart-bridge [adapter], "
                     "clear-fault [adapter], record-fault [level] [adapter], pause-runtime [reason], "
                     "resume-runtime, degrade-runtime [reason], drain-background, "
                     "prioritize-goal-lane, enter-maintenance [reason], exit-maintenance; "
                     "aliases: adapter switch|status|list <name>, module focus|show|list|actions <name>, "
                     "board attach|detach|status|ports|target|transport|mode [port] [transport], native status|last-command|replay-last|replay <target> <action> [value]|focus <module>|inspect <module>|modules, bridge status|list|fault <name>, runtime pause|resume|degrade|drain|status|gate|health|orchestration|queues|adapters|bridges, fault clear|record|show, "
-                    "scheduler status, worker show|list, maintenance enter|exit|status, lane prioritize-goal|show|list, event show|tail [count], session status|goal|continuation, privilege status, goal reset, kernel profile|manifest, topology runtime|embedded, workspace status|scope|modules|focus-module <name>, repo status|root|tools|prepare-tool <name>, tool inspect|dispatch <name>, tool queue|clear-queue|prioritize|drain|delegate-goal|delegate-subagent|complete|fail|status"
+                    "scheduler status, worker show|list, maintenance enter|exit|status, lane prioritize-goal|show|list, event show|tail [count], session status|goal|continuation, privilege status, goal reset|resume|complete|cancel, kernel profile|manifest, topology runtime|embedded, workspace status|scope|modules|focus-module <name>, repo status|root|tools|prepare-tool <name>, tool inspect|dispatch <name>, tool queue|clear-queue|prioritize|drain|delegate-goal|delegate-subagent|complete|fail|status"
                 ),
                 "runtime_control": self.runtime_control_snapshot(),
                 "details": {
@@ -2162,6 +2291,18 @@ class KernelApp:
                     "drop_hint": drop_hint,
                 },
             )
+        elif command == "goal-resume":
+            target_pane = "runtime"
+            state = self.runtime_control_snapshot()
+            output, details = self._operator_goal_update("resume")
+        elif command == "goal-complete":
+            target_pane = "runtime"
+            state = self.runtime_control_snapshot()
+            output, details = self._operator_goal_update("complete")
+        elif command == "goal-cancel":
+            target_pane = "runtime"
+            state = self.runtime_control_snapshot()
+            output, details = self._operator_goal_update("cancel")
         elif command == "goal-reset":
             metadata = self._active_session_metadata()
             if metadata is None:
