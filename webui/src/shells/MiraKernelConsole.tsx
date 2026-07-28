@@ -497,17 +497,17 @@ export function MiraKernelConsole({
     if (openLastTargetCommand) {
       commands.push(openLastTargetCommand);
     }
-    if (selectedModuleAction("focus_native")?.command) {
-      commands.push(selectedModuleAction("focus_native")!.command);
+    if (selectedModuleFocusNativeAction?.command) {
+      commands.push(selectedModuleFocusNativeAction.command);
     }
-    if (selectedModuleAction("inspect_native")?.command) {
-      commands.push(selectedModuleAction("inspect_native")!.command);
+    if (selectedModuleInspectNativeAction?.command) {
+      commands.push(selectedModuleInspectNativeAction.command);
     }
-    if (selectedModuleAction("fill_native_replay")?.command) {
-      commands.push(selectedModuleAction("fill_native_replay")!.command);
+    if (selectedModuleFillNativeReplayAction?.command) {
+      commands.push(selectedModuleFillNativeReplayAction.command);
     }
     return commands;
-  }, [nativeAction, selectedModule?.actions]);
+  }, [nativeAction, selectedModuleFillNativeReplayAction, selectedModuleFocusNativeAction, selectedModuleInspectNativeAction]);
   const paneClass = (pane: string) =>
     selectedPane === pane ? "space-y-2" : "hidden";
   const lastNativeContext = {
@@ -825,11 +825,11 @@ export function MiraKernelConsole({
                     <button
                       type="button"
                       onClick={() => {
-                        const command = selectedModuleAction("inspect_native")?.command;
+                        const command = selectedModuleInspectNativeAction?.command;
                         if (!command) return;
                         setOperatorCommand(command);
                       }}
-                      disabled={operatorPending || !selectedModuleAction("inspect_native")?.command}
+                      disabled={operatorPending || !selectedModuleInspectNativeAction?.command}
                       className="rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
                     >
                       native inspect {selectedModule.name}
@@ -837,11 +837,11 @@ export function MiraKernelConsole({
                     <button
                       type="button"
                       onClick={() => {
-                        const command = selectedModuleAction("fill_native_replay")?.command;
+                        const command = selectedModuleFillNativeReplayAction?.command;
                         if (!command) return;
                         setOperatorCommand(command);
                       }}
-                      disabled={operatorPending || !selectedModuleAction("fill_native_replay")?.command}
+                      disabled={operatorPending || !selectedModuleFillNativeReplayAction?.command}
                       className="rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
                     >
                       native replay {selectedModule.name} inspect status
