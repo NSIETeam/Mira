@@ -728,13 +728,6 @@ class WebUITranscriptRecorder:
             self._turn_sequences.pop((chat_id, turn_id), None)
 
 
-def _chat_id_from_session_key(session_key: str) -> str | None:
-    if not session_key.startswith("websocket:"):
-        return None
-    chat_id = session_key.split(":", 1)[1].strip()
-    return chat_id or None
-
-
 def _is_user_transcript_row(row: dict[str, Any]) -> bool:
     return row.get("event") == "user" or row.get("role") == "user"
 
@@ -755,7 +748,8 @@ def fork_transcript_before_user_index(
     if not lines:
         return False
 
-    target_chat_id = _chat_id_from_session_key(target_key)
+    target_chat_id = target_key.split(":", 1)[1].strip() if target_key.startswith("websocket:") else None
+    target_chat_id = target_chat_id or None
     copied: list[dict[str, Any]] = []
     user_index = 0
     found_target = False
@@ -787,7 +781,7 @@ def append_fork_marker(session_key: str) -> None:
         session_key,
         {
             "event": WEBUI_FORK_MARKER_EVENT,
-            "chat_id": _chat_id_from_session_key(session_key),
+            "chat_id": (session_key.split(":", 1)[1].strip() if session_key.startswith("websocket:") else None) or None,
         },
     )
 
@@ -797,7 +791,8 @@ def write_session_messages_as_transcript(
     messages: list[dict[str, Any]],
 ) -> None:
     """Write a minimal WebUI transcript from already-truncated session messages."""
-    target_chat_id = _chat_id_from_session_key(target_key)
+    target_chat_id = target_key.split(":", 1)[1].strip() if target_key.startswith("websocket:") else None
+    target_chat_id = target_chat_id or None
     rows: list[dict[str, Any]] = []
     for msg in messages:
         if is_hidden_history_message(msg):
