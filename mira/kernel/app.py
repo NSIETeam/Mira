@@ -283,6 +283,25 @@ def _native_module_actions(module_name: str) -> list[dict[str, str]]:
             "command": "native last-command",
         },
     ]
+
+
+def _merge_module_native_state(
+    row: dict[str, Any],
+    native_state: dict[str, Any],
+    *,
+    module_name: str,
+) -> dict[str, Any]:
+    status = str(native_state.get("status") or row.get("status") or "ready")
+    row["status"] = status
+    row["native_status"] = status
+    row["native_status_code"] = native_state.get("status_code")
+    row["native_last_code"] = native_state.get("last_code")
+    row["native_updated_at_ms"] = native_state.get("updated_at_ms")
+    summary = str(row.get("summary") or "").strip()
+    native_summary = str(native_state.get("summary") or f"native bridge {status}").strip()
+    row["summary"] = f"{summary} · {native_summary}" if summary else native_summary
+    row["actions"].extend(_native_module_actions(module_name))
+    return row
 _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
     "attach-board",
     "detach-board",
@@ -788,16 +807,11 @@ class KernelApp:
             row["actions"] = _module_actions(module_name)
             native_state = self._native_module_states.get(str(row.get("name") or ""))
             if native_state:
-                status = str(native_state.get("status") or row.get("status") or "ready")
-                row["status"] = status
-                row["native_status"] = status
-                row["native_status_code"] = native_state.get("status_code")
-                row["native_last_code"] = native_state.get("last_code")
-                row["native_updated_at_ms"] = native_state.get("updated_at_ms")
-                summary = str(row.get("summary") or "").strip()
-                native_summary = str(native_state.get("summary") or f"native bridge {status}").strip()
-                row["summary"] = f"{summary} · {native_summary}" if summary else native_summary
-                row["actions"].extend(_native_module_actions(module_name))
+                row = _merge_module_native_state(
+                    row,
+                    native_state,
+                    module_name=module_name,
+                )
             rows.append(row)
         return rows
 
