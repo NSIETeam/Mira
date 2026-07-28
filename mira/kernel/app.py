@@ -1664,6 +1664,16 @@ class KernelApp:
                 f" depth={details.get('queue_depth', 0)}"
             )
             details["last_code"] = last_code
+            details["inspect_row"] = {
+                "module": module_name,
+                "status": status,
+                "code": last_code,
+                "command": "inspect",
+                "value": "status",
+                "queue_depth": int(details.get("queue_depth") or 0),
+                "artifact": str(details.get("artifact") or "none"),
+                "updated_at_ms": native_state.get("updated_at_ms") if native_state else None,
+            }
             target_pane = "modules"
         elif command == "native-modules":
             native_context = self._native_runtime_snapshot()
