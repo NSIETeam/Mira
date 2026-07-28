@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ChatList } from "@/components/ExecutionList";
+import { ExecutionList } from "@/components/ExecutionList";
 import type { ChatSummary } from "@/lib/types";
 
 function session(overrides: Partial<ChatSummary>): ChatSummary {
@@ -17,8 +17,8 @@ function session(overrides: Partial<ChatSummary>): ChatSummary {
   };
 }
 
-describe("ChatList", () => {
-  it("orders chats by latest session activity by default", () => {
+describe("ExecutionList", () => {
+  it("orders executions by latest session activity by default", () => {
     const sessions = [
       session({
         chatId: "older",
@@ -39,7 +39,7 @@ describe("ChatList", () => {
     ];
 
     render(
-      <ChatList
+      <ExecutionList
         sessions={sessions}
         activeKey={null}
         onSelect={vi.fn()}
@@ -59,14 +59,14 @@ describe("ChatList", () => {
     expect(screen.queryByText("/model fast")).not.toBeInTheDocument();
   });
 
-  it("shows a pin indicator for pinned chats", () => {
+  it("shows a pin indicator for pinned executions", () => {
     const sessions = [
       session({ chatId: "pinned", title: "Pinned chat" }),
       session({ chatId: "normal", title: "Normal chat" }),
     ];
 
     render(
-      <ChatList
+      <ExecutionList
         sessions={sessions}
         activeKey={null}
         onSelect={vi.fn()}
@@ -85,7 +85,7 @@ describe("ChatList", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("groups WebUI chats by workspace project while preserving in-project sorting and activity", () => {
+  it("groups WebUI executions by workspace project while preserving in-project sorting and activity", () => {
     const sessions = [
       session({
         chatId: "zeta",
@@ -120,7 +120,7 @@ describe("ChatList", () => {
     ];
 
     render(
-      <ChatList
+      <ExecutionList
         sessions={sessions}
         activeKey="websocket:alpha"
         onSelect={vi.fn()}
@@ -170,7 +170,7 @@ describe("ChatList", () => {
     ];
 
     render(
-      <ChatList
+      <ExecutionList
         sessions={sessions}
         activeKey="websocket:default"
         onSelect={vi.fn()}
@@ -209,7 +209,7 @@ describe("ChatList", () => {
     ];
 
     render(
-      <ChatList
+      <ExecutionList
         sessions={sessions}
         activeKey="websocket:alpha"
         onSelect={vi.fn()}
@@ -302,7 +302,7 @@ describe("ChatList", () => {
       defaultWorkspacePath: "/Users/me/.mira/workspace",
     };
 
-    const { rerender } = render(<ChatList {...baseProps} />);
+    const { rerender } = render(<ExecutionList {...baseProps} />);
     const chatsSection = screen.getByRole("region", { name: "Topics" });
 
     expect(within(chatsSection).getByText("Chat 9")).toBeInTheDocument();
@@ -314,7 +314,7 @@ describe("ChatList", () => {
     expect(onToggleGroup).toHaveBeenCalledWith("workspace:chats");
 
     rerender(
-      <ChatList
+      <ExecutionList
         {...baseProps}
         collapsedGroups={{ "workspace:chats": false }}
       />,
@@ -354,7 +354,7 @@ describe("ChatList", () => {
     ];
 
     render(
-      <ChatList
+      <ExecutionList
         sessions={sessions}
         activeKey="websocket:recent-chat"
         onSelect={vi.fn()}
@@ -410,7 +410,7 @@ describe("ChatList", () => {
     ];
 
     render(
-      <ChatList
+      <ExecutionList
         sessions={sessions}
         activeKey="websocket:middle-chat"
         onSelect={vi.fn()}
@@ -460,7 +460,7 @@ describe("ChatList", () => {
     ];
 
     render(
-      <ChatList
+      <ExecutionList
         sessions={sessions}
         activeKey="websocket:old-chat"
         onSelect={vi.fn()}

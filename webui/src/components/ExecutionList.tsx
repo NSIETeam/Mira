@@ -410,7 +410,6 @@ export const ExecutionList = memo(function ExecutionList({
   );
 });
 
-export const ChatList = ExecutionList;
 
 function ProjectGroupHeader({
   label,

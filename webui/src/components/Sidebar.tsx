@@ -76,7 +76,7 @@ function isApplePlatform(): boolean {
   return /mac|iphone|ipad|ipod/i.test(`${platform} ${userAgentPlatform}`);
 }
 
-function newChatShortcutLabel(): string {
+function newExecutionShortcutLabel(): string {
   return isApplePlatform() ? "⌘⇧O" : "Ctrl+Shift+O";
 }
 
@@ -86,7 +86,7 @@ export function Sidebar(props: SidebarProps) {
     useState<HTMLElement | null>(null);
   const collapsed = Boolean(props.collapsed);
   const toggleLabel = t("thread.header.toggleSidebar");
-  const newChatShortcut = newChatShortcutLabel();
+  const newChatShortcut = newExecutionShortcutLabel();
   const executionItems = props.executions ?? props.sessions;
   const resolvedActiveKey = props.activeExecutionKey ?? props.activeKey ?? null;
   const runningExecutionIds = props.runningExecutionIds;
