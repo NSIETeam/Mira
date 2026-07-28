@@ -3742,14 +3742,17 @@ class KernelApp:
                 self._runtime_bridges,
                 adapter_name=active_adapter,
             )
-        return self._commit_runtime_control_action(
+        self._dispatch_native_control(
             target="runtime",
             action="resume",
             value="operator-ready",
-            event_action="resume_runtime",
-            event_state="ok",
-            event_message="runtime resumed",
         )
+        self._record_kernel_event(
+            "resume_runtime",
+            state="ok",
+            message="runtime resumed",
+        )
+        return self.runtime_control
 
     def degrade_runtime(self, reason: str | None = None) -> dict[str, Any]:
         degrade_reason = reason or "fault-containment"
