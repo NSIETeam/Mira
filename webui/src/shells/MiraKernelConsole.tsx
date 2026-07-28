@@ -907,6 +907,14 @@ export function MiraKernelConsole({
       command: selectedModuleShowModuleAction?.command ?? moduleShowCommand(selectedModuleName ?? "") ?? "module list",
       tone: "border-emerald-300/80 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
     },
+    ...(nativeFaultModules[0]?.[0]
+      ? [{
+          label: "Focus fault module",
+          pane: "modules",
+          command: moduleShowCommand(nativeFaultModules[0][0]) ?? moduleFocusCommand(nativeFaultModules[0][0]) ?? "module list",
+          tone: "border-rose-300/80 bg-rose-50 text-rose-700 hover:bg-rose-100",
+        }]
+      : []),
     {
       label: "Board status",
       pane: "adapters",
