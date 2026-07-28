@@ -63,14 +63,26 @@ export function useKernelControlState({
     setSelectedBoardPort(runtimeControl?.board.port ?? null);
   }, [runtimeAdapters, runtimeControl, runtimeModules]);
 
+  const runControlAction = async (
+    action: string,
+    params: Record<string, string | undefined> = {},
+    targetPane?: string,
+  ) => {
+    const payload = await controlKernel(token, action, params);
+    onKernelUpdate(payload.kernel);
+    if (targetPane) {
+      setSelectedPane(targetPane);
+    }
+    return payload;
+  };
+
   const cycleAdapter = async () => {
     if (!runtimeAdapters.length) return;
     const currentIndex = runtimeAdapters.findIndex((adapter) => adapter.name === selectedAdapterName);
     const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % runtimeAdapters.length : 0;
     const nextAdapter = runtimeAdapters[nextIndex]?.name ?? runtimeAdapters[0]?.name ?? null;
     if (!nextAdapter) return;
-    const payload = await controlKernel(token, "switch_adapter", { adapter: nextAdapter });
-    onKernelUpdate(payload.kernel);
+    await runControlAction("switch_adapter", { adapter: nextAdapter });
   };
 
   const attachBoard = async ({
@@ -80,94 +92,69 @@ export function useKernelControlState({
     transport?: string | null;
     port?: string | null;
   } = {}) => {
-    const payload = await controlKernel(token, "attach_board", {
+    await runControlAction("attach_board", {
       transport: transport ?? selectedBoardTransport ?? undefined,
       port: port ?? selectedBoardPort ?? undefined,
-    });
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("adapters");
+    }, "adapters");
   };
 
   const detachBoard = async () => {
-    const payload = await controlKernel(token, "detach_board");
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("adapters");
+    await runControlAction("detach_board", {}, "adapters");
   };
 
   const focusModule = async (moduleName: string | null) => {
     if (!moduleName) return;
-    const payload = await controlKernel(token, "focus_module", { module: moduleName });
-    onKernelUpdate(payload.kernel);
+    await runControlAction("focus_module", { module: moduleName });
   };
 
   const clearFault = async (adapterName: string | null = null) => {
-    const payload = await controlKernel(token, "clear_fault", {
+    await runControlAction("clear_fault", {
       adapter: adapterName ?? selectedAdapterName ?? undefined,
-    });
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("faults");
+    }, "faults");
   };
 
   const recordFault = async (
     level: string = "fault",
     adapterName: string | null = null,
   ) => {
-    const payload = await controlKernel(token, "record_fault", {
+    await runControlAction("record_fault", {
       level,
       adapter: adapterName ?? selectedAdapterName ?? undefined,
-    });
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("faults");
+    }, "faults");
   };
 
   const restartBridge = async (adapterName: string | null = null) => {
-    const payload = await controlKernel(token, "restart_bridge", {
+    await runControlAction("restart_bridge", {
       adapter: adapterName ?? selectedAdapterName ?? undefined,
-    });
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("adapters");
+    }, "adapters");
   };
 
   const pauseRuntime = async () => {
-    const payload = await controlKernel(token, "pause_runtime");
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("runtime");
+    await runControlAction("pause_runtime", {}, "runtime");
   };
 
   const resumeRuntime = async () => {
-    const payload = await controlKernel(token, "resume_runtime");
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("runtime");
+    await runControlAction("resume_runtime", {}, "runtime");
   };
 
   const degradeRuntime = async () => {
-    const payload = await controlKernel(token, "degrade_runtime");
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("runtime");
+    await runControlAction("degrade_runtime", {}, "runtime");
   };
 
   const drainBackground = async () => {
-    const payload = await controlKernel(token, "drain_background");
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("runtime");
+    await runControlAction("drain_background", {}, "runtime");
   };
 
   const prioritizeGoalLane = async () => {
-    const payload = await controlKernel(token, "prioritize_goal_lane");
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("runtime");
+    await runControlAction("prioritize_goal_lane", {}, "runtime");
   };
 
   const enterMaintenance = async () => {
-    const payload = await controlKernel(token, "enter_maintenance");
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("control_plane");
+    await runControlAction("enter_maintenance", {}, "control_plane");
   };
 
   const exitMaintenance = async () => {
-    const payload = await controlKernel(token, "exit_maintenance");
-    onKernelUpdate(payload.kernel);
-    setSelectedPane("control_plane");
+    await runControlAction("exit_maintenance", {}, "control_plane");
   };
 
   return useMemo(
