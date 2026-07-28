@@ -10,19 +10,11 @@ import type {
   WorkspaceScopePayload,
 } from "./types";
 import {
-  attachedChatIdFromKernelMetadata,
-  goalStateFromKernelMetadata,
   kernelCompletesSystemCommand,
   kernelErrorActionMatches,
+  kernelMetadataSnapshot,
   kernelStatusStateMatches,
-  readyChatIdFromKernelMetadata,
-  runStartedAtFromKernelMetadata,
-  runtimeModelFromKernelMetadata,
-  sessionUpdateFromKernelMetadata,
-  transcriptionErrorFromKernelMetadata,
-  transcriptionResultFromKernelMetadata,
   toKernelEventPayload,
-  workspaceScopeRejectionFromKernelMetadata,
 } from "./kernel-events";
 import { createHostWebSocket } from "./runtime";
 
@@ -258,7 +250,7 @@ export class miraClient {
       }
       return;
     }
-    const startedAt = runStartedAtFromKernelMetadata(ev);
+    const startedAt = kernelMetadataSnapshot(ev).runStartedAt;
     if (startedAt !== null) {
       const previous = this.runStartedAtByChatId.get(executionId);
       this.runStartedAtByChatId.set(executionId, startedAt);
@@ -271,7 +263,7 @@ export class miraClient {
 
   private recordGoalStateSnapshot(executionId: string, ev: InboundEvent): void {
     const kernelEvent = toKernelEventPayload(ev);
-    const goalState = goalStateFromKernelMetadata(ev);
+    const goalState = kernelMetadataSnapshot(ev).goalState;
     if (goalState && kernelEvent.type === "status") {
       this.goalStateByChatId.set(executionId, goalState);
       return;
@@ -534,6 +526,7 @@ export class miraClient {
     }
 
     const kernelEvent = toKernelEventPayload(parsed);
+    const snapshot = kernelMetadataSnapshot(parsed);
 
     const turnId = "turn_id" in parsed && typeof parsed.turn_id === "string"
       ? parsed.turn_id
@@ -546,7 +539,7 @@ export class miraClient {
     }
 
     const readyChatId = kernelStatusStateMatches(kernelEvent, "ready")
-      ? readyChatIdFromKernelMetadata(parsed)
+      ? snapshot.readyChatId
       : null;
     if (readyChatId) {
       this.readyChatId = readyChatId;
@@ -555,7 +548,7 @@ export class miraClient {
     }
 
     const attachedChatId = kernelStatusStateMatches(kernelEvent, "ready")
-      ? attachedChatIdFromKernelMetadata(parsed)
+      ? snapshot.attachedChatId
       : null;
     if (attachedChatId) {
       this.knownChats.add(attachedChatId);
@@ -569,7 +562,7 @@ export class miraClient {
     }
 
     const runtimeModel = kernelStatusStateMatches(kernelEvent, "ready")
-      ? runtimeModelFromKernelMetadata(parsed)
+      ? snapshot.runtimeModel
       : null;
     if (runtimeModel) {
       this.emitRuntimeModelUpdate(runtimeModel.modelName, runtimeModel.modelPreset);
@@ -577,7 +570,7 @@ export class miraClient {
     }
 
     const transcriptionResult = kernelStatusStateMatches(kernelEvent, "done")
-      ? transcriptionResultFromKernelMetadata(parsed)
+      ? snapshot.transcriptionResult
       : null;
     if (transcriptionResult) {
       this.resolveTranscription(transcriptionResult.requestId, transcriptionResult.text);
@@ -585,7 +578,7 @@ export class miraClient {
     }
 
     const transcriptionError = kernelErrorActionMatches(kernelEvent, "transcription_error")
-      ? transcriptionErrorFromKernelMetadata(parsed)
+      ? snapshot.transcriptionError
       : null;
     if (transcriptionError) {
       this.rejectTranscription(transcriptionError.requestId, transcriptionError.detail || "error");
@@ -593,7 +586,7 @@ export class miraClient {
     }
 
     const sessionUpdate = kernelStatusStateMatches(kernelEvent, "ready")
-      ? sessionUpdateFromKernelMetadata(parsed)
+      ? snapshot.sessionUpdate
       : null;
     if (sessionUpdate) {
       this.emitSessionUpdate(
@@ -605,7 +598,7 @@ export class miraClient {
     }
 
     const workspaceScopeRejection = kernelErrorActionMatches(kernelEvent)
-      ? workspaceScopeRejectionFromKernelMetadata(parsed)
+      ? snapshot.workspaceScopeRejection
       : null;
     if (workspaceScopeRejection) {
       this.emitError({

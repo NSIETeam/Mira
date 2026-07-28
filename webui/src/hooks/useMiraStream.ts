@@ -13,9 +13,7 @@ import type { StreamError } from "@/lib/mira-client";
 import { formatQuotedUserMessage } from "@/lib/user-message-quote";
 import {
   assistantCompletionFromKernelMetadata,
-  goalStateFromKernelMetadata,
-  runStartedAtFromKernelMetadata,
-  turnCompletionFromKernelMetadata,
+  kernelMetadataSnapshot,
 } from "@/lib/kernel-events";
 import type {
   InboundEvent,
@@ -1163,13 +1161,14 @@ export function usemiraStream(
 
       if (event.type !== "status") return;
 
-      const goalStatePayload = goalStateFromKernelMetadata(metadata);
+      const snapshot = kernelMetadataSnapshot(metadata);
+      const goalStatePayload = snapshot.goalState;
       if (goalStatePayload) {
         setGoalState(goalStatePayload);
       }
 
       if (state === "running" || state === "idle") {
-        const startedAt = runStartedAtFromKernelMetadata(metadata);
+        const startedAt = snapshot.runStartedAt;
         if (startedAt !== null) {
           setRunStartedAt(startedAt);
           setIsStreaming(true);
@@ -1185,7 +1184,7 @@ export function usemiraStream(
         cancelStreamEndTimer();
         setIsStreaming(false);
         const completedAt = Date.now();
-        const completion = turnCompletionFromKernelMetadata(metadata);
+        const completion = snapshot.completion;
         setMessages((prev) => {
           let finalized = prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m));
           finalized = pruneReasoningOnlyPlaceholders(finalized);

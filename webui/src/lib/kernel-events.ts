@@ -132,6 +132,53 @@ export function assistantCompletionFromKernelMetadata(
   };
 }
 
+export interface KernelMetadataSnapshot {
+  goalState?: GoalStateWsPayload;
+  runStartedAt: number | null;
+  completion: {
+    latencyMs?: number;
+    turnId?: string;
+  };
+  readyChatId: string | null;
+  attachedChatId: string | null;
+  runtimeModel: {
+    modelName: string | null;
+    modelPreset?: string | null;
+  } | null;
+  sessionUpdate: {
+    chatId: string;
+    scope?: string;
+    workspaceScope?: unknown;
+  } | null;
+  transcriptionResult: {
+    requestId: string;
+    text: string;
+  } | null;
+  transcriptionError: {
+    requestId?: string;
+    detail: string;
+  } | null;
+  workspaceScopeRejection: {
+    reason?: string;
+    chatId?: string;
+  } | null;
+}
+
+export function kernelMetadataSnapshot(metadata: unknown): KernelMetadataSnapshot {
+  return {
+    goalState: goalStateFromKernelMetadata(metadata),
+    runStartedAt: runStartedAtFromKernelMetadata(metadata),
+    completion: turnCompletionFromKernelMetadata(metadata),
+    readyChatId: readyChatIdFromKernelMetadata(metadata),
+    attachedChatId: attachedChatIdFromKernelMetadata(metadata),
+    runtimeModel: runtimeModelFromKernelMetadata(metadata),
+    sessionUpdate: sessionUpdateFromKernelMetadata(metadata),
+    transcriptionResult: transcriptionResultFromKernelMetadata(metadata),
+    transcriptionError: transcriptionErrorFromKernelMetadata(metadata),
+    workspaceScopeRejection: workspaceScopeRejectionFromKernelMetadata(metadata),
+  };
+}
+
 export function readyChatIdFromKernelMetadata(metadata: unknown): string | null {
   const row = metadataRow(metadata);
   const chatId = metadataChatId(row);
