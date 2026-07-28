@@ -12,6 +12,7 @@ import { hasPendingAgentActivity } from "@/lib/activity-timeline";
 import type { StreamError } from "@/lib/mira-client";
 import { formatQuotedUserMessage } from "@/lib/user-message-quote";
 import {
+  assistantCompletionFromKernelMetadata,
   goalStateFromKernelMetadata,
   runStartedAtFromKernelMetadata,
   turnCompletionFromKernelMetadata,
@@ -1132,18 +1133,21 @@ export function usemiraStream(
           buffer.current = null;
           activeAssistantRef.current = null;
           const filtered = activeId ? prev.filter((m) => m.id !== activeId) : prev;
-          const completion = turnCompletionFromKernelMetadata(metadata);
-          return absorbCompleteAssistantMessage(filtered, {
-            content: event.text ?? "",
-            ...(hasMedia ? { media } : {}),
-            ...(completion.latencyMs !== undefined ? { latencyMs: completion.latencyMs } : {}),
-            ...(normalizedSource ? { source: normalizedSource } : {}),
-            ...turnFieldsFromEvent({
-              turn_id: turn.turnId,
-              turn_phase: turn.turnPhase,
-              turn_seq: turn.turnSeq,
-            }, "answer"),
-          });
+          return absorbCompleteAssistantMessage(
+            filtered,
+            {
+              ...assistantCompletionFromKernelMetadata(metadata, {
+                content: event.text ?? "",
+                ...(hasMedia ? { media } : {}),
+                ...(normalizedSource ? { source: normalizedSource } : {}),
+              }),
+              ...turnFieldsFromEvent({
+                turn_id: turn.turnId,
+                turn_phase: turn.turnPhase,
+                turn_seq: turn.turnSeq,
+              }, "answer"),
+            },
+          );
         });
         if (hasMedia) {
           suppressStreamUntilTurnEndRef.current = true;

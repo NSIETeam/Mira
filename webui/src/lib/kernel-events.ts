@@ -110,6 +110,28 @@ export function turnCompletionFromKernelMetadata(metadata: unknown): {
   };
 }
 
+export function assistantCompletionFromKernelMetadata(
+  metadata: unknown,
+  extra: {
+    content: string;
+    media?: unknown;
+    source?: unknown;
+  },
+): {
+  content: string;
+  latencyMs?: number;
+  media?: unknown;
+  source?: unknown;
+} {
+  const completion = turnCompletionFromKernelMetadata(metadata);
+  return {
+    content: extra.content,
+    ...(extra.media !== undefined ? { media: extra.media } : {}),
+    ...(completion.latencyMs !== undefined ? { latencyMs: completion.latencyMs } : {}),
+    ...(extra.source !== undefined ? { source: extra.source } : {}),
+  };
+}
+
 export function readyChatIdFromKernelMetadata(metadata: unknown): string | null {
   const row = metadataRow(metadata);
   const chatId = metadataChatId(row);
