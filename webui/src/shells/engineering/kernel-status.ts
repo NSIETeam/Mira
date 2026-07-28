@@ -138,7 +138,7 @@ export function formatHostChromeTagline(appName: string, status: HostKernelStatu
 
 export function deriveHostChromePresentation(
   status: HostKernelStatus,
-  appTagline: string,
+  appName: string,
 ): HostChromePresentation {
   const healthBadge = status.health === "offline"
     ? { label: "offline", className: "border-slate-400/80 bg-slate-100 text-slate-700" }
@@ -182,6 +182,7 @@ export function deriveHostChromePresentation(
     healthBadge?.label,
     maintenanceBadge?.label === "maintenance" ? "maintenance" : null,
   ].filter(Boolean).join(" / ");
+  const appTagline = formatHostChromeTagline(appName, status);
   const visibleTagline = privilegeBadge || healthBadge || maintenanceBadge
     ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention|offline)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "")
     : appTagline;
@@ -220,11 +221,10 @@ export function deriveHostChromeSemantics(
 
 export function deriveHostChromeViewModel(input: {
   appName: string;
-  appTagline: string;
   status: HostKernelStatus;
 }): HostChromeViewModel {
   return {
-    ...deriveHostChromePresentation(input.status, input.appTagline),
+    ...deriveHostChromePresentation(input.status, input.appName),
     semantics: deriveHostChromeSemantics(input.appName, input.status),
   };
 }

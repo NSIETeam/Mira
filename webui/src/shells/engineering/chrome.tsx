@@ -63,7 +63,6 @@ export function HostChrome({
     semantics,
   } = deriveHostChromeViewModel({
     appName,
-    appTagline,
     status: resolvedStatus,
   });
 
