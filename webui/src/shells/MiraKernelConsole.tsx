@@ -2605,7 +2605,7 @@ export function MiraKernelConsole({
               />
               <Row
                 label="Native queue"
-                value={`${nativeSnapshot?.command_depth ?? 0}`}
+                value={`${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0}`}
               />
               <Row
                 label="Board"
@@ -2638,7 +2638,7 @@ export function MiraKernelConsole({
               />
               <Row
                 label="Native queue"
-                value={`${nativeSnapshot?.command_depth ?? 0}`}
+                value={`${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0}`}
               />
             </div>
             {scheduler?.active_runtime ? (
