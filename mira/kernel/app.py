@@ -3468,7 +3468,7 @@ class KernelApp:
             "health": str(native_last_command.get("health") or "ready"),
             "status": status or str(native_last_command.get("status") or "queued"),
             "code": code if code is not None else int(native_last_command.get("code") or 0),
-            "queue_depth": int(native_snapshot.get("command_depth") or 0),
+            "queue_depth": int(native_snapshot.get("queue_depth") or 0),
             "artifact": native_snapshot.get("bridge_artifact") or "none",
             "updated_at_ms": (
                 updated_at_ms
