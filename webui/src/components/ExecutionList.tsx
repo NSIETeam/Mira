@@ -57,7 +57,6 @@ interface ExecutionListProps {
   onToggleGroup?: (groupId: string) => void;
   onRequestRenameProject?: (projectKey: string, label: string) => void;
   onNewExecutionInProject?: (projectPath: string, projectName: string) => void;
-  onNewChatInProject?: (projectPath: string, projectName: string) => void;
   pinnedKeys?: string[];
   archivedKeys?: string[];
   titleOverrides?: Record<string, string>;
@@ -65,8 +64,6 @@ interface ExecutionListProps {
   collapsedGroups?: Record<string, boolean>;
   runningExecutionIds?: string[];
   updatedExecutionIds?: string[];
-  runningChatIds?: string[];
-  updatedChatIds?: string[];
   density?: SidebarDensity;
   showPreviews?: boolean;
   showTimestamps?: boolean;
@@ -92,7 +89,6 @@ export const ExecutionList = memo(function ExecutionList({
   onToggleGroup,
   onRequestRenameProject,
   onNewExecutionInProject,
-  onNewChatInProject,
   pinnedKeys = [],
   archivedKeys = [],
   titleOverrides = {},
@@ -100,8 +96,6 @@ export const ExecutionList = memo(function ExecutionList({
   collapsedGroups = {},
   runningExecutionIds = [],
   updatedExecutionIds = [],
-  runningChatIds = [],
-  updatedChatIds = [],
   density = "comfortable",
   showPreviews = false,
   showTimestamps = false,
@@ -116,9 +110,9 @@ export const ExecutionList = memo(function ExecutionList({
   const executionItems = executions ?? sessions;
   const resolvedActiveKey = activeExecutionKey ?? activeKey;
   const handleRequestDeleteExecution = onRequestDeleteExecution ?? onRequestDelete;
-  const handleNewExecutionInProject = onNewExecutionInProject ?? onNewChatInProject;
-  const activeExecutionIds = runningExecutionIds.length > 0 ? runningExecutionIds : runningChatIds;
-  const refreshedExecutionIds = updatedExecutionIds.length > 0 ? updatedExecutionIds : updatedChatIds;
+  const handleNewExecutionInProject = onNewExecutionInProject;
+  const activeExecutionIds = runningExecutionIds;
+  const refreshedExecutionIds = updatedExecutionIds;
   const [visibleLimit, setVisibleLimit] = useState(INITIAL_VISIBLE_SESSIONS);
   const labels = useMemo<ChatGroupLabels>(() => ({
     pinned: t("chat.groups.pinned"),

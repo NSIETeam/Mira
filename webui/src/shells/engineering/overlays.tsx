@@ -10,9 +10,9 @@ const DeleteConfirm = lazy(async () => {
   return { default: module.DeleteConfirm };
 });
 
-const RenameChatDialog = lazy(async () => {
+const RenameExecutionDialog = lazy(async () => {
   const module = await import("@/components/RenameChatDialog");
-  return { default: module.RenameChatDialog };
+  return { default: module.RenameExecutionDialog };
 });
 
 export function EngineeringShellOverlays({
@@ -75,7 +75,7 @@ export function EngineeringShellOverlays({
       ) : null}
       {pendingRename ? (
         <Suspense fallback={null}>
-          <RenameChatDialog
+          <RenameExecutionDialog
             open
             title={pendingRename.label}
             onCancel={onCancelRename}
@@ -85,7 +85,7 @@ export function EngineeringShellOverlays({
       ) : null}
       {pendingProjectRename ? (
         <Suspense fallback={null}>
-          <RenameChatDialog
+          <RenameExecutionDialog
             open
             title={pendingProjectRename.label}
             dialogTitle={t("chat.renameProjectTitle")}

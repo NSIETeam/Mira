@@ -130,7 +130,7 @@ describe("ChatList", () => {
         onToggleArchive={vi.fn()}
         sort="title_asc"
         showTimestamps
-        runningChatIds={["zeta"]}
+        runningExecutionIds={["zeta"]}
       />,
     );
 
@@ -195,7 +195,7 @@ describe("ChatList", () => {
   it("can collapse a project group and keeps project rename separate from chat titles", async () => {
     const onToggleGroup = vi.fn();
     const onRequestRenameProject = vi.fn();
-    const onNewChatInProject = vi.fn();
+    const onNewExecutionInProject = vi.fn();
     const sessions = [
       session({
         chatId: "alpha",
@@ -219,7 +219,7 @@ describe("ChatList", () => {
         onToggleArchive={vi.fn()}
         onToggleGroup={onToggleGroup}
         onRequestRenameProject={onRequestRenameProject}
-        onNewChatInProject={onNewChatInProject}
+        onNewExecutionInProject={onNewExecutionInProject}
         projectNameOverrides={{ "/Users/me/mira": "Photos" }}
         collapsedGroups={{ "project:/Users/me/mira": true }}
       />,
@@ -234,7 +234,7 @@ describe("ChatList", () => {
     fireEvent.click(
       within(projectSection).getByRole("button", { name: "Start a new topic in Photos" }),
     );
-    expect(onNewChatInProject).toHaveBeenCalledWith("/Users/me/mira", "Photos");
+    expect(onNewExecutionInProject).toHaveBeenCalledWith("/Users/me/mira", "Photos");
     expect(onToggleGroup).toHaveBeenCalledTimes(1);
 
     fireEvent.pointerDown(
@@ -267,7 +267,7 @@ describe("ChatList", () => {
         onTogglePin={vi.fn()}
         onRequestRename={vi.fn()}
         onToggleArchive={vi.fn()}
-        updatedChatIds={["active", "done"]}
+        updatedExecutionIds={["active", "done"]}
       />,
     );
 

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
-interface RenameChatDialogProps {
+interface RenameExecutionDialogProps {
   open: boolean;
   title: string;
   dialogTitle?: string;
@@ -22,7 +22,7 @@ interface RenameChatDialogProps {
   onConfirm: (title: string) => void;
 }
 
-export function RenameChatDialog({
+export function RenameExecutionDialog({
   open,
   title,
   dialogTitle,
@@ -30,7 +30,7 @@ export function RenameChatDialog({
   placeholder,
   onCancel,
   onConfirm,
-}: RenameChatDialogProps) {
+}: RenameExecutionDialogProps) {
   const { t } = useTranslation();
   const [value, setValue] = useState(title);
 

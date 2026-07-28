@@ -29,7 +29,6 @@ interface SidebarProps {
   activeExecutionKey?: string | null;
   loading: boolean;
   onNewExecution: () => void;
-  onNewChat?: () => void;
   onSelect: (key: string) => void;
   onRequestDeleteExecution: (key: string, label: string) => void;
   onRequestDelete?: (key: string, label: string) => void;
@@ -39,7 +38,6 @@ interface SidebarProps {
   onToggleGroup: (groupId: string) => void;
   onRequestRenameProject: (projectKey: string, label: string) => void;
   onNewExecutionInProject: (projectPath: string, projectName: string) => void;
-  onNewChatInProject?: (projectPath: string, projectName: string) => void;
   onOpenSettings: () => void;
   onOpenApps: () => void;
   onOpenSkills: () => void;
@@ -59,8 +57,6 @@ interface SidebarProps {
   collapsedGroups?: Record<string, boolean>;
   runningExecutionIds?: string[];
   updatedExecutionIds?: string[];
-  runningChatIds?: string[];
-  updatedChatIds?: string[];
   viewState?: SidebarViewState;
   showArchived?: boolean;
   archivedCount?: number;
@@ -93,8 +89,8 @@ export function Sidebar(props: SidebarProps) {
   const newChatShortcut = newChatShortcutLabel();
   const executionItems = props.executions ?? props.sessions;
   const resolvedActiveKey = props.activeExecutionKey ?? props.activeKey ?? null;
-  const runningExecutionIds = props.runningExecutionIds ?? props.runningChatIds;
-  const updatedExecutionIds = props.updatedExecutionIds ?? props.updatedChatIds;
+  const runningExecutionIds = props.runningExecutionIds;
+  const updatedExecutionIds = props.updatedExecutionIds;
   const appName = props.appName ?? "Mira";
   const appTagline = props.appTagline ?? "Execution kernel";
 
@@ -239,7 +235,6 @@ export function Sidebar(props: SidebarProps) {
             onToggleArchive={props.onToggleArchive}
             onToggleGroup={props.onToggleGroup}
             onRequestRenameProject={props.onRequestRenameProject}
-            onNewChatInProject={props.onNewChatInProject}
             onNewExecutionInProject={props.onNewExecutionInProject}
             pinnedKeys={props.pinnedKeys}
             archivedKeys={props.archivedKeys}
@@ -248,8 +243,6 @@ export function Sidebar(props: SidebarProps) {
             collapsedGroups={props.collapsedGroups}
             runningExecutionIds={runningExecutionIds}
             updatedExecutionIds={updatedExecutionIds}
-            runningChatIds={props.runningChatIds}
-            updatedChatIds={props.updatedChatIds}
             density={props.viewState?.density}
             showPreviews={props.viewState?.show_previews}
             showTimestamps={props.viewState?.show_timestamps}
