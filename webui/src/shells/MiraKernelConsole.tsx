@@ -3366,7 +3366,7 @@ export function MiraKernelConsole({
                             disabled={operatorPending}
                             className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[11px] text-slate-700 transition-colors hover:bg-slate-50"
                           >
-                            {task}
+                            {task.replace("dispatch:", "")}
                           </button>
                         ))}
                       </div>
