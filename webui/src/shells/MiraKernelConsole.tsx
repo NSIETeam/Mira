@@ -94,6 +94,15 @@ function formatBridgeCommandSummary(command: {
   return `${command?.target ?? "runtime"}:${command?.action ?? "status"}:${command?.status ?? "ready"}:${command?.code ?? 0}`;
 }
 
+function formatNativeCommandSummary(command: {
+  target?: string | null;
+  action?: string | null;
+  status?: string | null;
+  queue_depth?: number | null;
+} | null | undefined): string {
+  return `${command?.target ?? "target"}:${command?.action ?? "action"}:${command?.status ?? "queued"}:${command?.queue_depth ?? 0}`;
+}
+
 export function MiraKernelConsole({
   kernelManifest,
   shellDescriptor,
@@ -3248,7 +3257,7 @@ export function MiraKernelConsole({
                         disabled={operatorPending || !replayRecentAction?.command}
                         className="rounded-full border border-slate-300/80 bg-slate-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-100"
                       >
-                        {(command.target ?? "target")}:{(command.action ?? "action")}:{(command.status ?? "queued")}:{command.queue_depth ?? 0}
+                        {formatNativeCommandSummary(command)}
                       </button>
                     );
                   })()
