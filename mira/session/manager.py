@@ -47,7 +47,6 @@ _FORK_VOLATILE_METADATA_KEYS = {
     "goal_state",
     "pending_user_turn",
     "runtime_checkpoint",
-    "thread_goal",
     "title",
     "title_user_edited",
 }
