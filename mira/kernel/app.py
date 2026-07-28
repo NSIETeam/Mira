@@ -3090,6 +3090,9 @@ class KernelApp:
                         if dispatch_handoff_lane == "sustained_goal" and dispatch_depth
                         else []
                     ),
+                    "family_counts": queue_snapshot.get("families", "none")
+                    if dispatch_handoff_lane == "sustained_goal" and dispatch_depth
+                    else "none",
                     "dispatch_contract": {
                         "owner": "goal",
                         "mode": "handoff" if dispatch_handoff_lane == "sustained_goal" and dispatch_depth else "resident",
@@ -3112,6 +3115,9 @@ class KernelApp:
                         if dispatch_handoff_lane == "subagent" and dispatch_depth
                         else [row["label"] for row in subagent_rows[:4]]
                     ),
+                    "family_counts": queue_snapshot.get("families", "none")
+                    if dispatch_handoff_lane == "subagent" and dispatch_depth
+                    else "none",
                     "dispatch_contract": {
                         "owner": "subagent",
                         "mode": "handoff" if dispatch_handoff_lane == "subagent" and dispatch_depth else "resident",
