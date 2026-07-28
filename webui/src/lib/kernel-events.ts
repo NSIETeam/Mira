@@ -92,6 +92,46 @@ export function sessionUpdateFromKernelMetadata(metadata: unknown): {
   };
 }
 
+export function transcriptionResultFromKernelMetadata(metadata: unknown): {
+  requestId: string;
+  text: string;
+} | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const row = metadata as Record<string, unknown>;
+  const requestId = typeof row.request_id === "string" ? row.request_id : null;
+  const text = typeof row.text === "string" ? row.text : null;
+  if (!requestId || text === null) return null;
+  return { requestId, text };
+}
+
+export function transcriptionErrorFromKernelMetadata(metadata: unknown): {
+  requestId?: string;
+  detail: string;
+} | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const row = metadata as Record<string, unknown>;
+  const detail = typeof row.detail === "string" ? row.detail : "";
+  if (!detail) return null;
+  const requestId = typeof row.request_id === "string" ? row.request_id : undefined;
+  return {
+    ...(requestId ? { requestId } : {}),
+    detail,
+  };
+}
+
+export function workspaceScopeRejectionFromKernelMetadata(metadata: unknown): {
+  reason?: string;
+  chatId?: string;
+} | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const row = metadata as Record<string, unknown>;
+  if (row.detail !== "workspace_scope_rejected") return null;
+  return {
+    ...(typeof row.reason === "string" && row.reason ? { reason: row.reason } : {}),
+    ...(typeof row.chat_id === "string" && row.chat_id ? { chatId: row.chat_id } : {}),
+  };
+}
+
 export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
   switch (ev.event) {
     case "delta":

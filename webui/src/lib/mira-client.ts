@@ -16,7 +16,10 @@ import {
   runStartedAtFromKernelMetadata,
   runtimeModelFromKernelMetadata,
   sessionUpdateFromKernelMetadata,
+  transcriptionErrorFromKernelMetadata,
+  transcriptionResultFromKernelMetadata,
   toKernelEventPayload,
+  workspaceScopeRejectionFromKernelMetadata,
 } from "./kernel-events";
 import { createHostWebSocket } from "./runtime";
 
@@ -573,22 +576,19 @@ export class miraClient {
       return;
     }
 
-    if (
-      kernelEvent.type === "status"
-      && kernelEvent.state === "done"
-      && "request_id" in parsed
-      && "text" in parsed
-    ) {
-      this.resolveTranscription(parsed.request_id, parsed.text);
+    const transcriptionResult = kernelEvent.type === "status" && kernelEvent.state === "done"
+      ? transcriptionResultFromKernelMetadata(parsed)
+      : null;
+    if (transcriptionResult) {
+      this.resolveTranscription(transcriptionResult.requestId, transcriptionResult.text);
       return;
     }
 
-    if (
-      kernelEvent.type === "error"
-      && kernelEvent.action === "transcription_error"
-      && "detail" in parsed
-    ) {
-      this.rejectTranscription(parsed.request_id, parsed.detail || "error");
+    const transcriptionError = kernelEvent.type === "error" && kernelEvent.action === "transcription_error"
+      ? transcriptionErrorFromKernelMetadata(parsed)
+      : null;
+    if (transcriptionError) {
+      this.rejectTranscription(transcriptionError.requestId, transcriptionError.detail || "error");
       return;
     }
 
@@ -604,18 +604,18 @@ export class miraClient {
       return;
     }
 
-    if (
-      kernelEvent.type === "error"
-      && parsed.detail === "workspace_scope_rejected"
-    ) {
+    const workspaceScopeRejection = kernelEvent.type === "error"
+      ? workspaceScopeRejectionFromKernelMetadata(parsed)
+      : null;
+    if (workspaceScopeRejection) {
       this.emitError({
         kind: "workspace_scope_rejected",
-        reason: parsed.reason,
-        chatId: parsed.chat_id,
+        reason: workspaceScopeRejection.reason,
+        chatId: workspaceScopeRejection.chatId,
       });
       if (this.pendingNewChat) {
         clearTimeout(this.pendingNewChat.timer);
-        this.pendingNewChat.reject(new Error(`workspace_scope_rejected:${parsed.reason || ""}`));
+        this.pendingNewChat.reject(new Error(`workspace_scope_rejected:${workspaceScopeRejection.reason || ""}`));
         this.pendingNewChat = null;
       }
     }
