@@ -10,7 +10,7 @@ export function ReviewShellLayout({
   shellCapabilities,
   hostContract,
   topChrome,
-  chatView,
+  executionView,
   utilityView,
   overlays,
 }: ShellViewProps) {
@@ -47,7 +47,7 @@ export function ReviewShellLayout({
           </div>
           <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.9fr)]">
             <section className="relative min-h-[520px] overflow-hidden rounded-[28px] border border-black/8 bg-white/88 shadow-[0_20px_80px_rgba(0,0,0,0.08)]">
-              {chatView}
+              {executionView}
             </section>
             <aside className="relative min-h-[320px] overflow-hidden rounded-[28px] border border-black/8 bg-white/72 shadow-[0_20px_80px_rgba(0,0,0,0.06)] backdrop-blur">
               {utilityView ?? (

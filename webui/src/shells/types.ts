@@ -57,7 +57,7 @@ export interface ShellViewProps {
   hostSidebarPreview?: ReactNode;
   mobileSidebar?: ReactNode;
   searchDialog?: ReactNode;
-  chatView: ReactNode;
+  executionView: ReactNode;
   kernelConsole?: ReactNode;
   utilityView?: ReactNode;
   overlays?: ReactNode;

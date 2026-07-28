@@ -576,6 +576,7 @@ function Shell({
   const shellComposerEnabled = shellHostContract.composer.allowComposer;
   const shellExecutionReadOnly = shellHostContract.composer.readOnlyExecution;
   const activeShellView = shellUtilitySurfaceEnabled ? view : "chat";
+  const executionSurfaceActive = activeShellView === "chat";
   const showMainSidebar =
     shellHostContract.chrome.showSidebarChrome
     && shellSupportsThreads
@@ -1100,7 +1101,7 @@ function Shell({
             />
           </Suspense>
         ) : null}
-        kernelConsole={activeShellView === "chat" && shellKernelConsoleEnabled ? (
+        kernelConsole={executionSurfaceActive && shellKernelConsoleEnabled ? (
           <MiraKernelConsole
             kernelManifest={kernelManifest}
             shellDescriptor={shellDescriptor}
@@ -1143,11 +1144,11 @@ function Shell({
             }}
           />
         ) : null}
-        chatView={(
+        executionView={(
           <div
             className={cn(
               "absolute inset-0 flex flex-col",
-              activeShellView !== "chat" && "hidden",
+              !executionSurfaceActive && "hidden",
             )}
           >
             <WorkbenchShell
@@ -1185,7 +1186,7 @@ function Shell({
             />
           </div>
         )}
-        utilityView={activeShellView !== "chat" && shellUtilitySurfaceEnabled ? (
+        utilityView={!executionSurfaceActive && shellUtilitySurfaceEnabled ? (
           <div className="absolute inset-0 flex flex-col">
             {shellSupportsRuntimeControls ? (
               <Suspense fallback={<SurfaceLoadingFallback />}>

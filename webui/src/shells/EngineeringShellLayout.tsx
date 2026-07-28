@@ -13,7 +13,7 @@ export function EngineeringShellLayout({
   hostSidebarPreview,
   mobileSidebar,
   searchDialog,
-  chatView,
+  executionView,
   kernelConsole,
   utilityView,
   overlays,
@@ -40,7 +40,7 @@ export function EngineeringShellLayout({
         {mobileSidebar}
         {searchDialog}
         <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden border-l border-slate-200/70 bg-background/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
-          {chatView}
+          {executionView}
           {utilityView}
         </main>
         {kernelConsole}

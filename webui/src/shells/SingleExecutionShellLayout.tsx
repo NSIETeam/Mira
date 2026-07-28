@@ -10,7 +10,7 @@ export function SingleExecutionShellLayout({
   shellCapabilities,
   hostContract,
   topChrome,
-  chatView,
+  executionView,
   utilityView,
   overlays,
 }: ShellViewProps) {
@@ -32,7 +32,7 @@ export function SingleExecutionShellLayout({
       {topChrome}
       <main className="relative h-full w-full overflow-hidden">
         <div className="absolute inset-0">
-          {chatView}
+          {executionView}
           {utilityView}
         </div>
       </main>
