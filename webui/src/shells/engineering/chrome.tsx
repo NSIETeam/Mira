@@ -9,7 +9,7 @@ import { logoFallbackUrls } from "@/lib/provider-brand";
 import type { PairingRequestInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
-  deriveFallbackKernelStatus,
+  createDefaultHostKernelStatus,
   formatHostChromeTagline,
   deriveHostChromeViewModel,
   type HostKernelStatus,
@@ -48,8 +48,7 @@ export function HostChrome({
   kernelStatus?: HostKernelStatus;
 }) {
   const { t } = useTranslation();
-  const fallbackTagline = `${appName} universal execution kernel · engineering shell · user · healthy · live`;
-  const resolvedStatus = kernelStatus ?? deriveFallbackKernelStatus(fallbackTagline);
+  const resolvedStatus = kernelStatus ?? createDefaultHostKernelStatus();
   const {
     healthBadge,
     maintenanceBadge,

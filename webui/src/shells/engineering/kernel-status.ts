@@ -132,6 +132,14 @@ export function createHostKernelStatus(input: {
   };
 }
 
+export function createDefaultHostKernelStatus(): HostKernelStatus {
+  return createHostKernelStatus({
+    privilege: "user",
+    health: "healthy",
+    maintenance: "live",
+  });
+}
+
 export function formatHostChromeTagline(appName: string, status: HostKernelStatus): string {
   return `${appName} universal execution kernel · engineering shell · ${status.privilege} · ${status.health} · ${status.maintenance}`;
 }
