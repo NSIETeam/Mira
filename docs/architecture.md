@@ -59,6 +59,49 @@ This layer is intentionally narrower than the full SDK:
 This is the preferred direction for keeping the agent mature without letting the
 front-end or channel surfaces couple themselves to internal orchestration.
 
+## Shell Model and Host Contract
+
+The WebUI should treat shell configuration as a thin contract layered on the kernel.
+
+Authoritative files:
+
+| Concern | Files |
+|---|---|
+| Backend shell descriptor | `mira/kernel/shell.py` |
+| Frontend shell registration and coercion | `webui/src/shells/registry.ts` |
+| Shell data attributes and shared view metadata | `webui/src/shells/contract.ts` |
+| Shell view contracts | `webui/src/shells/types.ts` |
+
+Grouped host contract fields are the stable API:
+
+- `chrome`
+- `surfaces`
+- `actions`
+- `composer`
+- `privilege`
+
+Do not reintroduce older flat capability flags. If a shell needs a new affordance, add it to the grouped contract and thread it through both backend and frontend explicitly.
+
+Privilege-sensitive runtime actions should be declared by the kernel and enforced by the shell contract, then reflected in operator surfaces. The console should not guess privilege from wording alone.
+
+## Native Bridge Boundary
+
+Mira's native/runtime-control path should stay behind explicit kernel-facing boundaries.
+
+Current direction:
+
+- Python remains the orchestration layer.
+- Native bridge work should expose narrow ABI-style surfaces for runtime control, board/embedded integration, or performance-sensitive execution paths.
+- Shells consume normalized runtime state and action metadata rather than native implementation details.
+
+When extracting Rust/C components:
+
+1. keep the Python kernel contract stable first
+2. move hot or OS-facing paths behind explicit bridge surfaces
+3. avoid leaking native-specific branching into shell code
+
+This keeps Mira small at the core while still allowing deeper runtime or embedded control in the future.
+
 ## Agent Loop vs Agent Runner
 
 `AgentLoop` owns the channel-facing turn:

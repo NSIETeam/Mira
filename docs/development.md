@@ -2,6 +2,63 @@
 
 This page collects contributor-facing notes for extending Mira. User-facing setup and runtime options live in [`configuration.md`](./configuration.md).
 
+## Contributor Roadmap
+
+If you want to move Mira toward a mature execution-kernel product, work in this order:
+
+1. **Kernel/runtime safety first**
+   - Keep execution, session, memory, provider routing, and tool orchestration inside the reusable kernel.
+   - Prefer changing `mira/kernel/`, `mira/agent/`, `mira/session/`, and `mira/providers/` before touching shell-specific UI code.
+2. **Shell contract second**
+   - Add or change product behavior through grouped shell contracts:
+     - `chrome`
+     - `surfaces`
+     - `actions`
+     - `composer`
+     - `privilege`
+   - Avoid reintroducing flat booleans or UI-only privilege guesses.
+3. **Operator console third**
+   - Expose runtime state, faults, modules, bridges, queues, and recovery actions through stable action ids.
+   - Prefer named action lookup over positional indexing.
+4. **Native boundary last**
+   - Pull performance-sensitive or OS-facing work behind native boundaries only when the Python path is already structurally correct.
+   - Treat Rust/C extraction as a kernel-boundary exercise, not a UI rewrite.
+
+### Current release-oriented work order
+
+Use the open GitHub issues as the shipping checklist:
+
+1. `#3` Mature WebUI shell for kernel control and operator workflows
+2. `#8` Docs, release path, and contributor roadmap for mature Mira agent
+3. `#12` Native bridge ABI and runtime control pipeline
+4. `#13` Runtime root/user boundary finalization
+5. `#14` Compatibility leftovers and dead-code cleanup
+
+When multiple tasks compete, prefer the item that most directly improves:
+
+1. runtime correctness
+2. operator recoverability
+3. privilege clarity
+4. removal of compatibility shims
+
+## Release Path
+
+For a fast path to a production-ready Mira release:
+
+1. **Freeze shell shape**
+   - Treat the current execution kernel + engineering shell + kernel console structure as the release baseline.
+2. **Close blocking maturity gaps**
+   - Finish root/user runtime boundaries.
+   - Finish operator-console control surfaces.
+   - Finish native bridge/runtime-control boundaries.
+3. **Delete leftovers**
+   - Remove compatibility shims, duplicate action paths, and dead wrappers after the runtime/control path is stable.
+4. **Then validate and ship**
+   - Run build/test/release verification.
+   - Update docs and close linked issues.
+
+This order is intentional: do not spend release time on visual polish before runtime boundaries and operator recovery paths are stable.
+
 ## Adding an LLM Provider
 
 Mira uses the provider registry in `mira/providers/registry.py` as the source of truth for LLM provider metadata. Most OpenAI-compatible providers need only two changes.
@@ -119,3 +176,20 @@ At minimum, cover:
 6. Update user-facing docs.
 
 Add the provider to [`configuration.md`](./configuration.md) where users choose `transcription.provider`, but keep implementation details in this development guide.
+
+## Shell Model and Host Contract Rules
+
+Mira should behave like a reusable kernel with thin shells layered on top.
+
+- Kernel behavior belongs in `mira/kernel/` and lower runtime layers.
+- Shell behavior belongs in `mira/kernel/shell.py`, `webui/src/shells/registry.ts`, and shell layout/hooks under `webui/src/shells/`.
+- UI must consume host-contract intent instead of inferring privileges from labels or button placement.
+
+When extending shells:
+
+1. change the backend descriptor in `mira/kernel/shell.py`
+2. keep the frontend registry aligned in `webui/src/shells/registry.ts`
+3. preserve grouped host-contract semantics
+4. prefer deleting compatibility bridges instead of adding new ones
+
+If you need a new shell mode, make the mode explicit and keep the default engineering shell as the general-purpose operator surface.
