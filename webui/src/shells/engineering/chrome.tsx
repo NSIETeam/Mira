@@ -126,6 +126,7 @@ export function HostChrome({
           data-kernel-health={healthBadge?.label ?? "unknown"}
           data-runtime-maintenance={maintenanceBadge?.label ?? "unknown"}
           data-shell-privilege={privilegeBadge?.label ?? "unknown"}
+          data-kernel-status-summary={chromeStatusTitle || undefined}
           title={chromeStatusTitle || undefined}
         >
           {chromeStatusTitle ? <span className="sr-only">{chromeStatusTitle}</span> : null}
