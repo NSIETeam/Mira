@@ -1534,27 +1534,23 @@ class KernelApp:
             target_pane = "adapters"
             state = self.runtime_control_snapshot()
             queue_depth = native_context.get("queue_depth", 0)
-            command_depth = native_context.get("command_depth", 0)
             module_count = native_context.get("module_count", 0)
             last_summary = native_last_command.get("summary") or "none:none"
             artifact = native_context.get("bridge_artifact") or "none"
+            details = self._native_summary_details(
+                action="status",
+                command="status",
+                status=str(native_last_command.get("status") or "idle"),
+                code=int(native_last_command.get("code") or 0),
+                updated_at_ms=native_last_command.get("updated_at_ms"),
+            )
+            details["module_focus"] = self._runtime_control.get("module_focus") or "none"
             output, details = (
                 f"native queue={queue_depth}"
                 f" modules={module_count}"
                 f" last={last_summary}"
                 f" artifact={artifact}",
-                {
-                    "subject": "native",
-                    "action": "status",
-                    "queue_depth": queue_depth,
-                    "command_depth": command_depth,
-                    "module_count": module_count,
-                    "last_target": native_last_command.get("target") or "none",
-                    "last_action": native_last_command.get("action") or "none",
-                    "last_summary": last_summary,
-                    "module_focus": self._runtime_control.get("module_focus") or "none",
-                    "artifact": artifact,
-                },
+                details,
             )
         elif command == "native-last-command":
             native_context = self._native_runtime_snapshot()
@@ -1565,22 +1561,20 @@ class KernelApp:
             action = native_last_command.get("action") or "none"
             command_text = native_last_command.get("command") or action
             queue_depth = native_last_command.get("queue_depth", 0)
+            details = self._native_summary_details(
+                action="last-command",
+                target=target,
+                command=command_text,
+                value=str(native_last_command.get("value") or ""),
+                status=str(native_last_command.get("status") or "idle"),
+                code=int(native_last_command.get("code") or 0),
+                updated_at_ms=native_last_command.get("updated_at_ms"),
+            )
             output, details = (
                 f"native last-command target={target}"
                 f" action={action}"
                 f" depth={queue_depth}",
-                {
-                    "subject": "native",
-                    "action": "last-command",
-                    "target": target,
-                    "command": command_text,
-                    "value": native_last_command.get("value") or "",
-                    "status": native_last_command.get("status") or "idle",
-                    "code": native_last_command.get("code", 0),
-                    "queue_depth": queue_depth,
-                    "artifact": native_last_command.get("artifact") or "none",
-                    "updated_at_ms": native_last_command.get("updated_at_ms"),
-                },
+                details,
             )
         elif command == "native-replay-last":
             native_context = self._native_runtime_snapshot()
@@ -1655,28 +1649,38 @@ class KernelApp:
             module_count = int(native_context.get("module_count", len(native_modules)))
             target_pane = "modules"
             state = self.runtime_control_snapshot()
+            details = self._native_summary_details(
+                action="modules",
+                command="modules",
+                status="ready" if module_count else "idle",
+                updated_at_ms=max(
+                    (
+                        int(row.get("updated_at_ms") or 0)
+                        for row in native_modules.values()
+                        if isinstance(row, dict)
+                    ),
+                    default=0,
+                ) or None,
+            )
+            details["count"] = module_count
+            details["items"] = ", ".join(
+                f"{name}:{row.get('status', 'unknown')}"
+                for name, row in native_modules.items()
+                if isinstance(row, dict)
+            ) or "none"
+            details["codes"] = ", ".join(
+                f"{name}:{row.get('last_code', 0)}"
+                for name, row in native_modules.items()
+                if isinstance(row, dict)
+            ) or "none"
+            details["updated"] = ", ".join(
+                f"{name}:{row.get('updated_at_ms', 0)}"
+                for name, row in native_modules.items()
+                if isinstance(row, dict)
+            ) or "none"
             output, details = (
                 f"native modules count={module_count}",
-                {
-                    "subject": "native",
-                    "action": "modules",
-                    "count": module_count,
-                    "items": ", ".join(
-                        f"{name}:{row.get('status', 'unknown')}"
-                        for name, row in native_modules.items()
-                        if isinstance(row, dict)
-                    ) or "none",
-                    "codes": ", ".join(
-                        f"{name}:{row.get('last_code', 0)}"
-                        for name, row in native_modules.items()
-                        if isinstance(row, dict)
-                    ) or "none",
-                    "updated": ", ".join(
-                        f"{name}:{row.get('updated_at_ms', 0)}"
-                        for name, row in native_modules.items()
-                        if isinstance(row, dict)
-                    ) or "none",
-                },
+                details,
             )
         elif command == "bridge-status":
             bridge_name = str(args[0] if args else self._runtime_control.get("active_adapter") or "")
@@ -3594,6 +3598,35 @@ class KernelApp:
                 else native_last_command.get("updated_at_ms")
             ),
         }
+
+    def _native_summary_details(
+        self,
+        *,
+        action: str,
+        target: str = "runtime",
+        command: str,
+        value: str = "",
+        status: str | None = None,
+        code: int | None = None,
+        updated_at_ms: int | None = None,
+    ) -> dict[str, Any]:
+        details = self._native_command_details(
+            action=action,
+            target=target,
+            command=command,
+            value=value,
+            status=status,
+            code=code,
+            updated_at_ms=updated_at_ms,
+        )
+        native_snapshot = self._native_runtime_snapshot()
+        native_last_command = dict(native_snapshot.get("last_command") or {})
+        details["command_depth"] = int(native_snapshot.get("command_depth") or 0)
+        details["module_count"] = int(native_snapshot.get("module_count") or 0)
+        details["last_target"] = str(native_last_command.get("target") or "none")
+        details["last_action"] = str(native_last_command.get("action") or "none")
+        details["last_summary"] = str(native_last_command.get("summary") or "none:none")
+        return details
 
     def _dispatch_native_action(
         self,
