@@ -3392,24 +3392,6 @@ class KernelApp:
                 message=f"{target}:{action} failed · {error}",
             )
 
-    def _commit_runtime_control_action(
-        self,
-        *,
-        target: str,
-        action: str,
-        value: str = "",
-        event_action: str,
-        event_state: str,
-        event_message: str,
-    ) -> dict[str, Any]:
-        self._dispatch_native_control(target=target, action=action, value=value)
-        self._record_kernel_event(
-            event_action,
-            state=event_state,
-            message=event_message,
-        )
-        return self.runtime_control
-
     def _board_runtime_snapshot(self, board: dict[str, Any]) -> dict[str, Any]:
         return {
             "attached": bool(board.get("attached")),
@@ -3617,13 +3599,15 @@ class KernelApp:
             board["last_error"] = probe_result.get("error")
         next_state["board"] = board
         self._runtime_control = next_state
-        return self._commit_runtime_control_action(
+        self._dispatch_native_control(
             target="board",
             action="attach",
             value=f"{board.get('transport') or transport or 'serial'}:{board.get('port') or port or 'auto'}",
-            event_action="attach_board",
-            event_state="ok",
-            event_message=(
+        )
+        self._record_kernel_event(
+            "attach_board",
+            state="ok",
+            message=(
                 f"board attached via {board.get('transport') or transport or 'default'}"
                 + (
                     f" ({probe_result.get('artifact')})"
@@ -3632,6 +3616,7 @@ class KernelApp:
                 )
             ),
         )
+        return self.runtime_control
 
     def detach_board(self) -> dict[str, Any]:
         self._runtime_control = detach_runtime_board(self._runtime_control)
