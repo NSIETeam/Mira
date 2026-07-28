@@ -107,6 +107,7 @@ def build_runtime_bridges(
                 "capabilities": (probe or {}).get("capabilities"),
                 "module_states": (probe or {}).get("module_states"),
                 "last_command": (probe or {}).get("last_command"),
+                "recent_commands": (probe or {}).get("recent_commands"),
                 "runtime_mode": (probe or {}).get("runtime_mode"),
                 "runtime_stage": adapter.get("runtime_stage"),
                 "build_hint": adapter.get("build_hint"),

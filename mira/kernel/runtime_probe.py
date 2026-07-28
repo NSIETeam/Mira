@@ -166,6 +166,7 @@ def probe_runtime_bridge(adapter: dict[str, object]) -> dict[str, Any] | None:
         capabilities=payload.get("capabilities"),
         module_states=payload.get("module_states"),
         last_command=payload.get("last_command"),
+        recent_commands=payload.get("recent_commands"),
         error=payload.get("error") or "runtime probe fault",
     )
 

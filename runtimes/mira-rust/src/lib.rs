@@ -3,7 +3,7 @@
 use std::ffi::CString;
 use std::os::raw::c_char;
 
-static READY_JSON: &str = r#"{"runtime":"mira-rust","status":"ready","abi":"c","mode":"ffi","kernel_surface":"mira","version":"0.1.0","queue_depth":0,"module_count":2,"updated_at_ms":0,"capabilities":["task_exec","fault_stream","module_state","diagnostics","hot_swap_ready"],"module_states":{"scheduler":{"status":"ready","last_code":0},"dispatch":{"status":"ready","last_code":0}},"last_command":{"target":"runtime","action":"status","status":"ready","code":0,"updated_at_ms":0}}"#;
+static READY_JSON: &str = r#"{"runtime":"mira-rust","status":"ready","abi":"c","mode":"ffi","kernel_surface":"mira","version":"0.1.0","queue_depth":0,"module_count":2,"updated_at_ms":0,"capabilities":["task_exec","fault_stream","module_state","diagnostics","hot_swap_ready"],"module_states":{"scheduler":{"status":"ready","last_code":0},"dispatch":{"status":"ready","last_code":0}},"last_command":{"target":"runtime","action":"status","status":"ready","code":0,"updated_at_ms":0},"recent_commands":[{"target":"runtime","action":"status","status":"ready","code":0,"updated_at_ms":0},{"target":"dispatch","action":"inspect","status":"ready","code":0,"updated_at_ms":0}]}"#;
 
 #[no_mangle]
 pub extern "C" fn mira_runtime_status_json() -> *mut c_char {

@@ -2744,6 +2744,14 @@ export function MiraKernelConsole({
                         value={`${bridge.last_command.target ?? "runtime"}:${bridge.last_command.action ?? "status"}:${bridge.last_command.status ?? "ready"}:${bridge.last_command.code ?? 0}`}
                       />
                     ) : null}
+                    {bridge.recent_commands?.length ? (
+                      <Row
+                        label="Recent commands"
+                        value={bridge.recent_commands
+                          .map((row) => `${row.target ?? "runtime"}:${row.action ?? "status"}:${row.status ?? "ready"}:${row.code ?? 0}`)
+                          .join(", ")}
+                      />
+                    ) : null}
                     {bridge.build_hint ? (
                       <Row label="Build hint" value={bridge.build_hint} />
                     ) : null}

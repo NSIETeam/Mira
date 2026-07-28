@@ -33,6 +33,7 @@ def runtime_probe_payload(
     capabilities: object = None,
     module_states: object = None,
     last_command: object = None,
+    recent_commands: object = None,
     error: object = None,
 ) -> dict[str, Any]:
     health = runtime_health(status)
@@ -67,4 +68,6 @@ def runtime_probe_payload(
         payload["module_states"] = module_states
     if last_command is not None:
         payload["last_command"] = last_command
+    if recent_commands is not None:
+        payload["recent_commands"] = recent_commands
     return payload

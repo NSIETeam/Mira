@@ -1791,6 +1791,11 @@ class KernelApp:
                         f"{dict(bridge.get('last_command') or {}).get('status', 'unknown')}:"
                         f"{dict(bridge.get('last_command') or {}).get('code', 0)}"
                     ),
+                    "recent_commands": ", ".join(
+                        f"{dict(row).get('target', 'runtime')}:{dict(row).get('action', 'status')}:{dict(row).get('status', 'unknown')}:{dict(row).get('code', 0)}"
+                        for row in list(bridge.get("recent_commands") or [])
+                        if isinstance(row, dict)
+                    ) or "none",
                     "status_row": {
                         "bridge": bridge_name or "unset",
                         "runtime": bridge.get("runtime") or bridge_name or "unknown",

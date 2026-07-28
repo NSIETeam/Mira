@@ -522,6 +522,13 @@ export interface KernelManifestPayload {
       code?: number | null;
       updated_at_ms?: number | null;
     } | null;
+    recent_commands?: Array<{
+      target?: string | null;
+      action?: string | null;
+      status?: string | null;
+      code?: number | null;
+      updated_at_ms?: number | null;
+    }> | null;
     runtime_mode?: string | null;
     runtime_stage?: string;
     build_hint?: string | null;
