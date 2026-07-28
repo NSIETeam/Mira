@@ -4,28 +4,45 @@ import type {
   KernelEventPayload,
 } from "./types";
 
+function metadataRow(metadata: unknown): Record<string, unknown> | null {
+  return metadata && typeof metadata === "object"
+    ? metadata as Record<string, unknown>
+    : null;
+}
+
+function metadataString(row: Record<string, unknown> | null, key: string): string | null {
+  if (!row) return null;
+  const value = row[key];
+  return typeof value === "string" ? value : null;
+}
+
+function metadataNumber(row: Record<string, unknown> | null, key: string): number | null {
+  if (!row) return null;
+  const value = row[key];
+  return typeof value === "number" ? value : null;
+}
+
 function goalSummary(goal: unknown): string {
-  if (!goal || typeof goal !== "object") return "";
-  const blob = goal as Record<string, unknown>;
-  if (typeof blob.ui_summary === "string" && blob.ui_summary.trim()) return blob.ui_summary;
-  if (typeof blob.objective === "string" && blob.objective.trim()) return blob.objective;
+  const blob = metadataRow(goal);
+  const uiSummary = metadataString(blob, "ui_summary");
+  if (uiSummary && uiSummary.trim()) return uiSummary;
+  const objective = metadataString(blob, "objective");
+  if (objective && objective.trim()) return objective;
   return "";
 }
 
 export function goalStateFromKernelMetadata(metadata: unknown): GoalStateWsPayload | undefined {
-  if (!metadata || typeof metadata !== "object") return undefined;
-  const row = metadata as Record<string, unknown>;
-  if (!("goal_state" in row) || !row.goal_state || typeof row.goal_state !== "object") {
+  const row = metadataRow(metadata);
+  if (!row || !("goal_state" in row) || !row.goal_state || typeof row.goal_state !== "object") {
     return undefined;
   }
   return row.goal_state as GoalStateWsPayload;
 }
 
 export function runStartedAtFromKernelMetadata(metadata: unknown): number | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const row = metadata as Record<string, unknown>;
-  const status = typeof row.status === "string" ? row.status : "";
-  const startedAt = typeof row.started_at === "number" ? row.started_at : null;
+  const row = metadataRow(metadata);
+  const status = metadataString(row, "status") ?? "";
+  const startedAt = metadataNumber(row, "started_at");
   if (status === "running" && startedAt !== null) return startedAt;
   return null;
 }
@@ -34,12 +51,12 @@ export function turnCompletionFromKernelMetadata(metadata: unknown): {
   latencyMs?: number;
   turnId?: string;
 } {
-  if (!metadata || typeof metadata !== "object") return {};
-  const row = metadata as Record<string, unknown>;
-  const latencyMs = typeof row.latency_ms === "number" && row.latency_ms >= 0
-    ? Math.round(row.latency_ms)
+  const row = metadataRow(metadata);
+  const latencyValue = metadataNumber(row, "latency_ms");
+  const latencyMs = latencyValue !== null && latencyValue >= 0
+    ? Math.round(latencyValue)
     : undefined;
-  const turnId = typeof row.turn_id === "string" ? row.turn_id : undefined;
+  const turnId = metadataString(row, "turn_id") ?? undefined;
   return {
     ...(latencyMs !== undefined ? { latencyMs } : {}),
     ...(turnId ? { turnId } : {}),
@@ -47,18 +64,16 @@ export function turnCompletionFromKernelMetadata(metadata: unknown): {
 }
 
 export function readyChatIdFromKernelMetadata(metadata: unknown): string | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const row = metadata as Record<string, unknown>;
-  const chatId = typeof row.chat_id === "string" ? row.chat_id : null;
+  const row = metadataRow(metadata);
+  const chatId = metadataString(row, "chat_id");
   if (!chatId || "turn_id" in row) return null;
   return chatId;
 }
 
 export function attachedChatIdFromKernelMetadata(metadata: unknown): string | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const row = metadata as Record<string, unknown>;
-  const chatId = typeof row.chat_id === "string" ? row.chat_id : null;
-  const sessionId = typeof row.session_id === "string" ? row.session_id : null;
+  const row = metadataRow(metadata);
+  const chatId = metadataString(row, "chat_id");
+  const sessionId = metadataString(row, "session_id");
   if (!chatId || !sessionId) return null;
   return chatId;
 }
@@ -67,12 +82,12 @@ export function runtimeModelFromKernelMetadata(metadata: unknown): {
   modelName: string | null;
   modelPreset?: string | null;
 } | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const row = metadata as Record<string, unknown>;
-  if (typeof row.model_name !== "string") return null;
+  const row = metadataRow(metadata);
+  const modelName = metadataString(row, "model_name");
+  if (modelName === null) return null;
   return {
-    modelName: row.model_name || null,
-    modelPreset: typeof row.model_preset === "string" ? row.model_preset : null,
+    modelName: modelName || null,
+    modelPreset: metadataString(row, "model_preset"),
   };
 }
 
@@ -81,13 +96,12 @@ export function sessionUpdateFromKernelMetadata(metadata: unknown): {
   scope?: string;
   workspaceScope?: unknown;
 } | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const row = metadata as Record<string, unknown>;
-  const chatId = typeof row.chat_id === "string" ? row.chat_id : null;
+  const row = metadataRow(metadata);
+  const chatId = metadataString(row, "chat_id");
   if (!chatId || !("workspace_scope" in row)) return null;
   return {
     chatId,
-    scope: typeof row.scope === "string" ? row.scope : undefined,
+    scope: metadataString(row, "scope") ?? undefined,
     workspaceScope: row.workspace_scope,
   };
 }
@@ -96,10 +110,9 @@ export function transcriptionResultFromKernelMetadata(metadata: unknown): {
   requestId: string;
   text: string;
 } | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const row = metadata as Record<string, unknown>;
-  const requestId = typeof row.request_id === "string" ? row.request_id : null;
-  const text = typeof row.text === "string" ? row.text : null;
+  const row = metadataRow(metadata);
+  const requestId = metadataString(row, "request_id");
+  const text = metadataString(row, "text");
   if (!requestId || text === null) return null;
   return { requestId, text };
 }
@@ -108,11 +121,10 @@ export function transcriptionErrorFromKernelMetadata(metadata: unknown): {
   requestId?: string;
   detail: string;
 } | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const row = metadata as Record<string, unknown>;
-  const detail = typeof row.detail === "string" ? row.detail : "";
+  const row = metadataRow(metadata);
+  const detail = metadataString(row, "detail") ?? "";
   if (!detail) return null;
-  const requestId = typeof row.request_id === "string" ? row.request_id : undefined;
+  const requestId = metadataString(row, "request_id") ?? undefined;
   return {
     ...(requestId ? { requestId } : {}),
     detail,
@@ -123,12 +135,11 @@ export function workspaceScopeRejectionFromKernelMetadata(metadata: unknown): {
   reason?: string;
   chatId?: string;
 } | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const row = metadata as Record<string, unknown>;
+  const row = metadataRow(metadata);
   if (row.detail !== "workspace_scope_rejected") return null;
   return {
-    ...(typeof row.reason === "string" && row.reason ? { reason: row.reason } : {}),
-    ...(typeof row.chat_id === "string" && row.chat_id ? { chatId: row.chat_id } : {}),
+    ...(metadataString(row, "reason") ? { reason: metadataString(row, "reason") as string } : {}),
+    ...(metadataString(row, "chat_id") ? { chatId: metadataString(row, "chat_id") as string } : {}),
   };
 }
 
