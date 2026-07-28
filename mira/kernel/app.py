@@ -3459,7 +3459,7 @@ class KernelApp:
                 last_command={
                     "target": target,
                     "action": action,
-                    "command": str(result.get("command") or action),
+                    "command": str(result.get("command") or ""),
                     "value": value,
                     "health": str(result.get("health") or "ready"),
                     "status": str(result.get("status") or "queued"),

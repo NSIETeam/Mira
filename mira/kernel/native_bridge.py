@@ -71,6 +71,11 @@ def _decode_buffer(raw: Any) -> str:
     return bytes(raw).split(b"\0", 1)[0].decode("utf-8", errors="ignore")
 
 
+def _native_command_text(target: str, action: str, value: str = "") -> str:
+    command = f"native replay {target} {action}".strip()
+    return f"{command} {value}".strip() if value else command
+
+
 def _native_phase_state(
     state: int,
     *,
@@ -246,7 +251,7 @@ def _native_command_row(
     return {
         "target": target,
         "action": action,
-        "command": action,
+        "command": _native_command_text(target, action, value),
         "value": value,
         "status": _native_phase_state(
             int(raw_command.status),
@@ -305,7 +310,7 @@ def _native_dispatch_row(
         "artifact": artifact,
         "target": target,
         "action": action,
-        "command": action,
+        "command": _native_command_text(target, action, value),
         "value": value,
         "queue_depth": queue_depth,
         "updated_at_ms": None,
