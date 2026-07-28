@@ -6540,7 +6540,7 @@ function automationScheduleChanged(
   return draft.atLocal !== formatLocalDateTimeInput(job.schedule.at_ms ?? NaN);
 }
 
-type AutomationSearchField = "id" | "name" | "message" | "chat" | "cron" | "schedule" | "status";
+type AutomationSearchField = "id" | "name" | "message" | "execution" | "cron" | "schedule" | "status";
 
 interface AutomationSearchToken {
   field: AutomationSearchField | null;
@@ -6551,7 +6551,7 @@ const AUTOMATION_SEARCH_FIELDS = new Set<AutomationSearchField>([
   "id",
   "name",
   "message",
-  "chat",
+  "execution",
   "cron",
   "schedule",
   "status",
@@ -6603,7 +6603,7 @@ function automationSearchParts(
   if (field === "id") return [job.id];
   if (field === "name") return [job.name, job.id];
   if (field === "message") return [job.payload.message, job.payload.command, job.trigger?.command];
-  if (field === "chat") return originParts;
+  if (field === "execution") return originParts;
   if (field === "cron" || field === "schedule") return scheduleParts;
   if (field === "status") return [automationStatusKey(job), job.enabled ? "enabled" : "disabled"];
   return [
