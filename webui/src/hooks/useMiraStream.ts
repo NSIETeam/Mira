@@ -1132,14 +1132,11 @@ export function usemiraStream(
           buffer.current = null;
           activeAssistantRef.current = null;
           const filtered = activeId ? prev.filter((m) => m.id !== activeId) : prev;
-          const latencyMs =
-            typeof metadata.latency_ms === "number" && metadata.latency_ms >= 0
-              ? Math.round(metadata.latency_ms)
-              : undefined;
+          const completion = turnCompletionFromKernelMetadata(metadata);
           return absorbCompleteAssistantMessage(filtered, {
             content: event.text ?? "",
             ...(hasMedia ? { media } : {}),
-            ...(latencyMs !== undefined ? { latencyMs } : {}),
+            ...(completion.latencyMs !== undefined ? { latencyMs: completion.latencyMs } : {}),
             ...(normalizedSource ? { source: normalizedSource } : {}),
             ...turnFieldsFromEvent({
               turn_id: turn.turnId,
