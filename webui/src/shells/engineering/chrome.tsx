@@ -21,6 +21,64 @@ export type HostKernelStatus = {
   summary: string;
 };
 
+function deriveFallbackKernelStatus(appTagline: string): HostKernelStatus {
+  const privilege = appTagline.includes("· root")
+    ? "root"
+    : appTagline.includes("· user")
+      ? "user"
+      : "unknown";
+  const health = appTagline.includes("· offline")
+    ? "offline"
+    : appTagline.includes("· attention")
+      ? "attention"
+      : appTagline.includes("· healthy")
+        ? "healthy"
+        : "unknown";
+  const maintenance = appTagline.endsWith("· maintenance")
+    ? "maintenance"
+    : appTagline.endsWith("· live")
+      ? "live"
+      : "unknown";
+  const runtimeState =
+    maintenance === "maintenance"
+      ? "maintenance"
+      : health === "offline"
+        ? "offline"
+        : health === "attention"
+          ? "attention"
+          : "healthy";
+  const runtimeSeverity =
+    maintenance === "maintenance"
+      ? "warning"
+      : health === "offline"
+        ? "critical"
+        : health === "attention"
+          ? "warning"
+          : "normal";
+  const privilegeSeverity =
+    privilege === "root"
+      ? "elevated"
+      : privilege === "user"
+        ? "restricted"
+        : "unknown";
+
+  return {
+    privilege,
+    health,
+    maintenance,
+    runtimeState,
+    runtimeSeverity,
+    privilegeSeverity,
+    connected: health !== "offline",
+    alert: health === "attention" || maintenance === "maintenance",
+    summary: [
+      privilege !== "unknown" ? `privilege ${privilege}` : null,
+      health !== "unknown" ? `kernel ${health}` : null,
+      maintenance !== "unknown" ? `runtime ${maintenance}` : null,
+    ].filter(Boolean).join(" · "),
+  };
+}
+
 export function SurfaceLoadingFallback() {
   return (
     <div
@@ -56,33 +114,7 @@ export function HostChrome({
   kernelStatus?: HostKernelStatus;
 }) {
   const { t } = useTranslation();
-  const resolvedStatus = kernelStatus ?? {
-    privilege: appTagline.includes("· root") ? "root" : appTagline.includes("· user") ? "user" : "unknown",
-    health: appTagline.includes("· offline") ? "offline" : appTagline.includes("· attention") ? "attention" : appTagline.includes("· healthy") ? "healthy" : "unknown",
-    maintenance: appTagline.endsWith("· maintenance") ? "maintenance" : appTagline.endsWith("· live") ? "live" : "unknown",
-    runtimeState: appTagline.endsWith("· maintenance")
-      ? "maintenance"
-      : appTagline.includes("· offline")
-        ? "offline"
-        : appTagline.includes("· attention")
-          ? "attention"
-          : "healthy",
-    runtimeSeverity: appTagline.endsWith("· maintenance")
-      ? "warning"
-      : appTagline.includes("· offline")
-        ? "critical"
-        : appTagline.includes("· attention")
-          ? "warning"
-          : "normal",
-    privilegeSeverity: appTagline.includes("· root") ? "elevated" : appTagline.includes("· user") ? "restricted" : "unknown",
-    connected: !appTagline.includes("· offline"),
-    alert: appTagline.includes("· attention") || appTagline.endsWith("· maintenance"),
-    summary: [
-      appTagline.includes("· root") ? "privilege root" : appTagline.includes("· user") ? "privilege user" : null,
-      appTagline.includes("· offline") ? "kernel offline" : appTagline.includes("· attention") ? "kernel attention" : appTagline.includes("· healthy") ? "kernel healthy" : null,
-      appTagline.endsWith("· maintenance") ? "runtime maintenance" : appTagline.endsWith("· live") ? "runtime live" : null,
-    ].filter(Boolean).join(" · "),
-  } as const;
+  const resolvedStatus = kernelStatus ?? deriveFallbackKernelStatus(appTagline);
   const healthBadge = resolvedStatus.health === "offline"
     ? { label: "offline", className: "border-slate-400/80 bg-slate-100 text-slate-700" }
     : resolvedStatus.health === "attention"
