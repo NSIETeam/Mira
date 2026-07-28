@@ -4,7 +4,7 @@ This document describes the current Mira-facing execution kernel surface that no
 
 ## Purpose
 
-Mira is no longer just a chat-first agent shell. The current target is a compact execution kernel with:
+Mira is no longer just a conversation-first agent shell. The current target is a compact execution kernel with:
 
 - a thin engineering GUI;
 - a shell-style operator console;

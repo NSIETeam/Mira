@@ -1337,7 +1337,7 @@ export function MiraKernelConsole({
                   Session
                 </div>
                 <div className="mt-2 space-y-2">
-                  <Row label="Chat" value={activeExecution?.chatId ?? "detached"} />
+                  <Row label="Execution" value={activeExecution?.chatId ?? "detached"} />
                   <Row label="Phase" value={diagPhase ?? "idle"} />
                   <Row label="Iteration" value={`${diagIteration ?? 0}`} />
                   <Row label="Pending tools" value={`${diagPendingToolCalls}`} />
@@ -3495,7 +3495,7 @@ export function MiraKernelConsole({
             <div className="mt-2">
               Mira is being shaped as a reusable execution kernel, so the operator surface can eventually
               supervise constrained runtimes, firmware workflows, and board-level automation instead of
-              only desktop chat sessions.
+              only desktop execution sessions.
             </div>
           </div>
         </section>
