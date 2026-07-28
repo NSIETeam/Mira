@@ -10,6 +10,19 @@ import type { ShellHostContract, ShellViewProps } from "./types";
 export type ShellViewComponent = ComponentType<ShellViewProps>;
 const HOST_CONTRACT_SCHEMA = "mira.host/v1";
 const HOST_CONTRACT_VERSION = 1;
+const KNOWN_SHELL_MODES = new Set<ShellHostContract["mode"]>([
+  "engineering",
+  "single-execution",
+  "review",
+]);
+const DEFAULT_PRIVILEGE_CONTRACT: ShellHostContract["privilege"] = {
+  role: "user",
+  canElevate: false,
+  elevationMode: "none",
+  elevateHint: null,
+  dropHint: null,
+  sessionPolicy: "observe-only",
+};
 
 export interface ShellViewRegistration {
   component: ShellViewComponent;
@@ -63,14 +76,7 @@ const DEFAULT_HOST_CONTRACT = buildHostContract({
     allowComposer: true,
     readOnlyExecution: false,
   },
-  privilege: {
-    role: "user",
-    canElevate: false,
-    elevationMode: "none",
-    elevateHint: null,
-    dropHint: null,
-    sessionPolicy: "observe-only",
-  },
+  privilege: DEFAULT_PRIVILEGE_CONTRACT,
 });
 
 function buildUserShellContract({
@@ -92,14 +98,7 @@ function buildUserShellContract({
       allowExecutionFork: false,
     },
     composer,
-    privilege: {
-      role: "user",
-      canElevate: false,
-      elevationMode: "none",
-      elevateHint: null,
-      dropHint: null,
-      sessionPolicy: "observe-only",
-    },
+    privilege: DEFAULT_PRIVILEGE_CONTRACT,
   });
 }
 
@@ -192,10 +191,9 @@ function coerceHostContract(
     fallback.privilege.sessionPolicy ?? "observe-only",
   );
   const contract = buildHostContract({
-    mode:
-      raw.mode === "single-execution" || raw.mode === "review" || raw.mode === "engineering"
-        ? raw.mode
-        : fallback.mode,
+    mode: KNOWN_SHELL_MODES.has(raw.mode as ShellHostContract["mode"])
+      ? raw.mode as ShellHostContract["mode"]
+      : fallback.mode,
     chrome: {
       showSidebarChrome,
       showSearchDialog,
@@ -250,9 +248,6 @@ const SHELL_VIEW_REGISTRY: Record<string, ShellViewRegistration> = {
         allowKernelConsole: true,
         allowPrivilegedRuntimeControls: true,
       },
-      actions: {
-        allowExecutionFork: false,
-      },
       composer: {
         allowComposer: true,
         readOnlyExecution: false,
@@ -274,9 +269,6 @@ const SHELL_VIEW_REGISTRY: Record<string, ShellViewRegistration> = {
         allowKernelConsole: true,
         allowPrivilegedRuntimeControls: false,
       },
-      actions: {
-        allowExecutionFork: false,
-      },
       composer: {
         allowComposer: false,
         readOnlyExecution: true,
@@ -289,12 +281,8 @@ function shellRegistryKey(
   shellDescriptor: ShellDescriptorPayload | null | undefined,
 ): string {
   const contractMode = shellDescriptor?.host_contract?.mode;
-  if (
-    contractMode === "engineering"
-    || contractMode === "single-execution"
-    || contractMode === "review"
-  ) {
-    return contractMode;
+  if (KNOWN_SHELL_MODES.has(contractMode as ShellHostContract["mode"])) {
+    return contractMode as ShellHostContract["mode"];
   }
   return shellDescriptor?.name?.trim() ?? "";
 }
