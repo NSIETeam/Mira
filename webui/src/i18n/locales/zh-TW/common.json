@@ -331,7 +331,7 @@
       "includesEstimates": "包含估算",
       "cellTitle": "{{date}}：{{tokens}} 個 Token，{{requests}} 次請求",
       "sources": {
-        "user": "對話",
+        "user": "互動",
         "api": "API",
         "cron": "自動任務",
         "dream": "記憶整理",
