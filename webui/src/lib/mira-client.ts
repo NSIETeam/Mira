@@ -538,13 +538,21 @@ export class miraClient {
       return;
     }
 
-    if (parsed.event === "ready") {
+    if (
+      kernelEvent.type === "status"
+      && kernelEvent.state === "ready"
+      && parsed.event === "ready"
+    ) {
       this.readyChatId = parsed.chat_id;
       this.knownChats.add(parsed.chat_id);
       return;
     }
 
-    if (parsed.event === "attached") {
+    if (
+      kernelEvent.type === "status"
+      && kernelEvent.state === "ready"
+      && parsed.event === "attached"
+    ) {
       this.knownChats.add(parsed.chat_id);
       if (this.pendingNewChat) {
         clearTimeout(this.pendingNewChat.timer);
