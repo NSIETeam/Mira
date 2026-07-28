@@ -169,8 +169,6 @@ export function MiraKernelConsole({
   const nativeRecentCommands = nativeSnapshot?.recent_commands?.slice(-6).reverse() ?? [];
   const nativeModuleEntries = Object.entries(nativeSnapshot?.modules ?? {});
   const profile = kernelManifest?.profile ?? null;
-  const runtimeTargets = kernelManifest?.targets.runtime.slice(0, 4) ?? [];
-  const runtimeLanguages = kernelManifest?.targets.languages.slice(0, 4) ?? [];
   const adapterContract = kernelManifest?.targets.adapter ?? null;
   const runtimeAdapters = kernelManifest?.runtime_adapters.slice(0, 3) ?? [];
   const runtimeBridges = kernelManifest?.runtime_bridges.slice(0, 4) ?? [];
@@ -727,7 +725,7 @@ export function MiraKernelConsole({
             </div>
             <ConsoleRowGrid items={kernelIdentityRows} className="grid gap-2" />
             <div className="mt-2 flex flex-wrap gap-2">
-              {runtimeTargets.length ? runtimeTargets.map((target) => (
+              {kernelManifest?.targets.runtime?.length ? kernelManifest.targets.runtime.slice(0, 4).map((target) => (
                 <span
                   key={target}
                   className="rounded-full border border-slate-300/80 bg-slate-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700"
@@ -735,7 +733,7 @@ export function MiraKernelConsole({
                   {target}
                 </span>
               )) : null}
-              {runtimeLanguages.length ? runtimeLanguages.map((language) => (
+              {kernelManifest?.targets.languages?.length ? kernelManifest.targets.languages.slice(0, 4).map((language) => (
                 <span
                   key={language}
                   className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700"
@@ -1783,7 +1781,7 @@ export function MiraKernelConsole({
               Runtime targets
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
-              {runtimeTargets.length ? runtimeTargets.map((target) => (
+              {kernelManifest?.targets.runtime?.length ? kernelManifest.targets.runtime.slice(0, 4).map((target) => (
                 <span
                   key={target}
                   className="rounded-full border border-violet-300/80 bg-violet-50 px-2.5 py-1 text-xs text-violet-700"
@@ -1798,7 +1796,7 @@ export function MiraKernelConsole({
               Kernel languages
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
-              {runtimeLanguages.length ? runtimeLanguages.map((language) => (
+              {kernelManifest?.targets.languages?.length ? kernelManifest.targets.languages.slice(0, 4).map((language) => (
                 <span
                   key={language}
                   className="rounded-full border border-orange-300/80 bg-orange-50 px-2.5 py-1 text-xs text-orange-700"
