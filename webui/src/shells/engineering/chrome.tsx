@@ -10,8 +10,7 @@ import type { PairingRequestInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   deriveFallbackKernelStatus,
-  deriveHostChromePresentation,
-  deriveHostChromeSemantics,
+  deriveHostChromeViewModel,
   type HostKernelStatus,
 } from "./kernel-status";
 
@@ -61,8 +60,12 @@ export function HostChrome({
     visibleTagline,
     chromeStatusTitle,
     chromeStatusLabel,
-  } = deriveHostChromePresentation(resolvedStatus, appTagline);
-  const semantics = deriveHostChromeSemantics(appName, resolvedStatus);
+    semantics,
+  } = deriveHostChromeViewModel({
+    appName,
+    appTagline,
+    status: resolvedStatus,
+  });
 
   return (
     <header className="host-drag-region pointer-events-none absolute inset-x-0 top-0 z-40 h-12 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(248,250,252,0.84)_100%)] text-foreground/90 backdrop-blur-xl">

@@ -35,6 +35,10 @@ export type HostChromeSemantics = {
   runtimeSeverity: string;
 };
 
+export type HostChromeViewModel = HostChromePresentation & {
+  semantics: HostChromeSemantics;
+};
+
 export function deriveFallbackKernelStatus(appTagline: string): HostKernelStatus {
   const privilege = appTagline.includes("· root")
     ? "root"
@@ -211,5 +215,16 @@ export function deriveHostChromeSemantics(
     privilegeSeverity: status.privilegeSeverity,
     runtimeState: status.runtimeState,
     runtimeSeverity: status.runtimeSeverity,
+  };
+}
+
+export function deriveHostChromeViewModel(input: {
+  appName: string;
+  appTagline: string;
+  status: HostKernelStatus;
+}): HostChromeViewModel {
+  return {
+    ...deriveHostChromePresentation(input.status, input.appTagline),
+    semantics: deriveHostChromeSemantics(input.appName, input.status),
   };
 }
