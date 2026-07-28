@@ -2398,15 +2398,20 @@ export function MiraKernelConsole({
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Native modules</div>
               <div className="flex flex-wrap gap-2">
                 {nativeModuleEntries.length ? nativeModuleEntries.slice(0, 8).map(([name, state]) => (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => runContractAction(state?.actions?.find((action) => action.id === "inspect_native_module"), "modules")}
-                    disabled={operatorPending || !state?.actions?.find((action) => action.id === "inspect_native_module")?.command}
-                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
-                  >
-                    {name}:{state?.status ?? "unknown"}
-                  </button>
+                  (() => {
+                    const inspectNativeModuleAction = state?.actions?.find((action) => action.id === "inspect_native_module");
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => runContractAction(inspectNativeModuleAction, "modules")}
+                        disabled={operatorPending || !inspectNativeModuleAction?.command}
+                        className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                      >
+                        {name}:{state?.status ?? "unknown"}
+                      </button>
+                    );
+                  })()
                 )) : (
                   <span className="text-xs text-muted-foreground">No native modules observed.</span>
                 )}
