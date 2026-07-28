@@ -42,6 +42,14 @@ export function HostChrome({
   appTagline?: string;
 }) {
   const { t } = useTranslation();
+  const privilegeBadge = appTagline.endsWith("· root")
+    ? { label: "root", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
+    : appTagline.endsWith("· user")
+      ? { label: "user", className: "border-amber-300/80 bg-amber-50 text-amber-700" }
+      : null;
+  const visibleTagline = privilegeBadge
+    ? appTagline.replace(/\s*·\s*(root|user)\s*$/, "")
+    : appTagline;
 
   return (
     <header className="host-drag-region pointer-events-none absolute inset-x-0 top-0 z-40 h-12 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(248,250,252,0.84)_100%)] text-foreground/90 backdrop-blur-xl">
@@ -66,7 +74,12 @@ export function HostChrome({
         <div className="flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/75 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500 shadow-sm">
           <span className="text-slate-900">{appName}</span>
           <span className="h-1 w-1 rounded-full bg-emerald-500" />
-          <span>{appTagline}</span>
+          <span>{visibleTagline}</span>
+          {privilegeBadge ? (
+            <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]", privilegeBadge.className)}>
+              {privilegeBadge.label}
+            </span>
+          ) : null}
         </div>
       </div>
       {rightAction ? (
