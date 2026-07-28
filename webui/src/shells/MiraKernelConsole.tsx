@@ -177,6 +177,9 @@ export function MiraKernelConsole({
   const runtimeCapabilities = kernelManifest?.capabilities ?? null;
   const executionContract = kernelManifest?.execution ?? null;
   const goalState = diagnostics?.snapshot.goal_state;
+  const profileName = profile?.name ?? "unknown";
+  const activeAdapterName = runtimeControl?.active_adapter ?? "unset";
+  const boardTransportLabel = boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
   const sessionControls = kernelManifest?.session_controls?.actions ?? [];
   const workerControls = kernelManifest?.worker_controls?.actions ?? [];
@@ -504,7 +507,7 @@ export function MiraKernelConsole({
           Inspect runtime, modules, workspace, and shell posture
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <ConsoleBadge label="profile" value={profile?.name ?? "unknown"} tone="slate" />
+          <ConsoleBadge label="profile" value={profileName} tone="slate" />
           <ConsoleBadge label="shell" value={shellMode} tone="slate" />
           <ConsoleBadge label="status" value={connectionStatus} tone={connectionStatus === "connected" ? "emerald" : "amber"} />
           <ConsoleBadge label="runs" value={`${runningExecutionCount}`} tone="slate" />
@@ -599,13 +602,13 @@ export function MiraKernelConsole({
                   {boardSnapshot?.target ?? embeddedTargetHint ?? "host"}
                 </div>
                 <div className="text-xs text-slate-300">
-                  {boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"} · {boardSnapshot?.port ?? "auto"}
+                  {boardTransportLabel} · {boardSnapshot?.port ?? "auto"}
                 </div>
               </div>
             </div>
           </div>
           <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
-            <Row label="Profile" value={profile?.name ?? "unknown"} />
+            <Row label="Profile" value={profileName} />
             <Row label="Shell" value={shellDescriptor?.display_name ?? "Mira"} />
             <Row label="Mode" value={shellMode} />
             <Row label="Status" value={connectionStatus} />
@@ -636,7 +639,7 @@ export function MiraKernelConsole({
             <Row label="App" value={kernelManifest?.identity?.app_name ?? "Mira"} />
             <Row label="CLI" value={kernelManifest?.identity?.cli_name ?? "mira"} />
             <Row label="Compat alias" value={kernelManifest?.identity?.legacy_cli_name ?? "mira"} />
-            <Row label="Profile" value={profile?.name ?? "unknown"} />
+            <Row label="Profile" value={profileName} />
             <Row label="Privilege" value={privilegeRole} />
             <Row label="Privileged shell" value={shellAllowsPrivilegedControls ? "enabled" : "restricted"} />
             <Row label="Elevation" value={canElevate ? "allowed" : "fixed"} />
@@ -1828,7 +1831,7 @@ export function MiraKernelConsole({
               />
               <Row
                 label="Active"
-                value={runtimeControl?.active_adapter ?? "unset"}
+              value={activeAdapterName}
               />
             </div>
           </div>
@@ -1927,7 +1930,7 @@ export function MiraKernelConsole({
               <div className="rounded-lg border border-amber-200/70 bg-amber-50/80 p-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Active adapter</div>
                 <div className="mt-2 text-sm font-semibold text-amber-950">
-                  {runtimeControl?.active_adapter ?? "unset"}
+                  {activeAdapterName}
                 </div>
               </div>
               <div className="rounded-lg border border-slate-200/70 bg-slate-50/80 p-3">
@@ -2057,7 +2060,7 @@ export function MiraKernelConsole({
             <Row label="Attach" value={boardSnapshot?.attached ? "attached" : "detached"} />
             <Row
               label="Transport"
-              value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"}
+              value={boardTransportLabel}
             />
             <Row label="Port" value={boardSnapshot?.port ?? "not bound"} />
             <Row
@@ -2698,7 +2701,7 @@ export function MiraKernelConsole({
             </div>
             <div className="grid gap-2 md:grid-cols-2">
               <Row label="Target" value={boardSnapshot?.target ?? embeddedTargetHint ?? "host"} />
-              <Row label="Transport" value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"} />
+              <Row label="Transport" value={boardTransportLabel} />
               <Row label="Runtime mode" value={boardSnapshot?.runtime_mode ?? "userland"} />
               <Row label="Health" value={boardSnapshot?.health ?? "unknown"} />
               <Row label="Port" value={boardSnapshot?.port ?? "none"} />
@@ -2741,7 +2744,7 @@ export function MiraKernelConsole({
                   {boardSnapshot?.port ?? embeddedPorts[0] ?? "no-port"}
                 </div>
                 <div className="mt-1 text-xs text-amber-700/80">
-                  transport {boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"}
+                  transport {boardTransportLabel}
                 </div>
               </div>
               <div className="rounded-lg border border-cyan-200/80 bg-cyan-50/80 p-3">
