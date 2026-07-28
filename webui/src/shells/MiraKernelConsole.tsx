@@ -240,7 +240,7 @@ export function MiraKernelConsole({
     details?: Record<string, string | number | boolean | null>;
   }>>([
     {
-      line: "mira-kernel shell ready. try `runtime health`, `scheduler status`, `worker show`, or `board mode`.",
+      line: "mira-kernel shell ready. try `runtime health`, `native inspect memory`, `native replay runtime pause operator-ping`, or `board mode`.",
     },
   ]);
   const [operatorPending, setOperatorPending] = useState(false);
