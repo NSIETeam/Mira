@@ -724,7 +724,7 @@ export function MiraKernelConsole({
                         {Object.entries(entry.details)
                           .filter(([key]) => key !== "subject" && key !== "action")
                           .map(([key, value]) => (
-                            key === "items" ? (
+                            key === "items" || key === "codes" || key === "updated" ? (
                               <div
                                 key={key}
                                 className="rounded-sm border border-slate-200/80 bg-white/80 px-2 py-1"
@@ -745,7 +745,12 @@ export function MiraKernelConsole({
                                             && entry.details?.action === "modules"
                                             && item.includes(":")
                                           ) {
-                                            runQuickCommand(`module show ${item.split(":")[0]}`);
+                                            const moduleName = item.split(":")[0];
+                                            if (key === "items") {
+                                              runQuickCommand(`module show ${moduleName}`);
+                                            } else {
+                                              runQuickCommand(`native inspect ${moduleName}`);
+                                            }
                                           }
                                         }}
                                         disabled={operatorPending}
