@@ -544,7 +544,7 @@ describe("App layout", () => {
     expect(document.title).toBe("Automations · mira");
 
     const searchInput = within(automationsMain as HTMLElement).getByPlaceholderText(
-      "Search task, message, linked chat, or schedule",
+      "Search task, message, linked execution, or schedule",
     );
     fireEvent.change(searchInput, { target: { value: "WeChat" } });
     await waitFor(() => expect(screen.queryByText("Daily repo check")).not.toBeInTheDocument());
@@ -604,7 +604,7 @@ describe("App layout", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.queryByText("Run time must be in the future.")).not.toBeInTheDocument();
     expect(
-      screen.queryByText("Update the prompt and schedule. The linked chat stays unchanged."),
+      screen.queryByText("Update the prompt and schedule. The linked execution stays unchanged."),
     ).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("Old one-shot message")).toHaveClass(
       "min-h-[160px]",

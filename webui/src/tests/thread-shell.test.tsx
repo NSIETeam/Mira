@@ -857,7 +857,7 @@ describe("ThreadShell", () => {
     const view = (currentSession: ReturnType<typeof session> | null) => wrap(client, (
       <ThreadShell
         session={currentSession}
-        title={currentSession ? "New chat" : "mira"}
+        title={currentSession ? "New execution" : "mira"}
         onToggleSidebar={() => {}}
         onCreateChat={onCreateChat}
         settingsSnapshot={settings}
@@ -945,7 +945,7 @@ describe("ThreadShell", () => {
           client,
           <ThreadShell
             session={session("chat-new")}
-            title="New chat"
+            title="New execution"
             onToggleSidebar={() => {}}
             onCreateChat={onCreateChat}
           />,

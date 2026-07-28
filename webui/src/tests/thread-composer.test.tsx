@@ -1748,8 +1748,8 @@ describe("ThreadComposer", () => {
         slashCommands={[
           {
             command: "/new",
-            title: "New chat",
-            description: "Reset this chat and start a fresh conversation.",
+            title: "New execution",
+            description: "Reset this execution and start a fresh run.",
             icon: "square-pen",
             lifecycle: "finalize_active_turn",
             acceptsArgs: false,
@@ -1778,8 +1778,8 @@ describe("ThreadComposer", () => {
         slashCommands={[
           {
             command: "/new",
-            title: "New chat",
-            description: "Reset this chat and start a fresh conversation.",
+            title: "New execution",
+            description: "Reset this execution and start a fresh run.",
             icon: "square-pen",
             lifecycle: "finalize_active_turn",
             acceptsArgs: false,

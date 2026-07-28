@@ -86,8 +86,8 @@ const SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     command: "/new",
-    title: "New chat",
-    description: "Start a new chat.",
+    title: "New execution",
+    description: "Start a new execution.",
     icon: "square-pen",
     lifecycle: "finalize_active_turn",
     acceptsArgs: false,
