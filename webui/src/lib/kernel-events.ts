@@ -315,6 +315,22 @@ export function kernelToolResultActionMatches(
   return event.action === action;
 }
 
+export function kernelExtendsStreamingActivity(event: KernelEventPayload): boolean {
+  return (
+    event.type === "message"
+    || event.type === "reasoning"
+    || event.type === "tool_call"
+    || event.type === "tool_result"
+  );
+}
+
+export function kernelStatusMatchesLifecycle(
+  event: KernelEventPayload,
+  ...states: string[]
+): boolean {
+  return kernelStatusStateMatches(event, ...states);
+}
+
 export function kernelCompletesSystemCommand(event: KernelEventPayload): boolean {
   return kernelMessageActionMatches(event) || kernelStatusStateMatches(event, "turn_end");
 }

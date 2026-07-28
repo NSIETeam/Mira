@@ -13,9 +13,11 @@ import type { StreamError } from "@/lib/mira-client";
 import { formatQuotedUserMessage } from "@/lib/user-message-quote";
 import {
   assistantCompletionFromKernelMetadata,
+  kernelExtendsStreamingActivity,
   kernelMessageActionMatches,
   kernelMetadataSnapshot,
   kernelReasoningActionMatches,
+  kernelStatusMatchesLifecycle,
   kernelToolCallActionMatches,
   kernelToolResultActionMatches,
 } from "@/lib/kernel-events";
@@ -901,12 +903,7 @@ export function usemiraStream(
       if (
         streamEndTimerRef.current !== null
         && !sideChannelEvent
-        && (
-          event.type === "message"
-          || event.type === "reasoning"
-          || event.type === "tool_call"
-          || event.type === "tool_result"
-        )
+        && kernelExtendsStreamingActivity(event)
       ) {
         cancelStreamEndTimer();
       }
@@ -1076,7 +1073,7 @@ export function usemiraStream(
         return;
       }
 
-      if (event.type === "status" && state === "stream_end") {
+      if (kernelStatusMatchesLifecycle(event, "stream_end")) {
         const mergeNext = metadata.resuming === true && metadata.merge_next === true;
         flushPendingStreamEvents({
           closeAnswerSegment: !mergeNext,
@@ -1171,7 +1168,7 @@ export function usemiraStream(
         setGoalState(goalStatePayload);
       }
 
-      if (state === "running" || state === "idle") {
+      if (kernelStatusMatchesLifecycle(event, "running", "idle")) {
         const startedAt = snapshot.runStartedAt;
         if (startedAt !== null) {
           setRunStartedAt(startedAt);
@@ -1183,7 +1180,7 @@ export function usemiraStream(
         return;
       }
 
-      if (state === "turn_end") {
+      if (kernelStatusMatchesLifecycle(event, "turn_end")) {
         setRunStartedAt(null);
         cancelStreamEndTimer();
         setIsStreaming(false);
