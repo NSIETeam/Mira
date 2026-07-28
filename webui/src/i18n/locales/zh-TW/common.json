@@ -772,7 +772,7 @@
       "finishSignIn": "完成登入"
     },
     "skills": {
-      "description": "檢閱此 Agent 可在對話期間載入的指令技能。",
+      "description": "檢閱此 Agent 可在執行期間載入的指令技能。",
       "caption": "{{available}} 個可用 · 共 {{total}} 個",
       "featured": "Agent 技能",
       "empty": "目前沒有可用的技能。",
@@ -877,7 +877,7 @@
     "error": "連線錯誤"
   },
   "thread": {
-    "loadingConversation": "正在載入話題…",
+    "loadingConversation": "正在載入執行…",
     "empty": {
       "greetings": {
         "workOn": "我們要一起做點什麼？",
@@ -926,7 +926,7 @@
         },
         "product": {
           "title": "產品示意圖",
-          "prompt": "請產生一張對話式 AI Web 應用程式的簡潔產品示意圖，採用極簡介面、精緻打光與逼真的裝置外框。"
+          "prompt": "請產生一張執行式 AI Web 應用程式的簡潔產品示意圖，採用極簡介面、精緻打光與逼真的裝置外框。"
         },
         "portrait": {
           "title": "風格化人像",
