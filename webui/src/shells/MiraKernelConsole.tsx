@@ -553,6 +553,34 @@ export function MiraKernelConsole({
   const clearFaultRestrictionHint = clearFaultsAction
     ? actionRestrictionReason(clearFaultsAction)
     : null;
+  const controlPlaneRows = [
+    { label: "Profile", value: profileName },
+    { label: "Shell", value: shellDescriptor?.display_name ?? "Mira" },
+    { label: "Mode", value: shellMode },
+    { label: "Status", value: connectionStatus },
+    { label: "Model", value: runtimeModel ?? unresolvedRuntimeLabel },
+    { label: "Running", value: `${runningExecutionCount}` },
+    { label: "Gate", value: runtimeControl?.execution_gate?.state ?? "open" },
+    { label: "Maintenance", value: runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off" },
+    { label: "Gate reason", value: runtimeControl?.execution_gate?.reason ?? operatorReadyLabel },
+    { label: "Supervisor", value: diagnostics?.supervisor ?? runtimeControl?.fault_posture.supervisor ?? "unknown" },
+  ];
+  const kernelIdentityRows = [
+    { label: "App", value: kernelManifest?.identity?.app_name ?? "Mira" },
+    { label: "CLI", value: kernelManifest?.identity?.cli_name ?? "mira" },
+    { label: "Profile", value: profileName },
+    { label: "Privilege", value: privilegePosture.roleLabel },
+    { label: "Privileged shell", value: shellAllowsPrivilegedControls ? "enabled" : "restricted" },
+    { label: "Elevation", value: canElevate ? "allowed" : "fixed" },
+    { label: "GUI", value: runtimeCapabilities?.gui ? "enabled" : "off" },
+    { label: "API", value: runtimeCapabilities?.api ? "enabled" : "off" },
+    { label: "Threads", value: runtimeCapabilities?.threads ? "enabled" : "off" },
+    { label: "Approvals", value: runtimeCapabilities?.approvals ? "enabled" : "off" },
+    {
+      label: "Contracts",
+      value: `m${kernelManifest?.contracts?.manifest_version ?? 0}/e${kernelManifest?.contracts?.event_version ?? 0}/s${kernelManifest?.contracts?.snapshot_version ?? 0}`,
+    },
+  ];
 
   return (
     <aside className="hidden w-[332px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[356px]">
@@ -668,25 +696,7 @@ export function MiraKernelConsole({
             </div>
           </div>
           <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
-            <Row label="Profile" value={profileName} />
-            <Row label="Shell" value={shellDescriptor?.display_name ?? "Mira"} />
-            <Row label="Mode" value={shellMode} />
-            <Row label="Status" value={connectionStatus} />
-            <Row label="Model" value={runtimeModel ?? unresolvedRuntimeLabel} />
-            <Row label="Running" value={`${runningExecutionCount}`} />
-            <Row label="Gate" value={runtimeControl?.execution_gate?.state ?? "open"} />
-            <Row
-              label="Maintenance"
-              value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"}
-            />
-            <Row
-              label="Gate reason"
-              value={runtimeControl?.execution_gate?.reason ?? operatorReadyLabel}
-            />
-            <Row
-              label="Supervisor"
-              value={diagnostics?.supervisor ?? runtimeControl?.fault_posture.supervisor ?? "unknown"}
-            />
+            <ConsoleRowGrid items={controlPlaneRows} className="grid gap-2" />
             <div className="mt-3 flex flex-wrap gap-2">
               <AdapterActionButton binding={resolveActionBinding("enter_maintenance")} />
               <AdapterActionButton binding={resolveActionBinding("exit_maintenance")} />
@@ -696,20 +706,7 @@ export function MiraKernelConsole({
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Kernel identity
             </div>
-            <Row label="App" value={kernelManifest?.identity?.app_name ?? "Mira"} />
-            <Row label="CLI" value={kernelManifest?.identity?.cli_name ?? "mira"} />
-            <Row label="Profile" value={profileName} />
-            <Row label="Privilege" value={privilegePosture.roleLabel} />
-            <Row label="Privileged shell" value={shellAllowsPrivilegedControls ? "enabled" : "restricted"} />
-            <Row label="Elevation" value={canElevate ? "allowed" : "fixed"} />
-            <Row label="GUI" value={runtimeCapabilities?.gui ? "enabled" : "off"} />
-            <Row label="API" value={runtimeCapabilities?.api ? "enabled" : "off"} />
-            <Row label="Threads" value={runtimeCapabilities?.threads ? "enabled" : "off"} />
-            <Row label="Approvals" value={runtimeCapabilities?.approvals ? "enabled" : "off"} />
-            <Row
-              label="Contracts"
-              value={`m${kernelManifest?.contracts?.manifest_version ?? 0}/e${kernelManifest?.contracts?.event_version ?? 0}/s${kernelManifest?.contracts?.snapshot_version ?? 0}`}
-            />
+            <ConsoleRowGrid items={kernelIdentityRows} className="grid gap-2" />
             <div className="mt-2 flex flex-wrap gap-2">
               {runtimeTargets.length ? runtimeTargets.map((target) => (
                 <span
