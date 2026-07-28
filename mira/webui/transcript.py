@@ -134,11 +134,6 @@ def _webui_transcript_manifest_path(session_key: str) -> Path:
     return webui_transcript_segments_dir(session_key) / "manifest.json"
 
 
-def _legacy_webui_thread_path(session_key: str) -> Path:
-    stem = SessionManager.safe_key(session_key)
-    return get_webui_dir() / f"{stem}.json"
-
-
 class _TranscriptTurnRef(NamedTuple):
     ordinal: int
     records: list[dict[str, Any]]
@@ -833,9 +828,8 @@ def write_session_messages_as_transcript(
 
 def delete_webui_transcript(session_key: str) -> bool:
     removed = False
-    for path in (webui_transcript_path(session_key), _legacy_webui_thread_path(session_key)):
-        if not path.is_file():
-            continue
+    path = webui_transcript_path(session_key)
+    if path.is_file():
         try:
             path.unlink()
             removed = True
