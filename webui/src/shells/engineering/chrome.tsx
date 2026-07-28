@@ -65,6 +65,11 @@ export function HostChrome({
   const visibleTagline = privilegeBadge || healthBadge || maintenanceBadge
     ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "")
     : appTagline;
+  const chromeStatusTitle = [
+    privilegeBadge ? `privilege ${privilegeBadge.label}` : null,
+    healthBadge ? `kernel ${healthBadge.label}` : null,
+    maintenanceBadge ? `runtime ${maintenanceBadge.label}` : null,
+  ].filter(Boolean).join(" · ");
 
   return (
     <header className="host-drag-region pointer-events-none absolute inset-x-0 top-0 z-40 h-12 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(248,250,252,0.84)_100%)] text-foreground/90 backdrop-blur-xl">
@@ -86,7 +91,10 @@ export function HostChrome({
         </Button>
       ) : null}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex h-12 items-center justify-center">
-        <div className="flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/75 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500 shadow-sm">
+        <div
+          className="flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/75 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500 shadow-sm"
+          title={chromeStatusTitle || undefined}
+        >
           <span className="text-slate-900">{appName}</span>
           <span className={cn("h-1.5 w-1.5 rounded-full", healthDotClass)} />
           <span>{visibleTagline}</span>
