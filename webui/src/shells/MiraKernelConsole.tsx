@@ -2488,15 +2488,15 @@ export function MiraKernelConsole({
               </div>
               <ConsoleBadge
                 label="board"
-                value={embeddedTopology?.board?.attached ? "attached" : "detached"}
-                tone={embeddedTopology?.board?.attached ? "emerald" : "amber"}
+                value={boardSnapshot?.attached ? "attached" : "detached"}
+                tone={boardSnapshot?.attached ? "emerald" : "amber"}
               />
             </div>
             <div className="grid gap-2 md:grid-cols-2">
-              <Row label="Target" value={embeddedTopology?.board?.target ?? boardAttachment.target ?? embeddedTargetHint ?? "host"} />
-              <Row label="Transport" value={embeddedTopology?.board?.transport ?? embeddedTopology?.board?.preferred_transport ?? boardAttachment.transport ?? "unset"} />
-              <Row label="Runtime mode" value={embeddedTopology?.board?.runtime_mode ?? boardAttachment.runtime_mode ?? "userland"} />
-              <Row label="Port" value={embeddedTopology?.board?.port ?? boardAttachment.port ?? "none"} />
+              <Row label="Target" value={boardSnapshot?.target ?? boardAttachment.target ?? embeddedTargetHint ?? "host"} />
+              <Row label="Transport" value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? boardAttachment.transport ?? "unset"} />
+              <Row label="Runtime mode" value={boardSnapshot?.runtime_mode ?? boardAttachment.runtime_mode ?? "userland"} />
+              <Row label="Port" value={boardSnapshot?.port ?? boardAttachment.port ?? "none"} />
             </div>
             <div className="space-y-2">
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Available ports</div>
