@@ -1163,7 +1163,7 @@ export function usemiraStream(
         if (rawEvent === "goal_state") return;
       }
 
-      if (rawEvent === "goal_status" || (rawEvent === "" && (state === "running" || state === "idle"))) {
+      if (state === "running" || state === "idle") {
         const status = "status" in metadata ? metadata.status : undefined;
         const startedAt = "started_at" in metadata ? metadata.started_at : undefined;
         if (status === "running" && typeof startedAt === "number") {
@@ -1176,7 +1176,7 @@ export function usemiraStream(
         return;
       }
 
-      if (rawEvent === "turn_end" || state === "turn_end") {
+      if (state === "turn_end") {
         setRunStartedAt(null);
         cancelStreamEndTimer();
         setIsStreaming(false);
