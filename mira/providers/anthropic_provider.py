@@ -456,6 +456,9 @@ class AnthropicProvider(LLMProvider):
             desc = func.get("description")
             if desc:
                 entry["description"] = desc
+            family = tool.get("x_mira_family") or func.get("x_mira_family")
+            if family:
+                entry["x_mira_family"] = family
             if "cache_control" in tool:
                 entry["cache_control"] = tool["cache_control"]
             result.append(entry)

@@ -321,6 +321,9 @@ class BedrockProvider(LLMProvider):
             strict = func.get("strict", tool.get("strict"))
             if isinstance(strict, bool):
                 spec["strict"] = strict
+            family = tool.get("x_mira_family") or func.get("x_mira_family")
+            if family:
+                spec["x_mira_family"] = family
             result.append({"toolSpec": spec})
         return result or None
 
