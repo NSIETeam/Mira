@@ -255,11 +255,9 @@ function shellRegistryKey(
     return contractMode;
   }
   const shellName = shellDescriptor?.name?.trim() ?? "";
-  if (shellName === "single-execution-shell") return "single-execution";
-  if (shellName === "review-shell") return "review";
-  if (shellName === "engineering-shell" || shellName === "mira-shell") {
-    return "engineering";
-  }
+  if (shellName === "engineering-shell") return "engineering";
+  if (shellName === "single-execution") return "single-execution";
+  if (shellName === "review") return "review";
   return shellName;
 }
 

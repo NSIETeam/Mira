@@ -81,7 +81,7 @@ def _shell_metadata(**entries: str) -> dict[str, str]:
 class ShellDescriptor:
     """Minimal shell contract layered on top of the execution kernel."""
 
-    name: str = "mira-shell"
+    name: str = "engineering-shell"
     display_name: str = "Mira"
     description: str = "General-purpose engineering shell for the Mira execution kernel."
     theme: str = "engineering"

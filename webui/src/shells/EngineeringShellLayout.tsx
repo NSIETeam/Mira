@@ -26,7 +26,7 @@ export function EngineeringShellLayout({
     shellSupportsRuntimeControls,
     shellSupportsFileActivity,
     hostContract,
-    fallbackName: "mira-shell",
+    fallbackName: "engineering-shell",
     fallbackTheme: "engineering",
   });
 

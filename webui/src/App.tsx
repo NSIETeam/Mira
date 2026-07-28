@@ -397,7 +397,7 @@ export default function App() {
   useEffect(() => {
     if (state.status !== "ready") return;
     if (typeof document === "undefined") return;
-    const shellName = state.shell?.name || "mira-shell";
+    const shellName = state.shell?.name || "engineering-shell";
     const shellTheme = state.shell?.theme || "engineering";
     const shellDescription = state.shell?.description || "";
     document.title = state.shell?.display_name || "Mira";
