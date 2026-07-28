@@ -30,6 +30,22 @@ export function runStartedAtFromKernelMetadata(metadata: unknown): number | null
   return null;
 }
 
+export function turnCompletionFromKernelMetadata(metadata: unknown): {
+  latencyMs?: number;
+  turnId?: string;
+} {
+  if (!metadata || typeof metadata !== "object") return {};
+  const row = metadata as Record<string, unknown>;
+  const latencyMs = typeof row.latency_ms === "number" && row.latency_ms >= 0
+    ? Math.round(row.latency_ms)
+    : undefined;
+  const turnId = typeof row.turn_id === "string" ? row.turn_id : undefined;
+  return {
+    ...(latencyMs !== undefined ? { latencyMs } : {}),
+    ...(turnId ? { turnId } : {}),
+  };
+}
+
 export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
   switch (ev.event) {
     case "delta":

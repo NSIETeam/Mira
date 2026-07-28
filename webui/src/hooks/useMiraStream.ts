@@ -14,6 +14,7 @@ import { formatQuotedUserMessage } from "@/lib/user-message-quote";
 import {
   goalStateFromKernelMetadata,
   runStartedAtFromKernelMetadata,
+  turnCompletionFromKernelMetadata,
 } from "@/lib/kernel-events";
 import type {
   InboundEvent,
@@ -1183,20 +1184,17 @@ export function usemiraStream(
         cancelStreamEndTimer();
         setIsStreaming(false);
         const completedAt = Date.now();
-        const latencyMs = typeof metadata.latency_ms === "number" && metadata.latency_ms >= 0
-          ? Math.round(metadata.latency_ms)
-          : undefined;
-        const turnId = typeof metadata.turn_id === "string" ? metadata.turn_id : undefined;
+        const completion = turnCompletionFromKernelMetadata(metadata);
         setMessages((prev) => {
           let finalized = prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m));
           finalized = pruneReasoningOnlyPlaceholders(finalized);
           finalized = stampLastAssistantCompletion(
             finalized,
             {
-              ...(latencyMs !== undefined ? { latencyMs } : {}),
+              ...(completion.latencyMs !== undefined ? { latencyMs: completion.latencyMs } : {}),
               completedAt,
             },
-            turnId,
+            completion.turnId,
           );
           buffer.current = null;
           activeAssistantRef.current = null;
