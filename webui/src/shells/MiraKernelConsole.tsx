@@ -103,6 +103,13 @@ function formatNativeCommandSummary(command: {
   return `${command?.target ?? "target"}:${command?.action ?? "action"}:${command?.status ?? "queued"}:${command?.queue_depth ?? 0}`;
 }
 
+function findActionById<T extends { id?: string | null }>(
+  actions: T[] | null | undefined,
+  id: string,
+): T | undefined {
+  return actions?.find((action) => action.id === id);
+}
+
 export function MiraKernelConsole({
   kernelManifest,
   shellDescriptor,
@@ -3225,7 +3232,7 @@ export function MiraKernelConsole({
               <div className="flex flex-wrap gap-2">
                 {nativeModuleEntries.length ? nativeModuleEntries.slice(0, 8).map(([name, state]) => (
                   (() => {
-                    const inspectNativeModuleAction = state?.actions?.find((action) => action.id === "inspect_native_module");
+                    const inspectNativeModuleAction = findActionById(state?.actions, "inspect_native_module");
                     return (
                       <button
                         key={name}
@@ -3248,7 +3255,7 @@ export function MiraKernelConsole({
               <div className="flex flex-wrap gap-2">
                 {nativeSnapshot?.recent_commands?.length ? nativeSnapshot.recent_commands.slice(-6).reverse().map((command, index) => (
                   (() => {
-                    const replayRecentAction = command.actions?.find((action) => action.id === "replay_recent_command");
+                    const replayRecentAction = findActionById(command.actions, "replay_recent_command");
                     return (
                       <button
                         key={`${command.updated_at_ms ?? "native"}-${command.target ?? "target"}-${command.action ?? index}`}
@@ -4035,7 +4042,7 @@ export function MiraKernelConsole({
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {nativeFaultModules.length ? nativeFaultModules.slice(0, 6).map(([name, state]) => {
-                  const inspectNativeModuleAction = state?.actions?.find((action) => action.id === "inspect_native_module");
+                  const inspectNativeModuleAction = findActionById(state?.actions, "inspect_native_module");
                   return (
                     <button
                       key={name}
