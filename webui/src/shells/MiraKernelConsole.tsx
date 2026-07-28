@@ -2698,16 +2698,25 @@ export function MiraKernelConsole({
                     <ConsoleBadge label="mode" value={bridge.runtime_mode} tone="slate" />
                   ) : null}
                 </div>
-                {bridge.manifest || bridge.status_symbol || bridge.build_hint ? (
+                {bridge.manifest || bridge.status_symbol || bridge.build_hint || bridge.kernel_surface || bridge.free_symbol || bridge.attach_symbol ? (
                   <div className="mt-3 grid gap-2 rounded-md border border-slate-200/80 bg-white/80 p-3 text-xs">
                     {bridge.manifest ? (
                       <Row label="Manifest" value={bridge.manifest} />
+                    ) : null}
+                    {bridge.kernel_surface ? (
+                      <Row label="Kernel surface" value={bridge.kernel_surface} />
                     ) : null}
                     {bridge.runtime_mode ? (
                       <Row label="Runtime mode" value={bridge.runtime_mode} />
                     ) : null}
                     {bridge.status_symbol ? (
                       <Row label="Status symbol" value={bridge.status_symbol} />
+                    ) : null}
+                    {bridge.free_symbol ? (
+                      <Row label="Free symbol" value={bridge.free_symbol} />
+                    ) : null}
+                    {bridge.attach_symbol ? (
+                      <Row label="Attach symbol" value={bridge.attach_symbol} />
                     ) : null}
                     {bridge.build_hint ? (
                       <Row label="Build hint" value={bridge.build_hint} />

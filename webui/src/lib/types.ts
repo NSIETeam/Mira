@@ -502,6 +502,9 @@ export interface KernelManifestPayload {
     manifest?: string | null;
     abi?: string | null;
     status_symbol?: string | null;
+    kernel_surface?: string | null;
+    free_symbol?: string | null;
+    attach_symbol?: string | null;
     runtime_mode?: string | null;
     runtime_stage?: string;
     build_hint?: string | null;
