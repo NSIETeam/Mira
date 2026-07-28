@@ -707,10 +707,6 @@ function Shell({
     health: kernelHealthLabel as "healthy" | "attention" | "offline",
     maintenance: maintenanceLabel as "maintenance" | "live",
   });
-  const appTagline = formatHostChromeTagline(
-    kernelManifest?.identity?.app_name ?? "Mira",
-    hostKernelStatus,
-  );
   const kernelControl = useKernelControlState({
     kernelManifest,
     token,
@@ -1036,7 +1032,7 @@ function Shell({
                 <WorkbenchSidebar
                   {...sidebarProps}
                   appName={appName}
-                  appTagline={appTagline}
+                  kernelStatus={hostKernelStatus}
                   collapsed={!showHostChrome && !hostSidebarOpen}
                   hostChromeInset={showHostChrome}
                   onCollapse={closeHostSidebar}
@@ -1058,7 +1054,7 @@ function Shell({
               <WorkbenchSidebar
                 {...sidebarProps}
                 appName={appName}
-                appTagline={appTagline}
+                kernelStatus={hostKernelStatus}
                 hostChromeInset={showHostChrome}
                 onCollapse={closeHostSidebar}
                 onExpand={openHostSidebar}
@@ -1082,7 +1078,7 @@ function Shell({
               <WorkbenchSidebar
                 {...sidebarProps}
                 appName={appName}
-                appTagline={appTagline}
+                kernelStatus={hostKernelStatus}
                 onCollapse={closeMobileSidebar}
                 containActionMenus
               />

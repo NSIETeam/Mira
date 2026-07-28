@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { ExecutionList } from "@/components/ExecutionList";
 import { ConnectionBadge } from "@/components/ConnectionBadge";
 import { Button } from "@/components/ui/button";
+import { formatHostChromeTagline, type HostKernelStatus } from "@/shells/engineering/kernel-status";
 import type {
   ExecutionSummary,
   SidebarViewState,
@@ -22,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   appName?: string;
-  appTagline?: string;
+  kernelStatus?: HostKernelStatus;
   sessions: ExecutionSummary[];
   executions?: ExecutionSummary[];
   activeKey?: string | null;
@@ -92,7 +93,9 @@ export function Sidebar(props: SidebarProps) {
   const runningExecutionIds = props.runningExecutionIds;
   const updatedExecutionIds = props.updatedExecutionIds;
   const appName = props.appName ?? "Mira";
-  const appTagline = props.appTagline ?? "Execution kernel";
+  const appTagline = props.kernelStatus
+    ? formatHostChromeTagline(appName, props.kernelStatus)
+    : "Execution kernel";
 
   return (
     <nav
