@@ -3408,34 +3408,6 @@ class KernelApp:
         )
         return self.runtime_control
 
-    def _commit_runtime_board_state(
-        self,
-        next_state: dict[str, Any],
-        *,
-        board: dict[str, Any],
-        event_state: str,
-        event_message: str,
-        control_action: str | None = None,
-        control_value: str = "",
-    ) -> dict[str, Any]:
-        next_state["board"] = board
-        self._runtime_control = next_state
-        if control_action:
-            return self._commit_runtime_control_action(
-                target="board",
-                action=control_action,
-                value=control_value,
-                event_action="attach_board",
-                event_state=event_state,
-                event_message=event_message,
-            )
-        self._record_kernel_event(
-            "attach_board",
-            state=event_state,
-            message=event_message,
-        )
-        return self.runtime_control
-
     def _board_runtime_snapshot(self, board: dict[str, Any]) -> dict[str, Any]:
         return {
             "attached": bool(board.get("attached")),
@@ -3622,20 +3594,26 @@ class KernelApp:
             board["runtime_mode"] = None
             board["bridge_artifact"] = probe_result.get("artifact")
             board["last_error"] = probe_result.get("error")
-            return self._commit_runtime_board_state(
-                next_state,
-                board=board,
-                event_state="fault",
-                event_message=str(probe_result.get("error") or "board attach failed"),
+            next_state["board"] = board
+            self._runtime_control = next_state
+            self._record_kernel_event(
+                "attach_board",
+                state="fault",
+                message=str(probe_result.get("error") or "board attach failed"),
             )
+            return self.runtime_control
         if probe_result is not None:
             board["health"] = probe_result.get("health") or ("ready" if probe_result.get("ok") else "fault")
             board["runtime_mode"] = probe_result.get("runtime_mode")
             board["bridge_artifact"] = probe_result.get("artifact")
             board["last_error"] = probe_result.get("error")
-        return self._commit_runtime_board_state(
-            next_state,
-            board=board,
+        next_state["board"] = board
+        self._runtime_control = next_state
+        return self._commit_runtime_control_action(
+            target="board",
+            action="attach",
+            value=f"{board.get('transport') or transport or 'serial'}:{board.get('port') or port or 'auto'}",
+            event_action="attach_board",
             event_state="ok",
             event_message=(
                 f"board attached via {board.get('transport') or transport or 'default'}"
@@ -3645,8 +3623,6 @@ class KernelApp:
                     else ""
                 )
             ),
-            control_action="attach",
-            value=f"{board.get('transport') or transport or 'serial'}:{board.get('port') or port or 'auto'}",
         )
 
     def detach_board(self) -> dict[str, Any]:
