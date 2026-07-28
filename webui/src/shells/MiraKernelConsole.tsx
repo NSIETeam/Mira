@@ -180,6 +180,10 @@ export function MiraKernelConsole({
   const operatorReadyLabel = "operator-ready";
   const unresolvedRuntimeLabel = "unresolved";
   const boardAttachmentLabel = boardSnapshot?.attached ? "attached" : "detached";
+  const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
+  const boardHealthLabel = boardSnapshot?.health ?? "unknown";
+  const selectedBridgeHealthLabel = selectedBridge?.health ?? "unknown";
+  const selectedBridgeStatusLabel = selectedBridge?.status ?? "unknown";
   const profileName = profile?.name ?? "unknown";
   const activeAdapterName = runtimeControl?.active_adapter ?? "unset";
   const boardTransportLabel = boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset";
@@ -563,7 +567,7 @@ export function MiraKernelConsole({
                 <ConsoleBadge label="shell" value={shellMode} tone="slate" />
                 <ConsoleBadge label="gate" value={runtimeControl?.execution_gate?.state ?? "open"} tone={runtimeControl?.execution_gate?.state === "open" ? "emerald" : "amber"} />
                 <ConsoleBadge label="board" value={boardAttachmentLabel} tone={boardSnapshot?.attached ? "emerald" : "amber"} />
-                <ConsoleBadge label="native" value={nativeSnapshot?.health ?? "unknown"} tone={nativeSnapshot?.health === "ready" ? "emerald" : "amber"} />
+                <ConsoleBadge label="native" value={nativeHealthLabel} tone={nativeSnapshot?.health === "ready" ? "emerald" : "amber"} />
               </div>
             </div>
             <div className="grid gap-3 md:grid-cols-4">
@@ -728,7 +732,7 @@ export function MiraKernelConsole({
                   {nativeLastCommand?.target ?? "none"}:{nativeLastCommand?.action ?? "idle"}
                 </div>
                 <div className="text-xs text-slate-400">
-                  queue {(nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0)} · health {nativeSnapshot?.health ?? "unknown"}
+                  queue {(nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0)} · health {nativeHealthLabel}
                 </div>
               </div>
             </div>
@@ -1741,8 +1745,8 @@ export function MiraKernelConsole({
           <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
             <div className="grid gap-2 md:grid-cols-2">
               <Row label="Adapter" value={selectedBridge?.adapter ?? runtimeControl?.active_adapter ?? "unset"} />
-              <Row label="Health" value={selectedBridge?.health ?? "unknown"} />
-              <Row label="Status" value={selectedBridge?.status ?? "unknown"} />
+              <Row label="Health" value={selectedBridgeHealthLabel} />
+              <Row label="Status" value={selectedBridgeStatusLabel} />
               <Row label="Maintenance" value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"} />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -2091,7 +2095,7 @@ export function MiraKernelConsole({
               label="Runtime mode"
               value={boardSnapshot?.runtime_mode ?? "unprobed"}
             />
-            <Row label="Health" value={boardSnapshot?.health ?? "unknown"} />
+            <Row label="Health" value={boardHealthLabel} />
             <Row
               label="Bridge artifact"
               value={boardSnapshot?.bridge_artifact ?? "none"}
@@ -2352,11 +2356,11 @@ export function MiraKernelConsole({
             />
             <Row
               label="Board health"
-              value={boardSnapshot?.health ?? "unknown"}
+              value={boardHealthLabel}
             />
             <Row
               label="Native health"
-              value={nativeSnapshot?.health ?? "unknown"}
+              value={nativeHealthLabel}
             />
             <Row
               label="Native queue"
@@ -2698,7 +2702,7 @@ export function MiraKernelConsole({
               <div className="rounded-lg border border-amber-200/70 bg-amber-50/80 p-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Board health</div>
                 <div className="mt-2 text-sm font-semibold text-amber-950">
-                  {boardSnapshot?.health ?? "unknown"}
+                  {boardHealthLabel}
                 </div>
               </div>
               <div className="rounded-lg border border-slate-200/70 bg-slate-50/80 p-3">
@@ -2724,7 +2728,7 @@ export function MiraKernelConsole({
               <Row label="Target" value={boardSnapshot?.target ?? embeddedTargetHint ?? "host"} />
               <Row label="Transport" value={boardTransportLabel} />
               <Row label="Runtime mode" value={boardSnapshot?.runtime_mode ?? "userland"} />
-              <Row label="Health" value={boardSnapshot?.health ?? "unknown"} />
+              <Row label="Health" value={boardHealthLabel} />
               <Row label="Port" value={boardSnapshot?.port ?? "none"} />
             </div>
             <div className="space-y-2">
