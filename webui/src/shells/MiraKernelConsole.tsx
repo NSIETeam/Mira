@@ -181,6 +181,10 @@ function renderNativeCommandChip({
   );
 }
 
+function renderConsoleEmptyState(message: string, className = "text-xs text-muted-foreground") {
+  return <span className={className}>{message}</span>;
+}
+
 export function MiraKernelConsole({
   kernelManifest,
   shellDescriptor,
@@ -3314,7 +3318,7 @@ export function MiraKernelConsole({
                     })}
                   </div>
                 )) : (
-                  <span className="text-xs text-muted-foreground">No native modules observed.</span>
+                  renderConsoleEmptyState("No native modules observed.")
                 )}
               </div>
             </div>
@@ -3331,7 +3335,7 @@ export function MiraKernelConsole({
                     })}
                   </div>
                 )) : (
-                  <span className="text-xs text-muted-foreground">No recent native commands.</span>
+                  renderConsoleEmptyState("No recent native commands.")
                 )}
               </div>
             </div>
@@ -4118,7 +4122,7 @@ export function MiraKernelConsole({
                     </div>
                   );
                 }) : (
-                  <span className="text-xs text-rose-700/80">No native module faults.</span>
+                  renderConsoleEmptyState("No native module faults.", "text-xs text-rose-700/80")
                 )}
               </div>
             </div>
