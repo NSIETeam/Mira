@@ -1124,7 +1124,6 @@ function Shell({
             onSelectModule={(name) => {
               void kernelControl.focusModule(name);
             }}
-            boardAttachment={kernelControl.boardAttachment}
             selectedBoardTransport={kernelControl.selectedBoardTransport}
             onSelectBoardTransport={kernelControl.setSelectedBoardTransport}
             selectedBoardPort={kernelControl.selectedBoardPort}

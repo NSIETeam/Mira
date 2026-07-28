@@ -91,7 +91,6 @@ export function MiraKernelConsole({
   onSelectAdapter,
   selectedModuleName,
   onSelectModule,
-  boardAttachment,
   selectedBoardTransport,
   onSelectBoardTransport,
   selectedBoardPort,
@@ -116,17 +115,6 @@ export function MiraKernelConsole({
   onSelectAdapter: (name: string | null) => void;
   selectedModuleName: string | null;
   onSelectModule: (name: string | null) => void;
-  boardAttachment: {
-    attached: boolean;
-    transport: string | null;
-    port: string | null;
-    target: string | null;
-    preferred_transport: string | null;
-    runtime_mode?: string | null;
-    bridge_artifact?: string | null;
-    last_error?: string | null;
-    available_ports?: string[];
-  };
   selectedBoardTransport?: string | null;
   onSelectBoardTransport?: (transport: string | null) => void;
   selectedBoardPort?: string | null;
@@ -2080,8 +2068,8 @@ export function MiraKernelConsole({
                   <option value="">auto</option>
                   {Array.from(new Set([
                     ...(operatorConsole?.embedded_transports ?? []),
-                    ...([boardAttachment.preferred_transport].filter(Boolean) as string[]),
-                    ...([boardAttachment.transport].filter(Boolean) as string[]),
+                    ...([boardSnapshot?.preferred_transport].filter(Boolean) as string[]),
+                    ...([boardSnapshot?.transport].filter(Boolean) as string[]),
                   ])).map((transport) => (
                     <option key={transport} value={transport}>
                       {transport}
