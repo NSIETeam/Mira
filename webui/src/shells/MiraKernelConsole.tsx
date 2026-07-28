@@ -855,8 +855,27 @@ export function MiraKernelConsole({
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Fault posture</div>
-                <div className="mt-2 text-lg font-semibold text-white">
-                  {nativeFaultModules.length || faultedBridges.length || eventLaneCounts.fault ? "attention" : "stable"}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <div className="text-lg font-semibold text-white">
+                    {nativeFaultModules.length || faultedBridges.length || eventLaneCounts.fault ? "attention" : "stable"}
+                  </div>
+                  <ConsoleBadge
+                    label="recovery"
+                    value={
+                      goalState?.active
+                      || (diagnostics?.snapshot.dispatch_queue_depth ?? 0) > 0
+                      || diagSubagentWorkers > 0
+                        ? "warm"
+                        : "idle"
+                    }
+                    tone={
+                      goalState?.active
+                      || (diagnostics?.snapshot.dispatch_queue_depth ?? 0) > 0
+                      || diagSubagentWorkers > 0
+                        ? "amber"
+                        : "slate"
+                    }
+                  />
                 </div>
                 <div className="text-xs text-slate-300">
                   {faultSummary}
