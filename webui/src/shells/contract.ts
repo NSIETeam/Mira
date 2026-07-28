@@ -8,12 +8,6 @@ export function normalizedShellHostContract(
   return resolveShellRegistration(shellDescriptor).hostContract;
 }
 
-export function normalizedShellMode(
-  shellDescriptor: ShellDescriptorPayload | null,
-): ShellHostContract["mode"] {
-  return normalizedShellHostContract(shellDescriptor).mode;
-}
-
 export function shellDescriptorAllowsKernelConsole(
   shellDescriptor: ShellDescriptorPayload | null,
 ): boolean {

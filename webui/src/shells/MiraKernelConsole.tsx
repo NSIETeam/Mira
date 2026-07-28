@@ -10,7 +10,6 @@ import type {
 import { cn } from "@/lib/utils";
 import {
   normalizedShellHostContract,
-  normalizedShellMode,
   shellAllowsPrivilegedRuntimeControls,
   shellCanElevate,
   shellPrivilegeRole,
@@ -128,8 +127,8 @@ export function MiraKernelConsole({
   } | void>;
 }) {
   const appIdentity = kernelManifest?.identity?.app_name ?? "Mira";
-  const shellMode = normalizedShellMode(shellDescriptor);
   const hostContract = normalizedShellHostContract(shellDescriptor);
+  const shellMode = hostContract.mode;
   const privilegeRole = shellPrivilegeRole(hostContract);
   const canElevate = shellCanElevate(hostContract);
   const shellAllowsPrivilegedControls = shellAllowsPrivilegedRuntimeControls(hostContract);
