@@ -2496,6 +2496,7 @@ export function MiraKernelConsole({
               <Row label="Target" value={boardSnapshot?.target ?? boardAttachment.target ?? embeddedTargetHint ?? "host"} />
               <Row label="Transport" value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? boardAttachment.transport ?? "unset"} />
               <Row label="Runtime mode" value={boardSnapshot?.runtime_mode ?? boardAttachment.runtime_mode ?? "userland"} />
+              <Row label="Health" value={boardSnapshot?.health ?? "unknown"} />
               <Row label="Port" value={boardSnapshot?.port ?? boardAttachment.port ?? "none"} />
             </div>
             <div className="space-y-2">
