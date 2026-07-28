@@ -8,7 +8,11 @@ import { useLogoFallback } from "@/hooks/useLogoFallback";
 import { logoFallbackUrls } from "@/lib/provider-brand";
 import type { PairingRequestInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { deriveFallbackKernelStatus, type HostKernelStatus } from "./kernel-status";
+import {
+  deriveFallbackKernelStatus,
+  deriveHostChromePresentation,
+  type HostKernelStatus,
+} from "./kernel-status";
 
 export function SurfaceLoadingFallback() {
   return (
@@ -46,52 +50,19 @@ export function HostChrome({
 }) {
   const { t } = useTranslation();
   const resolvedStatus = kernelStatus ?? deriveFallbackKernelStatus(appTagline);
-  const healthBadge = resolvedStatus.health === "offline"
-    ? { label: "offline", className: "border-slate-400/80 bg-slate-100 text-slate-700" }
-    : resolvedStatus.health === "attention"
-    ? { label: "attention", className: "border-rose-300/80 bg-rose-50 text-rose-700" }
-    : resolvedStatus.health === "healthy"
-      ? { label: "healthy", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
-      : null;
-  const maintenanceBadge = resolvedStatus.maintenance === "maintenance"
-    ? { label: "maintenance", className: "border-amber-300/80 bg-amber-50 text-amber-700" }
-    : resolvedStatus.maintenance === "live"
-      ? { label: "live", className: "border-slate-300/80 bg-slate-50 text-slate-700" }
-      : null;
-  const healthDotClass = maintenanceBadge?.label === "maintenance"
-    ? "bg-amber-500 shadow-[0_0_0_3px_rgba(245,158,11,0.18)]"
-    : healthBadge?.label === "offline"
-      ? "bg-slate-500 shadow-[0_0_0_3px_rgba(100,116,139,0.18)]"
-    : healthBadge?.label === "attention"
-      ? "bg-rose-500 shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
-      : "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.16)]";
-  const chromeCapsuleClass = maintenanceBadge?.label === "maintenance"
-    ? "border-amber-200/90 bg-amber-50/90 text-amber-800"
-    : healthBadge?.label === "offline"
-      ? "border-slate-300/90 bg-slate-100/95 text-slate-700"
-    : healthBadge?.label === "attention"
-      ? "border-rose-200/90 bg-rose-50/90 text-rose-800"
-      : "border-slate-200/70 bg-white/75 text-slate-500";
-  const chromeCapsuleMotionClass = maintenanceBadge?.label === "maintenance"
-    ? "shadow-[0_0_0_1px_rgba(245,158,11,0.10),0_10px_28px_rgba(245,158,11,0.12)]"
-    : healthBadge?.label === "offline"
-      ? "shadow-[0_0_0_1px_rgba(100,116,139,0.10),0_10px_24px_rgba(100,116,139,0.12)]"
-    : healthBadge?.label === "attention"
-      ? "shadow-[0_0_0_1px_rgba(244,63,94,0.10),0_10px_28px_rgba(244,63,94,0.14)] animate-pulse"
-      : "shadow-sm";
-  const privilegeBadge = resolvedStatus.privilege === "root"
-    ? { label: "root", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
-    : resolvedStatus.privilege === "user"
-      ? { label: "user", className: "border-amber-300/80 bg-amber-50 text-amber-700" }
-      : null;
+  const {
+    healthBadge,
+    maintenanceBadge,
+    privilegeBadge,
+    healthDotClass,
+    chromeCapsuleClass,
+    chromeCapsuleMotionClass,
+    chromeStatusLabel,
+  } = deriveHostChromePresentation(resolvedStatus);
   const visibleTagline = privilegeBadge || healthBadge || maintenanceBadge
     ? appTagline.replace(/\s*·\s*(root|user)\s*/g, " · ").replace(/\s*·\s*(healthy|attention|offline)\s*/g, " · ").replace(/\s*·\s*(maintenance|live)\s*$/, "").replace(/\s*·\s*$/, "")
     : appTagline;
   const chromeStatusTitle = resolvedStatus.summary;
-  const chromeStatusLabel = [
-    healthBadge?.label,
-    maintenanceBadge?.label === "maintenance" ? "maintenance" : null,
-  ].filter(Boolean).join(" / ");
 
   return (
     <header className="host-drag-region pointer-events-none absolute inset-x-0 top-0 z-40 h-12 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(248,250,252,0.84)_100%)] text-foreground/90 backdrop-blur-xl">
