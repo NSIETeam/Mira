@@ -3323,6 +3323,11 @@ export function MiraKernelConsole({
                         contract {queue.dispatch_contract.owner ?? "interactive"} · {queue.dispatch_contract.mode ?? "direct"} · {queue.dispatch_contract.lane ?? queue.lane}
                       </div>
                     ) : null}
+                    {queue.family_counts && queue.family_counts !== "none" ? (
+                      <div className="mt-2 text-[11px] text-amber-700">
+                        families {queue.family_counts}
+                      </div>
+                    ) : null}
                     {queue.state === "delegated" || queue.state === "handoff" ? (
                       <div className="mt-2 text-[11px] text-fuchsia-700">
                         orchestration handoff active
