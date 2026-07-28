@@ -238,6 +238,10 @@ export function MiraKernelConsole({
     runtimeModules.find((module) => module.name === moduleName)?.actions?.find((action) => action.id === actionId)
     ?? runtimeTopologyModules.find((module) => module.name === moduleName)?.actions?.find((action) => action.id === actionId)
     ?? null;
+  const moduleShowCommand = (moduleName: string) => findModuleAction(moduleName, "show_module")?.command ?? null;
+  const moduleFocusCommand = (moduleName: string) => findModuleAction(moduleName, "focus_native")?.command ?? null;
+  const moduleInspectFillCommand = (moduleName: string) =>
+    findModuleAction(moduleName, "fill_native_inspect")?.command ?? null;
   const primaryEventAction = (event?: { actions?: Array<{ pane?: string | null; command?: string | null }> | null } | null) =>
     event?.actions?.find((action) => !!action.command) ?? null;
   const executionTimeline = eventLog.slice(0, 6).map((event, index) => ({
@@ -956,11 +960,11 @@ export function MiraKernelConsole({
                                             && item.includes(":")
                                           ) {
                                             const moduleName = item.split(":")[0];
-                                            const action = key === "items"
-                                              ? findModuleAction(moduleName, "show_module")
-                                              : findModuleAction(moduleName, "focus_native");
-                                            if (!action?.command) return;
-                                            runQuickCommand(action.command);
+                                            const command = key === "items"
+                                              ? moduleShowCommand(moduleName)
+                                              : moduleFocusCommand(moduleName);
+                                            if (!command) return;
+                                            runQuickCommand(command);
                                           }
                                         }}
                                         disabled={operatorPending}
@@ -1044,18 +1048,18 @@ export function MiraKernelConsole({
                           ) : null}
                           {"target" in entry.details && entry.details.target ? (
                             (() => {
-                              const moduleShowAction = findModuleAction(String(entry.details.target), "show_module");
-                              const moduleInspectFillCommand =
-                                findModuleAction(String(entry.details.target), "fill_native_inspect")?.command;
+                              const moduleName = String(entry.details.target);
+                              const moduleShow = moduleShowCommand(moduleName);
+                              const moduleInspectFill = moduleInspectFillCommand(moduleName);
                               return (
                                 <>
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      if (!moduleShowAction?.command) return;
-                                      runQuickCommand(moduleShowAction.command);
+                                      if (!moduleShow) return;
+                                      runQuickCommand(moduleShow);
                                     }}
-                                    disabled={operatorPending || !moduleShowAction?.command}
+                                    disabled={operatorPending || !moduleShow}
                                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                                   >
                                     open module
@@ -1063,10 +1067,10 @@ export function MiraKernelConsole({
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      if (!moduleInspectFillCommand) return;
-                                      setOperatorCommand(moduleInspectFillCommand);
+                                      if (!moduleInspectFill) return;
+                                      setOperatorCommand(moduleInspectFill);
                                     }}
-                                    disabled={operatorPending || !moduleInspectFillCommand}
+                                    disabled={operatorPending || !moduleInspectFill}
                                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                                   >
                                     fill inspect
