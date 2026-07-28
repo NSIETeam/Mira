@@ -736,6 +736,11 @@ export interface KernelManifestPayload {
       pending_tool_calls?: number;
       completed_tool_results?: number;
       active_tasks?: string[];
+      family_counts?: string;
+      family_rows?: Array<{
+        family: string;
+        count: number;
+      }>;
       dispatch_contract?: {
         owner?: string | null;
         mode?: string | null;
