@@ -84,7 +84,7 @@ If you want to preview the production bundle locally without rebuilding the whee
 
 ```bash
 cd webui
-bun run build          # writes to ../mira/web/dist
+npm run build          # writes to ../mira/web/dist
 ```
 
 The gateway picks up the new bundle on the next restart.

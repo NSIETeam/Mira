@@ -195,7 +195,7 @@ def build_webui_bundle(
     if command_runner is None:
         raise WebUIBuildError(
             "neither `bun` nor `npm` is available on PATH; install one or run "
-            "`cd webui && bun run build` manually"
+            "`cd webui && npm run build` manually"
         )
 
     _emit(output, f"Building bundled WebUI with `{command_runner}`...")
@@ -237,7 +237,7 @@ def ensure_webui_bundle(
     if mode == "warn":
         _emit(
             output,
-            f"Warning: {detail} Run `cd {status.source_dir} && bun run build` "
+            f"Warning: {detail} Run `cd {status.source_dir} && npm run build` "
             "to refresh it.",
         )
         return status
@@ -246,7 +246,7 @@ def ensure_webui_bundle(
         if confirm is None:
             _emit(output, f"Warning: {detail} No interactive confirmation is available.")
             return status
-        message = "Build WebUI now? This runs `cd webui && bun run build`."
+        message = "Build WebUI now? This runs `cd webui && npm run build`."
         if not confirm(message):
             _emit(output, "Continuing with the existing bundled WebUI build.")
             return status
