@@ -120,6 +120,9 @@ export function HostChrome({
             chromeCapsuleMotionClass,
           )}
           aria-label={chromeStatusTitle || `${appName} kernel status`}
+          data-kernel-health={healthBadge?.label ?? "unknown"}
+          data-runtime-maintenance={maintenanceBadge?.label ?? "unknown"}
+          data-shell-privilege={privilegeBadge?.label ?? "unknown"}
           title={chromeStatusTitle || undefined}
         >
           <span className="text-slate-900">{appName}</span>
