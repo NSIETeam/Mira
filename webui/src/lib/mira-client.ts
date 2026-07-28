@@ -573,7 +573,11 @@ export class miraClient {
       return;
     }
 
-    if (parsed.event === "transcription_error") {
+    if (
+      kernelEvent.type === "error"
+      && kernelEvent.action === "transcription_error"
+      && parsed.event === "transcription_error"
+    ) {
       this.rejectTranscription(parsed.request_id, parsed.detail || "error");
       return;
     }
