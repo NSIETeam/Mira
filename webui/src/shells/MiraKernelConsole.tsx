@@ -216,6 +216,21 @@ export function MiraKernelConsole({
   const selectedBridgeRestartAction = selectedBridgeAction("restart_bridge");
   const selectedBridgeMarkFaultAction = selectedBridgeAction("mark_bridge_fault");
   const selectedBridgeClearFaultAction = selectedBridgeAction("clear_bridge_fault");
+  const dispatchInspectAction = dispatchQueueAction("inspect_dispatch");
+  const dispatchPrioritizeAction = dispatchQueueAction("prioritize_dispatch");
+  const dispatchDelegateGoalAction = dispatchQueueAction("delegate_goal");
+  const dispatchDelegateSubagentAction = dispatchQueueAction("delegate_subagent");
+  const dispatchCompleteAction = dispatchQueueAction("complete_dispatch");
+  const dispatchFailAction = dispatchQueueAction("fail_dispatch");
+  const dispatchDrainAction = dispatchQueueAction("drain_dispatch");
+  const dispatchClearAction = dispatchQueueAction("clear_dispatch");
+  const clearFaultsAction = faultAction("clear_faults");
+  const inspectFaultsAction = faultAction("inspect_faults");
+  const recordFaultAction = faultAction("record_fault");
+  const enterMaintenanceAction = faultAction("enter_maintenance");
+  const exitMaintenanceAction = faultAction("exit_maintenance");
+  const inspectRuntimeAction = runtimeTopologyAction("inspect_runtime");
+  const runtimeOrchestrationAction = runtimeTopologyAction("runtime_orchestration");
   const embeddedBoardStatusAction = embeddedTopologyAction("board_status");
   const embeddedInspectAction = embeddedTopologyAction("inspect_embedded");
   const embeddedRefreshPortsAction = embeddedTopologyAction("refresh_board_ports");
@@ -687,9 +702,9 @@ export function MiraKernelConsole({
                 <span className="text-xs text-muted-foreground">
                   {actionRestrictionReason(selectedBridgeRestartAction)}
                 </span>
-              ) : faultAction("clear_faults") ? (
+              ) : clearFaultsAction ? (
                 <span className="text-xs text-muted-foreground">
-                  {actionRestrictionReason(faultAction("clear_faults"))}
+                  {actionRestrictionReason(clearFaultsAction)}
                 </span>
               ) : null}
             </div>
@@ -1303,66 +1318,66 @@ export function MiraKernelConsole({
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => runContractAction(dispatchQueueAction("inspect_dispatch"), "runtime")}
-                  disabled={operatorPending || !dispatchQueueAction("inspect_dispatch")?.command}
+                  onClick={() => runContractAction(dispatchInspectAction, "runtime")}
+                  disabled={operatorPending || !dispatchInspectAction?.command}
                   className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
                 >
                   inspect
                 </button>
-                {actionAllowed(dispatchQueueAction("prioritize_dispatch")) ? (
+                {actionAllowed(dispatchPrioritizeAction) ? (
                   <>
                     <button
                       type="button"
-                      onClick={() => runContractAction(dispatchQueueAction("prioritize_dispatch"), "runtime")}
-                      disabled={operatorPending || !dispatchQueueAction("prioritize_dispatch")?.command}
+                      onClick={() => runContractAction(dispatchPrioritizeAction, "runtime")}
+                      disabled={operatorPending || !dispatchPrioritizeAction?.command}
                       className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
                     >
                       prioritize
                     </button>
                     <button
                       type="button"
-                      onClick={() => runContractAction(dispatchQueueAction("delegate_goal"), "runtime")}
-                      disabled={operatorPending || !dispatchQueueAction("delegate_goal")?.command}
+                      onClick={() => runContractAction(dispatchDelegateGoalAction, "runtime")}
+                      disabled={operatorPending || !dispatchDelegateGoalAction?.command}
                       className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
                     >
                       goal lane
                     </button>
                     <button
                       type="button"
-                      onClick={() => runContractAction(dispatchQueueAction("delegate_subagent"), "runtime")}
-                      disabled={operatorPending || !dispatchQueueAction("delegate_subagent")?.command}
+                      onClick={() => runContractAction(dispatchDelegateSubagentAction, "runtime")}
+                      disabled={operatorPending || !dispatchDelegateSubagentAction?.command}
                       className="rounded-full border border-violet-300/80 bg-violet-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
                     >
                       subagent
                     </button>
                     <button
                       type="button"
-                      onClick={() => runContractAction(dispatchQueueAction("complete_dispatch"), "runtime")}
-                      disabled={operatorPending || !dispatchQueueAction("complete_dispatch")?.command}
+                      onClick={() => runContractAction(dispatchCompleteAction, "runtime")}
+                      disabled={operatorPending || !dispatchCompleteAction?.command}
                       className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
                     >
                       complete
                     </button>
                     <button
                       type="button"
-                      onClick={() => runContractAction(dispatchQueueAction("fail_dispatch"), "faults")}
-                      disabled={operatorPending || !dispatchQueueAction("fail_dispatch")?.command}
+                      onClick={() => runContractAction(dispatchFailAction, "faults")}
+                      disabled={operatorPending || !dispatchFailAction?.command}
                       className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
                     >
                       fail
                     </button>
                     <button
                       type="button"
-                      onClick={() => runContractAction(dispatchQueueAction("drain_dispatch"), "runtime")}
-                      disabled={operatorPending || !dispatchQueueAction("drain_dispatch")?.command}
+                      onClick={() => runContractAction(dispatchDrainAction, "runtime")}
+                      disabled={operatorPending || !dispatchDrainAction?.command}
                       className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
                     >
                       drain
                     </button>
                     <button
                       type="button"
-                      onClick={() => runContractAction(dispatchQueueAction("clear_dispatch"), "runtime")}
-                      disabled={operatorPending || !dispatchQueueAction("clear_dispatch")?.command}
+                      onClick={() => runContractAction(dispatchClearAction, "runtime")}
+                      disabled={operatorPending || !dispatchClearAction?.command}
                       className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
                     >
                       clear
@@ -2505,9 +2520,9 @@ export function MiraKernelConsole({
                     open target
                   </button>
                 </>
-              ) : faultAction("clear_faults") ? (
+              ) : clearFaultsAction ? (
                 <span className="text-xs text-muted-foreground">
-                  {actionRestrictionReason(faultAction("clear_faults"))}
+                  {actionRestrictionReason(clearFaultsAction)}
                 </span>
               ) : null}
               {selectedModule?.name ? (
@@ -2682,16 +2697,16 @@ export function MiraKernelConsole({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => runContractAction(runtimeTopologyAction("inspect_runtime"), "runtime")}
-                disabled={operatorPending || !runtimeTopologyAction("inspect_runtime")?.command}
+                onClick={() => runContractAction(inspectRuntimeAction, "runtime")}
+                disabled={operatorPending || !inspectRuntimeAction?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 inspect runtime
               </button>
               <button
                 type="button"
-                onClick={() => runContractAction(runtimeTopologyAction("runtime_orchestration"), "runtime")}
-                disabled={operatorPending || !runtimeTopologyAction("runtime_orchestration")?.command}
+                onClick={() => runContractAction(runtimeOrchestrationAction, "runtime")}
+                disabled={operatorPending || !runtimeOrchestrationAction?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 orchestration
@@ -2988,7 +3003,7 @@ export function MiraKernelConsole({
                             type="button"
                             onClick={() => {
                               if (task.startsWith("dispatch:")) {
-                                runContractAction(dispatchQueueAction("inspect_dispatch"), "runtime");
+                                runContractAction(dispatchInspectAction, "runtime");
                                 return;
                               }
                               if (queue.lane === "subagent") {
@@ -3245,8 +3260,8 @@ export function MiraKernelConsole({
                   <button
                     key={error.id}
                     type="button"
-                    onClick={() => runContractAction(faultAction("inspect_faults"), "faults")}
-                    disabled={operatorPending || !faultAction("inspect_faults")?.command}
+                    onClick={() => runContractAction(inspectFaultsAction, "faults")}
+                    disabled={operatorPending || !inspectFaultsAction?.command}
                     className="rounded-full border border-violet-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
                   >
                     {error.kind}
@@ -3287,42 +3302,42 @@ export function MiraKernelConsole({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => runContractAction(faultAction("inspect_faults"), "faults")}
-                disabled={operatorPending || !faultAction("inspect_faults")?.command}
+                onClick={() => runContractAction(inspectFaultsAction, "faults")}
+                disabled={operatorPending || !inspectFaultsAction?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 inspect
               </button>
-              {actionAllowed(faultAction("clear_faults")) ? (
+              {actionAllowed(clearFaultsAction) ? (
                 <>
                   <button
                     type="button"
-                    onClick={() => runContractAction(faultAction("clear_faults"), "faults")}
-                    disabled={operatorPending || !faultAction("clear_faults")?.command}
+                    onClick={() => runContractAction(clearFaultsAction, "faults")}
+                    disabled={operatorPending || !clearFaultsAction?.command}
                     className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
                   >
                     clear
                   </button>
                   <button
                     type="button"
-                    onClick={() => runContractAction(faultAction("record_fault"), "faults")}
-                    disabled={operatorPending || !faultAction("record_fault")?.command}
+                    onClick={() => runContractAction(recordFaultAction, "faults")}
+                    disabled={operatorPending || !recordFaultAction?.command}
                     className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
                   >
                     record
                   </button>
                   <button
                     type="button"
-                    onClick={() => runContractAction(faultAction("enter_maintenance"), "control_plane")}
-                    disabled={operatorPending || !faultAction("enter_maintenance")?.command}
+                    onClick={() => runContractAction(enterMaintenanceAction, "control_plane")}
+                    disabled={operatorPending || !enterMaintenanceAction?.command}
                     className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
                   >
                     maintenance on
                   </button>
                   <button
                     type="button"
-                    onClick={() => runContractAction(faultAction("exit_maintenance"), "control_plane")}
-                    disabled={operatorPending || !faultAction("exit_maintenance")?.command}
+                    onClick={() => runContractAction(exitMaintenanceAction, "control_plane")}
+                    disabled={operatorPending || !exitMaintenanceAction?.command}
                     className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
                   >
                     maintenance off
