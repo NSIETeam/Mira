@@ -847,9 +847,9 @@ export function MiraKernelConsole({
                       native replay {selectedModule.name} inspect status
                     </button>
                   </>
-                ) : dispatchQueueAction("prioritize_dispatch") ? (
+                ) : dispatchPrioritizeAction ? (
                   <span className="text-xs text-muted-foreground">
-                    {actionRestrictionReason(dispatchQueueAction("prioritize_dispatch"))}
+                    {actionRestrictionReason(dispatchPrioritizeAction)}
                   </span>
                 ) : null}
               </div>
