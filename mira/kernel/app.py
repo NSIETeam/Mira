@@ -158,7 +158,7 @@ def _fault_posture_actions() -> list[dict[str, Any]]:
             "command": "fault clear",
             "privileged": True,
             "required_role": "root",
-            "privileged_reason": "requires elevated fault control",
+            "privileged_reason": _PRIVILEGED_REASON_FAULT,
         },
         {
             "id": "record_fault",
@@ -167,7 +167,7 @@ def _fault_posture_actions() -> list[dict[str, Any]]:
             "command": "fault record",
             "privileged": True,
             "required_role": "root",
-            "privileged_reason": "requires elevated fault control",
+            "privileged_reason": _PRIVILEGED_REASON_FAULT,
         },
         {
             "id": "enter_maintenance",
@@ -176,7 +176,7 @@ def _fault_posture_actions() -> list[dict[str, Any]]:
             "command": "enter-maintenance",
             "privileged": True,
             "required_role": "root",
-            "privileged_reason": "requires elevated maintenance control",
+            "privileged_reason": _PRIVILEGED_REASON_MAINTENANCE,
         },
         {
             "id": "exit_maintenance",
@@ -185,7 +185,7 @@ def _fault_posture_actions() -> list[dict[str, Any]]:
             "command": "exit-maintenance",
             "privileged": True,
             "required_role": "root",
-            "privileged_reason": "requires elevated maintenance control",
+            "privileged_reason": _PRIVILEGED_REASON_MAINTENANCE,
         },
     ]
 
@@ -245,7 +245,7 @@ def _bridge_actions(adapter_name: str) -> list[dict[str, Any]]:
             "command": f"restart-bridge {adapter_name}".strip(),
             "privileged": True,
             "required_role": "root",
-            "privileged_reason": "requires elevated runtime control",
+            "privileged_reason": _PRIVILEGED_REASON_RUNTIME,
         },
         {
             "id": "mark_bridge_fault",
@@ -254,7 +254,7 @@ def _bridge_actions(adapter_name: str) -> list[dict[str, Any]]:
             "command": f"bridge fault {adapter_name}".strip(),
             "privileged": True,
             "required_role": "root",
-            "privileged_reason": "requires elevated fault control",
+            "privileged_reason": _PRIVILEGED_REASON_FAULT,
         },
         {
             "id": "clear_bridge_fault",
@@ -263,7 +263,7 @@ def _bridge_actions(adapter_name: str) -> list[dict[str, Any]]:
             "command": f"clear-fault {adapter_name}".strip(),
             "privileged": True,
             "required_role": "root",
-            "privileged_reason": "requires elevated fault control",
+            "privileged_reason": _PRIVILEGED_REASON_FAULT,
         },
     ]
 
@@ -307,6 +307,11 @@ def _merge_module_native_state(
 def _copy_rows(rows: list[dict[str, Any]], *, limit: int | None = None) -> list[dict[str, Any]]:
     source = rows[:limit] if isinstance(limit, int) else rows
     return [dict(row) for row in source]
+
+
+_PRIVILEGED_REASON_RUNTIME = "requires elevated runtime control"
+_PRIVILEGED_REASON_FAULT = "requires elevated fault control"
+_PRIVILEGED_REASON_MAINTENANCE = "requires elevated maintenance control"
 _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
     "attach-board",
     "detach-board",
