@@ -517,6 +517,25 @@ def build_kernel_manifest(
     }
 
 
+def tool_contract_family(tool_name: str) -> str:
+    name = str(tool_name or "").strip().lower()
+    if not name:
+        return "unknown"
+    if name.startswith("mcp") or name.startswith("browser"):
+        return "mcp"
+    if name.startswith("web"):
+        return "web"
+    if name.startswith("file") or name.startswith("fs"):
+        return "filesystem"
+    if name.startswith("shell") or name.startswith("exec"):
+        return "shell"
+    if "subagent" in name:
+        return "subagent"
+    if "goal" in name or "long" in name or "task" in name:
+        return "long-task"
+    return "core"
+
+
 class KernelApp:
     """Thin kernel wrapper around the existing agent loop."""
 
@@ -2188,6 +2207,7 @@ class KernelApp:
             repo = self._repo_root()
             workspace = self._workspace_root()
             tools = list(self._profile.tools)
+            families = sorted({tool_contract_family(tool) for tool in tools})
             target_pane = "workspace"
             state = self.runtime_control_snapshot()
             output = (
@@ -2200,6 +2220,7 @@ class KernelApp:
                 "root": str(repo) if repo is not None else str(workspace),
                 "count": len(tools),
                 "items": ", ".join(str(tool) for tool in tools) or "none",
+                "families": ", ".join(families) or "none",
             }
         elif command == "repo-prepare-tool":
             if not args:
@@ -2207,20 +2228,25 @@ class KernelApp:
             tool_name = " ".join(args).strip()
             if tool_name not in self._profile.tools:
                 raise ValueError(f"unknown tool contract: {tool_name}")
+            tool_family = tool_contract_family(tool_name)
             repo = self._repo_root()
             workspace = self._workspace_root()
             self._record_kernel_event(
                 "tool_contract_prepared",
                 state="ready",
-                message=f"{tool_name} prepared for {(repo if repo is not None else workspace).name or 'workspace'}",
+                message=(
+                    f"{tool_name} [{tool_family}] prepared for "
+                    f"{(repo if repo is not None else workspace).name or 'workspace'}"
+                ),
             )
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
-            output = f"tool contract prepared -> {tool_name}"
+            output = f"tool contract prepared -> {tool_name} [{tool_family}]"
             details = {
                 "subject": "repo",
                 "action": "prepare-tool",
                 "tool": tool_name,
+                "family": tool_family,
                 "root": str(repo) if repo is not None else str(workspace),
                 "status": "ready",
             }
@@ -2230,15 +2256,17 @@ class KernelApp:
             tool_name = " ".join(args).strip()
             if tool_name not in self._profile.tools:
                 raise ValueError(f"unknown tool contract: {tool_name}")
+            tool_family = tool_contract_family(tool_name)
             repo = self._repo_root()
             workspace = self._workspace_root()
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
-            output = f"tool {tool_name} contract available"
+            output = f"tool {tool_name} contract available [{tool_family}]"
             details = {
                 "subject": "tool",
                 "action": "inspect",
                 "tool": tool_name,
+                "family": tool_family,
                 "root": str(repo) if repo is not None else str(workspace),
                 "workspace": str(workspace),
             }
@@ -2248,6 +2276,7 @@ class KernelApp:
             tool_name = " ".join(args).strip()
             if tool_name not in self._profile.tools:
                 raise ValueError(f"unknown tool contract: {tool_name}")
+            tool_family = tool_contract_family(tool_name)
             repo = self._repo_root()
             workspace = self._workspace_root()
             active_module = str(
@@ -2258,6 +2287,7 @@ class KernelApp:
                 0,
                 {
                     "tool": tool_name,
+                    "family": tool_family,
                     "module": active_module,
                     "root": str(repo) if repo is not None else str(workspace),
                     "status": "queued",
@@ -2269,17 +2299,18 @@ class KernelApp:
                 "tool_dispatch_requested",
                 state="queued",
                 message=(
-                    f"{tool_name} dispatched via {active_module}"
+                    f"{tool_name} [{tool_family}] dispatched via {active_module}"
                     f" in {(repo if repo is not None else workspace).name or 'workspace'}"
                 ),
             )
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
-            output = f"tool dispatched -> {tool_name}"
+            output = f"tool dispatched -> {tool_name} [{tool_family}]"
             details = {
                 "subject": "tool",
                 "action": "dispatch",
                 "tool": tool_name,
+                "family": tool_family,
                 "module": active_module,
                 "root": str(repo) if repo is not None else str(workspace),
                 "status": "queued",
