@@ -45,17 +45,43 @@ export function toKernelEventPayload(ev: InboundEvent): KernelEventPayload {
         metadata: ev,
       };
     case "ready":
-      return { type: "status", state: "ready", metadata: ev };
+      return { type: "status", text: "kernel transport ready", state: "ready", metadata: ev };
     case "attached":
-      return { type: "status", state: "attached", metadata: ev };
+      return { type: "status", text: "shell attached to kernel", state: "ready", metadata: ev };
     case "runtime_model_updated":
-      return { type: "status", state: "runtime_model_updated", metadata: ev };
+      return {
+        type: "status",
+        text: typeof ev.model_name === "string" && ev.model_name.trim()
+          ? `runtime model ${ev.model_name}`
+          : "runtime model updated",
+        state: "ready",
+        metadata: ev,
+      };
     case "turn_model_updated":
-      return { type: "status", state: "turn_model_updated", metadata: ev };
+      return {
+        type: "status",
+        text: typeof ev.model_name === "string" && ev.model_name.trim()
+          ? `turn model ${ev.model_name}`
+          : "turn model updated",
+        state: "running",
+        metadata: ev,
+      };
     case "session_updated":
-      return { type: "status", state: "session_updated", metadata: ev };
+      return {
+        type: "status",
+        text: typeof ev.scope === "string" && ev.scope.trim()
+          ? `session ${ev.scope} updated`
+          : "session updated",
+        state: "ready",
+        metadata: ev,
+      };
     case "transcription_result":
-      return { type: "status", state: "transcription_result", metadata: ev };
+      return {
+        type: "status",
+        text: "audio transcription ready",
+        state: "done",
+        metadata: ev,
+      };
     case "transcription_error":
       return {
         type: "error",
