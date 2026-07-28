@@ -364,6 +364,38 @@ def build_kernel_manifest(
                 maintenance_mode=False,
             ),
         },
+        "session_controls": {
+            "actions": [
+                {
+                    "id": "inspect_session",
+                    "label": "inspect session",
+                    "pane": "runtime",
+                    "command": "session status",
+                },
+                {
+                    "id": "inspect_goal",
+                    "label": "inspect goal",
+                    "pane": "runtime",
+                    "command": "session goal",
+                },
+                {
+                    "id": "inspect_continuation",
+                    "label": "inspect continuation",
+                    "pane": "runtime",
+                    "command": "session continuation",
+                },
+            ],
+        },
+        "worker_controls": {
+            "actions": [
+                {
+                    "id": "inspect_workers",
+                    "label": "inspect workers",
+                    "pane": "runtime",
+                    "command": "worker show",
+                },
+            ],
+        },
         "execution_lanes": [
             {
                 "id": "interactive",
@@ -483,6 +515,8 @@ class KernelApp:
         self._native_bridge_artifact: str | None = None
         self._native_queue_depth = 0
         self._native_command_depth = 0
+        self._native_module_count = 0
+        self._native_recent_commands: list[dict[str, Any]] = []
         self._native_last_command: dict[str, Any] | None = None
         self._dispatch_queue: list[dict[str, Any]] = []
         self._session_metadata: dict[str, dict[str, Any]] = {}
@@ -527,12 +561,52 @@ class KernelApp:
         return clone_runtime_bridges(self._runtime_bridges)
 
     def runtime_adapters_snapshot(self) -> list[dict[str, Any]]:
-        return [dict(adapter) for adapter in self._runtime_adapters]
+        rows: list[dict[str, Any]] = []
+        for adapter in self._runtime_adapters:
+            row = dict(adapter)
+            adapter_name = str(row.get("name") or "")
+            row["actions"] = [
+                {
+                    "id": "inspect_adapter",
+                    "label": "inspect",
+                    "pane": "adapters",
+                    "command": f"adapter status {adapter_name}".strip(),
+                }
+            ]
+            rows.append(row)
+        return rows
 
     def runtime_modules_snapshot(self) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         for module in self._runtime_modules:
             row = dict(module)
+            module_name = str(row.get("name") or "")
+            row["actions"] = [
+                {
+                    "id": "show_module",
+                    "label": "open",
+                    "pane": "modules",
+                    "command": f"module show {module_name}".strip(),
+                },
+                {
+                    "id": "focus_native",
+                    "label": "focus",
+                    "pane": "modules",
+                    "command": f"native focus {module_name}".strip(),
+                },
+                {
+                    "id": "fill_native_inspect",
+                    "label": "fill inspect",
+                    "pane": "modules",
+                    "command": f"native inspect {module_name}".strip(),
+                },
+                {
+                    "id": "fill_native_replay",
+                    "label": "fill replay",
+                    "pane": "modules",
+                    "command": f"native replay {module_name} inspect status".strip(),
+                }
+            ]
             native_state = self._native_module_states.get(str(row.get("name") or ""))
             if native_state:
                 status = str(native_state.get("status") or row.get("status") or "ready")
@@ -546,14 +620,117 @@ class KernelApp:
                 if native_state.get("last_code") not in (None, 0):
                     native_summary += f" · code {native_state.get('last_code')}"
                 row["summary"] = f"{summary} · {native_summary}" if summary else native_summary
+                row["actions"].append(
+                    {
+                        "id": "inspect_native",
+                        "label": "inspect",
+                        "pane": "modules",
+                        "command": f"native inspect {module_name}".strip(),
+                    }
+                )
+                row["actions"].append(
+                    {
+                        "id": "inspect_native_status",
+                        "label": "inspect native",
+                        "pane": "adapters",
+                        "command": "native last-command",
+                    }
+                )
             rows.append(row)
         return rows
 
     def runtime_bridges_snapshot(self) -> list[dict[str, Any]]:
-        return self.runtime_bridges
+        rows: list[dict[str, Any]] = []
+        for bridge in self._runtime_bridges:
+            row = dict(bridge)
+            adapter_name = str(row.get("adapter") or "")
+            row["actions"] = [
+                {
+                    "id": "inspect_bridge",
+                    "label": "inspect",
+                    "pane": "adapters",
+                    "command": f"bridge status {adapter_name}".strip(),
+                },
+                {
+                    "id": "restart_bridge",
+                    "label": "restart",
+                    "pane": "adapters",
+                    "command": f"restart-bridge {adapter_name}".strip(),
+                    "privileged": True,
+                    "required_role": "root",
+                    "privileged_reason": "requires elevated runtime control",
+                },
+                {
+                    "id": "mark_bridge_fault",
+                    "label": "mark fault",
+                    "pane": "faults",
+                    "command": f"bridge fault {adapter_name}".strip(),
+                    "privileged": True,
+                    "required_role": "root",
+                    "privileged_reason": "requires elevated fault control",
+                },
+                {
+                    "id": "clear_bridge_fault",
+                    "label": "clear fault",
+                    "pane": "faults",
+                    "command": f"clear-fault {adapter_name}".strip(),
+                    "privileged": True,
+                    "required_role": "root",
+                    "privileged_reason": "requires elevated fault control",
+                },
+            ]
+            rows.append(row)
+        return rows
 
     def runtime_control_snapshot(self) -> dict[str, Any]:
-        return self.runtime_control
+        state = self.runtime_control
+        fault_posture = dict(state.get("fault_posture", {}))
+        fault_posture["actions"] = [
+            {
+                "id": "inspect_faults",
+                "label": "inspect",
+                "pane": "faults",
+                "command": "fault show",
+            },
+            {
+                "id": "clear_faults",
+                "label": "clear",
+                "pane": "faults",
+                "command": "fault clear",
+                "privileged": True,
+                "required_role": "root",
+                "privileged_reason": "requires elevated fault control",
+            },
+            {
+                "id": "record_fault",
+                "label": "record",
+                "pane": "faults",
+                "command": "fault record",
+                "privileged": True,
+                "required_role": "root",
+                "privileged_reason": "requires elevated fault control",
+            },
+            {
+                "id": "enter_maintenance",
+                "label": "maintenance on",
+                "pane": "control_plane",
+                "command": "enter-maintenance",
+                "privileged": True,
+                "required_role": "root",
+                "privileged_reason": "requires elevated maintenance control",
+            },
+            {
+                "id": "exit_maintenance",
+                "label": "maintenance off",
+                "pane": "control_plane",
+                "command": "exit-maintenance",
+                "privileged": True,
+                "required_role": "root",
+                "privileged_reason": "requires elevated maintenance control",
+            },
+        ]
+        state["fault_posture"] = fault_posture
+        return state
 
     def _workspace_root(self) -> Path:
         config = self._config
@@ -639,11 +816,22 @@ class KernelApp:
     def _refresh_live_event_log(self) -> None:
         native_snapshot = snapshot_native_bridge()
         if native_snapshot is not None:
-            self._native_queue_depth = native_snapshot.queue_depth
-            self._native_command_depth = native_snapshot.command_depth
-            self._native_bridge_artifact = native_snapshot.artifact
-            if native_snapshot.module_states:
-                self._native_module_states.update(native_snapshot.module_states)
+            self._store_native_command_state(
+                queue_depth=native_snapshot.queue_depth,
+                command_depth=native_snapshot.command_depth,
+                artifact=native_snapshot.artifact,
+                recent_commands=native_snapshot.recent_commands,
+                module_count=native_snapshot.module_count,
+                module_states=native_snapshot.module_states,
+                last_command=(
+                    {
+                        **native_snapshot.last_command,
+                        "artifact": native_snapshot.artifact,
+                    }
+                    if native_snapshot.last_command
+                    else None
+                ),
+            )
             for row in reversed(native_snapshot.events):
                 self._event_log = [dict(row), *self._event_log][:24]
         session_key = self._active_session_key
@@ -733,15 +921,6 @@ class KernelApp:
                         message=f"{top.get('label', 'subagent')}: {tool_detail}",
                     )
 
-    def _runtime_summary(self, runtime: Any) -> dict[str, Any]:
-        if runtime is None:
-            return {}
-        return {
-            "model": getattr(runtime, "model", None),
-            "model_preset": getattr(runtime, "model_preset", None),
-            "context_window_tokens": getattr(runtime, "context_window_tokens", None),
-        }
-
     def _handle_session_turn_started(self, event: SessionTurnStarted) -> None:
         session_key = event.context.session_key
         self._active_session_key = session_key
@@ -769,7 +948,16 @@ class KernelApp:
         self._active_session_key = session_key
         self._session_status[session_key] = "idle"
         self._session_latency[session_key] = event.latency_ms
-        self._session_runtime[session_key] = self._runtime_summary(event.runtime)
+        runtime = event.runtime
+        self._session_runtime[session_key] = (
+            {}
+            if runtime is None
+            else {
+                "model": getattr(runtime, "model", None),
+                "model_preset": getattr(runtime, "model_preset", None),
+                "context_window_tokens": getattr(runtime, "context_window_tokens", None),
+            }
+        )
         checkpoints = self._loop_runtime_var("session_checkpoints", {})
         if isinstance(checkpoints, dict):
             checkpoints.pop(session_key, None)
@@ -906,6 +1094,38 @@ class KernelApp:
         manifest["runtime_modules"] = self.runtime_modules_snapshot()
         manifest["runtime_control"] = self.runtime_control_snapshot()
         manifest["diagnostics"] = self.diagnostics_snapshot
+        manifest["session_controls"] = {
+            "actions": [
+                {
+                    "id": "inspect_session",
+                    "label": "inspect session",
+                    "pane": "runtime",
+                    "command": "session status",
+                },
+                {
+                    "id": "inspect_goal",
+                    "label": "inspect goal",
+                    "pane": "runtime",
+                    "command": "session goal",
+                },
+                {
+                    "id": "inspect_continuation",
+                    "label": "inspect continuation",
+                    "pane": "runtime",
+                    "command": "session continuation",
+                },
+            ],
+        }
+        manifest["worker_controls"] = {
+            "actions": [
+                {
+                    "id": "inspect_workers",
+                    "label": "inspect workers",
+                    "pane": "runtime",
+                    "command": "worker show",
+                },
+            ],
+        }
         manifest["execution_lanes"] = self.execution_lanes(session_metadata=self._active_session_metadata())
         manifest["scheduler"] = self.scheduler_snapshot(session_metadata=self._active_session_metadata())
         manifest["workers"] = self.worker_snapshot(session_metadata=self._active_session_metadata())
@@ -991,6 +1211,7 @@ class KernelApp:
                 ("native", "last-command"): ("native-last-command", tail),
                 ("native", "replay-last"): ("native-replay-last", tail),
                 ("native", "replay"): ("native-replay", tail),
+                ("native", "focus"): ("native-focus", tail),
                 ("native", "inspect"): ("native-inspect", tail),
                 ("native", "modules"): ("native-modules", tail),
                 ("repo", "status"): ("repo-status", tail),
@@ -1020,14 +1241,14 @@ class KernelApp:
                 "target_pane": "control_plane",
                 "output": (
                     "commands: help, pane <name>, switch-adapter [name], focus-module <name>, "
-                    "adapter-status [name], adapter-list, module-status [name], module-list, module-actions [name], board-status, board-ports, board-target, board-transport, board-mode, native-status, native-last-command, native-replay-last, native-replay <target> <action> [value], native-inspect <module>, native-modules, bridge-status [name], bridge-list, bridge-fault [name], runtime-status, runtime-gate, runtime-health, runtime-orchestration, runtime-queues, runtime-adapters, runtime-bridges, fault-status, scheduler-status, lane-status, lane-list, maintenance-status, worker-status, worker-list, "
+                    "adapter-status [name], adapter-list, module-status [name], module-list, module-actions [name], board-status, board-ports, board-target, board-transport, board-mode, native-status, native-last-command, native-replay-last, native-replay <target> <action> [value], native-focus <module>, native-inspect <module>, native-modules, bridge-status [name], bridge-list, bridge-fault [name], runtime-status, runtime-gate, runtime-health, runtime-orchestration, runtime-queues, runtime-adapters, runtime-bridges, fault-status, scheduler-status, lane-status, lane-list, maintenance-status, worker-status, worker-list, "
                     "event-status, event-tail [count], session-status, session-goal, session-continuation, goal-reset, kernel-profile, kernel-manifest, runtime-topology, embedded-topology, workspace-status, workspace-scope, workspace-modules, workspace-focus-module <name>, repo-status, repo-root, repo-tools, repo-prepare-tool <name>, tool-inspect <name>, tool-dispatch <name>, tool-queue, tool-clear-queue, tool-prioritize, tool-drain, tool-delegate-goal, tool-delegate-subagent, tool-complete, tool-fail, tool-status, "
                     "attach-board [port] [transport], detach-board, restart-bridge [adapter], "
                     "clear-fault [adapter], record-fault [level] [adapter], pause-runtime [reason], "
                     "resume-runtime, degrade-runtime [reason], drain-background, "
                     "prioritize-goal-lane, enter-maintenance [reason], exit-maintenance; "
                     "aliases: adapter switch|status|list <name>, module focus|show|list|actions <name>, "
-                    "board attach|detach|status|ports|target|transport|mode [port] [transport], native status|last-command|replay-last|replay <target> <action> [value]|inspect <module>|modules, bridge status|list|fault <name>, runtime pause|resume|degrade|drain|status|gate|health|orchestration|queues|adapters|bridges, fault clear|record|show, "
+                    "board attach|detach|status|ports|target|transport|mode [port] [transport], native status|last-command|replay-last|replay <target> <action> [value]|focus <module>|inspect <module>|modules, bridge status|list|fault <name>, runtime pause|resume|degrade|drain|status|gate|health|orchestration|queues|adapters|bridges, fault clear|record|show, "
                     "scheduler status, worker show|list, maintenance enter|exit|status, lane prioritize-goal|show|list, event show|tail [count], session status|goal|continuation, goal reset, kernel profile|manifest, topology runtime|embedded, workspace status|scope|modules|focus-module <name>, repo status|root|tools|prepare-tool <name>, tool inspect|dispatch <name>, tool queue|clear-queue|prioritize|drain|delegate-goal|delegate-subagent|complete|fail|status"
                 ),
                 "runtime_control": self.runtime_control_snapshot(),
@@ -1176,13 +1397,14 @@ class KernelApp:
             )
             target_pane = "adapters"
             output = f"board attach -> {port or state.get('board', {}).get('port') or 'auto'}"
-            board = dict(state.get("board", {}))
+            board = self._board_runtime_snapshot(dict(state.get("board", {})))
             details = {
                 "subject": "board",
                 "action": "attach",
                 "transport": board.get("transport"),
                 "port": board.get("port"),
                 "attached": board.get("attached"),
+                "health": board.get("health"),
                 "mode": board.get("runtime_mode"),
                 "error": board.get("last_error"),
             }
@@ -1192,11 +1414,12 @@ class KernelApp:
             output = "board detached"
             details = {"subject": "board", "action": "detach"}
         elif command == "board-status":
-            board = dict(self._runtime_control.get("board", {}))
+            board = self._board_runtime_snapshot(dict(self._runtime_control.get("board", {})))
             target_pane = "adapters"
             state = self.runtime_control_snapshot()
             output = (
                 f"board attached={bool(board.get('attached'))}"
+                f" health={board.get('health') or 'unknown'}"
                 f" transport={board.get('transport') or board.get('preferred_transport') or 'unset'}"
                 f" port={board.get('port') or 'auto'}"
                 f" mode={board.get('runtime_mode') or 'unprobed'}"
@@ -1206,13 +1429,14 @@ class KernelApp:
                 "subject": "board",
                 "action": "status",
                 "attached": bool(board.get("attached")),
+                "health": board.get("health") or "unknown",
                 "transport": board.get("transport") or board.get("preferred_transport") or "unset",
                 "port": board.get("port") or "auto",
                 "mode": board.get("runtime_mode") or "unprobed",
                 "error": board.get("last_error") or "none",
             }
         elif command == "board-ports":
-            board = dict(self._runtime_control.get("board", {}))
+            board = self._board_runtime_snapshot(dict(self._runtime_control.get("board", {})))
             ports = list(board.get("available_ports") or [])
             target_pane = "adapters"
             state = self.runtime_control_snapshot()
@@ -1225,191 +1449,199 @@ class KernelApp:
                 "items": ", ".join(str(port) for port in ports) or "none",
             }
         elif command == "board-target":
-            board = dict(self._runtime_control.get("board", {}))
+            board = self._board_runtime_snapshot(dict(self._runtime_control.get("board", {})))
             target_pane = "adapters"
             state = self.runtime_control_snapshot()
-            output = (
+            output, details = (
                 f"board target={board.get('target') or 'unknown'}"
-                f" attached={bool(board.get('attached'))}"
+                f" attached={bool(board.get('attached'))}",
+                {
+                    "subject": "board",
+                    "action": "target",
+                    "target": board.get("target") or "unknown",
+                    "attached": bool(board.get("attached")),
+                    "mode": board.get("runtime_mode") or "unprobed",
+                },
             )
-            details = {
-                "subject": "board",
-                "action": "target",
-                "target": board.get("target") or "unknown",
-                "attached": bool(board.get("attached")),
-                "mode": board.get("runtime_mode") or "unprobed",
-            }
         elif command == "board-transport":
-            board = dict(self._runtime_control.get("board", {}))
+            board = self._board_runtime_snapshot(dict(self._runtime_control.get("board", {})))
             target_pane = "adapters"
             state = self.runtime_control_snapshot()
-            output = (
-                f"board transport={board.get('transport') or board.get('preferred_transport') or 'unset'}"
-                f" port={board.get('port') or 'auto'}"
+            transport = board.get("transport") or board.get("preferred_transport") or "unset"
+            output, details = (
+                f"board transport={transport}"
+                f" port={board.get('port') or 'auto'}",
+                {
+                    "subject": "board",
+                    "action": "transport",
+                    "transport": transport,
+                    "preferred_transport": board.get("preferred_transport") or "unset",
+                    "port": board.get("port") or "auto",
+                    "ports_known": len(list(board.get("available_ports") or [])),
+                },
             )
-            details = {
-                "subject": "board",
-                "action": "transport",
-                "transport": board.get("transport") or board.get("preferred_transport") or "unset",
-                "preferred_transport": board.get("preferred_transport") or "unset",
-                "port": board.get("port") or "auto",
-                "ports_known": len(list(board.get("available_ports") or [])),
-            }
         elif command == "board-mode":
-            board = dict(self._runtime_control.get("board", {}))
+            board = self._board_runtime_snapshot(dict(self._runtime_control.get("board", {})))
             target_pane = "adapters"
             state = self.runtime_control_snapshot()
-            output = (
+            output, details = (
                 f"board mode={board.get('runtime_mode') or 'unprobed'}"
-                f" artifact={board.get('bridge_artifact') or 'none'}"
+                f" artifact={board.get('bridge_artifact') or 'none'}",
+                {
+                    "subject": "board",
+                    "action": "mode",
+                    "mode": board.get("runtime_mode") or "unprobed",
+                    "artifact": board.get("bridge_artifact") or "none",
+                    "error": board.get("last_error") or "none",
+                },
             )
-            details = {
-                "subject": "board",
-                "action": "mode",
-                "mode": board.get("runtime_mode") or "unprobed",
-                "artifact": board.get("bridge_artifact") or "none",
-                "error": board.get("last_error") or "none",
-            }
         elif command == "native-status":
-            snapshot = self.diagnostics_snapshot_payload().get("snapshot", {})
-            native_last_command = dict(snapshot.get("native_last_command") or {})
+            native_context = self._native_runtime_snapshot()
+            native_last_command = dict(native_context.get("last_command") or {})
             target_pane = "adapters"
             state = self.runtime_control_snapshot()
-            output = (
-                f"native queue={snapshot.get('native_command_depth', 0)}"
-                f" modules={snapshot.get('native_module_count', 0)}"
-                f" last={native_last_command.get('target') or 'none'}:{native_last_command.get('action') or 'none'}"
-                f" artifact={snapshot.get('native_bridge_artifact') or 'none'}"
+            command_depth = native_context.get("command_depth", 0)
+            module_count = native_context.get("module_count", 0)
+            last_target = native_last_command.get("target") or "none"
+            last_action = native_last_command.get("action") or "none"
+            artifact = native_context.get("bridge_artifact") or "none"
+            output, details = (
+                f"native queue={command_depth}"
+                f" modules={module_count}"
+                f" last={last_target}:{last_action}"
+                f" artifact={artifact}",
+                {
+                    "subject": "native",
+                    "action": "status",
+                    "command_depth": command_depth,
+                    "module_count": module_count,
+                    "last_target": last_target,
+                    "last_action": last_action,
+                    "module_focus": self._runtime_control.get("module_focus") or "none",
+                    "artifact": artifact,
+                },
             )
-            details = {
-                "subject": "native",
-                "action": "status",
-                "command_depth": snapshot.get("native_command_depth", 0),
-                "module_count": snapshot.get("native_module_count", 0),
-                "last_target": native_last_command.get("target") or "none",
-                "last_action": native_last_command.get("action") or "none",
-                "module_focus": self._runtime_control.get("module_focus") or "none",
-                "artifact": snapshot.get("native_bridge_artifact") or "none",
-            }
         elif command == "native-last-command":
-            snapshot = self.diagnostics_snapshot_payload().get("snapshot", {})
-            native_last_command = dict(snapshot.get("native_last_command") or {})
+            native_context = self._native_runtime_snapshot()
+            native_last_command = dict(native_context.get("last_command") or {})
             target_pane = "adapters"
             state = self.runtime_control_snapshot()
-            output = (
-                f"native last-command target={native_last_command.get('target') or 'none'}"
-                f" action={native_last_command.get('action') or 'none'}"
-                f" depth={native_last_command.get('queue_depth', 0)}"
+            target = native_last_command.get("target") or "none"
+            action = native_last_command.get("action") or "none"
+            queue_depth = native_last_command.get("queue_depth", 0)
+            output, details = (
+                f"native last-command target={target}"
+                f" action={action}"
+                f" depth={queue_depth}",
+                {
+                    "subject": "native",
+                    "action": "last-command",
+                    "target": target,
+                    "command": action,
+                    "value": native_last_command.get("value") or "",
+                    "status": native_last_command.get("status") or "idle",
+                    "code": native_last_command.get("code", 0),
+                    "queue_depth": queue_depth,
+                    "artifact": native_last_command.get("artifact") or "none",
+                    "updated_at_ms": native_last_command.get("updated_at_ms"),
+                },
             )
-            details = {
-                "subject": "native",
-                "action": "last-command",
-                "target": native_last_command.get("target") or "none",
-                "command": native_last_command.get("action") or "none",
-                "value": native_last_command.get("value") or "",
-                "queue_depth": native_last_command.get("queue_depth", 0),
-                "artifact": native_last_command.get("artifact") or "none",
-            }
         elif command == "native-replay-last":
-            snapshot = self.diagnostics_snapshot_payload().get("snapshot", {})
-            native_last_command = dict(snapshot.get("native_last_command") or {})
+            native_context = self._native_runtime_snapshot()
+            native_last_command = dict(native_context.get("last_command") or {})
             target = str(native_last_command.get("target") or "").strip()
             action = str(native_last_command.get("action") or "").strip()
             value = str(native_last_command.get("value") or "")
             if not target or not action:
                 raise ValueError("native replay unavailable")
-            self._dispatch_native_control(target=target, action=action, value=value)
-            target_pane = "adapters"
-            state = self.runtime_control_snapshot()
-            output = (
-                f"native replay target={target}"
-                f" action={action}"
-                f" depth={self._native_command_depth}"
+            state, output, details, target_pane = self._dispatch_native_action(
+                action_label="replay-last",
+                target=target,
+                command=action,
+                value=value,
             )
-            details = {
-                "subject": "native",
-                "action": "replay-last",
-                "target": target,
-                "command": action,
-                "value": value,
-                "queue_depth": self._native_command_depth,
-                "artifact": self._native_bridge_artifact or "none",
-            }
         elif command == "native-replay":
             target = str(args[0] if len(args) > 0 else "").strip()
             action = str(args[1] if len(args) > 1 else "").strip()
             value = " ".join(str(arg) for arg in args[2:]).strip() if len(args) > 2 else ""
             if not target or not action:
                 raise ValueError("usage: native replay <target> <action> [value]")
-            self._dispatch_native_control(target=target, action=action, value=value)
-            target_pane = "adapters"
-            state = self.runtime_control_snapshot()
-            output = (
-                f"native replay target={target}"
-                f" action={action}"
-                f" depth={self._native_command_depth}"
+            state, output, details, target_pane = self._dispatch_native_action(
+                action_label="replay",
+                target=target,
+                command=action,
+                value=value,
             )
-            details = {
-                "subject": "native",
-                "action": "replay",
-                "target": target,
-                "command": action,
-                "value": value,
-                "queue_depth": self._native_command_depth,
-                "artifact": self._native_bridge_artifact or "none",
-            }
+        elif command == "native-focus":
+            module_name = str(args[0] if args else self._runtime_control.get("module_focus") or "").strip()
+            if not module_name:
+                raise ValueError("missing module")
+            state = self.focus_runtime_module(module_name)
+            details = self._native_command_details(
+                action="focus",
+                target=module_name,
+                command="focus_module",
+                value=module_name,
+            )
+            output = f"native focus module={module_name} depth={details.get('queue_depth', 0)}"
+            target_pane = "modules"
         elif command == "native-inspect":
             module_name = str(args[0] if args else self._runtime_control.get("module_focus") or "").strip()
             if not module_name:
                 raise ValueError("missing module")
             self._dispatch_native_control(target=module_name, action="inspect", value="status")
-            native_state = dict(self._native_module_states.get(module_name) or {})
-            target_pane = "modules"
+            native_context = self._native_runtime_snapshot()
+            native_modules = dict(native_context.get("modules") or {})
+            native_state = dict(native_modules.get(module_name) or {})
             state = self.runtime_control_snapshot()
+            status = native_state.get("status") or "unknown"
+            last_code = native_state.get("last_code") if native_state else 0
+            details = self._native_command_details(
+                action="inspect",
+                target=module_name,
+                command="inspect",
+                value="status",
+                status=status,
+                code=last_code,
+                updated_at_ms=native_state.get("updated_at_ms") if native_state else None,
+            )
             output = (
                 f"native inspect module={module_name}"
-                f" status={native_state.get('status') or 'unknown'}"
-                f" code={native_state.get('last_code') if native_state else 0}"
-                f" depth={self._native_command_depth}"
+                f" status={status}"
+                f" code={last_code}"
+                f" depth={details.get('queue_depth', 0)}"
             )
-            details = {
-                "subject": "native",
-                "action": "inspect",
-                "target": module_name,
-                "command": "inspect",
-                "value": "status",
-                "status": native_state.get("status") or "unknown",
-                "last_code": native_state.get("last_code") if native_state else 0,
-                "updated_at_ms": native_state.get("updated_at_ms") if native_state else None,
-                "queue_depth": self._native_command_depth,
-                "artifact": self._native_bridge_artifact or "none",
-            }
+            details["last_code"] = last_code
+            target_pane = "modules"
         elif command == "native-modules":
-            snapshot = self.diagnostics_snapshot_payload().get("snapshot", {})
-            native_modules = dict(snapshot.get("native_modules") or {})
+            native_context = self._native_runtime_snapshot()
+            native_modules = dict(native_context.get("modules") or {})
+            module_count = int(native_context.get("module_count", len(native_modules)))
             target_pane = "modules"
             state = self.runtime_control_snapshot()
-            output = f"native modules count={len(native_modules)}"
-            details = {
-                "subject": "native",
-                "action": "modules",
-                "count": len(native_modules),
-                "items": ", ".join(
-                    f"{name}:{row.get('status', 'unknown')}"
-                    for name, row in native_modules.items()
-                    if isinstance(row, dict)
-                ) or "none",
-                "codes": ", ".join(
-                    f"{name}:{row.get('last_code', 0)}"
-                    for name, row in native_modules.items()
-                    if isinstance(row, dict)
-                ) or "none",
-                "updated": ", ".join(
-                    f"{name}:{row.get('updated_at_ms', 0)}"
-                    for name, row in native_modules.items()
-                    if isinstance(row, dict)
-                ) or "none",
-            }
+            output, details = (
+                f"native modules count={module_count}",
+                {
+                    "subject": "native",
+                    "action": "modules",
+                    "count": module_count,
+                    "items": ", ".join(
+                        f"{name}:{row.get('status', 'unknown')}"
+                        for name, row in native_modules.items()
+                        if isinstance(row, dict)
+                    ) or "none",
+                    "codes": ", ".join(
+                        f"{name}:{row.get('last_code', 0)}"
+                        for name, row in native_modules.items()
+                        if isinstance(row, dict)
+                    ) or "none",
+                    "updated": ", ".join(
+                        f"{name}:{row.get('updated_at_ms', 0)}"
+                        for name, row in native_modules.items()
+                        if isinstance(row, dict)
+                    ) or "none",
+                },
+            )
         elif command == "bridge-status":
             bridge_name = str(args[0] if args else self._runtime_control.get("active_adapter") or "")
             bridge = next(
@@ -1418,33 +1650,40 @@ class KernelApp:
             )
             target_pane = "adapters"
             state = self.runtime_control_snapshot()
-            output = (
+            bridge = bridge if isinstance(bridge, dict) else {}
+            health = bridge.get("health") or "unknown"
+            status = bridge.get("status") or "unknown"
+            mode = bridge.get("runtime_mode") or "unknown"
+            output, details = (
                 f"bridge {bridge_name or 'unset'}"
-                f" health={bridge.get('health') if isinstance(bridge, dict) else 'unknown'}"
-                f" status={bridge.get('status') if isinstance(bridge, dict) else 'unknown'}"
-                f" mode={bridge.get('runtime_mode') if isinstance(bridge, dict) else 'unknown'}"
+                f" health={health}"
+                f" status={status}"
+                f" mode={mode}",
+                {
+                    "subject": "bridge",
+                    "action": "status",
+                    "bridge": bridge_name or "unset",
+                    "health": health,
+                    "status": status,
+                    "mode": mode,
+                    "board_capable": bool(bridge.get("board_capable")),
+                },
             )
-            details = {
-                "subject": "bridge",
-                "action": "status",
-                "bridge": bridge_name or "unset",
-                "health": bridge.get("health") if isinstance(bridge, dict) else "unknown",
-                "status": bridge.get("status") if isinstance(bridge, dict) else "unknown",
-                "mode": bridge.get("runtime_mode") if isinstance(bridge, dict) else "unknown",
-                "board_capable": bridge.get("board_capable") if isinstance(bridge, dict) else False,
-            }
         elif command == "bridge-list":
             bridges = [str(row.get("adapter") or "unknown") for row in self._runtime_bridges]
             target_pane = "adapters"
             state = self.runtime_control_snapshot()
-            output = f"bridges count={len(bridges)} active={self._runtime_control.get('active_adapter') or 'unset'}"
-            details = {
-                "subject": "bridge",
-                "action": "list",
-                "count": len(bridges),
-                "active": self._runtime_control.get("active_adapter") or "unset",
-                "items": ", ".join(bridges) or "none",
-            }
+            active_adapter = str(self._runtime_control.get("active_adapter") or "")
+            output, details = (
+                f"bridges count={len(bridges)} active={active_adapter or 'unset'}",
+                {
+                    "subject": "bridge",
+                    "action": "list",
+                    "count": len(bridges),
+                    "active": active_adapter or "unset",
+                    "items": ", ".join(bridges) or "none",
+                },
+            )
         elif command == "bridge-fault":
             bridge_name = str(args[0] if args else self._runtime_control.get("active_adapter") or "")
             bridge = next(
@@ -1453,19 +1692,22 @@ class KernelApp:
             )
             target_pane = "faults"
             state = self.runtime_control_snapshot()
-            output = (
+            bridge = bridge if isinstance(bridge, dict) else {}
+            health = bridge.get("health") or "unknown"
+            error = bridge.get("last_error") or "none"
+            output, details = (
                 f"bridge fault {bridge_name or 'unset'}"
-                f" health={bridge.get('health') if isinstance(bridge, dict) else 'unknown'}"
-                f" error={bridge.get('last_error') if isinstance(bridge, dict) and bridge.get('last_error') else 'none'}"
+                f" health={health}"
+                f" error={error}",
+                {
+                    "subject": "bridge",
+                    "action": "fault",
+                    "bridge": bridge_name or "unset",
+                    "health": health,
+                    "error": error,
+                    "status": bridge.get("status") or "unknown",
+                },
             )
-            details = {
-                "subject": "bridge",
-                "action": "fault",
-                "bridge": bridge_name or "unset",
-                "health": bridge.get("health") if isinstance(bridge, dict) else "unknown",
-                "error": bridge.get("last_error") if isinstance(bridge, dict) and bridge.get("last_error") else "none",
-                "status": bridge.get("status") if isinstance(bridge, dict) else "unknown",
-            }
         elif command == "restart-bridge":
             adapter = args[0] if args else None
             state = self.restart_bridge(str(adapter).strip() or None if adapter is not None else None)
@@ -1480,8 +1722,14 @@ class KernelApp:
             adapter = args[0] if args else None
             state = self.clear_fault(str(adapter).strip() or None if adapter is not None else None)
             target_pane = "faults"
-            output = "fault posture cleared"
-            details = {"subject": "fault", "action": "clear", "adapter": adapter or "active"}
+            output, details = (
+                "fault posture cleared",
+                {
+                    "subject": "fault",
+                    "action": "clear",
+                    "adapter": adapter or "active",
+                },
+            )
         elif command == "record-fault":
             level = args[0] if args else "fault"
             adapter = args[1] if len(args) > 1 else None
@@ -1490,33 +1738,45 @@ class KernelApp:
                 str(adapter).strip() or None if adapter is not None else None,
             )
             target_pane = "faults"
-            output = f"fault recorded -> {level}"
-            details = {"subject": "fault", "action": "record", "level": level, "adapter": adapter or "active"}
+            output, details = (
+                f"fault recorded -> {str(level) or 'fault'}",
+                {
+                    "subject": "fault",
+                    "action": "record",
+                    "level": str(level) or "fault",
+                    "adapter": adapter or "active",
+                },
+            )
         elif command == "fault-status":
             posture = dict(self._runtime_control.get("fault_posture", {}))
             target_pane = "faults"
             state = self.runtime_control_snapshot()
-            output = (
-                f"fault level={posture.get('level') or 'unknown'}"
-                f" supervisor={posture.get('supervisor') or 'unknown'}"
-                f" adapters={','.join(posture.get('affected_adapters') or []) or 'none'}"
+            current_level = posture.get("level") or "unknown"
+            supervisor = posture.get("supervisor") or "unknown"
+            adapters = ",".join(posture.get("affected_adapters") or []) or "none"
+            output, details = (
+                f"fault level={current_level}"
+                f" supervisor={supervisor}"
+                f" adapters={adapters}",
+                {
+                    "subject": "fault",
+                    "action": "status",
+                    "level": current_level,
+                    "supervisor": supervisor,
+                    "adapters": adapters,
+                },
             )
-            details = {
-                "subject": "fault",
-                "action": "status",
-                "level": posture.get("level") or "unknown",
-                "supervisor": posture.get("supervisor") or "unknown",
-                "adapters": ",".join(posture.get("affected_adapters") or []) or "none",
-            }
         elif command == "scheduler-status":
             scheduler = self.scheduler_snapshot(session_metadata=self._active_session_metadata())
-            queues = list(scheduler.get("queues", []))
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
+            queues = list(scheduler.get("queues", []))
+            active_runtime = scheduler.get("active_runtime", {})
+            active_adapter = active_runtime.get("adapter") if isinstance(active_runtime, dict) else "none"
             output = (
                 f"scheduler policy={scheduler.get('policy') or 'unknown'}"
                 f" queues={len(queues)}"
-                f" active_runtime={scheduler.get('active_runtime', {}).get('adapter') if isinstance(scheduler.get('active_runtime'), dict) else 'none'}"
+                f" active_runtime={active_adapter or 'none'}"
             )
             details = {
                 "subject": "scheduler",
@@ -1531,43 +1791,46 @@ class KernelApp:
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
             lead = lanes[0] if lanes else {}
-            output = (
+            output, details = (
                 f"lanes count={len(lanes)}"
                 f" lead={lead.get('id', 'none')}"
-                f" state={lead.get('state', 'unknown')}"
+                f" state={lead.get('state', 'unknown')}",
+                {
+                    "subject": "lane",
+                    "action": "status",
+                    "count": len(lanes),
+                    "lead": lead.get("id", "none"),
+                    "lead_mode": lead.get("mode", "unknown"),
+                    "lead_state": lead.get("state", "unknown"),
+                },
             )
-            details = {
-                "subject": "lane",
-                "action": "status",
-                "count": len(lanes),
-                "lead": lead.get("id", "none"),
-                "lead_mode": lead.get("mode", "unknown"),
-                "lead_state": lead.get("state", "unknown"),
-            }
         elif command == "lane-list":
             lanes = self.execution_lanes(session_metadata=self._active_session_metadata())
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
-            output = f"lanes count={len(lanes)}"
-            details = {
-                "subject": "lane",
-                "action": "list",
-                "count": len(lanes),
-                "items": ", ".join(str(lane.get("id") or "unknown") for lane in lanes) or "none",
-            }
+            output, details = (
+                f"lanes count={len(lanes)}",
+                {
+                    "subject": "lane",
+                    "action": "list",
+                    "count": len(lanes),
+                    "items": ", ".join(str(lane.get("id") or "unknown") for lane in lanes) or "none",
+                },
+            )
         elif command == "maintenance-status":
             maintenance = dict(self._runtime_control.get("maintenance_mode", {}))
             gate = dict(self._runtime_control.get("execution_gate", {}))
             target_pane = "control_plane"
             state = self.runtime_control_snapshot()
+            enabled = "on" if maintenance.get("enabled") else "off"
             output = (
-                f"maintenance enabled={'on' if maintenance.get('enabled') else 'off'}"
+                f"maintenance enabled={enabled}"
                 f" gate={gate.get('state') or 'unknown'}"
             )
             details = {
                 "subject": "maintenance",
                 "action": "status",
-                "enabled": "on" if maintenance.get("enabled") else "off",
+                "enabled": enabled,
                 "reason": maintenance.get("reason") or "none",
                 "gate": gate.get("state") or "unknown",
             }
@@ -1576,48 +1839,50 @@ class KernelApp:
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
             lead = workers[0] if workers else {}
-            output = (
+            output, details = (
                 f"workers count={len(workers)}"
                 f" lead={lead.get('id', 'none')}"
-                f" state={lead.get('state', 'unknown')}"
+                f" state={lead.get('state', 'unknown')}",
+                {
+                    "subject": "worker",
+                    "action": "status",
+                    "count": len(workers),
+                    "lead": lead.get("id", "none"),
+                    "lead_kind": lead.get("kind", "unknown"),
+                    "lead_state": lead.get("state", "unknown"),
+                },
             )
-            details = {
-                "subject": "worker",
-                "action": "status",
-                "count": len(workers),
-                "lead": lead.get("id", "none"),
-                "lead_kind": lead.get("kind", "unknown"),
-                "lead_state": lead.get("state", "unknown"),
-            }
         elif command == "worker-list":
             workers = self.worker_snapshot(session_metadata=self._active_session_metadata())
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
-            output = f"workers count={len(workers)}"
-            details = {
-                "subject": "worker",
-                "action": "list",
-                "count": len(workers),
-                "items": ", ".join(str(worker.get("id") or "unknown") for worker in workers) or "none",
-            }
+            output, details = (
+                f"workers count={len(workers)}",
+                {
+                    "subject": "worker",
+                    "action": "list",
+                    "count": len(workers),
+                    "items": ", ".join(str(worker.get("id") or "unknown") for worker in workers) or "none",
+                },
+            )
         elif command == "event-status":
             event_rows = [dict(row) for row in self._event_log]
-            head = event_rows[0] if event_rows else {}
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
-            output = (
+            head = event_rows[0] if event_rows else {}
+            output, details = (
                 f"events count={len(event_rows)}"
                 f" latest={head.get('type', 'none')}"
-                f" state={head.get('state', 'idle')}"
+                f" state={head.get('state', 'idle')}",
+                {
+                    "subject": "event",
+                    "action": "status",
+                    "count": len(event_rows),
+                    "latest": head.get("type", "none"),
+                    "state": head.get("state", "idle"),
+                    "items": ", ".join(str(row.get("type") or "event") for row in event_rows[:6]) or "none",
+                },
             )
-            details = {
-                "subject": "event",
-                "action": "status",
-                "count": len(event_rows),
-                "latest": head.get("type", "none"),
-                "state": head.get("state", "idle"),
-                "items": ", ".join(str(row.get("type") or "event") for row in event_rows[:6]) or "none",
-            }
         elif command == "event-tail":
             event_rows = [dict(row) for row in self._event_log]
             limit = 5
@@ -1629,16 +1894,18 @@ class KernelApp:
             selected = event_rows[:limit]
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
-            output = f"event tail count={len(selected)}"
-            details = {
-                "subject": "event",
-                "action": "tail",
-                "count": len(selected),
-                "items": ", ".join(
-                    f"{row.get('type', 'event')}:{row.get('state', 'unknown')}"
-                    for row in selected
-                ) or "none",
-            }
+            output, details = (
+                f"event tail count={len(selected)}",
+                {
+                    "subject": "event",
+                    "action": "tail",
+                    "count": len(selected),
+                    "items": ", ".join(
+                        f"{row.get('type', 'event')}:{row.get('state', 'unknown')}"
+                        for row in selected
+                    ) or "none",
+                },
+            )
         elif command == "session-status":
             session_key = self._active_session_key or "none"
             status = self._session_status.get(session_key, "idle") if session_key != "none" else "idle"
@@ -1646,56 +1913,63 @@ class KernelApp:
             metadata = self._active_session_metadata() or {}
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
-            output = (
+            goal_blob = goal_state_ws_blob(metadata)
+            continuation = "on" if internal_continuation_pending(metadata) else "off"
+            latency_value = latency if latency is not None else "n/a"
+            output, details = (
                 f"session {session_key}"
                 f" status={status}"
-                f" latency_ms={latency if latency is not None else 'n/a'}"
-                f" continuation={'on' if internal_continuation_pending(metadata) else 'off'}"
+                f" latency_ms={latency_value}"
+                f" continuation={continuation}",
+                {
+                    "subject": "session",
+                    "action": "status",
+                    "session": session_key,
+                    "status": status,
+                    "latency_ms": latency_value,
+                    "continuation": continuation,
+                    "goal_active": "on" if goal_blob.get("active") else "off",
+                },
             )
-            details = {
-                "subject": "session",
-                "action": "status",
-                "session": session_key,
-                "status": status,
-                "latency_ms": latency if latency is not None else "n/a",
-                "continuation": "on" if internal_continuation_pending(metadata) else "off",
-                "goal_active": "on" if goal_state_ws_blob(metadata).get("active") else "off",
-            }
         elif command == "session-goal":
             metadata = self._active_session_metadata() or {}
-            goal_blob = goal_state_ws_blob(metadata)
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
-            output = (
-                f"goal active={'on' if goal_blob.get('active') else 'off'}"
-                f" status={goal_blob.get('status') or 'idle'}"
+            goal_blob = goal_state_ws_blob(metadata)
+            active = "on" if goal_blob.get("active") else "off"
+            continuation = "on" if internal_continuation_pending(metadata) else "off"
+            output, details = (
+                f"goal active={active}"
+                f" status={goal_blob.get('status') or 'idle'}",
+                {
+                    "subject": "session",
+                    "action": "goal",
+                    "active": active,
+                    "status": goal_blob.get("status") or "idle",
+                    "summary": goal_blob.get("ui_summary") or goal_blob.get("objective") or "none",
+                    "continuation": continuation,
+                },
             )
-            details = {
-                "subject": "session",
-                "action": "goal",
-                "active": "on" if goal_blob.get("active") else "off",
-                "status": goal_blob.get("status") or "idle",
-                "summary": goal_blob.get("ui_summary") or goal_blob.get("objective") or "none",
-                "continuation": "on" if internal_continuation_pending(metadata) else "off",
-            }
         elif command == "session-continuation":
             metadata = self._active_session_metadata() or {}
             rounds = int(metadata.get("_sustained_goal_continuation_rounds") or 0) if metadata else 0
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
-            output = (
-                f"continuation pending={'on' if internal_continuation_pending(metadata) else 'off'}"
+            pending = "on" if internal_continuation_pending(metadata) else "off"
+            goal_active = "on" if sustained_goal_active(metadata) else "off"
+            output, details = (
+                f"continuation pending={pending}"
                 f" rounds={rounds}"
-                f" goal_active={'on' if sustained_goal_active(metadata) else 'off'}"
+                f" goal_active={goal_active}",
+                {
+                    "subject": "session",
+                    "action": "continuation",
+                    "pending": pending,
+                    "rounds": rounds,
+                    "goal_active": goal_active,
+                    "session": self._active_session_key or "none",
+                },
             )
-            details = {
-                "subject": "session",
-                "action": "continuation",
-                "pending": "on" if internal_continuation_pending(metadata) else "off",
-                "rounds": rounds,
-                "goal_active": "on" if sustained_goal_active(metadata) else "off",
-                "session": self._active_session_key or "none",
-            }
         elif command == "goal-reset":
             metadata = self._active_session_metadata()
             if metadata is None:
@@ -1983,15 +2257,17 @@ class KernelApp:
         elif command == "tool-queue":
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
+            queue_snapshot = self._dispatch_queue_snapshot()
             output = f"tool queue depth={len(self._dispatch_queue)}"
             details = {
                 "subject": "tool",
                 "action": "queue",
-                "count": len(self._dispatch_queue),
-                "items": ", ".join(
-                    f"{row.get('tool')}@{row.get('module')}"
-                    for row in self._dispatch_queue[:6]
-                ) or "none",
+                "count": queue_snapshot["queue_depth"],
+                "priority": queue_snapshot["priority"],
+                "handoff": queue_snapshot["handoff"],
+                "items": queue_snapshot["items"],
+                "lifecycle": queue_snapshot["lifecycle"],
+                "roots": queue_snapshot["roots"],
             }
         elif command == "tool-clear-queue":
             cleared = len(self._dispatch_queue)
@@ -2024,12 +2300,16 @@ class KernelApp:
             )
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
+            queue_snapshot = self._dispatch_queue_snapshot()
             output = "tool dispatch queue prioritized"
             details = {
                 "subject": "tool",
                 "action": "prioritize",
-                "count": len(self._dispatch_queue),
+                "count": queue_snapshot["queue_depth"],
                 "preferred_lane": "interactive",
+                "priority": queue_snapshot["priority"],
+                "handoff": queue_snapshot["handoff"],
+                "items": queue_snapshot["items"],
             }
         elif command == "tool-drain":
             drained = min(len(self._dispatch_queue), 3)
@@ -2045,12 +2325,15 @@ class KernelApp:
             )
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
+            queue_snapshot = self._dispatch_queue_snapshot()
             output = "tool dispatch queue drained"
             details = {
                 "subject": "tool",
                 "action": "drain",
                 "drained": drained,
-                "remaining": len(self._dispatch_queue),
+                "remaining": queue_snapshot["queue_depth"],
+                "items": queue_snapshot["items"],
+                "lifecycle": queue_snapshot["lifecycle"],
             }
         elif command == "tool-delegate-goal":
             for row in self._dispatch_queue:
@@ -2067,12 +2350,15 @@ class KernelApp:
             )
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
+            queue_snapshot = self._dispatch_queue_snapshot()
             output = "tool dispatch queue delegated to goal lane"
             details = {
                 "subject": "tool",
                 "action": "delegate-goal",
-                "count": len(self._dispatch_queue),
+                "count": queue_snapshot["queue_depth"],
                 "lane": "sustained_goal",
+                "handoff": queue_snapshot["handoff"],
+                "items": queue_snapshot["items"],
             }
         elif command == "tool-delegate-subagent":
             for row in self._dispatch_queue:
@@ -2089,12 +2375,15 @@ class KernelApp:
             )
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
+            queue_snapshot = self._dispatch_queue_snapshot()
             output = "tool dispatch queue delegated to subagent lane"
             details = {
                 "subject": "tool",
                 "action": "delegate-subagent",
-                "count": len(self._dispatch_queue),
+                "count": queue_snapshot["queue_depth"],
                 "lane": "subagent",
+                "handoff": queue_snapshot["handoff"],
+                "items": queue_snapshot["items"],
             }
         elif command == "tool-complete":
             completed = min(len(self._dispatch_queue), 1)
@@ -2111,12 +2400,15 @@ class KernelApp:
             )
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
+            queue_snapshot = self._dispatch_queue_snapshot()
             output = "tool dispatch marked completed"
             details = {
                 "subject": "tool",
                 "action": "complete",
                 "completed": completed,
-                "remaining": len(self._dispatch_queue),
+                "remaining": queue_snapshot["queue_depth"],
+                "items": queue_snapshot["items"],
+                "lifecycle": queue_snapshot["lifecycle"],
             }
         elif command == "tool-fail":
             failed = min(len(self._dispatch_queue), 1)
@@ -2133,37 +2425,34 @@ class KernelApp:
             )
             target_pane = "faults"
             state = self.runtime_control_snapshot()
+            queue_snapshot = self._dispatch_queue_snapshot()
             output = "tool dispatch marked failed"
             details = {
                 "subject": "tool",
                 "action": "fail",
                 "failed": failed,
-                "remaining": len(self._dispatch_queue),
+                "remaining": queue_snapshot["queue_depth"],
+                "items": queue_snapshot["items"],
+                "lifecycle": queue_snapshot["lifecycle"],
             }
         elif command == "tool-status":
-            scheduler_state = clone_scheduler_state(self._scheduler_state)
-            dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "none")
-            dispatch_priority = bool(scheduler_state.get("dispatch_priority"))
-            lifecycle_counts: dict[str, int] = {}
-            for row in self._dispatch_queue:
-                key = str(row.get("lifecycle") or row.get("status") or "queued")
-                lifecycle_counts[key] = lifecycle_counts.get(key, 0) + 1
+            queue_snapshot = self._dispatch_queue_snapshot()
             target_pane = "runtime"
             state = self.runtime_control_snapshot()
             output = (
-                f"tool orchestration queue={len(self._dispatch_queue)}"
-                f" priority={'on' if dispatch_priority else 'off'}"
-                f" handoff={dispatch_handoff_lane}"
+                f"tool orchestration queue={queue_snapshot['queue_depth']}"
+                f" priority={queue_snapshot['priority']}"
+                f" handoff={queue_snapshot['handoff']}"
             )
             details = {
                 "subject": "tool",
                 "action": "status",
-                "queue_depth": len(self._dispatch_queue),
-                "priority": "on" if dispatch_priority else "off",
-                "handoff": dispatch_handoff_lane,
-                "items": ", ".join(
-                    f"{name}:{count}" for name, count in lifecycle_counts.items()
-                ) or "none",
+                "queue_depth": queue_snapshot["queue_depth"],
+                "priority": queue_snapshot["priority"],
+                "handoff": queue_snapshot["handoff"],
+                "items": queue_snapshot["items"],
+                "lifecycle": queue_snapshot["lifecycle"],
+                "roots": queue_snapshot["roots"],
             }
         elif command == "pause-runtime":
             state = self.pause_runtime(" ".join(args).strip() or None)
@@ -2333,6 +2622,17 @@ class KernelApp:
             details = {"subject": "maintenance", "action": "exit"}
         else:
             raise ValueError(f"unknown operator command: {raw}")
+        action_result = {
+            "command": raw,
+            "target_pane": target_pane,
+            "ok": True,
+            "status": details.get("status") or "ok",
+            "code": details.get("code", 0),
+            "subject": details.get("subject"),
+            "action": details.get("action"),
+            "output": output,
+            "details": details,
+        }
         return {
             "command": raw,
             "ok": True,
@@ -2340,6 +2640,7 @@ class KernelApp:
             "output": output,
             "runtime_control": state,
             "details": details,
+            "action_result": action_result,
         }
 
     def _refresh_board_runtime_status(self) -> None:
@@ -2363,11 +2664,13 @@ class KernelApp:
         board["runtime_mode"] = probe.get("runtime_mode")
         board["bridge_artifact"] = probe.get("artifact")
         board["last_error"] = probe.get("error")
+        board["health"] = probe.get("health") or ("ready" if probe.get("ok") else "fault")
         board["attached"] = bool(probe.get("ok"))
         self._runtime_control["board"] = board
         active_adapter_name = str(self._runtime_control.get("active_adapter") or "")
         signature = (
             bool(board.get("attached")),
+            board.get("health"),
             board.get("runtime_mode"),
             board.get("bridge_artifact"),
             board.get("last_error"),
@@ -2382,6 +2685,7 @@ class KernelApp:
                 message=(
                     f"{active_adapter_name or 'board'} "
                     f"{'attached' if board.get('attached') else 'detached'} "
+                    f"health={board.get('health') or 'unknown'} "
                     f"mode={board.get('runtime_mode') or 'unknown'} "
                     f"port={board.get('port') or 'unset'}"
                     + (
@@ -2397,7 +2701,7 @@ class KernelApp:
         *,
         session_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return build_runtime_topology(
+        topology = build_runtime_topology(
             adapters=self.runtime_adapters_snapshot(),
             modules=self.runtime_modules_snapshot(),
             bridges=self.runtime_bridges_snapshot(),
@@ -2405,16 +2709,32 @@ class KernelApp:
             scheduler=self.scheduler_snapshot(session_metadata=session_metadata),
             workers=self.worker_snapshot(session_metadata=session_metadata),
         )
+        topology["actions"] = [
+            {
+                "id": "inspect_runtime",
+                "label": "inspect runtime",
+                "pane": "runtime",
+                "command": "topology runtime",
+            },
+            {
+                "id": "runtime_orchestration",
+                "label": "orchestration",
+                "pane": "runtime",
+                "command": "runtime orchestration",
+            },
+        ]
+        return topology
 
     def embedded_topology_snapshot(self) -> dict[str, Any]:
         board = dict(self._runtime_control.get("board", {}))
-        return build_embedded_topology(
+        topology = build_embedded_topology(
             board=build_board_snapshot(
                 attached=bool(board.get("attached", False)),
                 transport=board.get("transport"),
                 port=board.get("port"),
                 target=board.get("target"),
                 preferred_transport=board.get("preferred_transport"),
+                health=board.get("health"),
                 runtime_mode=board.get("runtime_mode"),
                 bridge_artifact=board.get("bridge_artifact"),
                 last_error=board.get("last_error"),
@@ -2423,6 +2743,27 @@ class KernelApp:
             transports=["serial", "usb", "can"],
             active_adapter=self._runtime_control.get("active_adapter"),
         )
+        topology["actions"] = [
+            {
+                "id": "inspect_embedded",
+                "label": "inspect embedded",
+                "pane": "runtime",
+                "command": "topology embedded",
+            },
+            {
+                "id": "refresh_board_ports",
+                "label": "refresh ports",
+                "pane": "adapters",
+                "command": "board ports",
+            },
+            {
+                "id": "board_status",
+                "label": "board status",
+                "pane": "adapters",
+                "command": "board status",
+            },
+        ]
+        return topology
 
     @property
     def diagnostics_snapshot(self) -> dict[str, Any]:
@@ -2469,18 +2810,25 @@ class KernelApp:
         subagent_rows = self._subagent_snapshot(self._active_session_key)
         if subagent_rows:
             snapshot["snapshot"]["subagent_workers"] = len(subagent_rows)
-        snapshot["snapshot"]["board_attached"] = bool(board.get("attached"))
-        snapshot["snapshot"]["board_runtime_mode"] = board.get("runtime_mode")
-        snapshot["snapshot"]["board_bridge_artifact"] = board.get("bridge_artifact")
-        snapshot["snapshot"]["native_bridge_artifact"] = self._native_bridge_artifact
-        snapshot["snapshot"]["native_module_count"] = len(self._native_module_states)
-        snapshot["snapshot"]["native_command_depth"] = self._native_command_depth
-        snapshot["snapshot"]["native_last_command"] = dict(self._native_last_command or {})
-        snapshot["snapshot"]["native_modules"] = dict(self._native_module_states)
+        board_snapshot = self._board_runtime_snapshot(board)
+        native_snapshot = self._native_runtime_snapshot()
+        snapshot["snapshot"]["board"] = board_snapshot
+        snapshot["snapshot"]["native"] = native_snapshot
+        snapshot["snapshot"]["goal_state"] = goal_state_ws_blob(session_metadata) if session_metadata else {"active": False}
+        snapshot["snapshot"]["dispatch_contract"] = {
+            "owner": (
+                "goal"
+                if dispatch_handoff_lane == "sustained_goal"
+                else ("subagent" if dispatch_handoff_lane == "subagent" else "interactive")
+            ),
+            "mode": (
+                "handoff"
+                if dispatch_handoff_lane and dispatch_depth
+                else ("priority" if scheduler_state.get("dispatch_priority") and dispatch_depth else "direct")
+            ),
+            "lane": dispatch_handoff_lane or "interactive",
+        }
         return snapshot
-
-    def diagnostics_snapshot_payload(self) -> dict[str, Any]:
-        return self.diagnostics_snapshot
 
     def execution_lanes(
         self,
@@ -2517,6 +2865,18 @@ class KernelApp:
         checkpoint = self._active_checkpoint()
         for lane in lanes:
             lane_id = str(lane.get("id") or "")
+            lane["actions"] = [
+                {
+                    "id": "open_lane",
+                    "label": "open lane",
+                    "pane": "runtime",
+                    "command": (
+                        "session goal"
+                        if lane_id == "sustained_goal"
+                        else ("worker show" if lane_id == "subagent" else "lane show")
+                    ),
+                }
+            ]
             if lane_id == "interactive" and checkpoint:
                 lane["state"] = "running"
                 lane["summary"] = f"{checkpoint.get('phase', 'running')} · iteration {checkpoint.get('iteration', 0)}"
@@ -2565,7 +2925,9 @@ class KernelApp:
             1 for status in self._session_status.values() if status in {"queued", "running"}
         )
         automation_depth = len(subagent_rows)
-        dispatch_depth = len(self._dispatch_queue)
+        queue_snapshot = self._dispatch_queue_snapshot(limit=4)
+        dispatch_depth = int(queue_snapshot["queue_depth"])
+        dispatch_items = [item.strip() for item in str(queue_snapshot["items"]).split(",") if item.strip() and item.strip() != "none"]
         payload = {
             "policy": str(scheduler_state.get("policy") or "priority-foreground-with-background-drain"),
             "preferred_lane": preferred_lane,
@@ -2595,13 +2957,15 @@ class KernelApp:
                     ),
                     "job_class": "goal_slice",
                     "active_tasks": (
-                        [
-                            f"dispatch:{row.get('tool')}@{row.get('module')}:{row.get('lifecycle') or row.get('status') or 'queued'}"
-                            for row in self._dispatch_queue[:3]
-                        ]
+                        [f"dispatch:{item}" for item in dispatch_items[:3]]
                         if dispatch_handoff_lane == "sustained_goal" and dispatch_depth
                         else []
                     ),
+                    "dispatch_contract": {
+                        "owner": "goal",
+                        "mode": "handoff" if dispatch_handoff_lane == "sustained_goal" and dispatch_depth else "resident",
+                        "lane": "sustained_goal",
+                    },
                 },
                 {
                     "id": "automation",
@@ -2615,13 +2979,15 @@ class KernelApp:
                     ),
                     "job_class": "cron_or_trigger",
                     "active_tasks": (
-                        [
-                            f"dispatch:{row.get('tool')}@{row.get('module')}:{row.get('lifecycle') or row.get('status') or 'queued'}"
-                            for row in self._dispatch_queue[:3]
-                        ]
+                        [f"dispatch:{item}" for item in dispatch_items[:3]]
                         if dispatch_handoff_lane == "subagent" and dispatch_depth
                         else [row["label"] for row in subagent_rows[:4]]
                     ),
+                    "dispatch_contract": {
+                        "owner": "subagent",
+                        "mode": "handoff" if dispatch_handoff_lane == "subagent" and dispatch_depth else "resident",
+                        "lane": "subagent",
+                    },
                 },
                 {
                     "id": "tool_dispatch",
@@ -2638,9 +3004,90 @@ class KernelApp:
                         )
                     ),
                     "job_class": "tool_contract_dispatch",
-                    "active_tasks": [
-                        f"{row.get('tool')}@{row.get('module')}:{row.get('lifecycle') or row.get('status') or 'queued'}"
-                        for row in self._dispatch_queue[:4]
+                    "active_tasks": dispatch_items[:4],
+                    "dispatch_contract": {
+                        "owner": (
+                            "goal"
+                            if dispatch_handoff_lane == "sustained_goal"
+                            else ("subagent" if dispatch_handoff_lane == "subagent" else "interactive")
+                        ),
+                        "mode": (
+                            "handoff"
+                            if dispatch_handoff_lane and dispatch_depth
+                            else ("priority" if dispatch_priority and dispatch_depth else "direct")
+                        ),
+                        "lane": dispatch_handoff_lane or "interactive",
+                    },
+                    "actions": [
+                        {
+                            "id": "inspect_dispatch",
+                            "label": "inspect",
+                            "pane": "runtime",
+                            "command": "tool status",
+                        },
+                        {
+                            "id": "prioritize_dispatch",
+                            "privileged": True,
+                            "required_role": "root",
+                            "privileged_reason": "requires elevated dispatch control",
+                            "label": "prioritize",
+                            "pane": "runtime",
+                            "command": "tool prioritize",
+                        },
+                        {
+                            "id": "delegate_goal",
+                            "privileged": True,
+                            "required_role": "root",
+                            "privileged_reason": "requires elevated dispatch control",
+                            "label": "goal lane",
+                            "pane": "runtime",
+                            "command": "tool delegate-goal",
+                        },
+                        {
+                            "id": "delegate_subagent",
+                            "privileged": True,
+                            "required_role": "root",
+                            "privileged_reason": "requires elevated dispatch control",
+                            "label": "subagent",
+                            "pane": "runtime",
+                            "command": "tool delegate-subagent",
+                        },
+                        {
+                            "id": "complete_dispatch",
+                            "privileged": True,
+                            "required_role": "root",
+                            "privileged_reason": "requires elevated dispatch control",
+                            "label": "complete",
+                            "pane": "runtime",
+                            "command": "tool complete",
+                        },
+                        {
+                            "id": "fail_dispatch",
+                            "privileged": True,
+                            "required_role": "root",
+                            "privileged_reason": "requires elevated dispatch control",
+                            "label": "fail",
+                            "pane": "faults",
+                            "command": "tool fail",
+                        },
+                        {
+                            "id": "drain_dispatch",
+                            "privileged": True,
+                            "required_role": "root",
+                            "privileged_reason": "requires elevated dispatch control",
+                            "label": "drain",
+                            "pane": "runtime",
+                            "command": "tool drain",
+                        },
+                        {
+                            "id": "clear_dispatch",
+                            "privileged": True,
+                            "required_role": "root",
+                            "privileged_reason": "requires elevated dispatch control",
+                            "label": "clear",
+                            "pane": "runtime",
+                            "command": "tool clear-queue",
+                        },
                     ],
                 },
             ],
@@ -2665,7 +3112,8 @@ class KernelApp:
         scheduler_state = clone_scheduler_state(self._scheduler_state)
         preferred_lane = str(scheduler_state.get("preferred_lane") or "interactive")
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "")
-        dispatch_depth = len(self._dispatch_queue)
+        queue_snapshot = self._dispatch_queue_snapshot(limit=3)
+        dispatch_depth = int(queue_snapshot["queue_depth"])
         if any(status == "running" for status in self._session_status.values()):
             preferred_lane = "interactive"
         workers = project_worker_registry(
@@ -2690,14 +3138,31 @@ class KernelApp:
                 worker["tasks"] = [
                     {
                         "task_id": f"dispatch-{index}",
-                        "label": f"Dispatch {row.get('tool')}",
-                        "phase": row.get("lifecycle") or row.get("status") or "queued",
+                        "label": f"Dispatch {item.split('@', 1)[0]}",
+                        "phase": item.rsplit(':', 1)[-1],
                         "iteration": 0,
-                        "task_description": f"{row.get('tool')} via {row.get('module')}",
+                        "task_description": item,
+                        "task_target": "dispatch",
+                        "actions": [
+                            {
+                                "id": "inspect_dispatch",
+                                "label": "inspect dispatch",
+                                "pane": "runtime",
+                                "command": "tool status",
+                            }
+                        ],
+                        "dispatch_contract": {
+                            "owner": "interactive",
+                            "mode": "priority" if bool(scheduler_state.get("dispatch_priority")) else "direct",
+                            "lane": "interactive",
+                        },
                         "tool_events": [],
                         "error": None,
                     }
-                    for index, row in enumerate(self._dispatch_queue[:3], start=1)
+                    for index, item in enumerate(
+                        [entry.strip() for entry in str(queue_snapshot["items"]).split(",") if entry.strip() and entry.strip() != "none"][:3],
+                        start=1,
+                    )
                 ]
             elif lane == "interactive" and active_bridge is not None:
                 worker["summary"] = (
@@ -2718,14 +3183,37 @@ class KernelApp:
                 worker["tasks"] = [
                     {
                         "task_id": f"goal-dispatch-{index}",
-                        "label": f"Goal handoff {row.get('tool')}",
-                        "phase": row.get("lifecycle") or "handoff",
+                        "label": f"Goal handoff {item.split('@', 1)[0]}",
+                        "phase": item.rsplit(':', 1)[-1],
                         "iteration": 0,
-                        "task_description": f"{row.get('tool')} via {row.get('module')}",
+                        "task_description": item,
+                        "task_target": "goal_dispatch",
+                        "actions": [
+                            {
+                                "id": "inspect_dispatch",
+                                "label": "inspect dispatch",
+                                "pane": "runtime",
+                                "command": "tool status",
+                            },
+                            {
+                                "id": "open_goal_lane",
+                                "label": "open goal lane",
+                                "pane": "runtime",
+                                "command": "session goal",
+                            },
+                        ],
+                        "dispatch_contract": {
+                            "owner": "goal",
+                            "mode": "handoff",
+                            "lane": "sustained_goal",
+                        },
                         "tool_events": [],
                         "error": None,
                     }
-                    for index, row in enumerate(self._dispatch_queue[:3], start=1)
+                    for index, item in enumerate(
+                        [entry.strip() for entry in str(queue_snapshot["items"]).split(",") if entry.strip() and entry.strip() != "none"][:3],
+                        start=1,
+                    )
                 ]
             elif lane == "subagent" and subagent_rows:
                 worker["state"] = "running"
@@ -2738,14 +3226,37 @@ class KernelApp:
                 worker["tasks"] = [
                     {
                         "task_id": f"subagent-dispatch-{index}",
-                        "label": f"Subagent handoff {row.get('tool')}",
-                        "phase": row.get("lifecycle") or "handoff",
+                        "label": f"Subagent handoff {item.split('@', 1)[0]}",
+                        "phase": item.rsplit(':', 1)[-1],
                         "iteration": 0,
-                        "task_description": f"{row.get('tool')} via {row.get('module')}",
+                        "task_description": item,
+                        "task_target": "subagent_dispatch",
+                        "actions": [
+                            {
+                                "id": "inspect_dispatch",
+                                "label": "inspect dispatch",
+                                "pane": "runtime",
+                                "command": "tool status",
+                            },
+                            {
+                                "id": "open_subagent_lane",
+                                "label": "open subagent lane",
+                                "pane": "runtime",
+                                "command": "worker show",
+                            },
+                        ],
+                        "dispatch_contract": {
+                            "owner": "subagent",
+                            "mode": "handoff",
+                            "lane": "subagent",
+                        },
                         "tool_events": [],
                         "error": None,
                     }
-                    for index, row in enumerate(self._dispatch_queue[:3], start=1)
+                    for index, item in enumerate(
+                        [entry.strip() for entry in str(queue_snapshot["items"]).split(",") if entry.strip() and entry.strip() != "none"][:3],
+                        start=1,
+                    )
                 ]
         return workers
 
@@ -2758,24 +3269,22 @@ class KernelApp:
 
     def drain_background(self) -> dict[str, Any]:
         self._scheduler_state = request_background_drain(self._scheduler_state)
-        self._record_kernel_event(
-            "drain_background",
-            state="ok",
-            message="background queues drained by operator request",
+        return self._commit_runtime_event_action(
+            event_action="drain_background",
+            event_state="ok",
+            event_message="background queues drained by operator request",
         )
-        return self.runtime_control
 
     def prioritize_goal_lane(self) -> dict[str, Any]:
         self._scheduler_state = prioritize_lane(
             self._scheduler_state,
             lane="sustained_goal",
         )
-        self._record_kernel_event(
-            "prioritize_goal_lane",
-            state="ok",
-            message="scheduler priority shifted toward sustained goal lane",
+        return self._commit_runtime_event_action(
+            event_action="prioritize_goal_lane",
+            event_state="ok",
+            event_message="scheduler priority shifted toward sustained goal lane",
         )
-        return self.runtime_control
 
     def _record_kernel_event(
         self,
@@ -2791,6 +3300,32 @@ class KernelApp:
             message=message,
         )
 
+    def _store_native_command_state(
+        self,
+        *,
+        queue_depth: int | None = None,
+        command_depth: int | None = None,
+        artifact: str | None = None,
+        last_command: dict[str, Any] | None = None,
+        recent_commands: list[dict[str, Any]] | None = None,
+        module_count: int | None = None,
+        module_states: dict[str, dict[str, Any]] | None = None,
+    ) -> None:
+        if queue_depth is not None:
+            self._native_queue_depth = queue_depth
+        if command_depth is not None:
+            self._native_command_depth = command_depth
+        if artifact:
+            self._native_bridge_artifact = artifact
+        if recent_commands is not None:
+            self._native_recent_commands = [dict(row) for row in recent_commands[:8]]
+        if module_count is not None:
+            self._native_module_count = module_count
+        if module_states:
+            self._native_module_states.update(module_states)
+        if last_command is not None:
+            self._native_last_command = dict(last_command)
+
     def _dispatch_native_control(
         self,
         *,
@@ -2800,24 +3335,31 @@ class KernelApp:
     ) -> None:
         result = dispatch_native_bridge_command(target=target, action=action, value=value)
         if result.get("ok"):
-            self._native_command_depth = int(result.get("queue_depth") or self._native_command_depth)
             artifact = str(result.get("artifact") or "").strip()
-            if artifact:
-                self._native_bridge_artifact = artifact
-            self._native_last_command = {
-                "target": target,
-                "action": action,
-                "value": value,
-                "queue_depth": self._native_command_depth,
-                "artifact": self._native_bridge_artifact,
-            }
+            next_depth = int(result.get("queue_depth") or self._native_command_depth)
+            self._store_native_command_state(
+                command_depth=next_depth,
+                artifact=artifact,
+                last_command={
+                    "target": target,
+                    "action": action,
+                    "command": str(result.get("command") or action),
+                    "value": value,
+                    "health": str(result.get("health") or "ready"),
+                    "status": str(result.get("status") or "queued"),
+                    "code": int(result.get("code") or 0),
+                    "queue_depth": next_depth,
+                    "artifact": artifact or self._native_bridge_artifact,
+                    "updated_at_ms": result.get("updated_at_ms"),
+                },
+            )
             self._record_kernel_event(
                 "native_command",
                 state="ok",
                 message=(
                     f"{target}:{action} queued"
                     + (f" · {value}" if value else "")
-                    + f" · depth={self._native_command_depth}"
+                    + f" · depth={next_depth}"
                 ),
             )
         else:
@@ -2827,6 +3369,166 @@ class KernelApp:
                 state="fault",
                 message=f"{target}:{action} failed · {error}",
             )
+
+    def _commit_runtime_control_action(
+        self,
+        *,
+        target: str,
+        action: str,
+        value: str = "",
+        event_action: str,
+        event_state: str,
+        event_message: str,
+    ) -> dict[str, Any]:
+        self._dispatch_native_control(target=target, action=action, value=value)
+        self._record_kernel_event(
+            event_action,
+            state=event_state,
+            message=event_message,
+        )
+        return self.runtime_control
+
+    def _commit_runtime_board_state(
+        self,
+        next_state: dict[str, Any],
+        *,
+        board: dict[str, Any],
+        event_state: str,
+        event_message: str,
+        control_action: str | None = None,
+        control_value: str = "",
+    ) -> dict[str, Any]:
+        next_state["board"] = board
+        self._runtime_control = next_state
+        if control_action:
+            return self._commit_runtime_control_action(
+                target="board",
+                action=control_action,
+                value=control_value,
+                event_action="attach_board",
+                event_state=event_state,
+                event_message=event_message,
+            )
+        self._record_kernel_event(
+            "attach_board",
+            state=event_state,
+            message=event_message,
+        )
+        return self.runtime_control
+
+    def _board_runtime_snapshot(self, board: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "attached": bool(board.get("attached")),
+            "health": board.get("health"),
+            "transport": board.get("transport"),
+            "port": board.get("port"),
+            "target": board.get("target"),
+            "preferred_transport": board.get("preferred_transport"),
+            "runtime_mode": board.get("runtime_mode"),
+            "bridge_artifact": board.get("bridge_artifact"),
+            "last_error": board.get("last_error"),
+            "available_ports": list(board.get("available_ports") or []),
+        }
+
+    def _native_runtime_snapshot(self) -> dict[str, Any]:
+        last_command = dict(self._native_last_command or {})
+        return {
+            "health": str(last_command.get("health") or "ready"),
+            "bridge_artifact": self._native_bridge_artifact,
+            "module_count": self._native_module_count or len(self._native_module_states),
+            "command_depth": self._native_command_depth,
+            "recent_commands": [dict(row) for row in self._native_recent_commands[:8]],
+            "last_command": last_command,
+            "modules": {
+                name: dict(state)
+                for name, state in self._native_module_states.items()
+            },
+        }
+
+    def _native_command_details(
+        self,
+        *,
+        action: str,
+        target: str,
+        command: str,
+        value: str = "",
+        status: str | None = None,
+        code: int | None = None,
+        updated_at_ms: int | None = None,
+    ) -> dict[str, Any]:
+        native_snapshot = self._native_runtime_snapshot()
+        native_last_command = dict(native_snapshot.get("last_command") or {})
+        return {
+            "subject": "native",
+            "action": action,
+            "target": target,
+            "command": command,
+            "value": value,
+            "health": str(native_last_command.get("health") or "ready"),
+            "status": status or str(native_last_command.get("status") or "queued"),
+            "code": code if code is not None else int(native_last_command.get("code") or 0),
+            "queue_depth": int(native_snapshot.get("command_depth") or 0),
+            "artifact": native_snapshot.get("bridge_artifact") or "none",
+            "updated_at_ms": (
+                updated_at_ms
+                if updated_at_ms is not None
+                else native_last_command.get("updated_at_ms")
+            ),
+        }
+
+    def _dispatch_native_action(
+        self,
+        *,
+        action_label: str,
+        target: str,
+        command: str,
+        value: str = "",
+        pane: str = "adapters",
+    ) -> tuple[dict[str, Any], str, dict[str, Any], str]:
+        self._dispatch_native_control(target=target, action=command, value=value)
+        state = self.runtime_control_snapshot()
+        details = self._native_command_details(
+            action=action_label,
+            target=target,
+            command=command,
+            value=value,
+        )
+        output = (
+            f"native {action_label} target={target}"
+            f" action={command}"
+            f" depth={details.get('queue_depth', 0)}"
+        )
+        target_pane = pane
+        return state, output, details, target_pane
+
+    def _dispatch_queue_snapshot(self, *, limit: int = 6) -> dict[str, Any]:
+        scheduler_state = clone_scheduler_state(self._scheduler_state)
+        dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "none")
+        dispatch_priority = bool(scheduler_state.get("dispatch_priority"))
+        lifecycle_counts: dict[str, int] = {}
+        items: list[str] = []
+        roots: list[str] = []
+        for row in self._dispatch_queue:
+            lifecycle = str(row.get("lifecycle") or row.get("status") or "queued")
+            lifecycle_counts[lifecycle] = lifecycle_counts.get(lifecycle, 0) + 1
+        for row in self._dispatch_queue[:limit]:
+            tool = str(row.get("tool") or "unknown")
+            module = str(row.get("module") or "runtime")
+            lifecycle = str(row.get("lifecycle") or row.get("status") or "queued")
+            items.append(f"{tool}@{module}:{lifecycle}")
+            root = str(row.get("root") or "").strip()
+            if root:
+                roots.append(root)
+        return {
+            "queue_depth": len(self._dispatch_queue),
+            "priority": "on" if dispatch_priority else "off",
+            "handoff": dispatch_handoff_lane,
+            "items": ", ".join(items) or "none",
+            "lifecycle": ", ".join(
+                f"{name}:{count}" for name, count in lifecycle_counts.items()
+            ) or "none",
+            "roots": ", ".join(roots[:limit]) or "none",
+        }
 
     def switch_runtime_adapter(self, adapter_name: str) -> dict[str, Any]:
         self._runtime_control = set_active_adapter(
@@ -2838,17 +3540,14 @@ class KernelApp:
             self._runtime_bridges,
             adapter_name=adapter_name,
         )
-        self._dispatch_native_control(
+        return self._commit_runtime_control_action(
             target="runtime",
             action="switch_adapter",
             value=adapter_name,
+            event_action="switch_adapter",
+            event_state="ok",
+            event_message=f"active adapter -> {adapter_name}",
         )
-        self._record_kernel_event(
-            "switch_adapter",
-            state="ok",
-            message=f"active adapter -> {adapter_name}",
-        )
-        return self.runtime_control
 
     def focus_runtime_module(self, module_name: str) -> dict[str, Any]:
         self._runtime_control = set_module_focus(
@@ -2856,17 +3555,14 @@ class KernelApp:
             module_name=module_name,
             module_names=[module["name"] for module in self._runtime_modules],
         )
-        self._dispatch_native_control(
+        return self._commit_runtime_control_action(
             target=module_name,
             action="focus_module",
             value=module_name,
+            event_action="focus_module",
+            event_state="ok",
+            event_message=f"module focus -> {module_name}",
         )
-        self._record_kernel_event(
-            "focus_module",
-            state="ok",
-            message=f"module focus -> {module_name}",
-        )
-        return self.runtime_control
 
     def attach_board(
         self,
@@ -2901,32 +3597,26 @@ class KernelApp:
                 error=str(probe_result.get("error") or "board attach failed"),
             )
             board["attached"] = False
+            board["health"] = "fault"
             board["runtime_mode"] = None
             board["bridge_artifact"] = probe_result.get("artifact")
             board["last_error"] = probe_result.get("error")
-            next_state["board"] = board
-            self._runtime_control = next_state
-            self._record_kernel_event(
-                "attach_board",
-                state="fault",
-                message=str(probe_result.get("error") or "board attach failed"),
+            return self._commit_runtime_board_state(
+                next_state,
+                board=board,
+                event_state="fault",
+                event_message=str(probe_result.get("error") or "board attach failed"),
             )
-            return self.runtime_control
         if probe_result is not None:
+            board["health"] = probe_result.get("health") or ("ready" if probe_result.get("ok") else "fault")
             board["runtime_mode"] = probe_result.get("runtime_mode")
             board["bridge_artifact"] = probe_result.get("artifact")
             board["last_error"] = probe_result.get("error")
-            next_state["board"] = board
-        self._runtime_control = next_state
-        self._dispatch_native_control(
-            target="board",
-            action="attach",
-            value=f"{board.get('transport') or transport or 'serial'}:{board.get('port') or port or 'auto'}",
-        )
-        self._record_kernel_event(
-            "attach_board",
-            state="ok",
-            message=(
+        return self._commit_runtime_board_state(
+            next_state,
+            board=board,
+            event_state="ok",
+            event_message=(
                 f"board attached via {board.get('transport') or transport or 'default'}"
                 + (
                     f" ({probe_result.get('artifact')})"
@@ -2934,24 +3624,22 @@ class KernelApp:
                     else ""
                 )
             ),
+            control_action="attach",
+            value=f"{board.get('transport') or transport or 'serial'}:{board.get('port') or port or 'auto'}",
         )
-        return self.runtime_control
 
     def detach_board(self) -> dict[str, Any]:
         self._runtime_control = detach_runtime_board(self._runtime_control)
         active_adapter_name = str(self._runtime_control.get("active_adapter") or "")
         self._board_signatures.pop(active_adapter_name, None)
-        self._dispatch_native_control(
+        return self._commit_runtime_control_action(
             target="board",
             action="detach",
             value=active_adapter_name,
+            event_action="detach_board",
+            event_state="ok",
+            event_message="board detached",
         )
-        self._record_kernel_event(
-            "detach_board",
-            state="ok",
-            message="board detached",
-        )
-        return self.runtime_control
 
     def record_fault(self, level: str = "fault", adapter_name: str | None = None) -> dict[str, Any]:
         self._runtime_control = set_fault_level(self._runtime_control, level=level)
@@ -2962,10 +3650,13 @@ class KernelApp:
                 adapter_name=target_adapter,
                 error=level,
             )
-            self._dispatch_native_control(
+            return self._commit_runtime_control_action(
                 target=target_adapter,
                 action="record_fault",
                 value=level,
+                event_action="record_fault",
+                event_state="fault",
+                event_message=f"{target_adapter or 'runtime'} marked {level}",
             )
         self._record_kernel_event(
             "record_fault",
@@ -2982,10 +3673,13 @@ class KernelApp:
                 self._runtime_bridges,
                 adapter_name=target_adapter,
             )
-            self._dispatch_native_control(
+            return self._commit_runtime_control_action(
                 target=target_adapter,
                 action="clear_fault",
                 value="clear",
+                event_action="clear_fault",
+                event_state="ok",
+                event_message=f"{target_adapter or 'runtime'} fault cleared",
             )
         self._record_kernel_event(
             "clear_fault",
@@ -3002,34 +3696,29 @@ class KernelApp:
             self._runtime_bridges,
             adapter_name=target_adapter,
         )
-        self._dispatch_native_control(
+        return self._commit_runtime_control_action(
             target=target_adapter,
             action="restart_bridge",
+            event_action="restart_bridge",
+            event_state="ok",
+            event_message=f"bridge restarted -> {target_adapter}",
         )
-        self._record_kernel_event(
-            "restart_bridge",
-            state="ok",
-            message=f"bridge restarted -> {target_adapter}",
-        )
-        return self.runtime_control
 
     def pause_runtime(self, reason: str | None = None) -> dict[str, Any]:
+        pause_reason = reason or "operator-paused"
         self._runtime_control = set_execution_gate(
             self._runtime_control,
             gate_state="paused",
-            reason=reason or "operator-paused",
+            reason=pause_reason,
         )
-        self._dispatch_native_control(
+        return self._commit_runtime_control_action(
             target="runtime",
             action="pause",
-            value=reason or "operator-paused",
+            value=pause_reason,
+            event_action="pause_runtime",
+            event_state="paused",
+            event_message=reason or "runtime paused by operator",
         )
-        self._record_kernel_event(
-            "pause_runtime",
-            state="paused",
-            message=reason or "runtime paused by operator",
-        )
-        return self.runtime_control
 
     def resume_runtime(self) -> dict[str, Any]:
         self._runtime_control = set_execution_gate(
@@ -3045,35 +3734,30 @@ class KernelApp:
                 self._runtime_bridges,
                 adapter_name=active_adapter,
             )
-        self._dispatch_native_control(
+        return self._commit_runtime_control_action(
             target="runtime",
             action="resume",
             value="operator-ready",
+            event_action="resume_runtime",
+            event_state="ok",
+            event_message="runtime resumed",
         )
-        self._record_kernel_event(
-            "resume_runtime",
-            state="ok",
-            message="runtime resumed",
-        )
-        return self.runtime_control
 
     def degrade_runtime(self, reason: str | None = None) -> dict[str, Any]:
+        degrade_reason = reason or "fault-containment"
         self._runtime_control = set_execution_gate(
             self._runtime_control,
             gate_state="degraded",
-            reason=reason or "fault-containment",
+            reason=degrade_reason,
         )
-        self._dispatch_native_control(
+        return self._commit_runtime_control_action(
             target="runtime",
             action="degrade",
-            value=reason or "fault-containment",
+            value=degrade_reason,
+            event_action="degrade_runtime",
+            event_state="degraded",
+            event_message=reason or "runtime degraded for containment",
         )
-        self._record_kernel_event(
-            "degrade_runtime",
-            state="degraded",
-            message=reason or "runtime degraded for containment",
-        )
-        return self.runtime_control
 
     def enter_maintenance(self, reason: str | None = None) -> dict[str, Any]:
         maintenance_reason = reason or "operator-maintenance-window"
@@ -3092,17 +3776,14 @@ class KernelApp:
             enabled=True,
             reason=maintenance_reason,
         )
-        self._dispatch_native_control(
+        return self._commit_runtime_control_action(
             target="runtime",
             action="enter_maintenance",
             value=maintenance_reason,
+            event_action="enter_maintenance",
+            event_state="maintenance",
+            event_message=maintenance_reason,
         )
-        self._record_kernel_event(
-            "enter_maintenance",
-            state="maintenance",
-            message=maintenance_reason,
-        )
-        return self.runtime_control
 
     def exit_maintenance(self) -> dict[str, Any]:
         self._runtime_control = set_maintenance_mode(self._runtime_control, enabled=False)
@@ -3118,17 +3799,14 @@ class KernelApp:
                 self._runtime_bridges,
                 adapter_name=active_adapter,
             )
-        self._dispatch_native_control(
+        return self._commit_runtime_control_action(
             target="runtime",
             action="exit_maintenance",
             value="operator-ready",
+            event_action="exit_maintenance",
+            event_state="ok",
+            event_message="maintenance window closed",
         )
-        self._record_kernel_event(
-            "exit_maintenance",
-            state="ok",
-            message="maintenance window closed",
-        )
-        return self.runtime_control
 
     @classmethod
     def build_loop(

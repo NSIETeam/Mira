@@ -1,6 +1,6 @@
 # Mira Kernel Workbench
 
-This document describes the current Mira-facing execution kernel surface that now sits on top of the original mira runtime.
+This document describes the current Mira-facing execution kernel surface that now sits on top of the original nanobot runtime.
 
 ## Purpose
 
@@ -24,7 +24,7 @@ What is still outside code-only completion:
 
 - build/runtime verification has not yet been run for the current migration pass
 - hosted repository identity still needs explicit platform confirmation under `NSIETeam/Mira`
-- compatibility-bound surfaces such as `mira`, `~/.mira/`, `mira/...`, and `mira.wiki` remain intentionally retained for now
+- compatibility-bound surfaces such as `nanobot`, `~/.mira/`, `mira/...`, and `mira.wiki` remain intentionally retained for now
 
 ## Current workbench shape
 

@@ -4,45 +4,40 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
-from pathlib import Path
 
+from .paths import KERNEL_PROJECT_ROOT
 from .runtime_probe import probe_runtime_bridge
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+from .runtime_status import runtime_probe_payload
 
 
 def _manifest_probe(adapter: dict[str, object]) -> dict[str, object] | None:
     manifest = str(adapter.get("runtime_manifest") or "")
     if not manifest:
         return None
-    manifest_path = _project_root() / manifest
+    manifest_path = KERNEL_PROJECT_ROOT / manifest
     if not manifest_path.exists():
         return None
     try:
         raw = json.loads(manifest_path.read_text(encoding="utf-8"))
     except Exception:
-        return {
-            "health": "fault",
-            "artifact": manifest,
-            "manifest": manifest,
-            "last_error": "invalid runtime manifest",
-            "runtime_mode": None,
-            "abi": adapter.get("abi"),
-            "status_symbol": adapter.get("status_symbol"),
-        }
-    status = str(raw.get("status") or "planned")
-    health = "ready" if status == "ready" else ("planned" if status == "planned" else "fault")
-    return {
-        "health": health,
-        "artifact": manifest,
-        "manifest": manifest,
-        "last_error": None if health != "fault" else str(raw.get("error") or "runtime manifest fault"),
-        "runtime_mode": raw.get("mode"),
-        "abi": raw.get("abi") or adapter.get("abi"),
-        "status_symbol": raw.get("status_symbol") or adapter.get("status_symbol"),
-    }
+        return runtime_probe_payload(
+            status="fault",
+            artifact=manifest,
+            manifest=manifest,
+            runtime_mode=None,
+            abi=adapter.get("abi"),
+            status_symbol=adapter.get("status_symbol"),
+            error="invalid runtime manifest",
+        )
+    return runtime_probe_payload(
+        status=raw.get("status"),
+        artifact=manifest,
+        manifest=manifest,
+        runtime_mode=raw.get("mode"),
+        abi=raw.get("abi") or adapter.get("abi"),
+        status_symbol=raw.get("status_symbol") or adapter.get("status_symbol"),
+        error=raw.get("error") or "runtime manifest fault",
+    )
 
 
 def _artifact_status(adapter: dict[str, object]) -> tuple[str, str, dict[str, object] | None]:
@@ -55,7 +50,7 @@ def _artifact_status(adapter: dict[str, object]) -> tuple[str, str, dict[str, ob
     artifact = str(adapter.get("bootstrap_artifact") or "")
     if not artifact:
         return "stub", "", None
-    artifact_path = _project_root() / artifact
+    artifact_path = KERNEL_PROJECT_ROOT / artifact
     if artifact_path.exists():
         return "ready", artifact, None
     return "planned", artifact, None

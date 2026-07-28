@@ -1,6 +1,6 @@
 # Install and Quick Start
 
-This guide has one goal: get a normal mira reply in your browser. Do not add chat apps, MCP servers, fallback models, or deployment until this path works.
+This guide has one goal: get a normal Mira reply in your browser. Do not add chat apps, MCP servers, fallback models, or deployment until this path works.
 
 If terminals, Python, or API keys are unfamiliar, use the [beginner walkthrough](./start-without-technical-background.md), which explains each term and screen.
 
@@ -14,23 +14,23 @@ These repository docs follow current `main`. The recommended installer uses the 
 
 Git is only needed for a source install. The published package already contains the WebUI. A current-source install needs `bun` or `npm` so its WebUI bundle can be built.
 
-## 1. Install mira
+## 1. Install Mira
 
 The recommended installer keeps mira out of the system Python environment. On a fresh local desktop, it starts the WebUI when installation finishes.
 
 **macOS / Linux**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/HKUDS/mira/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/NSIETeam/Mira/main/scripts/install.sh | sh
 ```
 
 **Windows PowerShell**
 
 ```powershell
-irm https://raw.githubusercontent.com/HKUDS/mira/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/NSIETeam/Mira/main/scripts/install.ps1 | iex
 ```
 
-The installer chooses an active virtual environment, `uv`, `pipx`, or a managed environment under `~/.mira/venv`. It installs the stable PyPI release unless you explicitly pass `--dev`. At the end it prints the exact command it used to run mira; if `mira` is not on `PATH`, reuse that full command in the examples below.
+The installer chooses an active virtual environment, `uv`, `pipx`, or a managed environment under `~/.mira/venv`. It installs the stable PyPI release unless you explicitly pass `--dev`. At the end it prints the exact command it used to run Mira; if `mira` is not on `PATH`, reuse that full command in the examples below.
 
 If you prefer to inspect the scripts first, open [`install.sh`](../scripts/install.sh) or [`install.ps1`](../scripts/install.ps1).
 

@@ -64,6 +64,11 @@ def mark_webui_session(session: Session, metadata: dict[str, Any]) -> bool:
     return True
 
 
+def is_webui_shell_metadata(metadata: dict[str, Any] | None) -> bool:
+    """Return whether metadata opted into the WebUI shell contract."""
+    return bool(metadata and metadata.get(WEBUI_SESSION_METADATA_KEY) is True)
+
+
 def clean_generated_title(raw: str | None) -> str:
     text = (raw or "").strip()
     if not text:
@@ -219,7 +224,7 @@ async def publish_turn_run_status(
     started_at: float | None = None,
 ) -> None:
     """Notify WebSocket clients while a user turn is executing (timing strip)."""
-    if msg.channel != "websocket":
+    if msg.channel != "websocket" or not is_webui_shell_metadata(msg.metadata):
         return
     cid = str(msg.chat_id)
     started_at_event: float | None = None
@@ -352,14 +357,37 @@ class WebuiTurnCoordinator:
     def _is_websocket_event(ctx: RuntimeEventContext) -> bool:
         return ctx.channel == "websocket"
 
+    @staticmethod
+    def _is_webui_shell_event(ctx: RuntimeEventContext) -> bool:
+        return ctx.channel == "websocket" and is_webui_shell_metadata(ctx.metadata)
+
+    async def _publish_webui_shell_event(
+        self,
+        *,
+        channel: str,
+        chat_id: str,
+        event: GoalStateSyncEvent | TurnEndEvent | SessionUpdatedEvent,
+        metadata: dict[str, Any] | None,
+    ) -> None:
+        if channel != "websocket" or not is_webui_shell_metadata(metadata):
+            return
+        await self.bus.publish_outbound(
+            outbound_message_for_event(
+                channel=channel,
+                chat_id=chat_id,
+                event=event,
+                metadata=metadata,
+            ),
+        )
+
     def _handle_session_turn_started(self, event: SessionTurnStarted) -> None:
-        if not self._is_websocket_event(event.context):
+        if not self._is_webui_shell_event(event.context):
             return
         session = self.sessions.get_or_create(event.context.session_key)
         mark_webui_session(session, event.context.metadata)
 
     async def _handle_run_status_changed(self, event: TurnRunStatusChanged) -> None:
-        if not self._is_websocket_event(event.context):
+        if not self._is_webui_shell_event(event.context):
             return
         await publish_turn_run_status(
             self.bus,
@@ -380,20 +408,18 @@ class WebuiTurnCoordinator:
         self._schedule_title_update_from_event(event)
 
     async def _handle_goal_state_changed(self, event: GoalStateChanged) -> None:
-        if not self._is_websocket_event(event.context):
+        if not self._is_webui_shell_event(event.context):
             return
         cid = str(event.context.chat_id or "").strip()
         if not cid:
             return
-        await self.bus.publish_outbound(
-            outbound_message_for_event(
-                channel=event.context.channel,
-                chat_id=cid,
-                event=GoalStateSyncEvent(
-                    goal_state=goal_state_ws_blob(event.session_metadata),
-                ),
-                metadata=event.context.metadata,
+        await self._publish_webui_shell_event(
+            channel=event.context.channel,
+            chat_id=cid,
+            event=GoalStateSyncEvent(
+                goal_state=goal_state_ws_blob(event.session_metadata),
             ),
+            metadata=event.context.metadata,
         )
 
     async def _handle_runtime_model_changed(self, event: RuntimeModelChanged) -> None:
@@ -414,7 +440,7 @@ class WebuiTurnCoordinator:
         msg: InboundMessage,
         llm: LLMRuntime,
     ) -> None:
-        if msg.channel == "websocket" and msg.metadata.get("webui") is True:
+        if msg.channel == "websocket" and is_webui_shell_metadata(msg.metadata):
             self._title_contexts[session_key] = llm
 
     def discard(self, session_key: str) -> None:
@@ -436,26 +462,24 @@ class WebuiTurnCoordinator:
         session_key: str,
         latency_ms: int | None,
     ) -> None:
-        if msg.channel != "websocket":
+        if msg.channel != "websocket" or not is_webui_shell_metadata(msg.metadata):
             return
 
         session = self.sessions.get_or_create(session_key)
-        await self.bus.publish_outbound(
-            outbound_message_for_event(
-                channel=msg.channel,
-                chat_id=msg.chat_id,
-                event=TurnEndEvent(
-                    latency_ms=latency_ms,
-                    goal_state=goal_state_ws_blob(session.metadata),
-                ),
-                metadata=msg.metadata,
-            )
+        await self._publish_webui_shell_event(
+            channel=msg.channel,
+            chat_id=msg.chat_id,
+            event=TurnEndEvent(
+                latency_ms=latency_ms,
+                goal_state=goal_state_ws_blob(session.metadata),
+            ),
+            metadata=msg.metadata,
         )
         self._schedule_title_update(msg, session_key=session_key)
 
     def _schedule_title_update(self, msg: InboundMessage, *, session_key: str) -> None:
         title_context = self._title_contexts.pop(session_key, None)
-        if msg.metadata.get("webui") is not True or title_context is None:
+        if not is_webui_shell_metadata(msg.metadata) or title_context is None:
             return
 
         async def _generate_title_and_notify(
@@ -481,7 +505,7 @@ class WebuiTurnCoordinator:
     def _schedule_title_update_from_event(self, event: TurnCompleted) -> None:
         title_context = event.runtime
         if (
-            event.context.metadata.get("webui") is not True
+            not self._is_webui_shell_event(event.context)
             or title_context is None
             or not isinstance(title_context, LLMRuntime)
         ):
@@ -514,11 +538,9 @@ class WebuiTurnCoordinator:
         chat_id: str,
         metadata: dict[str, Any],
     ) -> None:
-        await self.bus.publish_outbound(
-            outbound_message_for_event(
-                channel=channel,
-                chat_id=chat_id,
-                event=SessionUpdatedEvent(scope="metadata"),
-                metadata=metadata,
-            )
+        await self._publish_webui_shell_event(
+            channel=channel,
+            chat_id=chat_id,
+            event=SessionUpdatedEvent(scope="metadata"),
+            metadata=metadata,
         )

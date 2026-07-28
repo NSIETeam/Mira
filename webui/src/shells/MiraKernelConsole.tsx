@@ -3,10 +3,12 @@ import { useMemo, useState } from "react";
 import type {
   ExecutionSummary,
   KernelManifestPayload,
+  KernelOperatorActionResult,
   ShellDescriptorPayload,
   WorkspaceScopePayload,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { normalizedShellHostContract, normalizedShellMode, shellCanElevate, shellPrivilegeRole } from "./contract";
 import type { KernelOperatorActionBinding } from "./useKernelOperatorActions";
 import type { KernelConsoleErrorEntry } from "./useKernelConsoleState";
 
@@ -139,15 +141,43 @@ export function MiraKernelConsole({
     output?: string;
     targetPane?: string | null;
     details?: Record<string, string | number | boolean | null>;
+    action_result?: KernelOperatorActionResult;
   } | void>;
   onRestartBridgeAdapter?: (adapterName: string) => void;
   onRecordBridgeFault?: (adapterName: string) => void;
   onClearBridgeFault?: (adapterName: string) => void;
 }) {
   const appIdentity = kernelManifest?.identity?.app_name ?? "Mira";
-  const shellMode = shellDescriptor?.host_contract?.mode ?? "engineering";
-  const nativeLastCommand = diagnostics?.snapshot.native_last_command;
-  const nativeModuleEntries = Object.entries(diagnostics?.snapshot.native_modules ?? {});
+  const shellMode = normalizedShellMode(shellDescriptor);
+  const hostContract = normalizedShellHostContract(shellDescriptor);
+  const privilegeRole = shellPrivilegeRole(hostContract);
+  const canElevate = shellCanElevate(hostContract);
+  const allowsPrivilegedControls = privilegeRole === "root" || canElevate;
+  const actionAllowed = (
+    action?: { privileged?: boolean | null; required_role?: string | null } | null,
+  ) => {
+    if (action?.required_role === "root") return privilegeRole === "root" || canElevate;
+    return !action?.privileged || allowsPrivilegedControls;
+  };
+  const actionRestrictionReason = (
+    action?: {
+      privileged?: boolean | null;
+      required_role?: string | null;
+      privileged_reason?: string | null;
+    } | null,
+  ) => {
+    if (action?.required_role === "root" && !(privilegeRole === "root" || canElevate)) {
+      return action.privileged_reason ?? "requires root-level privileges";
+    }
+    return action?.privileged && !allowsPrivilegedControls
+      ? action.privileged_reason ?? "requires elevated privileges"
+      : null;
+  };
+  const boardSnapshot = diagnostics?.snapshot.board;
+  const nativeSnapshot = diagnostics?.snapshot.native;
+  const nativeLastCommand = nativeSnapshot?.last_command;
+  const nativeRecentCommands = nativeSnapshot?.recent_commands?.slice(-6).reverse() ?? [];
+  const nativeModuleEntries = Object.entries(nativeSnapshot?.modules ?? {});
   const profile = kernelManifest?.profile ?? null;
   const featureRows = profile?.features.slice(0, 6) ?? [];
   const toolRows = profile?.tools.slice(0, 6) ?? [];
@@ -165,7 +195,10 @@ export function MiraKernelConsole({
   const runtimeCapabilities = kernelManifest?.capabilities ?? null;
   const executionContract = kernelManifest?.execution ?? null;
   const diagnostics = kernelManifest?.diagnostics ?? null;
+  const goalState = diagnostics?.snapshot.goal_state;
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
+  const sessionControls = kernelManifest?.session_controls?.actions ?? [];
+  const workerControls = kernelManifest?.worker_controls?.actions ?? [];
   const scheduler = kernelManifest?.scheduler ?? null;
   const schedulerQueues = scheduler?.queues.slice(0, 4) ?? [];
   const dispatchQueue = schedulerQueues.find((queue) => queue.id === "tool_dispatch") ?? null;
@@ -178,41 +211,40 @@ export function MiraKernelConsole({
   const runtimeTopologyLanes = runtimeTopology?.execution_lanes?.slice(0, 4) ?? [];
   const embeddedPorts = embeddedTopology?.board?.available_ports?.slice(0, 6) ?? [];
   const eventLog = kernelManifest?.event_log.slice(0, 8) ?? [];
+  const nativeAction = (id: string) => nativeLastCommand?.actions?.find((action) => action.id === id) ?? null;
+  const selectedModuleAction = (id: string) => selectedModule?.actions?.find((action) => action.id === id) ?? null;
+  const dispatchQueueAction = (id: string) => dispatchQueue?.actions?.find((action) => action.id === id) ?? null;
+  const selectedBridgeAction = (id: string) => selectedBridge?.actions?.find((action) => action.id === id) ?? null;
+  const faultAction = (id: string) => runtimeControl?.fault_posture.actions?.find((action) => action.id === id) ?? null;
+  const runtimeTopologyAction = (id: string) => runtimeTopology?.actions?.find((action) => action.id === id) ?? null;
+  const embeddedTopologyAction = (id: string) => embeddedTopology?.actions?.find((action) => action.id === id) ?? null;
+  const findModuleAction = (moduleName: string, actionId: string) =>
+    runtimeModules.find((module) => module.name === moduleName)?.actions?.find((action) => action.id === actionId)
+    ?? runtimeTopologyModules.find((module) => module.name === moduleName)?.actions?.find((action) => action.id === actionId)
+    ?? null;
+  const primaryEventAction = (event?: { actions?: Array<{ pane?: string | null; command?: string | null }> | null } | null) =>
+    event?.actions?.find((action) => !!action.command) ?? null;
   const executionTimeline = eventLog.slice(0, 6).map((event, index) => ({
     id: String(event.id ?? index + 1),
     type: String(event.type ?? "event"),
     state: String(event.state ?? "unknown"),
     message: String(event.message ?? "no message"),
+    route: primaryEventAction(event),
   }));
-  const timelineRouteForEvent = (
-    eventType: string,
-  ): { pane: string; command: string } => {
-    if (eventType.includes("goal") || eventType.includes("subagent")) {
-      return { pane: "runtime", command: "session goal" };
-    }
-    if (eventType.includes("tool")) {
-      return { pane: "runtime", command: "scheduler status" };
-    }
-    if (eventType.includes("fault") || eventType.includes("maintenance")) {
-      return { pane: "faults", command: "fault show" };
-    }
-    if (eventType.includes("board") || eventType.includes("adapter") || eventType.includes("bridge")) {
-      return { pane: "adapters", command: "runtime health" };
-    }
-    if (eventType.includes("session") || eventType.includes("turn") || eventType.includes("execution")) {
-      return { pane: "runtime", command: "session status" };
-    }
-    return { pane: "workspace", command: "event show" };
-  };
-  const handleTimelineRoute = async (eventType: string) => {
-    const route = timelineRouteForEvent(eventType);
-    onSelectPane(route.pane);
+  const firstEventRoute = (pane: string) => eventLog
+    .map((event) => primaryEventAction(event))
+    .find((action) => action?.pane === pane) ?? null;
+  const handleTimelineRoute = async (route?: {
+    pane?: string | null;
+    command?: string | null;
+  } | null) => {
+    if (!route?.command) return;
+    onSelectPane(route.pane ?? "workspace");
     if (!onRunOperatorCommand) return;
     try {
       const result = await onRunOperatorCommand(route.command);
-      if (result?.targetPane) onSelectPane(result.targetPane);
       appendOperatorOutput(`$ ${route.command}`);
-      appendOperatorOutput(result?.output ?? "ok", result?.details);
+      appendOperatorResult(result);
     } catch (error) {
       appendOperatorOutput(error instanceof Error ? error.message : "timeline routing failed");
     }
@@ -266,7 +298,7 @@ export function MiraKernelConsole({
     details?: Record<string, string | number | boolean | null>;
   }>>([
     {
-      line: "mira-kernel shell ready. try `runtime health`, `native inspect memory`, `native replay runtime pause operator-ping`, or `board mode`.",
+      line: "mira-kernel shell ready. try `runtime health`, `native inspect memory`, `native focus memory`, `native replay runtime pause operator-ping`, or `board mode`.",
     },
   ]);
   const [operatorPending, setOperatorPending] = useState(false);
@@ -276,6 +308,29 @@ export function MiraKernelConsole({
     details?: Record<string, string | number | boolean | null>,
   ) => {
     setOperatorOutput((current) => [...current.slice(-5), { line, details }]);
+  };
+  const appendOperatorResult = (result?: {
+    output?: string;
+    targetPane?: string | null;
+    details?: Record<string, string | number | boolean | null>;
+    action_result?: KernelOperatorActionResult;
+  }) => {
+    const actionResult = result?.action_result;
+    const resolvedPane = actionResult?.target_pane ?? result?.targetPane ?? null;
+    if (resolvedPane) onSelectPane(resolvedPane);
+    const resolvedDetails = actionResult?.details ?? result?.details ?? undefined;
+    appendOperatorOutput(
+      actionResult?.output ?? result?.output ?? "ok",
+      actionResult
+        ? {
+            ...resolvedDetails,
+            status: actionResult.status ?? resolvedDetails?.status ?? "ok",
+            code: actionResult.code ?? resolvedDetails?.code ?? 0,
+            subject: actionResult.subject ?? resolvedDetails?.subject ?? null,
+            action: actionResult.action ?? resolvedDetails?.action ?? null,
+          }
+        : resolvedDetails,
+    );
   };
   const runOperatorCommand = async () => {
     const raw = operatorCommand.trim();
@@ -295,8 +350,7 @@ export function MiraKernelConsole({
     try {
       if (!onRunOperatorCommand) throw new Error("operator command transport unavailable");
       const result = await onRunOperatorCommand(raw);
-      if (result?.targetPane) onSelectPane(result.targetPane);
-      appendOperatorOutput(result?.output ?? "ok", result?.details);
+      appendOperatorResult(result);
     } catch (error) {
       appendOperatorOutput(error instanceof Error ? error.message : "operator command failed");
     } finally {
@@ -315,8 +369,7 @@ export function MiraKernelConsole({
       try {
         if (!onRunOperatorCommand) throw new Error("operator command transport unavailable");
         const result = await onRunOperatorCommand(command);
-        if (result?.targetPane) onSelectPane(result.targetPane);
-        appendOperatorOutput(result?.output ?? "ok", result?.details);
+        appendOperatorResult(result);
       } catch (error) {
         appendOperatorOutput(error instanceof Error ? error.message : "operator command failed");
       } finally {
@@ -329,6 +382,13 @@ export function MiraKernelConsole({
   const runTopologyCommand = (pane: string, command: string) => {
     onSelectPane(pane);
     runQuickCommand(command);
+  };
+  const runContractAction = (action?: {
+    pane?: string | null;
+    command?: string | null;
+  } | null, fallbackPane = "workspace") => {
+    if (!action?.command) return;
+    runTopologyCommand(action.pane ?? fallbackPane, action.command);
   };
   const quickCommandGroups = [
     {
@@ -389,7 +449,7 @@ export function MiraKernelConsole({
     {
       label: "native",
       tone: "border-fuchsia-700 bg-fuchsia-950 text-fuchsia-100",
-      commands: ["native status", "native last-command", "native replay-last", "native inspect memory", "native replay runtime pause operator-ping", "native modules"],
+      commands: ["native status", "native last-command", "native replay-last", "native inspect memory", "native focus memory", "native replay runtime pause operator-ping", "native modules"],
     },
     {
       label: "fault",
@@ -403,18 +463,33 @@ export function MiraKernelConsole({
     },
   ];
   const nativeReplayCommands = useMemo(() => {
-    const commands = ["native status", "native last-command", "native replay-last", "native inspect memory", "native modules"];
-    if (nativeLastCommand?.target && nativeLastCommand?.action) {
-      commands.push(`module show ${nativeLastCommand.target}`);
+    const commands = ["native status", "native last-command", "native replay-last", "native inspect memory", "native focus memory", "native modules"];
+    const openLastTargetCommand = nativeAction("open_last_target")?.command;
+    if (openLastTargetCommand) {
+      commands.push(openLastTargetCommand);
     }
-    if (selectedModule?.name) {
-      commands.push(`native inspect ${selectedModule.name}`);
-      commands.push(`native replay ${selectedModule.name} inspect status`);
+    if (selectedModuleAction("focus_native")?.command) {
+      commands.push(selectedModuleAction("focus_native")!.command);
+    }
+    if (selectedModuleAction("inspect_native")?.command) {
+      commands.push(selectedModuleAction("inspect_native")!.command);
+    }
+    if (selectedModuleAction("fill_native_replay")?.command) {
+      commands.push(selectedModuleAction("fill_native_replay")!.command);
     }
     return commands;
-  }, [nativeLastCommand?.action, nativeLastCommand?.target, selectedModule?.name]);
+  }, [nativeAction, selectedModule?.actions]);
   const paneClass = (pane: string) =>
     selectedPane === pane ? "space-y-2" : "hidden";
+  const lastNativeStatus = nativeLastCommand?.status ?? "idle";
+  const lastNativeCode = nativeLastCommand?.code ?? 0;
+  const lastNativeCommand = nativeLastCommand?.command ?? nativeLastCommand?.action ?? "none";
+  const lastNativeUpdated = nativeLastCommand?.updated_at_ms ?? null;
+  const nativeFaultModules = nativeModuleEntries.filter(([, state]) => state?.status === "fault");
+  const faultedBridges = runtimeBridges.filter((bridge) => bridge.health === "fault");
+  const faultEventCount = executionTimeline.filter((event) => event.type.includes("fault") || event.type.includes("maintenance")).length;
+  const runtimeEventCount = executionTimeline.filter((event) => event.type.includes("turn") || event.type.includes("execution") || event.type.includes("session")).length;
+  const bridgeEventCount = executionTimeline.filter((event) => event.type.includes("bridge") || event.type.includes("adapter") || event.type.includes("board")).length;
 
   return (
     <aside className="hidden w-[320px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] xl:flex xl:flex-col">
@@ -492,8 +567,10 @@ export function MiraKernelConsole({
             </div>
             <Row label="App" value={kernelManifest?.identity?.app_name ?? "Mira"} />
             <Row label="CLI" value={kernelManifest?.identity?.cli_name ?? "mira"} />
-            <Row label="Legacy" value={kernelManifest?.identity?.legacy_cli_name ?? "mira"} />
+            <Row label="Compat alias" value={kernelManifest?.identity?.legacy_cli_name ?? "mira"} />
             <Row label="Profile" value={profile?.name ?? "unknown"} />
+            <Row label="Privilege" value={privilegeRole} />
+            <Row label="Elevation" value={canElevate ? "allowed" : "fixed"} />
             <Row label="GUI" value={runtimeCapabilities?.gui ? "enabled" : "off"} />
             <Row label="API" value={runtimeCapabilities?.api ? "enabled" : "off"} />
             <Row label="Threads" value={runtimeCapabilities?.threads ? "enabled" : "off"} />
@@ -518,7 +595,15 @@ export function MiraKernelConsole({
                 >
                   {language}
                 </span>
-              )) : null}
+              )) : selectedBridgeAction("restart_bridge") ? (
+                <span className="text-xs text-muted-foreground">
+                  {actionRestrictionReason(selectedBridgeAction("restart_bridge"))}
+                </span>
+              ) : faultAction("clear_faults") ? (
+                <span className="text-xs text-muted-foreground">
+                  {actionRestrictionReason(faultAction("clear_faults"))}
+                </span>
+              ) : null}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -613,21 +698,33 @@ export function MiraKernelConsole({
                   <>
                     <button
                       type="button"
-                      onClick={() => setOperatorCommand(`native inspect ${selectedModule.name}`)}
-                      disabled={operatorPending}
+                      onClick={() => {
+                        const command = selectedModuleAction("inspect_native")?.command;
+                        if (!command) return;
+                        setOperatorCommand(command);
+                      }}
+                      disabled={operatorPending || !selectedModuleAction("inspect_native")?.command}
                       className="rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
                     >
                       native inspect {selectedModule.name}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setOperatorCommand(`native replay ${selectedModule.name} inspect status`)}
-                      disabled={operatorPending}
+                      onClick={() => {
+                        const command = selectedModuleAction("fill_native_replay")?.command;
+                        if (!command) return;
+                        setOperatorCommand(command);
+                      }}
+                      disabled={operatorPending || !selectedModuleAction("fill_native_replay")?.command}
                       className="rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
                     >
                       native replay {selectedModule.name} inspect status
                     </button>
                   </>
+                ) : dispatchQueueAction("prioritize_dispatch") ? (
+                  <span className="text-xs text-muted-foreground">
+                    {actionRestrictionReason(dispatchQueueAction("prioritize_dispatch"))}
+                  </span>
                 ) : null}
               </div>
               <div className="mt-3 space-y-2">
@@ -746,10 +843,14 @@ export function MiraKernelConsole({
                                             && item.includes(":")
                                           ) {
                                             const moduleName = item.split(":")[0];
+                                            const action = key === "items"
+                                              ? findModuleAction(moduleName, "show_module")
+                                              : findModuleAction(moduleName, "focus_native");
+                                            if (!action?.command) return;
                                             if (key === "items") {
-                                              runQuickCommand(`module show ${moduleName}`);
+                                              runQuickCommand(action.command);
                                             } else {
-                                              runQuickCommand(`native inspect ${moduleName}`);
+                                              runQuickCommand(action.command);
                                             }
                                           }
                                         }}
@@ -821,8 +922,22 @@ export function MiraKernelConsole({
                           {"target" in entry.details && entry.details.target ? (
                             <button
                               type="button"
-                              onClick={() => runQuickCommand(`module show ${String(entry.details.target)}`)}
+                              onClick={() => runQuickCommand(`native focus ${String(entry.details.target)}`)}
                               disabled={operatorPending}
+                              className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                            >
+                              focus target
+                            </button>
+                          ) : null}
+                          {"target" in entry.details && entry.details.target ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const action = findModuleAction(String(entry.details.target), "show_module");
+                                if (!action?.command) return;
+                                runQuickCommand(action.command);
+                              }}
+                              disabled={operatorPending || !findModuleAction(String(entry.details.target), "show_module")?.command}
                               className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                             >
                               open module
@@ -831,8 +946,12 @@ export function MiraKernelConsole({
                           {"target" in entry.details && entry.details.target ? (
                             <button
                               type="button"
-                              onClick={() => setOperatorCommand(`native inspect ${String(entry.details.target)}`)}
-                              disabled={operatorPending}
+                              onClick={() => {
+                                const command = findModuleAction(String(entry.details.target), "fill_native_inspect")?.command;
+                                if (!command) return;
+                                setOperatorCommand(command);
+                              }}
+                              disabled={operatorPending || !findModuleAction(String(entry.details.target), "fill_native_inspect")?.command}
                               className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                             >
                               fill inspect
@@ -923,7 +1042,109 @@ export function MiraKernelConsole({
                     label="Dispatch handoff"
                     value={diagnostics?.snapshot.dispatch_handoff_lane ?? "none"}
                   />
+                  <Row
+                    label="Contract owner"
+                    value={diagnostics?.snapshot.dispatch_contract?.owner ?? "interactive"}
+                  />
+                  <Row
+                    label="Contract mode"
+                    value={diagnostics?.snapshot.dispatch_contract?.mode ?? "direct"}
+                  />
                 </div>
+              </div>
+            </div>
+            <div className="rounded-lg border border-violet-200/80 bg-violet-50/60 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700">
+                  Goal recovery
+                </div>
+                <ConsoleBadge
+                  label="goal"
+                  value={goalState?.active ? "active" : "idle"}
+                  tone={goalState?.active ? "amber" : "slate"}
+                />
+              </div>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                <Row label="Summary" value={goalState?.ui_summary ?? "none"} />
+                <Row label="Continuation rounds" value={`${goalState?.continuation_rounds ?? 0}`} />
+                <Row label="Last progress" value={goalState?.last_progress_at ?? "none"} />
+                <Row label="Objective" value={goalState?.objective ?? "none"} />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => runContractAction(sessionControls[1], "runtime")}
+                  disabled={operatorPending || !sessionControls[1]?.command}
+                  className="rounded-full border border-violet-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
+                >
+                  inspect goal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runContractAction(sessionControls[2], "runtime")}
+                  disabled={operatorPending || !sessionControls[2]?.command}
+                  className="rounded-full border border-violet-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
+                >
+                  inspect continuation
+                </button>
+              </div>
+            </div>
+            <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/60 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                  Recovery posture
+                </div>
+                <ConsoleBadge
+                  label="resume"
+                  value={
+                    goalState?.active
+                    || (diagnostics?.snapshot.dispatch_queue_depth ?? 0) > 0
+                    || diagSubagentWorkers > 0
+                      ? "warm"
+                      : "idle"
+                  }
+                  tone={
+                    goalState?.active
+                    || (diagnostics?.snapshot.dispatch_queue_depth ?? 0) > 0
+                    || diagSubagentWorkers > 0
+                      ? "amber"
+                      : "slate"
+                  }
+                />
+              </div>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                <Row label="Session" value={activeExecution?.chatId ? "attached" : "detached"} />
+                <Row label="Goal state" value={goalState?.active ? "recoverable" : "idle"} />
+                <Row label="Dispatch backlog" value={`${diagnostics?.snapshot.dispatch_queue_depth ?? 0}`} />
+                <Row label="Handoff lane" value={diagnostics?.snapshot.dispatch_handoff_lane ?? "none"} />
+                <Row label="Subagent workers" value={`${diagSubagentWorkers}`} />
+                <Row label="Pending tools" value={`${diagPendingToolCalls}`} />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => runContractAction(sessionControls[0], "runtime")}
+                  disabled={operatorPending || !sessionControls[0]?.command}
+                  className="rounded-full border border-emerald-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+                >
+                  inspect session
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runContractAction(sessionControls[2], "runtime")}
+                  disabled={operatorPending || !sessionControls[2]?.command}
+                  className="rounded-full border border-emerald-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+                >
+                  inspect resume path
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runTopologyCommand("runtime", "tool status")}
+                  disabled={operatorPending}
+                  className="rounded-full border border-emerald-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+                >
+                  inspect backlog
+                </button>
               </div>
             </div>
             <div className="rounded-lg border border-blue-200/80 bg-blue-50/60 p-3">
@@ -942,6 +1163,8 @@ export function MiraKernelConsole({
                 <Row label="Lane" value={dispatchQueue?.lane ?? "interactive"} />
                 <Row label="Class" value={dispatchQueue?.job_class ?? "tool_contract_dispatch"} />
                 <Row label="Handoff" value={diagnostics?.snapshot.dispatch_handoff_lane ?? "none"} />
+                <Row label="Owner" value={dispatchQueue?.dispatch_contract?.owner ?? diagnostics?.snapshot.dispatch_contract?.owner ?? "interactive"} />
+                <Row label="Mode" value={dispatchQueue?.dispatch_contract?.mode ?? diagnostics?.snapshot.dispatch_contract?.mode ?? "direct"} />
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {dispatchQueueTasks.length ? dispatchQueueTasks.map((task) => (
@@ -958,68 +1181,72 @@ export function MiraKernelConsole({
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => runTopologyCommand("runtime", "tool status")}
-                  disabled={operatorPending}
+                  onClick={() => runContractAction(dispatchQueueAction("inspect_dispatch"), "runtime")}
+                  disabled={operatorPending || !dispatchQueueAction("inspect_dispatch")?.command}
                   className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
                 >
                   inspect
                 </button>
-                <button
-                  type="button"
-                  onClick={() => runTopologyCommand("runtime", "tool prioritize")}
-                  disabled={operatorPending}
-                  className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
-                >
-                  prioritize
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runTopologyCommand("runtime", "tool delegate-goal")}
-                  disabled={operatorPending}
-                  className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
-                >
-                  goal lane
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runTopologyCommand("runtime", "tool delegate-subagent")}
-                  disabled={operatorPending}
-                  className="rounded-full border border-violet-300/80 bg-violet-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
-                >
-                  subagent
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runTopologyCommand("runtime", "tool complete")}
-                  disabled={operatorPending}
-                  className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
-                >
-                  complete
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runTopologyCommand("faults", "tool fail")}
-                  disabled={operatorPending}
-                  className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
-                >
-                  fail
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runTopologyCommand("runtime", "tool drain")}
-                  disabled={operatorPending}
-                  className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
-                >
-                  drain
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runTopologyCommand("runtime", "tool clear-queue")}
-                  disabled={operatorPending}
-                  className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
-                >
-                  clear
-                </button>
+                {actionAllowed(dispatchQueueAction("prioritize_dispatch")) ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => runContractAction(dispatchQueueAction("prioritize_dispatch"), "runtime")}
+                      disabled={operatorPending || !dispatchQueueAction("prioritize_dispatch")?.command}
+                      className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
+                    >
+                      prioritize
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => runContractAction(dispatchQueueAction("delegate_goal"), "runtime")}
+                      disabled={operatorPending || !dispatchQueueAction("delegate_goal")?.command}
+                      className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
+                    >
+                      goal lane
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => runContractAction(dispatchQueueAction("delegate_subagent"), "runtime")}
+                      disabled={operatorPending || !dispatchQueueAction("delegate_subagent")?.command}
+                      className="rounded-full border border-violet-300/80 bg-violet-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
+                    >
+                      subagent
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => runContractAction(dispatchQueueAction("complete_dispatch"), "runtime")}
+                      disabled={operatorPending || !dispatchQueueAction("complete_dispatch")?.command}
+                      className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+                    >
+                      complete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => runContractAction(dispatchQueueAction("fail_dispatch"), "faults")}
+                      disabled={operatorPending || !dispatchQueueAction("fail_dispatch")?.command}
+                      className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+                    >
+                      fail
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => runContractAction(dispatchQueueAction("drain_dispatch"), "runtime")}
+                      disabled={operatorPending || !dispatchQueueAction("drain_dispatch")?.command}
+                      className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
+                    >
+                      drain
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => runContractAction(dispatchQueueAction("clear_dispatch"), "runtime")}
+                      disabled={operatorPending || !dispatchQueueAction("clear_dispatch")?.command}
+                      className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
+                    >
+                      clear
+                    </button>
+                  </>
+                ) : null}
               </div>
             </div>
             <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">
@@ -1051,7 +1278,7 @@ export function MiraKernelConsole({
                         </span>
                         <button
                           type="button"
-                          onClick={() => void handleTimelineRoute(event.type)}
+                          onClick={() => void handleTimelineRoute(event.route)}
                           className="rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-200"
                         >
                           route
@@ -1075,11 +1302,40 @@ export function MiraKernelConsole({
                   </div>
                   <ConsoleBadge label="events" value={`${eventLog.length}`} tone="slate" />
                 </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleTimelineRoute(firstEventRoute("faults"))}
+                    disabled={operatorPending || !firstEventRoute("faults")?.command}
+                    className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+                  >
+                    fault lane {faultEventCount}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleTimelineRoute(firstEventRoute("runtime"))}
+                    disabled={operatorPending || !firstEventRoute("runtime")?.command}
+                    className="rounded-full border border-cyan-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
+                  >
+                    runtime lane {runtimeEventCount}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleTimelineRoute(firstEventRoute("adapters"))}
+                    disabled={operatorPending || !firstEventRoute("adapters")?.command}
+                    className="rounded-full border border-amber-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
+                  >
+                    bridge lane {bridgeEventCount}
+                  </button>
+                </div>
                 <div className="mt-3 space-y-2">
                   {eventLog.length ? eventLog.slice(0, 5).map((event, index) => (
-                    <div
+                    <button
                       key={`${event.id ?? "event"}-${index}`}
-                      className="rounded-md border border-violet-200/80 bg-white/80 px-2.5 py-2"
+                      type="button"
+                      onClick={() => void handleTimelineRoute(primaryEventAction(event))}
+                      disabled={operatorPending || !primaryEventAction(event)?.command}
+                      className="w-full rounded-md border border-violet-200/80 bg-white/80 px-2.5 py-2 text-left transition-colors hover:bg-violet-100/60"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span className="truncate font-medium text-slate-900">
@@ -1092,7 +1348,7 @@ export function MiraKernelConsole({
                       <div className="mt-1 text-[11px] text-slate-600">
                         {event.message ?? "no message"}
                       </div>
-                    </div>
+                    </button>
                   )) : (
                     <div className="text-xs text-muted-foreground">No kernel events captured.</div>
                   )}
@@ -1231,8 +1487,8 @@ export function MiraKernelConsole({
                     <>
                       <button
                         type="button"
-                        onClick={() => runQuickCommand("native last-command")}
-                        disabled={operatorPending}
+                        onClick={() => runContractAction(selectedModuleAction("inspect_native_status"), "adapters")}
+                        disabled={operatorPending || !selectedModuleAction("inspect_native_status")?.command}
                         className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                       >
                         inspect native
@@ -1240,8 +1496,8 @@ export function MiraKernelConsole({
                       {nativeLastCommand?.target === selectedModule.name ? (
                         <button
                           type="button"
-                          onClick={() => runQuickCommand("native replay-last")}
-                          disabled={operatorPending}
+                          onClick={() => runContractAction(nativeAction("replay_last"), "adapters")}
+                          disabled={operatorPending || !nativeAction("replay_last")?.command}
                           className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                         >
                           replay native
@@ -1249,24 +1505,48 @@ export function MiraKernelConsole({
                       ) : null}
                       <button
                         type="button"
-                        onClick={() => runQuickCommand(`native inspect ${selectedModule.name}`)}
-                        disabled={operatorPending}
+                        onClick={() => {
+                          const command = selectedModuleAction("focus_native")?.command;
+                          if (!command) return;
+                          runQuickCommand(command);
+                        }}
+                        disabled={operatorPending || !selectedModuleAction("focus_native")?.command}
+                        className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                      >
+                        native focus
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const command = selectedModuleAction("inspect_native")?.command;
+                          if (!command) return;
+                          runQuickCommand(command);
+                        }}
+                        disabled={operatorPending || !selectedModuleAction("inspect_native")?.command}
                         className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                       >
                         native inspect
                       </button>
                       <button
                         type="button"
-                        onClick={() => runQuickCommand(`module show ${selectedModule.name}`)}
-                        disabled={operatorPending}
+                        onClick={() => {
+                          const command = selectedModuleAction("show_module")?.command;
+                          if (!command) return;
+                          runQuickCommand(command);
+                        }}
+                        disabled={operatorPending || !selectedModuleAction("show_module")?.command}
                         className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                       >
-                        replay module
+                        open module
                       </button>
                       <button
                         type="button"
-                        onClick={() => setOperatorCommand(`native replay ${selectedModule.name} inspect status`)}
-                        disabled={operatorPending}
+                        onClick={() => {
+                          const command = selectedModuleAction("fill_native_replay")?.command;
+                          if (!command) return;
+                          setOperatorCommand(command);
+                        }}
+                        disabled={operatorPending || !selectedModuleAction("fill_native_replay")?.command}
                         className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                       >
                         fill native cmd
@@ -1333,36 +1613,44 @@ export function MiraKernelConsole({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => runTopologyCommand("adapters", `bridge status ${selectedBridge?.adapter ?? runtimeControl?.active_adapter ?? ""}`.trim())}
-                disabled={operatorPending}
+                onClick={() => runContractAction(selectedBridgeAction("inspect_bridge"), "adapters")}
+                disabled={operatorPending || !selectedBridgeAction("inspect_bridge")?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 inspect
               </button>
-              <button
-                type="button"
-                onClick={() => runTopologyCommand("adapters", `restart-bridge ${selectedBridge?.adapter ?? runtimeControl?.active_adapter ?? ""}`.trim())}
-                disabled={operatorPending}
-                className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
-              >
-                restart
-              </button>
-              <button
-                type="button"
-                onClick={() => runTopologyCommand("faults", `bridge fault ${selectedBridge?.adapter ?? runtimeControl?.active_adapter ?? ""}`.trim())}
-                disabled={operatorPending}
-                className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
-              >
-                mark fault
-              </button>
-              <button
-                type="button"
-                onClick={() => runTopologyCommand("faults", `clear-fault ${selectedBridge?.adapter ?? runtimeControl?.active_adapter ?? ""}`.trim())}
-                disabled={operatorPending}
-                className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
-              >
-                clear fault
-              </button>
+              {actionAllowed(selectedBridgeAction("restart_bridge")) ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => runContractAction(selectedBridgeAction("restart_bridge"), "adapters")}
+                    disabled={operatorPending || !selectedBridgeAction("restart_bridge")?.command}
+                    className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
+                  >
+                    restart
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runContractAction(selectedBridgeAction("mark_bridge_fault"), "faults")}
+                    disabled={operatorPending || !selectedBridgeAction("mark_bridge_fault")?.command}
+                    className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+                  >
+                    mark fault
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runContractAction(selectedBridgeAction("clear_bridge_fault"), "faults")}
+                    disabled={operatorPending || !selectedBridgeAction("clear_bridge_fault")?.command}
+                    className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+                  >
+                    clear fault
+                  </button>
+                </>
+              ) : selectedBridgeAction("restart_bridge") ? (
+                <span className="text-xs text-muted-foreground">
+                  {actionRestrictionReason(selectedBridgeAction("restart_bridge"))}
+                </span>
+              ) : null}
             </div>
           </div>
           <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -1885,23 +2173,31 @@ export function MiraKernelConsole({
             <Row label="Subagents" value={`${diagSubagentWorkers}`} />
             <Row
               label="Board"
-              value={diagnostics?.snapshot.board_attached ? "attached" : "detached"}
+              value={boardSnapshot?.attached ? "attached" : "detached"}
             />
             <Row
               label="Board mode"
-              value={diagnostics?.snapshot.board_runtime_mode ?? "unprobed"}
+              value={boardSnapshot?.runtime_mode ?? "unprobed"}
+            />
+            <Row
+              label="Board health"
+              value={boardSnapshot?.health ?? "unknown"}
+            />
+            <Row
+              label="Native health"
+              value={nativeSnapshot?.health ?? "unknown"}
             />
             <Row
               label="Native queue"
-              value={`${diagnostics?.snapshot.native_command_depth ?? 0}`}
+              value={`${nativeSnapshot?.command_depth ?? 0}`}
             />
             <Row
               label="Native modules"
-              value={`${diagnostics?.snapshot.native_module_count ?? nativeModuleEntries.length}`}
+              value={`${nativeSnapshot?.module_count ?? nativeModuleEntries.length}`}
             />
             <Row
               label="Native bridge"
-              value={diagnostics?.snapshot.native_bridge_artifact ?? "none"}
+              value={nativeSnapshot?.bridge_artifact ?? "none"}
             />
           </div>
           <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
@@ -1911,17 +2207,21 @@ export function MiraKernelConsole({
               </div>
               <ConsoleBadge
                 label="queue"
-                value={`${diagnostics?.snapshot.native_command_depth ?? 0}`}
-                tone={diagnostics?.snapshot.native_command_depth ? "amber" : "slate"}
+                value={`${nativeSnapshot?.command_depth ?? 0}`}
+                tone={nativeSnapshot?.command_depth ? "amber" : "slate"}
               />
             </div>
             <div className="grid gap-2 md:grid-cols-2">
               <Row label="Last target" value={nativeLastCommand?.target ?? "none"} />
               <Row label="Last action" value={nativeLastCommand?.action ?? "none"} />
+              <Row label="Last command" value={lastNativeCommand} />
+              <Row label="Last status" value={lastNativeStatus} />
+              <Row label="Last code" value={String(lastNativeCode)} />
               <Row label="Last value" value={nativeLastCommand?.value || "none"} />
-              <Row label="Artifact" value={nativeLastCommand?.artifact ?? diagnostics?.snapshot.native_bridge_artifact ?? "none"} />
+              <Row label="Artifact" value={nativeLastCommand?.artifact ?? nativeSnapshot?.bridge_artifact ?? "none"} />
               <Row label="Module focus" value={runtimeControl?.module_focus ?? "none"} />
-              <Row label="Command depth" value={`${diagnostics?.snapshot.native_command_depth ?? 0}`} />
+              <Row label="Command depth" value={`${nativeSnapshot?.command_depth ?? 0}`} />
+              <Row label="Updated" value={lastNativeUpdated ? formatKernelTimestamp(lastNativeUpdated) : "none"} />
             </div>
             <div className="space-y-2">
               <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Native modules</div>
@@ -1930,8 +2230,8 @@ export function MiraKernelConsole({
                   <button
                     key={name}
                     type="button"
-                    onClick={() => runTopologyCommand("modules", `native inspect ${name}`)}
-                    disabled={operatorPending}
+                    onClick={() => runContractAction(state?.actions?.find((action) => action.id === "inspect_native_module"), "modules")}
+                    disabled={operatorPending || !state?.actions?.find((action) => action.id === "inspect_native_module")?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     {name}:{state?.status ?? "unknown"}
@@ -1941,35 +2241,48 @@ export function MiraKernelConsole({
                 )}
               </div>
             </div>
+            <div className="space-y-2">
+              <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Recent commands</div>
+              <div className="flex flex-wrap gap-2">
+                {nativeRecentCommands.length ? nativeRecentCommands.map((command, index) => (
+                  <button
+                    key={`${command.updated_at_ms ?? "native"}-${command.target ?? "target"}-${command.action ?? index}`}
+                    type="button"
+                    onClick={() => {
+                      const replayAction = command.actions?.find((action) => action.id === "replay_recent_command");
+                      runContractAction(replayAction, "adapters");
+                    }}
+                    disabled={operatorPending || !command.actions?.some((action) => action.id === "replay_recent_command" && action.command)}
+                    className="rounded-full border border-slate-300/80 bg-slate-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-100"
+                  >
+                    {(command.target ?? "target")}:{(command.action ?? "action")}:{(command.status ?? "queued")}:{command.queue_depth ?? 0}
+                  </button>
+                )) : (
+                  <span className="text-xs text-muted-foreground">No recent native commands.</span>
+                )}
+              </div>
+            </div>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => runTopologyCommand("adapters", "native status")}
-                disabled={operatorPending}
+                onClick={() => runContractAction(nativeAction("native_status"), "adapters")}
+                disabled={operatorPending || !nativeAction("native_status")?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 inspect native
               </button>
               <button
                 type="button"
-                onClick={() => runTopologyCommand("adapters", "native last-command")}
-                disabled={operatorPending}
+                onClick={() => runContractAction(nativeAction("native_last_command"), "adapters")}
+                disabled={operatorPending || !nativeAction("native_last_command")?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 last command
               </button>
               <button
                 type="button"
-                onClick={() => runTopologyCommand("adapters", "native replay-last")}
-                disabled={operatorPending}
-                className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
-              >
-                replay last
-              </button>
-              <button
-                type="button"
-                onClick={() => runTopologyCommand("modules", "native modules")}
-                disabled={operatorPending}
+                onClick={() => runContractAction(nativeAction("native_modules"), "modules")}
+                disabled={operatorPending || !nativeAction("native_modules")?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 native modules
@@ -1978,44 +2291,72 @@ export function MiraKernelConsole({
                 <>
                   <button
                     type="button"
-                    onClick={() => runTopologyCommand("adapters", "native replay-last")}
-                    disabled={operatorPending}
+                    onClick={() => runContractAction(nativeAction("focus_last_target"), "modules")}
+                    disabled={operatorPending || !nativeAction("focus_last_target")?.command}
+                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                  >
+                    focus last target
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runContractAction(nativeAction("replay_last"), "adapters")}
+                    disabled={operatorPending || !nativeAction("replay_last")?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     replay last
                   </button>
                   <button
                     type="button"
-                    onClick={() => runTopologyCommand("modules", `module show ${nativeLastCommand.target}`)}
-                    disabled={operatorPending}
+                    onClick={() => runContractAction(nativeAction("open_last_target"), "modules")}
+                    disabled={operatorPending || !nativeAction("open_last_target")?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
-                    focus target
+                    open target
                   </button>
                 </>
+              ) : faultAction("clear_faults") ? (
+                <span className="text-xs text-muted-foreground">
+                  {actionRestrictionReason(faultAction("clear_faults"))}
+                </span>
               ) : null}
               {selectedModule?.name ? (
                 <>
                   <button
                     type="button"
-                    onClick={() => runTopologyCommand("modules", `native inspect ${selectedModule.name}`)}
-                    disabled={operatorPending}
+                    onClick={() => runContractAction(selectedModuleAction("focus_native"), "modules")}
+                    disabled={operatorPending || !selectedModuleAction("focus_native")?.command}
+                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                  >
+                    focus selected
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runContractAction(selectedModuleAction("inspect_native"), "modules")}
+                    disabled={operatorPending || !selectedModuleAction("inspect_native")?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     inspect selected
                   </button>
                   <button
                     type="button"
-                    onClick={() => setOperatorCommand(`native inspect ${selectedModule.name}`)}
-                    disabled={operatorPending}
+                    onClick={() => {
+                      const command = selectedModuleAction("fill_native_inspect")?.command;
+                      if (!command) return;
+                      setOperatorCommand(command);
+                    }}
+                    disabled={operatorPending || !selectedModuleAction("fill_native_inspect")?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     fill selected inspect
                   </button>
                   <button
                     type="button"
-                    onClick={() => setOperatorCommand(`native replay ${selectedModule.name} inspect status`)}
-                    disabled={operatorPending}
+                    onClick={() => {
+                      const command = selectedModuleAction("fill_native_replay")?.command;
+                      if (!command) return;
+                      setOperatorCommand(command);
+                    }}
+                    disabled={operatorPending || !selectedModuleAction("fill_native_replay")?.command}
                     className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                   >
                     fill selected replay
@@ -2050,9 +2391,9 @@ export function MiraKernelConsole({
                     type="button"
                     onClick={() => {
                       onSelectAdapter(adapter.name);
-                      runTopologyCommand("adapters", `adapter status ${adapter.name}`);
+                      runContractAction(adapter.actions?.find((action) => action.id === "inspect_adapter"), "adapters");
                     }}
-                    disabled={operatorPending}
+                    disabled={operatorPending || !adapter.actions?.find((action) => action.id === "inspect_adapter")?.command}
                     className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
                   >
                     {adapter.name}
@@ -2069,8 +2410,8 @@ export function MiraKernelConsole({
                   <button
                     key={lane.id}
                     type="button"
-                    onClick={() => runTopologyCommand("runtime", lane.id === "sustained_goal" ? "session goal" : lane.id === "subagent" ? "worker show" : "lane show")}
-                    disabled={operatorPending}
+                    onClick={() => runContractAction(lane.actions?.find((action) => action.id === "open_lane"), "runtime")}
+                    disabled={operatorPending || !lane.actions?.find((action) => action.id === "open_lane")?.command}
                     className="rounded-full border border-blue-300/80 bg-blue-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-blue-700 transition-colors hover:bg-blue-100"
                   >
                     {lane.id}
@@ -2089,9 +2430,9 @@ export function MiraKernelConsole({
                       type="button"
                       onClick={() => {
                         onSelectModule(module.name);
-                        runTopologyCommand("modules", `module show ${module.name}`);
+                        runContractAction(module.actions?.find((action) => action.id === "show_module"), "modules");
                       }}
-                      disabled={operatorPending}
+                      disabled={operatorPending || !module.actions?.find((action) => action.id === "show_module")?.command}
                       className={cn(
                         "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] transition-colors",
                         module.native_status === "fault"
@@ -2108,8 +2449,8 @@ export function MiraKernelConsole({
                     {module.native_status ? (
                       <button
                         type="button"
-                        onClick={() => runTopologyCommand("modules", `native inspect ${module.name}`)}
-                        disabled={operatorPending}
+                        onClick={() => runContractAction(module.actions?.find((action) => action.id === "focus_native"), "modules")}
+                        disabled={operatorPending || !module.actions?.find((action) => action.id === "focus_native")?.command}
                         className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
                       >
                         inspect
@@ -2124,16 +2465,16 @@ export function MiraKernelConsole({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => runTopologyCommand("runtime", "topology runtime")}
-                disabled={operatorPending}
+                onClick={() => runContractAction(runtimeTopologyAction("inspect_runtime"), "runtime")}
+                disabled={operatorPending || !runtimeTopologyAction("inspect_runtime")?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 inspect runtime
               </button>
               <button
                 type="button"
-                onClick={() => runTopologyCommand("runtime", "runtime orchestration")}
-                disabled={operatorPending}
+                onClick={() => runContractAction(runtimeTopologyAction("runtime_orchestration"), "runtime")}
+                disabled={operatorPending || !runtimeTopologyAction("runtime_orchestration")?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 orchestration
@@ -2165,11 +2506,11 @@ export function MiraKernelConsole({
                     key={port}
                     type="button"
                     onClick={() => {
-                      onSelectPane("adapters");
+                      onSelectPane(embeddedTopologyAction("board_status")?.pane ?? "adapters");
                       onSelectBoardPort?.(port);
-                      runQuickCommand("board status");
+                      runContractAction(embeddedTopologyAction("board_status"), "adapters");
                     }}
-                    disabled={operatorPending}
+                    disabled={operatorPending || !embeddedTopologyAction("board_status")?.command}
                     className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
                   >
                     {port}
@@ -2182,16 +2523,16 @@ export function MiraKernelConsole({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => runTopologyCommand("runtime", "topology embedded")}
-                disabled={operatorPending}
+                onClick={() => runContractAction(embeddedTopologyAction("inspect_embedded"), "runtime")}
+                disabled={operatorPending || !embeddedTopologyAction("inspect_embedded")?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 inspect embedded
               </button>
               <button
                 type="button"
-                onClick={() => runTopologyCommand("adapters", "board ports")}
-                disabled={operatorPending}
+                onClick={() => runContractAction(embeddedTopologyAction("refresh_board_ports"), "adapters")}
+                disabled={operatorPending || !embeddedTopologyAction("refresh_board_ports")?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 refresh ports
@@ -2223,9 +2564,9 @@ export function MiraKernelConsole({
                         waiting on {diagPendingToolCalls} tool call(s)
                       </div>
                     ) : null}
-                    {lane.id === "interactive" && (diagnostics?.snapshot.native_command_depth ?? 0) > 0 ? (
+                    {lane.id === "interactive" && (nativeSnapshot?.command_depth ?? 0) > 0 ? (
                       <div className="mt-1 text-[11px] text-fuchsia-700">
-                        native queue pressure: {diagnostics?.snapshot.native_command_depth ?? 0} command(s)
+                        native queue pressure: {nativeSnapshot?.command_depth ?? 0} command(s)
                       </div>
                     ) : null}
                   </div>
@@ -2264,11 +2605,11 @@ export function MiraKernelConsole({
               />
               <Row
                 label="Native queue"
-                value={`${diagnostics?.snapshot.native_command_depth ?? 0}`}
+                value={`${nativeSnapshot?.command_depth ?? 0}`}
               />
               <Row
                 label="Board"
-                value={embeddedTopology?.board.attached ? "attached" : "detached"}
+                value={boardSnapshot?.attached ? "attached" : "detached"}
               />
             </div>
           </div>
@@ -2281,6 +2622,8 @@ export function MiraKernelConsole({
             </div>
             <div className="mb-3 grid gap-2 rounded-md border border-slate-200/80 bg-white/80 p-3 text-xs">
               <Row label="Preferred lane" value={scheduler?.preferred_lane ?? "interactive"} />
+              <Row label="Dispatch priority" value={scheduler?.dispatch_priority ? "on" : "off"} />
+              <Row label="Dispatch handoff" value={scheduler?.dispatch_handoff_lane ?? "none"} />
               <Row
                 label="Drain background"
                 value={scheduler?.background_drain_requested ? "requested" : "idle"}
@@ -2295,7 +2638,7 @@ export function MiraKernelConsole({
               />
               <Row
                 label="Native queue"
-                value={`${diagnostics?.snapshot.native_command_depth ?? 0}`}
+                value={`${nativeSnapshot?.command_depth ?? 0}`}
               />
             </div>
             {scheduler?.active_runtime ? (
@@ -2323,6 +2666,16 @@ export function MiraKernelConsole({
                     <div className="mt-1 text-xs text-slate-800">
                       {queue.lane} · {queue.job_class}
                     </div>
+                    {queue.dispatch_contract ? (
+                      <div className="mt-2 text-[11px] text-slate-500">
+                        contract {queue.dispatch_contract.owner ?? "interactive"} · {queue.dispatch_contract.mode ?? "direct"} · {queue.dispatch_contract.lane ?? queue.lane}
+                      </div>
+                    ) : null}
+                    {queue.state === "delegated" || queue.state === "handoff" ? (
+                      <div className="mt-2 text-[11px] text-fuchsia-700">
+                        orchestration handoff active
+                      </div>
+                    ) : null}
                     {typeof queue.pending_tool_calls === "number" || typeof queue.completed_tool_results === "number" ? (
                       <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
                         {typeof queue.pending_tool_calls === "number" ? (
@@ -2336,12 +2689,28 @@ export function MiraKernelConsole({
                     {queue.active_tasks?.length ? (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {queue.active_tasks.map((task) => (
-                          <span
+                          <button
                             key={task}
-                            className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[11px] text-slate-700"
+                            type="button"
+                            onClick={() => {
+                              if (task.startsWith("dispatch:")) {
+                                runContractAction(dispatchQueueAction("inspect_dispatch"), "runtime");
+                                return;
+                              }
+                              if (queue.lane === "subagent") {
+                                runContractAction(workerControls[0], "runtime");
+                                return;
+                              }
+                              if (queue.lane === "sustained_goal") {
+                                runContractAction(sessionControls[1], "runtime");
+                                return;
+                              }
+                            }}
+                            disabled={operatorPending}
+                            className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[11px] text-slate-700 transition-colors hover:bg-slate-50"
                           >
                             {task}
-                          </span>
+                          </button>
                         ))}
                       </div>
                     ) : null}
@@ -2376,6 +2745,11 @@ export function MiraKernelConsole({
                     <div className="mt-1 text-xs text-slate-800">
                       {worker.lane} · {worker.summary}
                     </div>
+                    {(worker.lane === "sustained_goal" || worker.lane === "subagent") && worker.tasks?.length ? (
+                      <div className="mt-2 text-[11px] text-fuchsia-700">
+                        {worker.lane === "sustained_goal" ? "goal handoff contract active" : "subagent handoff contract active"}
+                      </div>
+                    ) : null}
                     {worker.runtime_backend ? (
                       <div className="mt-2 grid gap-2 rounded-md border border-slate-200/80 bg-white/80 p-3 text-xs">
                         <Row label="Adapter" value={worker.runtime_backend.adapter ?? "unknown"} />
@@ -2402,6 +2776,26 @@ export function MiraKernelConsole({
                             <div className="mt-1 text-xs text-slate-600">
                               {task.task_description}
                             </div>
+                            {task.dispatch_contract ? (
+                              <div className="mt-2 text-[11px] text-slate-500">
+                                contract {task.dispatch_contract.owner ?? "interactive"} · {task.dispatch_contract.mode ?? "direct"} · {task.dispatch_contract.lane ?? worker.lane}
+                              </div>
+                            ) : null}
+                            {task.actions?.length ? (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {task.actions.map((action) => (
+                                  <button
+                                    type="button"
+                                    key={`${task.task_id}-${action.id}`}
+                                    onClick={() => runContractAction(action, "runtime")}
+                                    disabled={operatorPending || !action.command}
+                                    className="rounded-full border border-fuchsia-300/80 bg-fuchsia-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-700 transition-colors hover:bg-fuchsia-100"
+                                  >
+                                    {action.label}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
                             {task.tool_events.length ? (
                               <div className="mt-2 flex flex-wrap gap-2">
                                 {task.tool_events.map((event, index) => (
@@ -2465,7 +2859,8 @@ export function MiraKernelConsole({
               </span>
               <button
                 type="button"
-                onClick={() => void handleTimelineRoute("workspace")}
+                onClick={() => void handleTimelineRoute(firstEventRoute("workspace"))}
+                disabled={!firstEventRoute("workspace")?.command}
                 className="rounded-full border border-slate-300/80 bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-200"
               >
                 route from shell
@@ -2483,6 +2878,77 @@ export function MiraKernelConsole({
           <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Fault control
           </div>
+          <div className="grid gap-3 xl:grid-cols-3">
+            <div className="rounded-xl border border-rose-200/80 bg-rose-50/70 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-700">
+                  Native faults
+                </div>
+                <ConsoleBadge label="modules" value={`${nativeFaultModules.length}`} tone="amber" />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {nativeFaultModules.length ? nativeFaultModules.slice(0, 6).map(([name, state]) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => runContractAction(state?.actions?.find((action) => action.id === "inspect_native_module"), "modules")}
+                    disabled={operatorPending || !state?.actions?.find((action) => action.id === "inspect_native_module")?.command}
+                    className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+                  >
+                    {name}:{state?.last_code ?? 0}
+                  </button>
+                )) : (
+                  <span className="text-xs text-rose-700/80">No native module faults.</span>
+                )}
+              </div>
+            </div>
+            <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+                  Bridge faults
+                </div>
+                <ConsoleBadge label="bridges" value={`${faultedBridges.length}`} tone="amber" />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {faultedBridges.length ? faultedBridges.slice(0, 6).map((bridge) => (
+                  <button
+                    key={bridge.adapter}
+                    type="button"
+                    onClick={() => runContractAction(bridge.actions?.find((action) => action.id === "inspect_bridge"), "adapters")}
+                    disabled={operatorPending || !bridge.actions?.find((action) => action.id === "inspect_bridge")?.command}
+                    className="rounded-full border border-amber-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
+                  >
+                    {bridge.adapter}:{bridge.runtime_stage ?? bridge.health}
+                  </button>
+                )) : (
+                  <span className="text-xs text-amber-700/80">No bridge faults.</span>
+                )}
+              </div>
+            </div>
+            <div className="rounded-xl border border-violet-200/80 bg-violet-50/70 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700">
+                  Shell errors
+                </div>
+                <ConsoleBadge label="recent" value={`${recentErrors.length}`} tone="amber" />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {recentErrors.length ? recentErrors.slice(0, 4).map((error) => (
+                  <button
+                    key={error.id}
+                    type="button"
+                    onClick={() => runContractAction(faultAction("inspect_faults"), "faults")}
+                    disabled={operatorPending || !faultAction("inspect_faults")?.command}
+                    className="rounded-full border border-violet-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-violet-700 transition-colors hover:bg-violet-100"
+                  >
+                    {error.kind}
+                  </button>
+                )) : (
+                  <span className="text-xs text-violet-700/80">No shell errors.</span>
+                )}
+              </div>
+            </div>
+          </div>
           <div className="rounded-xl border border-border/70 bg-background/80 p-3">
             <div className="mb-3 grid gap-2 md:grid-cols-2">
               <Row label="Supervisor" value={runtimeControl?.fault_posture.supervisor ?? diagnostics?.supervisor ?? "unknown"} />
@@ -2493,44 +2959,48 @@ export function MiraKernelConsole({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => runTopologyCommand("faults", "fault show")}
-                disabled={operatorPending}
+                onClick={() => runContractAction(faultAction("inspect_faults"), "faults")}
+                disabled={operatorPending || !faultAction("inspect_faults")?.command}
                 className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
               >
                 inspect
               </button>
-              <button
-                type="button"
-                onClick={() => runTopologyCommand("faults", "fault clear")}
-                disabled={operatorPending}
-                className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
-              >
-                clear
-              </button>
-              <button
-                type="button"
-                onClick={() => runTopologyCommand("faults", "fault record")}
-                disabled={operatorPending}
-                className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
-              >
-                record
-              </button>
-              <button
-                type="button"
-                onClick={() => runTopologyCommand("control_plane", "enter-maintenance")}
-                disabled={operatorPending}
-                className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
-              >
-                maintenance on
-              </button>
-              <button
-                type="button"
-                onClick={() => runTopologyCommand("control_plane", "exit-maintenance")}
-                disabled={operatorPending}
-                className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
-              >
-                maintenance off
-              </button>
+              {actionAllowed(faultAction("clear_faults")) ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => runContractAction(faultAction("clear_faults"), "faults")}
+                    disabled={operatorPending || !faultAction("clear_faults")?.command}
+                    className="rounded-full border border-emerald-300/80 bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100"
+                  >
+                    clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runContractAction(faultAction("record_fault"), "faults")}
+                    disabled={operatorPending || !faultAction("record_fault")?.command}
+                    className="rounded-full border border-rose-300/80 bg-rose-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
+                  >
+                    record
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runContractAction(faultAction("enter_maintenance"), "control_plane")}
+                    disabled={operatorPending || !faultAction("enter_maintenance")?.command}
+                    className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
+                  >
+                    maintenance on
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runContractAction(faultAction("exit_maintenance"), "control_plane")}
+                    disabled={operatorPending || !faultAction("exit_maintenance")?.command}
+                    className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
+                  >
+                    maintenance off
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
           <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">

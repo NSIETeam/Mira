@@ -8,6 +8,8 @@ import { SingleExecutionShellLayout } from "./SingleExecutionShellLayout";
 import type { ShellHostContract, ShellViewProps } from "./types";
 
 export type ShellViewComponent = ComponentType<ShellViewProps>;
+const HOST_CONTRACT_SCHEMA = "mira.host/v1";
+const HOST_CONTRACT_VERSION = 1;
 
 export interface ShellViewRegistration {
   component: ShellViewComponent;
@@ -16,38 +18,133 @@ export interface ShellViewRegistration {
 
 function buildHostContract({
   mode,
-  showSidebarChrome,
-  showSearchDialog,
-  allowUtilitySurface,
-  allowExecutionFork,
-  allowWorkspaceControls,
-  allowRuntimeModelControls,
-  allowKernelConsole,
-  allowComposer,
-  readOnlyExecution,
+  chrome,
+  surfaces,
+  actions,
+  composer,
+  privilege,
 }: {
   mode: ShellHostContract["mode"];
-  showSidebarChrome: boolean;
-  showSearchDialog: boolean;
-  allowUtilitySurface: boolean;
-  allowExecutionFork: boolean;
-  allowWorkspaceControls: boolean;
-  allowRuntimeModelControls: boolean;
-  allowKernelConsole: boolean;
-  allowComposer: boolean;
-  readOnlyExecution: boolean;
+  chrome: ShellHostContract["chrome"];
+  surfaces: ShellHostContract["surfaces"];
+  actions: ShellHostContract["actions"];
+  composer: ShellHostContract["composer"];
+  privilege: ShellHostContract["privilege"];
 }): ShellHostContract {
   return {
+    schema: HOST_CONTRACT_SCHEMA,
+    version: HOST_CONTRACT_VERSION,
     mode,
-    showSidebarChrome,
-    showSearchDialog,
-    allowUtilitySurface,
-    allowExecutionFork,
-    allowWorkspaceControls,
-    allowRuntimeModelControls,
-    allowKernelConsole,
-    allowComposer,
-    readOnlyExecution,
+    chrome,
+    surfaces,
+    actions,
+    composer,
+    privilege,
+  };
+}
+
+const DEFAULT_HOST_CONTRACT = buildHostContract({
+  mode: "engineering",
+  chrome: {
+    showSidebarChrome: true,
+    showSearchDialog: true,
+  },
+  surfaces: {
+    allowUtilitySurface: true,
+    allowWorkspaceControls: true,
+    allowRuntimeModelControls: true,
+    allowKernelConsole: true,
+  },
+  actions: {
+    allowExecutionFork: true,
+  },
+  composer: {
+    allowComposer: true,
+    readOnlyExecution: false,
+  },
+  privilege: {
+    role: "user",
+    canElevate: false,
+  },
+});
+
+function readCompatBoolean(
+  grouped: unknown,
+  fallback: boolean,
+): boolean {
+  if (typeof grouped === "boolean") return grouped;
+  return fallback;
+}
+
+function readCompatNumber(primary: unknown, fallback: number): number {
+  return typeof primary === "number" && Number.isFinite(primary) ? primary : fallback;
+}
+
+function readCompatString(primary: unknown, fallback: string): string {
+  return typeof primary === "string" && primary.trim() ? primary : fallback;
+}
+
+function coerceHostContract(
+  shellDescriptor: ShellDescriptorPayload | null | undefined,
+  fallback: ShellHostContract,
+): ShellHostContract {
+  const raw = shellDescriptor?.host_contract;
+  if (!raw || typeof raw !== "object") return fallback;
+  const rawChrome = raw.chrome;
+  const rawSurfaces = raw.surfaces;
+  const rawActions = raw.actions;
+  const rawComposer = raw.composer;
+  const schema = readCompatString(raw.schema, fallback.schema);
+  const version = readCompatNumber(raw.version, fallback.version);
+  const showSidebarChrome = readCompatBoolean(
+    rawChrome?.showSidebarChrome,
+    fallback.chrome.showSidebarChrome,
+  );
+  const showSearchDialog = readCompatBoolean(
+    rawChrome?.showSearchDialog,
+    fallback.chrome.showSearchDialog,
+  );
+  const allowUtilitySurface = readCompatBoolean(
+    rawSurfaces?.allowUtilitySurface,
+    fallback.surfaces.allowUtilitySurface,
+  );
+  const allowExecutionFork = readCompatBoolean(
+    rawActions?.allowExecutionFork,
+    fallback.actions.allowExecutionFork,
+  );
+  const allowWorkspaceControls = readCompatBoolean(
+    rawSurfaces?.allowWorkspaceControls,
+    fallback.surfaces.allowWorkspaceControls,
+  );
+  const allowRuntimeModelControls = readCompatBoolean(
+    rawSurfaces?.allowRuntimeModelControls,
+    fallback.surfaces.allowRuntimeModelControls,
+  );
+  const allowKernelConsole = readCompatBoolean(
+    rawSurfaces?.allowKernelConsole,
+    fallback.surfaces.allowKernelConsole,
+  );
+  const allowComposer = readCompatBoolean(
+    rawComposer?.allowComposer,
+    fallback.composer.allowComposer,
+  );
+  const readOnlyExecution = readCompatBoolean(
+    rawComposer?.readOnlyExecution,
+    fallback.composer.readOnlyExecution,
+  );
+  const privilegeRole = readCompatString(
+    typeof raw.privilege?.role === "string" ? raw.privilege.role : undefined,
+    fallback.privilege.role,
+  );
+  const privilegeCanElevate = readCompatBoolean(
+    raw.privilege?.canElevate,
+    fallback.privilege.canElevate,
+  );
+  const contract = buildHostContract({
+    mode:
+      raw.mode === "single-execution" || raw.mode === "review" || raw.mode === "engineering"
+        ? raw.mode
+        : fallback.mode,
     chrome: {
       showSidebarChrome,
       showSearchDialog,
@@ -65,102 +162,16 @@ function buildHostContract({
       allowComposer,
       readOnlyExecution,
     },
-  };
-}
-
-const DEFAULT_HOST_CONTRACT = buildHostContract({
-  mode: "engineering",
-  showSidebarChrome: true,
-  showSearchDialog: true,
-  allowUtilitySurface: true,
-  allowExecutionFork: true,
-  allowWorkspaceControls: true,
-  allowRuntimeModelControls: true,
-  allowKernelConsole: true,
-  allowComposer: true,
-  readOnlyExecution: false,
-});
-
-function readCompatBoolean(
-  primary: unknown,
-  grouped: unknown,
-  fallback: boolean,
-): boolean {
-  if (typeof primary === "boolean") return primary;
-  if (typeof grouped === "boolean") return grouped;
-  return fallback;
-}
-
-function coerceHostContract(
-  shellDescriptor: ShellDescriptorPayload | null | undefined,
-  fallback: ShellHostContract,
-): ShellHostContract {
-  const raw = shellDescriptor?.host_contract;
-  if (!raw || typeof raw !== "object") return fallback;
-  const rawChrome = raw.chrome;
-  const rawSurfaces = raw.surfaces;
-  const rawActions = raw.actions;
-  const rawComposer = raw.composer;
-  const showSidebarChrome = readCompatBoolean(
-    raw.showSidebarChrome,
-    rawChrome?.showSidebarChrome,
-    fallback.showSidebarChrome,
-  );
-  const showSearchDialog = readCompatBoolean(
-    raw.showSearchDialog,
-    rawChrome?.showSearchDialog,
-    fallback.showSearchDialog,
-  );
-  const allowUtilitySurface = readCompatBoolean(
-    raw.allowUtilitySurface,
-    rawSurfaces?.allowUtilitySurface,
-    fallback.allowUtilitySurface,
-  );
-  const allowExecutionFork = readCompatBoolean(
-    raw.allowExecutionFork,
-    rawActions?.allowExecutionFork,
-    fallback.allowExecutionFork,
-  );
-  const allowWorkspaceControls = readCompatBoolean(
-    raw.allowWorkspaceControls,
-    rawSurfaces?.allowWorkspaceControls,
-    fallback.allowWorkspaceControls,
-  );
-  const allowRuntimeModelControls = readCompatBoolean(
-    raw.allowRuntimeModelControls,
-    rawSurfaces?.allowRuntimeModelControls,
-    fallback.allowRuntimeModelControls,
-  );
-  const allowKernelConsole = readCompatBoolean(
-    raw.allowKernelConsole,
-    rawSurfaces?.allowKernelConsole,
-    fallback.allowKernelConsole,
-  );
-  const allowComposer = readCompatBoolean(
-    raw.allowComposer,
-    rawComposer?.allowComposer,
-    fallback.allowComposer,
-  );
-  const readOnlyExecution = readCompatBoolean(
-    raw.readOnlyExecution,
-    rawComposer?.readOnlyExecution,
-    fallback.readOnlyExecution,
-  );
-  return buildHostContract({
-    mode:
-      raw.mode === "single-execution" || raw.mode === "review" || raw.mode === "engineering"
-        ? raw.mode
-        : fallback.mode,
-    showSidebarChrome,
-    showSearchDialog,
-    allowUtilitySurface,
-    allowExecutionFork,
-    allowWorkspaceControls,
-    allowRuntimeModelControls,
-    allowKernelConsole,
-    allowComposer,
-    readOnlyExecution,
+    privilege: {
+      role: privilegeRole,
+      canElevate: privilegeCanElevate,
+    },
   });
+  return {
+    ...contract,
+    schema,
+    version,
+  };
 }
 
 const SHELL_VIEW_REGISTRY: Record<string, ShellViewRegistration> = {
@@ -172,30 +183,54 @@ const SHELL_VIEW_REGISTRY: Record<string, ShellViewRegistration> = {
     component: SingleExecutionShellLayout,
     hostContract: buildHostContract({
       mode: "single-execution",
-      showSidebarChrome: false,
-      showSearchDialog: false,
-      allowUtilitySurface: false,
-      allowExecutionFork: false,
-      allowWorkspaceControls: false,
-      allowRuntimeModelControls: false,
-      allowKernelConsole: true,
-      allowComposer: true,
-      readOnlyExecution: false,
+      chrome: {
+        showSidebarChrome: false,
+        showSearchDialog: false,
+      },
+      surfaces: {
+        allowUtilitySurface: false,
+        allowWorkspaceControls: false,
+        allowRuntimeModelControls: false,
+        allowKernelConsole: true,
+      },
+      actions: {
+        allowExecutionFork: false,
+      },
+      composer: {
+        allowComposer: true,
+        readOnlyExecution: false,
+      },
+      privilege: {
+        role: "user",
+        canElevate: false,
+      },
     }),
   },
   review: {
     component: ReviewShellLayout,
     hostContract: buildHostContract({
       mode: "review",
-      showSidebarChrome: false,
-      showSearchDialog: false,
-      allowUtilitySurface: true,
-      allowExecutionFork: false,
-      allowWorkspaceControls: false,
-      allowRuntimeModelControls: false,
-      allowKernelConsole: true,
-      allowComposer: false,
-      readOnlyExecution: true,
+      chrome: {
+        showSidebarChrome: false,
+        showSearchDialog: false,
+      },
+      surfaces: {
+        allowUtilitySurface: true,
+        allowWorkspaceControls: false,
+        allowRuntimeModelControls: false,
+        allowKernelConsole: true,
+      },
+      actions: {
+        allowExecutionFork: false,
+      },
+      composer: {
+        allowComposer: false,
+        readOnlyExecution: true,
+      },
+      privilege: {
+        role: "user",
+        canElevate: false,
+      },
     }),
   },
 };

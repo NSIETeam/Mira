@@ -43,10 +43,35 @@ def append_kernel_event(
     state: str,
     message: str,
 ) -> list[dict[str, Any]]:
+    route_command = "event show"
+    route_pane = "workspace"
+    if "goal" in action or "subagent" in action:
+        route_command = "session goal"
+        route_pane = "runtime"
+    elif "tool" in action:
+        route_command = "scheduler status"
+        route_pane = "runtime"
+    elif "fault" in action or "maintenance" in action:
+        route_command = "fault show"
+        route_pane = "faults"
+    elif "board" in action or "adapter" in action or "bridge" in action:
+        route_command = "runtime health"
+        route_pane = "adapters"
+    elif "session" in action or "turn" in action or "execution" in action:
+        route_command = "session status"
+        route_pane = "runtime"
     row = {
         "id": f"{len(event_log) + 1}",
         "action": action,
         "state": state,
         "message": message,
+        "actions": [
+            {
+                "id": "open_event_lane",
+                "label": "route",
+                "pane": route_pane,
+                "command": route_command,
+            }
+        ],
     }
     return [row, *event_log][:KERNEL_EVENT_LOG_LIMIT]

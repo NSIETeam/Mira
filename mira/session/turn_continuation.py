@@ -13,6 +13,7 @@ from typing import Any, Mapping, MutableMapping
 from loguru import logger
 
 from mira.session.goal_state import (
+    annotate_goal_progress,
     goal_state_runtime_lines,
     sustained_goal_active,
     sustained_goal_turn,
@@ -220,7 +221,12 @@ def _increment_goal_continuation_round(session_metadata: MutableMapping[str, Any
         rounds = int(session_metadata.get(_GOAL_CONTINUATION_ROUNDS_KEY) or 0)
     except (TypeError, ValueError):
         rounds = 0
-    session_metadata[_GOAL_CONTINUATION_ROUNDS_KEY] = rounds + 1
+    next_rounds = rounds + 1
+    session_metadata[_GOAL_CONTINUATION_ROUNDS_KEY] = next_rounds
+    annotate_goal_progress(
+        session_metadata,
+        continuation_rounds=next_rounds,
+    )
 
 
 def _internal_continuation_metadata(

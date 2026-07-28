@@ -8,6 +8,7 @@ for older sessions. Callers use ``goal_state_runtime_lines``, ``goal_state_ws_bl
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Any, Mapping, MutableMapping
 
 from mira.session.manager import SessionManager
@@ -18,6 +19,10 @@ MAX_GOAL_OBJECTIVE_CHARS = 4000
 # Older builds stored the same JSON blob under this key.
 _LEGACY_GOAL_STATE_SESSION_KEY = "thread_goal"
 _MAX_OBJECTIVE_WS = 600
+
+
+def _iso_now() -> str:
+    return datetime.now().isoformat()
 
 
 def _session_goal_raw(metadata: Mapping[str, Any] | None) -> Any:
@@ -76,6 +81,23 @@ def parse_goal_state(blob: Any) -> dict[str, Any] | None:
     return None
 
 
+def annotate_goal_progress(
+    metadata: MutableMapping[str, Any],
+    *,
+    continuation_rounds: int | None = None,
+) -> bool:
+    goal = parse_goal_state(_session_goal_raw(metadata))
+    if not isinstance(goal, dict) or goal.get("status") != "active":
+        return False
+    next_goal = dict(goal)
+    next_goal["last_progress_at"] = _iso_now()
+    if continuation_rounds is not None:
+        next_goal["continuation_rounds"] = max(0, int(continuation_rounds))
+    metadata[GOAL_STATE_KEY] = next_goal
+    discard_legacy_goal_state_key(metadata)
+    return True
+
+
 def goal_state_runtime_lines(metadata: Mapping[str, Any] | None) -> list[str]:
     """Lines appended inside the Runtime Context block when a goal is active."""
     if not metadata:
@@ -92,6 +114,12 @@ def goal_state_runtime_lines(metadata: Mapping[str, Any] | None) -> list[str]:
     hint = str(goal.get("ui_summary") or "").strip()
     if hint:
         out.append(f"Summary: {hint}")
+    rounds = goal.get("continuation_rounds")
+    if isinstance(rounds, int) and rounds > 0:
+        out.append(f"Continuation rounds: {rounds}")
+    progress_at = str(goal.get("last_progress_at") or "").strip()
+    if progress_at:
+        out.append(f"Last progress: {progress_at}")
     return out
 
 
@@ -108,6 +136,12 @@ def goal_state_ws_blob(metadata: Mapping[str, Any] | None) -> dict[str, Any]:
             blob["ui_summary"] = summary
         if objective:
             blob["objective"] = objective
+        rounds = goal.get("continuation_rounds")
+        if isinstance(rounds, int) and rounds > 0:
+            blob["continuation_rounds"] = rounds
+        progress_at = str(goal.get("last_progress_at") or "").strip()
+        if progress_at:
+            blob["last_progress_at"] = progress_at
         return blob
     return {"active": False}
 

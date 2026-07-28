@@ -7,10 +7,13 @@ core runtime behavior.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Callable
 
 ShellMode = str
+HOST_CONTRACT_SCHEMA = "mira.host/v1"
+HOST_CONTRACT_VERSION = 1
 
 
 def _host_contract(
@@ -25,18 +28,13 @@ def _host_contract(
     allow_kernel_console: bool,
     allow_composer: bool,
     read_only_execution: bool,
+    privilege_role: str,
+    privilege_can_elevate: bool,
 ) -> dict[str, object]:
     return {
+        "schema": HOST_CONTRACT_SCHEMA,
+        "version": HOST_CONTRACT_VERSION,
         "mode": mode,
-        "showSidebarChrome": show_sidebar_chrome,
-        "showSearchDialog": show_search_dialog,
-        "allowUtilitySurface": allow_utility_surface,
-        "allowExecutionFork": allow_execution_fork,
-        "allowWorkspaceControls": allow_workspace_controls,
-        "allowRuntimeModelControls": allow_runtime_model_controls,
-        "allowKernelConsole": allow_kernel_console,
-        "allowComposer": allow_composer,
-        "readOnlyExecution": read_only_execution,
         "chrome": {
             "showSidebarChrome": show_sidebar_chrome,
             "showSearchDialog": show_search_dialog,
@@ -54,6 +52,26 @@ def _host_contract(
             "allowComposer": allow_composer,
             "readOnlyExecution": read_only_execution,
         },
+        "privilege": {
+            "role": privilege_role,
+            "canElevate": privilege_can_elevate,
+        },
+    }
+
+
+def _runtime_privilege() -> tuple[str, bool]:
+    geteuid = getattr(os, "geteuid", None)
+    if callable(geteuid):
+        uid = int(geteuid())
+        return ("root" if uid == 0 else "user", uid != 0)
+    return ("user", False)
+
+
+def _shell_metadata(**entries: str) -> dict[str, str]:
+    return {
+        "host_contract_schema": HOST_CONTRACT_SCHEMA,
+        "host_contract_version": str(HOST_CONTRACT_VERSION),
+        **entries,
     }
 
 
@@ -89,6 +107,7 @@ class ShellDescriptor:
 
 def default_engineering_shell() -> ShellDescriptor:
     """Default shell for a mature, generic execution layer."""
+    privilege_role, privilege_can_elevate = _runtime_privilege()
     return ShellDescriptor(
         name="engineering-shell",
         host_contract=_host_contract(
@@ -102,12 +121,16 @@ def default_engineering_shell() -> ShellDescriptor:
             allow_kernel_console=True,
             allow_composer=True,
             read_only_execution=False,
-        )
+            privilege_role=privilege_role,
+            privilege_can_elevate=privilege_can_elevate,
+        ),
+        metadata=_shell_metadata(posture="engineering"),
     )
 
 
 def single_execution_shell() -> ShellDescriptor:
     """Single-workbench shell without thread-management affordances."""
+    privilege_role, privilege_can_elevate = _runtime_privilege()
     return ShellDescriptor(
         name="single-execution",
         display_name="Mira Workbench",
@@ -128,13 +151,16 @@ def single_execution_shell() -> ShellDescriptor:
             allow_kernel_console=True,
             allow_composer=True,
             read_only_execution=False,
+            privilege_role=privilege_role,
+            privilege_can_elevate=privilege_can_elevate,
         ),
-        metadata={"posture": "single-execution"},
+        metadata=_shell_metadata(posture="single-execution"),
     )
 
 
 def review_shell() -> ShellDescriptor:
     """Read-heavy review shell that suppresses runtime tuning during analysis."""
+    privilege_role, privilege_can_elevate = _runtime_privilege()
     return ShellDescriptor(
         name="review",
         display_name="Mira Review",
@@ -155,8 +181,10 @@ def review_shell() -> ShellDescriptor:
             allow_kernel_console=True,
             allow_composer=False,
             read_only_execution=True,
+            privilege_role=privilege_role,
+            privilege_can_elevate=privilege_can_elevate,
         ),
-        metadata={"posture": "review"},
+        metadata=_shell_metadata(posture="review"),
     )
 
 

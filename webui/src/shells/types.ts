@@ -25,21 +25,20 @@ export interface ShellHostComposerContract {
   readOnlyExecution: boolean;
 }
 
+export interface ShellHostPrivilegeContract {
+  role: "root" | "user" | string;
+  canElevate: boolean;
+}
+
 export interface ShellHostContract {
+  schema: string;
+  version: number;
   mode: ShellMode;
-  showSidebarChrome: boolean;
-  showSearchDialog: boolean;
-  allowUtilitySurface: boolean;
-  allowExecutionFork: boolean;
-  allowWorkspaceControls: boolean;
-  allowRuntimeModelControls: boolean;
-  allowKernelConsole: boolean;
-  allowComposer: boolean;
-  readOnlyExecution: boolean;
   chrome: ShellHostChromeContract;
   surfaces: ShellHostSurfaceContract;
   actions: ShellHostActionContract;
   composer: ShellHostComposerContract;
+  privilege: ShellHostPrivilegeContract;
 }
 
 export interface ShellViewProps {

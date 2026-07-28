@@ -9,13 +9,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+from .paths import KERNEL_PROJECT_ROOT
+from .runtime_status import runtime_probe_payload
 
 
 def _shared_library_candidates(adapter_name: str) -> list[Path]:
-    root = _project_root()
+    root = KERNEL_PROJECT_ROOT
     if adapter_name == "rust-ffi":
         names = ["libmira_kernel_runtime.dylib", "libmira_kernel_runtime.so", "mira_kernel_runtime.dll"]
         prefixes = [
@@ -58,7 +57,7 @@ def _load_library(candidates: list[Path]) -> tuple[ctypes.CDLL | None, str | Non
         if not candidate.exists():
             continue
         try:
-            return ctypes.CDLL(str(candidate)), str(candidate.relative_to(_project_root()))
+            return ctypes.CDLL(str(candidate)), str(candidate.relative_to(KERNEL_PROJECT_ROOT))
         except OSError:
             continue
     return None, None
@@ -77,15 +76,15 @@ def probe_runtime_bridge(adapter: dict[str, object]) -> dict[str, Any] | None:
     try:
         symbol = getattr(library, status_symbol)
     except AttributeError:
-        return {
-            "health": "fault",
-            "artifact": loaded_path,
-            "manifest": adapter.get("runtime_manifest"),
-            "runtime_mode": None,
-            "abi": adapter.get("abi"),
-            "status_symbol": status_symbol,
-            "last_error": f"missing status symbol: {status_symbol}",
-        }
+        return runtime_probe_payload(
+            status="fault",
+            artifact=loaded_path,
+            manifest=adapter.get("runtime_manifest"),
+            runtime_mode=None,
+            abi=adapter.get("abi"),
+            status_symbol=status_symbol,
+            error=f"missing status symbol: {status_symbol}",
+        )
 
     if adapter_name == "rust-ffi":
         symbol.restype = ctypes.c_void_p
@@ -93,15 +92,15 @@ def probe_runtime_bridge(adapter: dict[str, object]) -> dict[str, Any] | None:
         free_symbol = getattr(library, free_symbol_name, None)
         payload_ptr = symbol()
         if not payload_ptr:
-            return {
-                "health": "fault",
-                "artifact": loaded_path,
-                "manifest": adapter.get("runtime_manifest"),
-                "runtime_mode": None,
-                "abi": adapter.get("abi"),
-                "status_symbol": status_symbol,
-                "last_error": "rust runtime returned null status pointer",
-            }
+            return runtime_probe_payload(
+                status="fault",
+                artifact=loaded_path,
+                manifest=adapter.get("runtime_manifest"),
+                runtime_mode=None,
+                abi=adapter.get("abi"),
+                status_symbol=status_symbol,
+                error="rust runtime returned null status pointer",
+            )
         raw_json = ctypes.cast(payload_ptr, ctypes.c_char_p).value
         if free_symbol is not None:
             free_symbol.argtypes = [ctypes.c_void_p]
@@ -112,38 +111,36 @@ def probe_runtime_bridge(adapter: dict[str, object]) -> dict[str, Any] | None:
         raw_json = symbol()
 
     if not raw_json:
-        return {
-            "health": "fault",
-            "artifact": loaded_path,
-            "manifest": adapter.get("runtime_manifest"),
-            "runtime_mode": None,
-            "abi": adapter.get("abi"),
-            "status_symbol": status_symbol,
-            "last_error": "runtime probe returned empty status payload",
-        }
+        return runtime_probe_payload(
+            status="fault",
+            artifact=loaded_path,
+            manifest=adapter.get("runtime_manifest"),
+            runtime_mode=None,
+            abi=adapter.get("abi"),
+            status_symbol=status_symbol,
+            error="runtime probe returned empty status payload",
+        )
     try:
         payload = json.loads(raw_json.decode("utf-8") if isinstance(raw_json, bytes) else str(raw_json))
     except Exception:
-        return {
-            "health": "fault",
-            "artifact": loaded_path,
-            "manifest": adapter.get("runtime_manifest"),
-            "runtime_mode": None,
-            "abi": adapter.get("abi"),
-            "status_symbol": status_symbol,
-            "last_error": "runtime probe returned invalid JSON",
-        }
-    status = str(payload.get("status") or "planned")
-    health = "ready" if status == "ready" else ("planned" if status == "planned" else "fault")
-    return {
-        "health": health,
-        "artifact": loaded_path,
-        "manifest": adapter.get("runtime_manifest"),
-        "runtime_mode": payload.get("mode"),
-        "abi": payload.get("abi") or adapter.get("abi"),
-        "status_symbol": status_symbol,
-        "last_error": None if health != "fault" else str(payload.get("error") or "runtime probe fault"),
-    }
+        return runtime_probe_payload(
+            status="fault",
+            artifact=loaded_path,
+            manifest=adapter.get("runtime_manifest"),
+            runtime_mode=None,
+            abi=adapter.get("abi"),
+            status_symbol=status_symbol,
+            error="runtime probe returned invalid JSON",
+        )
+    return runtime_probe_payload(
+        status=payload.get("status"),
+        artifact=loaded_path,
+        manifest=adapter.get("runtime_manifest"),
+        runtime_mode=payload.get("mode"),
+        abi=payload.get("abi") or adapter.get("abi"),
+        status_symbol=status_symbol,
+        error=payload.get("error") or "runtime probe fault",
+    )
 
 
 def attach_runtime_board_probe(
@@ -200,6 +197,7 @@ def board_status_runtime_probe(
         return None
     return {
         "ok": probe.get("health") == "ready",
+        "health": probe.get("health"),
         "artifact": probe.get("artifact"),
         "transport": transport,
         "port": port,

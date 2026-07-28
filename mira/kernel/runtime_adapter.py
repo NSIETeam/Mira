@@ -9,23 +9,19 @@ operator loops.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+from .paths import KERNEL_PROJECT_ROOT
 
 
 def _runtime_manifest_exists(path: str | None) -> bool:
     if not path:
         return False
-    return (_project_root() / path).exists()
+    return (KERNEL_PROJECT_ROOT / path).exists()
 
 
 def _runtime_stage(manifest_path: str | None, bootstrap_artifact: str | None) -> str:
     if _runtime_manifest_exists(manifest_path):
         return "manifested"
-    if bootstrap_artifact and (_project_root() / bootstrap_artifact).exists():
+    if bootstrap_artifact and (KERNEL_PROJECT_ROOT / bootstrap_artifact).exists():
         return "skeleton"
     return "planned"
 

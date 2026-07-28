@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::sync::{Mutex, OnceLock};
@@ -55,6 +55,9 @@ impl MiraKernelModuleState {
 #[derive(Clone, Copy)]
 pub struct MiraKernelCommand {
     pub issued_at_ms: u64,
+    pub updated_at_ms: u64,
+    pub status: u32,
+    pub code: i32,
     pub target: [u8; MODULE_CAPACITY],
     pub action: [u8; MODULE_CAPACITY],
     pub value: [u8; COMMAND_CAPACITY],
@@ -64,6 +67,9 @@ impl MiraKernelCommand {
     fn new(target: &str, action: &str, value: &str) -> Self {
         Self {
             issued_at_ms: now_ms(),
+            updated_at_ms: now_ms(),
+            status: 1,
+            code: 0,
             target: encode_fixed::<MODULE_CAPACITY>(target),
             action: encode_fixed::<MODULE_CAPACITY>(action),
             value: encode_fixed::<COMMAND_CAPACITY>(value),
@@ -74,12 +80,18 @@ impl MiraKernelCommand {
 #[derive(Default)]
 struct KernelBridge {
     queue: VecDeque<MiraKernelEvent>,
+    recent_events: VecDeque<MiraKernelEvent>,
     commands: VecDeque<MiraKernelCommand>,
-    modules: HashMap<String, MiraKernelModuleState>,
+    recent_commands: VecDeque<MiraKernelCommand>,
+    modules: BTreeMap<String, MiraKernelModuleState>,
 }
 
 impl KernelBridge {
     fn push_event(&mut self, event: MiraKernelEvent) {
+        if self.recent_events.len() >= QUEUE_CAPACITY {
+            self.recent_events.pop_front();
+        }
+        self.recent_events.push_back(event);
         if self.queue.len() >= QUEUE_CAPACITY {
             self.queue.pop_front();
         }
@@ -87,6 +99,10 @@ impl KernelBridge {
     }
 
     fn push_command(&mut self, command: MiraKernelCommand) {
+        if self.recent_commands.len() >= QUEUE_CAPACITY {
+            self.recent_commands.pop_front();
+        }
+        self.recent_commands.push_back(command);
         if self.commands.len() >= QUEUE_CAPACITY {
             self.commands.pop_front();
         }
@@ -174,25 +190,42 @@ pub extern "C" fn mira_kernel_set_module_state(
         return -2;
     };
     let snapshot = MiraKernelModuleState::new(&module_name, status, last_code);
+    if let Some(command) = state.commands.back_mut() {
+        let command_target = String::from_utf8_lossy(&command.target)
+            .trim_end_matches('\0')
+            .to_owned();
+        if command_target == module_name {
+            command.status = status;
+            command.code = last_code;
+            command.updated_at_ms = snapshot.updated_at_ms;
+        }
+    }
+    if let Some(command) = state.recent_commands.back_mut() {
+        let command_target = String::from_utf8_lossy(&command.target)
+            .trim_end_matches('\0')
+            .to_owned();
+        if command_target == module_name {
+            command.status = status;
+            command.code = last_code;
+            command.updated_at_ms = snapshot.updated_at_ms;
+        }
+    }
     state.modules.insert(module_name, snapshot);
     0
 }
 
 #[no_mangle]
-pub extern "C" fn mira_kernel_read_module_state(
-    module: *const c_char,
+pub extern "C" fn mira_kernel_read_module_state_at(
+    index: usize,
     out_state: *mut MiraKernelModuleState,
 ) -> i32 {
     if out_state.is_null() {
         return -1;
     }
-    let Some(module_name) = decode_ptr(module) else {
+    let Ok(state) = bridge().lock() else {
         return -2;
     };
-    let Ok(state) = bridge().lock() else {
-        return -3;
-    };
-    let Some(snapshot) = state.modules.get(&module_name) else {
+    let Some(snapshot) = state.modules.values().nth(index) else {
         return 1;
     };
     unsafe {
@@ -207,6 +240,42 @@ pub extern "C" fn mira_kernel_queue_depth() -> usize {
         return 0;
     };
     state.queue.len()
+}
+
+#[no_mangle]
+pub extern "C" fn mira_kernel_recent_event_count() -> usize {
+    let Ok(state) = bridge().lock() else {
+        return 0;
+    };
+    state.recent_events.len()
+}
+
+#[no_mangle]
+pub extern "C" fn mira_kernel_read_recent_event_at(
+    index: usize,
+    out_event: *mut MiraKernelEvent,
+) -> i32 {
+    if out_event.is_null() {
+        return -1;
+    }
+    let Ok(state) = bridge().lock() else {
+        return -2;
+    };
+    let Some(event) = state.recent_events.get(index) else {
+        return 1;
+    };
+    unsafe {
+        *out_event = *event;
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn mira_kernel_module_count() -> usize {
+    let Ok(state) = bridge().lock() else {
+        return 0;
+    };
+    state.modules.len()
 }
 
 #[no_mangle]
@@ -252,6 +321,51 @@ pub extern "C" fn mira_kernel_poll_command(out_command: *mut MiraKernelCommand) 
     };
     unsafe {
         *out_command = command;
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn mira_kernel_read_last_command(out_command: *mut MiraKernelCommand) -> i32 {
+    if out_command.is_null() {
+        return -1;
+    }
+    let Ok(state) = bridge().lock() else {
+        return -2;
+    };
+    let Some(command) = state.recent_commands.back() else {
+        return 1;
+    };
+    unsafe {
+        *out_command = *command;
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn mira_kernel_recent_command_count() -> usize {
+    let Ok(state) = bridge().lock() else {
+        return 0;
+    };
+    state.recent_commands.len()
+}
+
+#[no_mangle]
+pub extern "C" fn mira_kernel_read_recent_command_at(
+    index: usize,
+    out_command: *mut MiraKernelCommand,
+) -> i32 {
+    if out_command.is_null() {
+        return -1;
+    }
+    let Ok(state) = bridge().lock() else {
+        return -2;
+    };
+    let Some(command) = state.recent_commands.get(index) else {
+        return 1;
+    };
+    unsafe {
+        *out_command = *command;
     }
     0
 }

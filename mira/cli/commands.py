@@ -1227,7 +1227,7 @@ def _print_webui_foreground_lifecycle(*, attached: bool) -> None:
     else:
         console.print(f"[green]{__app_name__} is running in this terminal.[/green]")
     console.print("[dim]Closing the browser does not stop channels or automations.[/dim]")
-    console.print(f"[dim]Press Ctrl+C here to stop {__legacy_cli_name__}.[/dim]")
+    console.print(f"[dim]Press Ctrl+C here to stop {__app_name__}.[/dim]")
 
 
 def _attach_to_background_gateway(runtime: Any) -> None:
@@ -1270,8 +1270,8 @@ def _run_quick_start_for_webui(config: Config, *, yes: bool) -> Config:
         console.print(
             "[red]Error: provider/model setup is incomplete, and --yes cannot answer "
             f"provider credentials. Run `{__cli_name__} webui` "
-            f"(or `{__legacy_cli_name__} webui`) interactively or "
-            f"`{__legacy_cli_name__} onboard --wizard`.[/red]"
+            f"interactively or `{__cli_name__} onboard --wizard` "
+            f"(compat alias: `{__legacy_cli_name__}`).[/red]"
         )
         raise typer.Exit(1)
 
@@ -1477,7 +1477,7 @@ def webui(
         if background:
             console.print(
                 "[red]First-time WebUI setup must run in the foreground. "
-                "Run `mira webui` (or `mira webui`) without --background.[/red]"
+                f"Run `{__cli_name__} webui` without --background.[/red]"
             )
             raise typer.Exit(1)
     elif provider_error:

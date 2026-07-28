@@ -8,6 +8,7 @@ from typing import Any
 def build_board_snapshot(
     *,
     attached: bool,
+    health: str | None,
     transport: str | None,
     port: str | None,
     target: str | None,
@@ -19,6 +20,7 @@ def build_board_snapshot(
 ) -> dict[str, Any]:
     return {
         "attached": attached,
+        "health": health,
         "transport": transport,
         "port": port,
         "target": target,

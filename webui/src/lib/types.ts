@@ -78,6 +78,18 @@ export interface UIMessage {
   turnSeq?: number;
 }
 
+export interface KernelOperatorActionResult {
+  command?: string;
+  target_pane?: string | null;
+  ok?: boolean;
+  status?: string | null;
+  code?: number;
+  subject?: string | null;
+  action?: string | null;
+  output?: string | null;
+  details?: Record<string, string | number | boolean | null>;
+}
+
 export interface UICliAppAttachment {
   name: string;
   display_name?: string;
@@ -198,6 +210,8 @@ export interface GoalStateWsPayload {
   active: boolean;
   ui_summary?: string;
   objective?: string;
+  continuation_rounds?: number;
+  last_progress_at?: string;
 }
 
 export interface ToolProgressEvent {
@@ -470,6 +484,15 @@ export interface KernelManifestPayload {
     status_symbol?: string | null;
     runtime_stage?: string;
     build_hint?: string | null;
+    actions?: Array<{
+      id: string;
+      label: string;
+      pane?: string | null;
+      command?: string | null;
+      privileged?: boolean;
+      required_role?: "root" | "user" | string;
+      privileged_reason?: string | null;
+    }>;
   }>;
   runtime_bridges: Array<{
     adapter: string;
@@ -485,6 +508,15 @@ export interface KernelManifestPayload {
     build_hint?: string | null;
     board_capable: boolean;
     last_error: string | null;
+    actions?: Array<{
+      id: string;
+      label: string;
+        pane?: string | null;
+        command?: string | null;
+        privileged?: boolean;
+        required_role?: "root" | "user" | string;
+        privileged_reason?: string | null;
+      }>;
   }>;
   runtime_modules: Array<{
     name: string;
@@ -493,6 +525,15 @@ export interface KernelManifestPayload {
     status: string;
     operator_actions: string[];
     summary: string;
+    actions?: Array<{
+      id: string;
+      label: string;
+        pane?: string | null;
+        command?: string | null;
+        privileged?: boolean;
+        required_role?: "root" | "user" | string;
+        privileged_reason?: string | null;
+      }>;
   }>;
   runtime_control: {
     active_adapter: string | null;
@@ -521,6 +562,13 @@ export interface KernelManifestPayload {
       supervisor: string;
       restart_policy: string;
       last_level: string;
+      actions?: Array<{
+        id: string;
+        label: string;
+        pane?: string | null;
+        command?: string | null;
+        privileged?: boolean;
+      }>;
     };
   };
   operator_console: {
@@ -553,26 +601,101 @@ export interface KernelManifestPayload {
       dispatch_queue_depth?: number;
       dispatch_queue_state?: string;
       dispatch_handoff_lane?: string | null;
-      board_attached?: boolean;
-      board_runtime_mode?: string | null;
-      board_bridge_artifact?: string | null;
-      native_bridge_artifact?: string | null;
-      native_module_count?: number;
-      native_command_depth?: number;
-      native_last_command?: {
-        target?: string | null;
-        action?: string | null;
-        value?: string | null;
-        queue_depth?: number;
-        artifact?: string | null;
+      dispatch_contract?: {
+        owner?: string | null;
+        mode?: string | null;
+        lane?: string | null;
       };
-      native_modules?: Record<string, {
-        status?: string | null;
-        status_code?: number;
-        last_code?: number;
-        updated_at_ms?: number;
-      }>;
+      board?: {
+        attached?: boolean;
+        health?: string | null;
+        transport?: string | null;
+        port?: string | null;
+        target?: string | null;
+        preferred_transport?: string | null;
+        runtime_mode?: string | null;
+        bridge_artifact?: string | null;
+        last_error?: string | null;
+        available_ports?: string[];
+      };
+      native?: {
+        health?: string | null;
+        bridge_artifact?: string | null;
+        module_count?: number;
+        command_depth?: number;
+        recent_commands?: Array<{
+          target?: string | null;
+          action?: string | null;
+          command?: string | null;
+          value?: string | null;
+          health?: string | null;
+          status?: string | null;
+          code?: number;
+          queue_depth?: number;
+          artifact?: string | null;
+          updated_at_ms?: number | null;
+          actions?: Array<{
+            id: string;
+            label: string;
+            pane?: string | null;
+            command?: string | null;
+          }>;
+        }>;
+        last_command?: {
+          target?: string | null;
+          action?: string | null;
+          command?: string | null;
+          value?: string | null;
+          health?: string | null;
+          status?: string | null;
+          code?: number;
+          queue_depth?: number;
+          artifact?: string | null;
+          updated_at_ms?: number | null;
+          actions?: Array<{
+            id: string;
+            label: string;
+            pane?: string | null;
+            command?: string | null;
+          }>;
+        };
+        modules?: Record<string, {
+          status?: string | null;
+          status_code?: number;
+          last_code?: number;
+          updated_at_ms?: number;
+          actions?: Array<{
+            id: string;
+            label: string;
+            pane?: string | null;
+            command?: string | null;
+          }>;
+        }>;
+      };
+      goal_state?: GoalStateWsPayload;
     };
+  };
+  session_controls?: {
+    actions?: Array<{
+      id: string;
+      label: string;
+      pane?: string | null;
+      command?: string | null;
+      privileged?: boolean;
+      required_role?: "root" | "user" | string;
+      privileged_reason?: string | null;
+    }>;
+  };
+  worker_controls?: {
+    actions?: Array<{
+      id: string;
+      label: string;
+      pane?: string | null;
+      command?: string | null;
+      privileged?: boolean;
+      required_role?: "root" | "user" | string;
+      privileged_reason?: string | null;
+    }>;
   };
   execution_lanes: Array<{
     id: string;
@@ -580,6 +703,14 @@ export interface KernelManifestPayload {
     mode: string;
     state: string;
     summary: string;
+    actions?: Array<{
+      id: string;
+      label: string;
+      pane?: string | null;
+      command?: string | null;
+      privileged?: boolean;
+      privileged_reason?: string | null;
+    }>;
   }>;
   scheduler: {
     policy: string;
@@ -602,6 +733,18 @@ export interface KernelManifestPayload {
       pending_tool_calls?: number;
       completed_tool_results?: number;
       active_tasks?: string[];
+      dispatch_contract?: {
+        owner?: string | null;
+        mode?: string | null;
+        lane?: string | null;
+      };
+      actions?: Array<{
+        id: string;
+        label: string;
+        pane?: string | null;
+        command?: string | null;
+        privileged?: boolean;
+      }>;
     }>;
   };
   workers: Array<{
@@ -622,8 +765,21 @@ export interface KernelManifestPayload {
       task_id: string;
       label: string;
       task_description: string;
+      task_target?: string | null;
+      actions?: Array<{
+        id: string;
+        label: string;
+        pane?: string | null;
+        command?: string | null;
+        privileged?: boolean;
+      }>;
       phase: string;
       iteration: number;
+      dispatch_contract?: {
+        owner?: string | null;
+        mode?: string | null;
+        lane?: string | null;
+      };
       tool_events: Array<{
         name?: string;
         status?: string;
@@ -648,6 +804,14 @@ export interface KernelManifestPayload {
     };
     transports: string[];
     active_adapter: string | null;
+    actions?: Array<{
+      id: string;
+      label: string;
+      pane?: string | null;
+      command?: string | null;
+      privileged?: boolean;
+      privileged_reason?: string | null;
+    }>;
   };
   runtime_topology: {
     adapters: KernelManifestPayload["runtime_adapters"];
@@ -656,6 +820,14 @@ export interface KernelManifestPayload {
     execution_lanes: KernelManifestPayload["execution_lanes"];
     scheduler: KernelManifestPayload["scheduler"];
     workers: KernelManifestPayload["workers"];
+    actions?: Array<{
+      id: string;
+      label: string;
+      pane?: string | null;
+      command?: string | null;
+      privileged?: boolean;
+      privileged_reason?: string | null;
+    }>;
   };
   event_log: Array<{
     id: string;
@@ -663,6 +835,14 @@ export interface KernelManifestPayload {
     action: string;
     state: string;
     message: string;
+    actions?: Array<{
+      id: string;
+      label: string;
+      pane?: string | null;
+      command?: string | null;
+      privileged?: boolean;
+      privileged_reason?: string | null;
+    }>;
   }>;
 }
 
@@ -681,6 +861,33 @@ export interface KernelEventPayload {
   metadata?: unknown;
 }
 
+export interface ShellHostContractPayload {
+  schema?: string;
+  version?: number;
+  mode?: "engineering" | "single-execution" | "review" | string;
+  chrome?: {
+    showSidebarChrome?: boolean;
+    showSearchDialog?: boolean;
+  };
+  surfaces?: {
+    allowUtilitySurface?: boolean;
+    allowWorkspaceControls?: boolean;
+    allowRuntimeModelControls?: boolean;
+    allowKernelConsole?: boolean;
+  };
+  actions?: {
+    allowExecutionFork?: boolean;
+  };
+  composer?: {
+    allowComposer?: boolean;
+    readOnlyExecution?: boolean;
+  };
+  privilege?: {
+    role?: "root" | "user" | string;
+    canElevate?: boolean;
+  };
+}
+
 export interface ShellDescriptorPayload {
   name: string;
   display_name: string;
@@ -690,35 +897,7 @@ export interface ShellDescriptorPayload {
   supports_file_activity: boolean;
   supports_approvals: boolean;
   supports_runtime_controls: boolean;
-  host_contract?: {
-    mode?: "engineering" | "single-execution" | "review" | string;
-    showSidebarChrome?: boolean;
-    showSearchDialog?: boolean;
-    allowUtilitySurface?: boolean;
-    allowExecutionFork?: boolean;
-    allowWorkspaceControls?: boolean;
-    allowRuntimeModelControls?: boolean;
-    allowKernelConsole?: boolean;
-    allowComposer?: boolean;
-    readOnlyExecution?: boolean;
-    chrome?: {
-      showSidebarChrome?: boolean;
-      showSearchDialog?: boolean;
-    };
-    surfaces?: {
-      allowUtilitySurface?: boolean;
-      allowWorkspaceControls?: boolean;
-      allowRuntimeModelControls?: boolean;
-      allowKernelConsole?: boolean;
-    };
-    actions?: {
-      allowExecutionFork?: boolean;
-    };
-    composer?: {
-      allowComposer?: boolean;
-      readOnlyExecution?: boolean;
-    };
-  };
+  host_contract?: ShellHostContractPayload;
   metadata?: Record<string, string>;
 }
 

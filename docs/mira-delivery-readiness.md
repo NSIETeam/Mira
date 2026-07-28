@@ -1,6 +1,6 @@
 # Mira Delivery Readiness
 
-This checklist is for packaging the current repository as a Mira-branded execution kernel workbench rather than the original mira-first surface.
+This checklist is for packaging the current repository as a Mira-branded execution kernel workbench rather than the original nanobot-first surface.
 
 Date baseline: July 27, 2026.
 
@@ -60,7 +60,7 @@ These remain intentionally retained and should not be mistaken for incomplete mi
 
 - published package name `mira`
 - config and workspace home under `~/.mira/`
-- legacy `mira` launcher
+- legacy `nanobot` launcher
 - internal Python package path `mira/...`
 - namespace-forwarding compatibility shims under `mira/`
 
@@ -70,7 +70,7 @@ This is the practical line between "intentional compatibility" and "still-visibl
 
 | Surface | Current state | Keep for now | Delivery expectation |
 | --- | --- | --- | --- |
-| Runtime entrypoint | `mira` primary, `mira` legacy | Yes | New usage should default to `mira` |
+| Runtime entrypoint | `mira` primary, `nanobot` legacy | Yes | New usage should default to `mira` |
 | Published package | `mira` | Yes | Accept until package migration is planned separately |
 | Config home | `~/.mira/` | Yes | Accept as compatibility storage root |
 | Internal Python modules | `mira/...` | Yes | Internal-only until a deeper package migration is justified |
@@ -78,7 +78,7 @@ This is the practical line between "intentional compatibility" and "still-visibl
 | WebUI visible shell/workbench copy | Mostly Mira-first | No | Should read as Mira to an operator |
 | WebUI visible storage keys | Mixed, partly Mira-first | No | New front-facing keys should prefer `mira.*` when safe |
 | README positioning | Mira-first with compatibility notes | No | Should present Mira as the default product identity |
-| Release-critical docs landing pages | Mira-first | No | Should not feel mira-first to a new user |
+| Release-critical docs landing pages | Mira-first | No | Should not feel nanobot-first to a new user |
 | Repo metadata and remote URLs | Mostly Mira-aligned in local source, still requires hosted verification | No | Must be aligned and checked manually at release time |
 
 ### Treat as compatibility, not a blocker by itself
@@ -90,9 +90,9 @@ This is the practical line between "intentional compatibility" and "still-visibl
 
 ### Treat as remaining product-facing cleanup
 
-- user-visible WebUI copy that still says `mira`
+- user-visible WebUI copy that still says `nanobot`
 - old front-end storage keys where migration risk is acceptable
-- release-facing README phrasing that still centers mira instead of Mira
+- release-facing README phrasing that still centers nanobot instead of Mira
 - repository naming, remote metadata, and public-facing URLs
 
 ## What still requires explicit verification

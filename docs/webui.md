@@ -1,8 +1,8 @@
-# mira WebUI: Browser Workbench for Self-Hosted AI Agents
+# Mira WebUI: Browser Workbench for Self-Hosted AI Agents
 
-<!-- Meta description: Run mira from a browser WebUI with persistent topics, visible tool activity, workspace controls, Apps, MCP presets, Skills, settings, and Automations. -->
+<!-- Meta description: Run Mira from a browser WebUI with persistent topics, visible tool activity, workspace controls, Apps, MCP presets, Skills, settings, and Automations. -->
 
-The WebUI is mira's browser workbench for persistent topics, visible
+The WebUI is Mira's browser workbench for persistent topics, visible
 agent activity, workspace controls, Apps, Skills, settings, and Automations in
 one place.
 

@@ -68,6 +68,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SkillsCatalogSettings } from "@/components/settings/SkillsCatalogSettings";
 import { TokenUsageHeatmap } from "@/components/settings/TokenUsageHeatmap";
 import { ToggleButton } from "@/components/settings/ToggleButton";
+import { shellDescriptorAllowsKernelConsole } from "@/shells/contract";
 import {
   channelIsRunning,
   channelMatchesFilter,
@@ -2688,8 +2689,7 @@ function OverviewSettings({
   const shellCaption = activeShell
     ? [
         activeShell.theme,
-        activeShell.host_contract?.surfaces?.allowKernelConsole
-          || activeShell.host_contract?.allowKernelConsole
+        shellDescriptorAllowsKernelConsole(activeShell)
           ? tx("settings.values.kernelConsole", "Kernel console")
           : tx("settings.values.minimalHost", "Minimal host"),
         activeShell.supports_threads
@@ -2770,7 +2770,7 @@ function OverviewSettings({
             value={kernelIdentity?.app_name ?? tx("settings.values.unavailable", "Unavailable")}
             caption={
               kernelIdentity
-                ? `${kernelIdentity.app_name} active · legacy launcher compatibility`
+                ? `${kernelIdentity.app_name} active · compat launcher alias retained`
                 : tx("settings.values.unavailable", "Unavailable")
             }
             onClick={() => onSelectSection("runtime")}

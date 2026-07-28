@@ -1,56 +1,59 @@
 import type { ShellHostContract } from "./types";
+import { resolveShellRegistration } from "./registry";
 import type { ShellDescriptorPayload } from "@/lib/types";
 
-export function shellChromeContract(contract: ShellHostContract) {
-  return contract.chrome;
+export function normalizedShellHostContract(
+  shellDescriptor: ShellDescriptorPayload | null,
+): ShellHostContract {
+  return resolveShellRegistration(shellDescriptor).hostContract;
 }
 
-export function shellSurfaceContract(contract: ShellHostContract) {
-  return contract.surfaces;
+export function normalizedShellMode(
+  shellDescriptor: ShellDescriptorPayload | null,
+): ShellHostContract["mode"] {
+  return normalizedShellHostContract(shellDescriptor).mode;
 }
 
-export function shellActionContract(contract: ShellHostContract) {
-  return contract.actions;
-}
-
-export function shellComposerContract(contract: ShellHostContract) {
-  return contract.composer;
+export function shellDescriptorAllowsKernelConsole(
+  shellDescriptor: ShellDescriptorPayload | null,
+): boolean {
+  return shellAllowsKernelConsole(normalizedShellHostContract(shellDescriptor));
 }
 
 export function shellShowsSidebarChrome(contract: ShellHostContract): boolean {
-  return shellChromeContract(contract).showSidebarChrome;
+  return contract.chrome.showSidebarChrome;
 }
 
 export function shellShowsSearchDialog(contract: ShellHostContract): boolean {
-  return shellChromeContract(contract).showSearchDialog;
+  return contract.chrome.showSearchDialog;
 }
 
 export function shellAllowsUtilitySurface(contract: ShellHostContract): boolean {
-  return shellSurfaceContract(contract).allowUtilitySurface;
+  return contract.surfaces.allowUtilitySurface;
 }
 
 export function shellAllowsWorkspaceControls(contract: ShellHostContract): boolean {
-  return shellSurfaceContract(contract).allowWorkspaceControls;
+  return contract.surfaces.allowWorkspaceControls;
 }
 
 export function shellAllowsRuntimeModelControls(contract: ShellHostContract): boolean {
-  return shellSurfaceContract(contract).allowRuntimeModelControls;
+  return contract.surfaces.allowRuntimeModelControls;
 }
 
 export function shellAllowsKernelConsole(contract: ShellHostContract): boolean {
-  return shellSurfaceContract(contract).allowKernelConsole;
+  return contract.surfaces.allowKernelConsole;
 }
 
 export function shellAllowsExecutionFork(contract: ShellHostContract): boolean {
-  return shellActionContract(contract).allowExecutionFork;
+  return contract.actions.allowExecutionFork;
 }
 
 export function shellAllowsComposer(contract: ShellHostContract): boolean {
-  return shellComposerContract(contract).allowComposer;
+  return contract.composer.allowComposer;
 }
 
 export function shellReadOnlyExecution(contract: ShellHostContract): boolean {
-  return shellComposerContract(contract).readOnlyExecution;
+  return contract.composer.readOnlyExecution;
 }
 
 export function shellDataAttributes({

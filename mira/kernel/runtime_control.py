@@ -25,6 +25,7 @@ def build_runtime_control_state(
         "module_focus": module_names[0] if module_names else None,
         "board": {
             "attached": False,
+            "health": "planned",
             "transport": None,
             "port": None,
             "target": embedded_target,
@@ -91,6 +92,7 @@ def attach_board(
     board = dict(next_state.get("board", {}))
     preferred_transport = board.get("preferred_transport")
     board["attached"] = True
+    board["health"] = "ready"
     board["transport"] = transport or preferred_transport or "serial"
     board["port"] = port or ("kernel://local" if board["transport"] == "in_process" else "/dev/tty.mira")
     board["last_error"] = None
@@ -102,6 +104,7 @@ def detach_board(state: dict[str, object]) -> dict[str, object]:
     next_state = clone_runtime_control_state(state)
     board = dict(next_state.get("board", {}))
     board["attached"] = False
+    board["health"] = "planned"
     board["transport"] = None
     board["port"] = None
     board["runtime_mode"] = None
