@@ -62,6 +62,11 @@ export function HostChrome({
     : healthBadge?.label === "attention"
       ? "border-rose-200/90 bg-rose-50/90 text-rose-800"
       : "border-slate-200/70 bg-white/75 text-slate-500";
+  const chromeCapsuleMotionClass = maintenanceBadge?.label === "maintenance"
+    ? "shadow-[0_0_0_1px_rgba(245,158,11,0.10),0_10px_28px_rgba(245,158,11,0.12)]"
+    : healthBadge?.label === "attention"
+      ? "shadow-[0_0_0_1px_rgba(244,63,94,0.10),0_10px_28px_rgba(244,63,94,0.14)] animate-pulse"
+      : "shadow-sm";
   const privilegeBadge = appTagline.includes("· root")
     ? { label: "root", className: "border-emerald-300/80 bg-emerald-50 text-emerald-700" }
     : appTagline.includes("· user")
@@ -102,8 +107,9 @@ export function HostChrome({
       <div className="pointer-events-none absolute inset-x-0 top-0 flex h-12 items-center justify-center">
         <div
           className={cn(
-            "flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] shadow-sm transition-colors",
+            "flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] transition-colors motion-reduce:animate-none",
             chromeCapsuleClass,
+            chromeCapsuleMotionClass,
           )}
           title={chromeStatusTitle || undefined}
         >
