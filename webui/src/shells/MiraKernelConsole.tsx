@@ -515,15 +515,29 @@ export function MiraKernelConsole({
   };
   const nativeFaultModules = nativeModuleEntries.filter(([, state]) => state?.status === "fault");
   const faultedBridges = runtimeBridges.filter((bridge) => bridge.health === "fault");
-  const faultEventCount = executionTimeline.filter((event) => event.type.includes("fault") || event.type.includes("maintenance")).length;
+  const eventLaneCounts = executionTimeline.reduce(
+    (counts, event) => {
+      if (event.type.includes("fault") || event.type.includes("maintenance")) {
+        counts.fault += 1;
+      }
+      if (event.type.includes("turn") || event.type.includes("execution") || event.type.includes("session")) {
+        counts.runtime += 1;
+      }
+      if (event.type.includes("bridge") || event.type.includes("adapter") || event.type.includes("board")) {
+        counts.bridge += 1;
+      }
+      return counts;
+    },
+    { fault: 0, runtime: 0, bridge: 0 },
+  );
   const maturitySummary = [
     runtimeCapabilities?.threads ? "threads" : null,
     runtimeCapabilities?.api ? "api" : null,
     runtimeCapabilities?.gui ? "gui" : null,
     runtimeCapabilities?.approvals ? "approvals" : null,
   ].filter(Boolean).join(" · ") || "minimal kernel";
-  const faultSummary = nativeFaultModules.length || faultedBridges.length || faultEventCount
-    ? `${nativeFaultModules.length} native / ${faultedBridges.length} bridge / ${faultEventCount} events`
+  const faultSummary = nativeFaultModules.length || faultedBridges.length || eventLaneCounts.fault
+    ? `${nativeFaultModules.length} native / ${faultedBridges.length} bridge / ${eventLaneCounts.fault} events`
     : "no active kernel faults";
   const dispatchRestrictionHint = dispatchPrioritizeAction
     ? actionRestrictionReason(dispatchPrioritizeAction)
@@ -694,7 +708,7 @@ export function MiraKernelConsole({
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Fault posture</div>
                 <div className="mt-2 text-lg font-semibold text-white">
-                  {nativeFaultModules.length || faultedBridges.length || faultEventCount ? "attention" : "stable"}
+                  {nativeFaultModules.length || faultedBridges.length || eventLaneCounts.fault ? "attention" : "stable"}
                 </div>
                 <div className="text-xs text-slate-300">
                   {faultSummary}
@@ -1484,7 +1498,7 @@ export function MiraKernelConsole({
                     disabled={operatorPending || !firstEventRoute("faults")?.command}
                     className="rounded-full border border-rose-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-rose-700 transition-colors hover:bg-rose-100"
                   >
-                    fault lane {faultEventCount}
+                    fault lane {eventLaneCounts.fault}
                   </button>
                   <button
                     type="button"
@@ -1492,7 +1506,7 @@ export function MiraKernelConsole({
                     disabled={operatorPending || !firstEventRoute("runtime")?.command}
                     className="rounded-full border border-cyan-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
                   >
-                    runtime lane {executionTimeline.filter((event) => event.type.includes("turn") || event.type.includes("execution") || event.type.includes("session")).length}
+                    runtime lane {eventLaneCounts.runtime}
                   </button>
                   <button
                     type="button"
@@ -1500,7 +1514,7 @@ export function MiraKernelConsole({
                     disabled={operatorPending || !firstEventRoute("adapters")?.command}
                     className="rounded-full border border-amber-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
                   >
-                    bridge lane {executionTimeline.filter((event) => event.type.includes("bridge") || event.type.includes("adapter") || event.type.includes("board")).length}
+                    bridge lane {eventLaneCounts.bridge}
                   </button>
                 </div>
                 <div className="mt-3 space-y-2">
