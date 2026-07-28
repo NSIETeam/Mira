@@ -749,7 +749,11 @@ export function MiraKernelConsole({
                                 className="flex items-center justify-between gap-3 rounded-sm border border-slate-200/80 bg-white/80 px-2 py-1"
                               >
                                 <span className="uppercase tracking-[0.12em]">{key}</span>
-                                <span className="truncate text-slate-700">{String(value)}</span>
+                                <span className="truncate text-slate-700">
+                                  {key === "updated_at_ms"
+                                    ? formatKernelTimestamp(value)
+                                    : String(value)}
+                                </span>
                               </div>
                             )
                           ))}
