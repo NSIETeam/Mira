@@ -9,6 +9,18 @@ import { logoFallbackUrls } from "@/lib/provider-brand";
 import type { PairingRequestInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+export type HostKernelStatus = {
+  privilege: "root" | "user" | "unknown";
+  health: "healthy" | "attention" | "offline" | "unknown";
+  maintenance: "maintenance" | "live" | "unknown";
+  runtimeState: "healthy" | "attention" | "offline" | "maintenance";
+  runtimeSeverity: "normal" | "warning" | "critical";
+  privilegeSeverity: "elevated" | "restricted" | "unknown";
+  connected: boolean;
+  alert: boolean;
+  summary: string;
+};
+
 export function SurfaceLoadingFallback() {
   return (
     <div
@@ -41,17 +53,7 @@ export function HostChrome({
   rightAction?: ReactNode;
   appName?: string;
   appTagline?: string;
-  kernelStatus?: {
-    privilege: "root" | "user" | "unknown";
-    health: "healthy" | "attention" | "offline" | "unknown";
-    maintenance: "maintenance" | "live" | "unknown";
-    runtimeState: "healthy" | "attention" | "offline" | "maintenance";
-    runtimeSeverity: "normal" | "warning" | "critical";
-    privilegeSeverity: "elevated" | "restricted" | "unknown";
-    connected: boolean;
-    alert: boolean;
-    summary: string;
-  };
+  kernelStatus?: HostKernelStatus;
 }) {
   const { t } = useTranslation();
   const resolvedStatus = kernelStatus ?? {

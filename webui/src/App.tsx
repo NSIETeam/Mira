@@ -52,6 +52,7 @@ import {
 import { useExecutionRuntimeState } from "@/shells/useExecutionRuntimeState";
 import { useExecutionSessionState } from "@/shells/useExecutionSessionState";
 import { MiraKernelConsole } from "@/shells/MiraKernelConsole";
+import type { HostKernelStatus } from "@/shells/engineering/chrome";
 import { useShellPresentationState } from "@/shells/useShellPresentationState";
 import { resolveShellRegistration } from "@/shells/registry";
 import { useKernelConsoleState } from "@/shells/useKernelConsoleState";
@@ -702,7 +703,7 @@ function Shell({
       : "healthy";
   const maintenanceLabel = kernelManifest?.runtime_control?.maintenance_mode?.enabled ? "maintenance" : "live";
   const appTagline = `${kernelManifest?.identity?.app_name ?? "Mira"} universal execution kernel · engineering shell · ${shellPrivilegeRole} · ${kernelHealthLabel} · ${maintenanceLabel}`;
-  const hostKernelStatus = {
+  const hostKernelStatus: HostKernelStatus = {
     privilege: shellPrivilegeRole as "root" | "user",
     health: kernelHealthLabel as "healthy" | "attention" | "offline",
     maintenance: maintenanceLabel as "maintenance" | "live",
