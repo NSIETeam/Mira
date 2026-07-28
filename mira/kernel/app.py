@@ -266,6 +266,23 @@ def _bridge_actions(adapter_name: str) -> list[dict[str, Any]]:
             "privileged_reason": "requires elevated fault control",
         },
     ]
+
+
+def _native_module_actions(module_name: str) -> list[dict[str, str]]:
+    return [
+        {
+            "id": "inspect_native",
+            "label": "inspect",
+            "pane": "modules",
+            "command": f"native inspect {module_name}".strip(),
+        },
+        {
+            "id": "inspect_native_status",
+            "label": "inspect native",
+            "pane": "adapters",
+            "command": "native last-command",
+        },
+    ]
 _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
     "attach-board",
     "detach-board",
@@ -780,22 +797,7 @@ class KernelApp:
                 summary = str(row.get("summary") or "").strip()
                 native_summary = str(native_state.get("summary") or f"native bridge {status}").strip()
                 row["summary"] = f"{summary} · {native_summary}" if summary else native_summary
-                row["actions"].append(
-                    {
-                        "id": "inspect_native",
-                        "label": "inspect",
-                        "pane": "modules",
-                        "command": f"native inspect {module_name}".strip(),
-                    }
-                )
-                row["actions"].append(
-                    {
-                        "id": "inspect_native_status",
-                        "label": "inspect native",
-                        "pane": "adapters",
-                        "command": "native last-command",
-                    }
-                )
+                row["actions"].extend(_native_module_actions(module_name))
             rows.append(row)
         return rows
 
