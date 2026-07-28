@@ -1088,6 +1088,17 @@ export function ThreadShell({
     </>
   ) : null;
 
+  const capabilityBadges = [
+    supportsThreads ? "threads" : "workbench",
+    supportsRuntimeControls ? "runtime" : "fixed-runtime",
+    supportsFileActivity ? "files" : "no-files",
+    readOnlyExecution ? "read-only" : "interactive",
+  ];
+  const shellPosture = [
+    shellDescription,
+    allowComposer ? "operator shell" : "viewer shell",
+    readOnlyExecution ? "locked execution" : "live execution",
+  ].filter(Boolean).join(" · ");
   const emptyState = loading ? (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
       {t("thread.loadingConversation")}
@@ -1124,17 +1135,6 @@ export function ThreadShell({
       onJumpToPrompt={(promptId) => viewportRef.current?.jumpToUserPrompt(promptId)}
     />
   ) : undefined;
-  const capabilityBadges = [
-    supportsThreads ? "threads" : "workbench",
-    supportsRuntimeControls ? "runtime" : "fixed-runtime",
-    supportsFileActivity ? "files" : "no-files",
-    readOnlyExecution ? "read-only" : "interactive",
-  ];
-  const shellPosture = [
-    shellDescription,
-    allowComposer ? "operator shell" : "viewer shell",
-    readOnlyExecution ? "locked execution" : "live execution",
-  ].filter(Boolean).join(" · ");
 
   return (
     <section
