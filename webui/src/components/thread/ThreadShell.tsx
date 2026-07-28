@@ -701,11 +701,9 @@ export function ThreadShell({
     }
     setFallbackModelName(null);
     return client.onKernelExecution(chatId, (event) => {
-      if (event.type !== "status") return;
+      if (event.type !== "status" || event.state !== "running") return;
       const metadata = event.metadata;
       if (!metadata || typeof metadata !== "object") return;
-      const rawEvent = "event" in metadata ? metadata.event : undefined;
-      if (rawEvent !== "turn_model_updated") return;
       const modelName = "model_name" in metadata ? metadata.model_name : undefined;
       if (typeof modelName !== "string") return;
       setFallbackModelName(modelName);
