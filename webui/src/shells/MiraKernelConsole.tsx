@@ -663,7 +663,6 @@ export function MiraKernelConsole({
             </div>
             <Row label="App" value={kernelManifest?.identity?.app_name ?? "Mira"} />
             <Row label="CLI" value={kernelManifest?.identity?.cli_name ?? "mira"} />
-            <Row label="Compat alias" value={kernelManifest?.identity?.legacy_cli_name ?? "mira"} />
             <Row label="Profile" value={profileName} />
             <Row label="Privilege" value={privilegeRole} />
             <Row label="Privileged shell" value={shellAllowsPrivilegedControls ? "enabled" : "restricted"} />
