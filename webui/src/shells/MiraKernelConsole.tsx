@@ -1492,7 +1492,7 @@ export function MiraKernelConsole({
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700">
                     Kernel event stream
                   </div>
-                  <ConsoleBadge label="events" value={`${eventLog.length}`} tone="slate" />
+                  <ConsoleBadge label="events" value={`${executionTimeline.length}`} tone="slate" />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
