@@ -37,7 +37,7 @@
       "chat": "{{title}} · Mira"
     },
     "meta": {
-      "description": "Mira web UI — chat with your execution workspace."
+      "description": "Mira workbench UI — operate your execution workspace."
     }
   },
   "sidebar": {
@@ -864,7 +864,7 @@
     "description": "This action cannot be undone.",
     "cancel": "Cancel",
     "confirm": "Delete",
-    "automationsDescription": "This chat has scheduled automations. Deleting it will also delete them.",
+    "automationsDescription": "This execution has scheduled automations. Deleting it will also delete them.",
     "moreAutomations": "+ {{count}} more",
     "confirmWithAutomations": "Delete",
     "schedule": {
@@ -1066,12 +1066,12 @@
         },
         "commands": {
           "new": {
-            "title": "New chat",
-            "description": "Reset this chat and start a fresh conversation."
+            "title": "New execution",
+            "description": "Reset this execution and start a fresh run."
           },
           "stop": {
             "title": "Stop current task",
-            "description": "Cancel the active agent turn for this chat."
+            "description": "Cancel the active agent turn for this execution."
           },
           "restart": {
             "title": "Restart Mira",
