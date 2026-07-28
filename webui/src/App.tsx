@@ -23,7 +23,6 @@ import { ThemeProvider, useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import {
   defaultShellRoute,
-  LEGACY_COMPLETED_RUNS_STORAGE_KEY,
   MOBILE_SIDEBAR_WIDTH,
   readShellRoute,
   RESTART_ROUTE_KEY,
@@ -192,9 +191,7 @@ function AuthForm({
 function readSessionUpdateChatIds(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw =
-      window.localStorage.getItem(SESSION_UPDATES_STORAGE_KEY)
-      ?? window.localStorage.getItem(LEGACY_COMPLETED_RUNS_STORAGE_KEY);
+    const raw = window.localStorage.getItem(SESSION_UPDATES_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return new Set();
     return new Set(parsed.filter((item): item is string => typeof item === "string"));

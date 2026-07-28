@@ -249,7 +249,6 @@ describe("App layout", () => {
     window.history.replaceState(null, "", "/");
     setNavigatorPlatform("Linux x86_64");
     localStorage.removeItem("mira-webui.sidebar");
-    localStorage.removeItem("mira-webui.sidebar.completed-runs.v1");
     localStorage.removeItem("mira-webui.sidebar.session-updates.v1");
     localStorage.removeItem("mira-webui.restartStartedAt");
     localStorage.removeItem("mira-webui.restartRoute");
