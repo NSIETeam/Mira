@@ -52,6 +52,19 @@ function formatKernelTimestamp(value: unknown): string {
   });
 }
 
+function formatKernelTimestampList(value: string): string {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => {
+      const [name, rawTimestamp] = item.split(":");
+      if (!name || rawTimestamp === undefined) return item;
+      return `${name}:${formatKernelTimestamp(rawTimestamp)}`;
+    })
+    .join(", ");
+}
+
 export function MiraKernelConsole({
   kernelManifest,
   shellDescriptor,
@@ -752,7 +765,9 @@ export function MiraKernelConsole({
                                 <span className="truncate text-slate-700">
                                   {key === "updated_at_ms"
                                     ? formatKernelTimestamp(value)
-                                    : String(value)}
+                                    : key === "updated"
+                                      ? formatKernelTimestampList(String(value))
+                                      : String(value)}
                                 </span>
                               </div>
                             )
