@@ -128,6 +128,7 @@ export function HostChrome({
           data-shell-privilege={privilegeBadge?.label ?? "unknown"}
           title={chromeStatusTitle || undefined}
         >
+          {chromeStatusTitle ? <span className="sr-only">{chromeStatusTitle}</span> : null}
           <span className="text-slate-900">{appName}</span>
           <span className={cn("h-1.5 w-1.5 rounded-full", healthDotClass)} />
           <span>{visibleTagline}</span>
