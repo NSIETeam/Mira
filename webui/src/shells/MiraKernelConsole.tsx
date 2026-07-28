@@ -209,7 +209,7 @@ export function MiraKernelConsole({
   const runtimeTopologyAdapters = runtimeTopology?.adapters?.slice(0, 4) ?? [];
   const runtimeTopologyModules = runtimeTopology?.modules?.slice(0, 6) ?? [];
   const runtimeTopologyLanes = runtimeTopology?.execution_lanes?.slice(0, 4) ?? [];
-  const embeddedPorts = embeddedTopology?.board?.available_ports?.slice(0, 6) ?? [];
+  const embeddedPorts = boardSnapshot?.available_ports?.slice(0, 6) ?? embeddedTopology?.board?.available_ports?.slice(0, 6) ?? [];
   const eventLog = kernelManifest?.event_log.slice(0, 8) ?? [];
   const nativeAction = (id: string) => nativeLastCommand?.actions?.find((action) => action.id === id) ?? null;
   const selectedModuleAction = (id: string) => selectedModule?.actions?.find((action) => action.id === id) ?? null;
