@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from mira.agent.tools.base import Tool, ToolResult
 from mira.agent.tools.context import ContextAware, current_request_context
+from mira.tool_contracts import tool_contract_family
 
 if TYPE_CHECKING:
     from mira.runtime_context import RuntimeContextProvider
@@ -86,20 +87,7 @@ class ToolRegistry:
     @classmethod
     def _schema_family(cls, schema: dict[str, Any]) -> str:
         """Classify tool schemas into stable operator-facing families."""
-        name = cls._schema_name(schema).lower()
-        if name.startswith("mcp_"):
-            return "mcp"
-        if name.startswith(("web_", "search_", "fetch_")) or "search" in name or "fetch" in name:
-            return "web"
-        if name.startswith(("read_", "write_", "edit_", "list_", "glob_", "grep_", "filesystem_")) or "filesystem" in name:
-            return "filesystem"
-        if name.startswith(("shell_", "exec_", "run_")):
-            return "shell"
-        if "subagent" in name:
-            return "subagent"
-        if "goal" in name or "task" in name:
-            return "long-task"
-        return "core"
+        return tool_contract_family(cls._schema_name(schema).replace("_", "-"))
 
     def get_definitions(self) -> list[dict[str, Any]]:
         """Get tool definitions with stable ordering for cache-friendly prompts.
