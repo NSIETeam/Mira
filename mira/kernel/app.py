@@ -3535,14 +3535,17 @@ class KernelApp:
             self._runtime_bridges,
             adapter_name=adapter_name,
         )
-        return self._commit_runtime_control_action(
+        self._dispatch_native_control(
             target="runtime",
             action="switch_adapter",
             value=adapter_name,
-            event_action="switch_adapter",
-            event_state="ok",
-            event_message=f"active adapter -> {adapter_name}",
         )
+        self._record_kernel_event(
+            "switch_adapter",
+            state="ok",
+            message=f"active adapter -> {adapter_name}",
+        )
+        return self.runtime_control
 
     def focus_runtime_module(self, module_name: str) -> dict[str, Any]:
         self._runtime_control = set_module_focus(
