@@ -910,6 +910,16 @@ class MemoryStore:
         multi_session_contention = len(session_counts) >= 2
         dominant_session = top_sessions[0]["session_key"] if top_sessions else None
         dominant_session_share = top_sessions[0]["share"] if top_sessions else 0.0
+        if not top_sessions:
+            contention_severity = "idle"
+        elif not multi_session_contention:
+            contention_severity = "isolated"
+        elif dominant_session_share >= 70.0:
+            contention_severity = "saturated"
+        elif dominant_session_share >= 45.0:
+            contention_severity = "contested"
+        else:
+            contention_severity = "shared"
         return {
             "layers": [
                 {
@@ -954,6 +964,7 @@ class MemoryStore:
                 "multi_session_contention": multi_session_contention,
                 "dominant_session": dominant_session,
                 "dominant_session_share": dominant_session_share,
+                "contention_severity": contention_severity,
             },
         }
 

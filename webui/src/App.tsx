@@ -654,6 +654,7 @@ function RuntimeSnapshotPanel({
   const multiSessionContention = memory?.subagent_memory?.multi_session_contention ?? false;
   const dominantSession = memory?.subagent_memory?.dominant_session ?? null;
   const dominantSessionShare = memory?.subagent_memory?.dominant_session_share ?? 0;
+  const contentionSeverity = memory?.subagent_memory?.contention_severity ?? "idle";
   const loadedLayers = memory?.layers?.filter((layer) => layer.loaded).length ?? 0;
   const loadedLayerLabels = memory?.layers
     ?.filter((layer) => layer.loaded)
@@ -796,6 +797,7 @@ function RuntimeSnapshotPanel({
                     session:{entry.session_key} {entry.count} {entry.share ?? 0}%
                   </span>
                 ))}
+                <span>contention {contentionSeverity}</span>
                 {multiSessionContention ? <span>contention multi-session</span> : null}
                 {dominantSession ? <span>dominant {dominantSession}</span> : null}
                 {dominantSession ? <span>share {dominantSessionShare}%</span> : null}

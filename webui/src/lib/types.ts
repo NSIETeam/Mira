@@ -384,6 +384,7 @@ export interface BootstrapResponse {
       multi_session_contention?: boolean;
       dominant_session?: string | null;
       dominant_session_share?: number;
+      contention_severity?: string;
     };
   };
   planning?: {
