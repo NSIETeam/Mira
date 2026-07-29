@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsView } from "@/components/settings/SettingsView";
 import { ClientProvider } from "@/providers/ClientProvider";
 import type {
+  BootstrapResponse,
   ChannelSetupContract,
   ChannelSetupContractField,
   SettingsPayload,
@@ -350,6 +351,11 @@ function renderSettingsView(
     showSidebar?: boolean;
     onSettingsChange?: (payload: SettingsPayload) => void;
     onNativeEngineRestart?: () => Promise<string>;
+    runtimeUser?: BootstrapResponse["user"];
+    runtimeNamespace?: BootstrapResponse["namespace"];
+    runtimePolicy?: BootstrapResponse["policy"];
+    runtimeToolAvailability?: BootstrapResponse["tool_availability"];
+    runtimeModules?: BootstrapResponse["modules"];
   } = {},
 ) {
   render(
@@ -364,6 +370,11 @@ function renderSettingsView(
         onModelNameChange={() => {}}
         onSettingsChange={options.onSettingsChange}
         onNativeEngineRestart={options.onNativeEngineRestart}
+        runtimeUser={options.runtimeUser}
+        runtimeNamespace={options.runtimeNamespace}
+        runtimePolicy={options.runtimePolicy}
+        runtimeToolAvailability={options.runtimeToolAvailability}
+        runtimeModules={options.runtimeModules}
       />
     </ClientProvider>,
   );
@@ -476,6 +487,79 @@ describe("SettingsView Apps catalog", () => {
         expect.any(Object),
       );
     });
+  });
+
+  it("shows runtime admin principal, namespace, policy and module state", async () => {
+    renderSettingsView({
+      initialSection: "runtime",
+      initialSettings: settingsPayload(),
+      runtimeUser: {
+        id: "alice",
+        group: "growth",
+        root: "/tmp/mira-users/alice",
+        workspace: "/tmp/mira-users/alice/workspace",
+        memory_workspace: "/tmp/mira-users/_groups/growth",
+        temporary: true,
+      },
+      runtimeNamespace: {
+        workspace: {
+          kind: "mount",
+          path: "/tmp/mira-users/alice/workspace",
+          isolated: true,
+        },
+        session: {
+          kind: "process",
+          prefix: "u:alice:",
+          isolated: true,
+        },
+        memory: {
+          kind: "group-volume",
+          path: "/tmp/mira-users/_groups/growth",
+          scope: "group",
+          shared_by_group: "growth",
+        },
+        execution: {
+          kind: "supervised-gate",
+          posture: "restricted",
+        },
+      },
+      runtimePolicy: {
+        role: "guest",
+        user_id: "alice",
+        group_id: "growth",
+        allow_tools: ["*"],
+        deny_tools: ["exec", "write_file"],
+        workspace_root: "/tmp/mira-users/alice/workspace",
+        memory_scope: "group",
+        exec_posture: "restricted",
+      },
+      runtimeToolAvailability: {
+        denied: ["exec", "write_file"],
+        exec_posture: "restricted",
+      },
+      runtimeModules: {
+        profile: "standard",
+        total: 4,
+        enabled: 2,
+        lazy: 1,
+        estimated_memory_cost_mb: 42,
+        modules: [
+          { name: "agent", status: "enabled", lazy: false },
+          { name: "mcp", status: "disabled", lazy: true },
+        ],
+      },
+    });
+
+    expect(await screen.findByText("Runtime admin")).toBeInTheDocument();
+    expect(screen.getByText("guest")).toBeInTheDocument();
+    expect(screen.getByText("alice")).toBeInTheDocument();
+    expect(screen.getByText("growth")).toBeInTheDocument();
+    expect(screen.getByText("restricted")).toBeInTheDocument();
+    expect(screen.getByText("2 denied")).toBeInTheDocument();
+    expect(screen.getByText("2/4 enabled")).toBeInTheDocument();
+    expect(screen.getByText("1 lazy")).toBeInTheDocument();
+    expect(screen.getByText("42 MB")).toBeInTheDocument();
+    expect(screen.getByText("group /tmp/mira-users/_groups/growth")).toBeInTheDocument();
   });
 
   it("shows a visible uninstall button for installed CLI apps and calls uninstall", async () => {

@@ -154,6 +154,11 @@ async def test_gateway_webui_bootstrap_message_and_thread_hydration(tmp_path: Pa
     try:
         bootstrap = _wait_for_bootstrap(base_url, process, log_path)
         assert bootstrap["model_name"] == "custom/smoke-model"
+        assert bootstrap["policy"]["role"] == "user"
+        assert bootstrap["namespace"]["workspace"]["kind"] == "mount"
+        assert bootstrap["namespace"]["session"]["kind"] == "process"
+        assert bootstrap["namespace"]["memory"]["kind"] == "group-volume"
+        assert bootstrap["namespace"]["execution"]["posture"] == "full"
 
         ws_url = f'{bootstrap["ws_url"]}?token={bootstrap["token"]}&client_id=smoke'
         async with websockets.connect(ws_url) as ws:

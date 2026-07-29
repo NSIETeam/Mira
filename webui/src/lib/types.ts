@@ -348,6 +348,28 @@ export interface BootstrapResponse {
     memory_workspace: string;
     temporary: boolean;
   };
+  namespace?: {
+    workspace: {
+      kind: string;
+      path: string;
+      isolated: boolean;
+    };
+    session: {
+      kind: string;
+      prefix: string;
+      isolated: boolean;
+    };
+    memory: {
+      kind: string;
+      path: string;
+      scope: string;
+      shared_by_group: string;
+    };
+    execution: {
+      kind: string;
+      posture: string;
+    };
+  };
   policy?: {
     role: string;
     user_id: string;

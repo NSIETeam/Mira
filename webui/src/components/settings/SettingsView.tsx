@@ -165,6 +165,7 @@ import type {
   ApiServicePayload,
   AutomationsPayload,
   AutomationUpdatePayload,
+  BootstrapResponse,
   CliAppInfo,
   CliAppsPayload,
   ImageGenerationSettingsUpdate,
@@ -412,6 +413,11 @@ interface SettingsViewProps {
   initialSection?: SettingsSectionKey;
   initialSettings?: SettingsPayload | null;
   kernelManifest?: KernelManifestPayload | null;
+  runtimeUser?: BootstrapResponse["user"] | null;
+  runtimeNamespace?: BootstrapResponse["namespace"] | null;
+  runtimePolicy?: BootstrapResponse["policy"] | null;
+  runtimeToolAvailability?: BootstrapResponse["tool_availability"] | null;
+  runtimeModules?: BootstrapResponse["modules"] | null;
   onSelectProfile?: (registryName: string) => void;
   onSelectShell?: (registryName: string) => void;
   showSidebar?: boolean;
@@ -624,6 +630,11 @@ export function SettingsView({
   initialSection = "overview",
   initialSettings = null,
   kernelManifest = null,
+  runtimeUser = null,
+  runtimeNamespace = null,
+  runtimePolicy = null,
+  runtimeToolAvailability = null,
+  runtimeModules = null,
   onSelectProfile,
   onSelectShell,
   showSidebar = true,
@@ -2251,6 +2262,11 @@ export function SettingsView({
             form={form}
             setForm={setForm}
             settings={settings}
+            user={runtimeUser}
+            namespace={runtimeNamespace}
+            policy={runtimePolicy}
+            toolAvailability={runtimeToolAvailability}
+            modules={runtimeModules}
             dirty={runtimeDirty}
             saving={saving}
             onSave={saveRuntimeSettings}
@@ -8382,10 +8398,132 @@ function CliAppLogo({ app, showBrandLogos }: { app: CliAppInfo; showBrandLogos: 
   );
 }
 
+function RuntimeAdminPanel({
+  user,
+  namespace,
+  policy,
+  toolAvailability,
+  modules,
+}: {
+  user: BootstrapResponse["user"] | null;
+  namespace: BootstrapResponse["namespace"] | null;
+  policy: BootstrapResponse["policy"] | null;
+  toolAvailability: BootstrapResponse["tool_availability"] | null;
+  modules: BootstrapResponse["modules"] | null;
+}) {
+  const { t } = useTranslation();
+  const tx = (key: string, fallback: string) => t(key, { defaultValue: fallback });
+  const deniedTools = toolAvailability?.denied ?? policy?.deny_tools ?? [];
+  const moduleRows = (modules?.modules ?? []).slice(0, 8).map((row) => ({
+    name: typeof row.name === "string" ? row.name : "module",
+    status: typeof row.status === "string" ? row.status : "unknown",
+    lazy: row.lazy === true,
+  }));
+  const runtimeRole = policy?.role ?? "user";
+  const execPosture = toolAvailability?.exec_posture ?? policy?.exec_posture ?? "unknown";
+  const memoryPath = namespace?.memory.path ?? user?.memory_workspace ?? "";
+  const workspacePath = namespace?.workspace.path ?? user?.workspace ?? "";
+
+  return (
+    <section>
+      <SettingsSectionTitle>
+        {tx("settings.runtimeAdmin.title", "Runtime admin")}
+      </SettingsSectionTitle>
+      <SettingsGroup>
+        <SettingsRow
+          title={tx("settings.runtimeAdmin.principal", "Principal")}
+          description={tx(
+            "settings.runtimeAdmin.principalHelp",
+            "Linux-style user and group identity used for sessions, workspace and shared memory.",
+          )}
+        >
+          <div className="flex flex-wrap justify-end gap-2 text-xs">
+            <StatusPill tone={runtimeRole === "guest" ? "warning" : "success"}>
+              {runtimeRole}
+            </StatusPill>
+            <StatusPill tone="neutral">
+              {user?.id ?? policy?.user_id ?? "default"}
+            </StatusPill>
+            <StatusPill tone="neutral">
+              {user?.group ?? policy?.group_id ?? "default"}
+            </StatusPill>
+          </div>
+        </SettingsRow>
+        <SettingsRow
+          title={tx("settings.runtimeAdmin.execution", "Execution posture")}
+          description={tx(
+            "settings.runtimeAdmin.executionHelp",
+            "Execution is supervised by policy before tools are exposed to the agent.",
+          )}
+        >
+          <StatusPill tone={execPosture === "full" ? "success" : "warning"}>
+            {execPosture}
+          </StatusPill>
+        </SettingsRow>
+        <ReadOnlyRow
+          title={tx("settings.runtimeAdmin.sessionNamespace", "Session namespace")}
+          value={
+            namespace?.session.isolated
+              ? `${namespace.session.kind}:${namespace.session.prefix}`
+              : tx("settings.runtimeAdmin.defaultSession", "default process namespace")
+          }
+        />
+        <ReadOnlyRow
+          title={tx("settings.runtimeAdmin.workspaceNamespace", "Workspace namespace")}
+          value={
+            workspacePath
+              ? `${namespace?.workspace.isolated ? "isolated" : "shared"} ${workspacePath}`
+              : tx("settings.values.unavailable", "Unavailable")
+          }
+        />
+        <ReadOnlyRow
+          title={tx("settings.runtimeAdmin.groupMemory", "Group memory")}
+          value={
+            memoryPath
+              ? `${namespace?.memory.scope ?? policy?.memory_scope ?? "group"} ${memoryPath}`
+              : tx("settings.values.unavailable", "Unavailable")
+          }
+        />
+        <SettingsRow
+          title={tx("settings.runtimeAdmin.tools", "Tool availability")}
+          description={
+            deniedTools.length > 0
+              ? deniedTools.slice(0, 10).join(", ")
+              : tx("settings.runtimeAdmin.noDeniedTools", "No tools are denied by the effective policy.")
+          }
+        >
+          <StatusPill tone={deniedTools.length > 0 ? "warning" : "success"}>
+            {deniedTools.length} denied
+          </StatusPill>
+        </SettingsRow>
+        {modules ? (
+          <SettingsRow
+            title={tx("settings.runtimeAdmin.modules", "Modules")}
+            description={moduleRows
+              .map((row) => `${row.name}:${row.status}${row.lazy ? ":lazy" : ""}`)
+              .join(" / ")}
+          >
+            <div className="flex flex-wrap justify-end gap-2 text-xs">
+              <StatusPill tone="success">{modules.enabled}/{modules.total} enabled</StatusPill>
+              <StatusPill tone="neutral">{modules.lazy} lazy</StatusPill>
+              <StatusPill tone="neutral">{modules.estimated_memory_cost_mb} MB</StatusPill>
+            </div>
+          </SettingsRow>
+        ) : null}
+      </SettingsGroup>
+    </section>
+  );
+}
+
 function RuntimeSettings({
   form,
   setForm,
   settings,
+  user,
+  namespace,
+  policy,
+  toolAvailability,
+  modules,
   dirty,
   saving,
   onSave,
@@ -8406,6 +8544,11 @@ function RuntimeSettings({
   form: AgentSettingsDraft;
   setForm: Dispatch<SetStateAction<AgentSettingsDraft>>;
   settings: SettingsPayload;
+  user: BootstrapResponse["user"] | null;
+  namespace: BootstrapResponse["namespace"] | null;
+  policy: BootstrapResponse["policy"] | null;
+  toolAvailability: BootstrapResponse["tool_availability"] | null;
+  modules: BootstrapResponse["modules"] | null;
   dirty: boolean;
   saving: boolean;
   onSave: () => void;
@@ -8504,6 +8647,14 @@ function RuntimeSettings({
   };
   return (
     <div className="space-y-7">
+      <RuntimeAdminPanel
+        user={user}
+        namespace={namespace}
+        policy={policy}
+        toolAvailability={toolAvailability}
+        modules={modules}
+      />
+
       <section>
         <SettingsSectionTitle>{tx("settings.sections.identity", "Identity")}</SettingsSectionTitle>
           <SettingsGroup>

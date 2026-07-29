@@ -109,6 +109,11 @@ type BootState =
       guiSurface: KernelGuiSurface;
       kernel: KernelManifestPayload | null;
       shell: ShellDescriptorPayload | null;
+      user: BootstrapResponse["user"] | null;
+      namespace: BootstrapResponse["namespace"] | null;
+      policy: BootstrapResponse["policy"] | null;
+      toolAvailability: BootstrapResponse["tool_availability"] | null;
+      modules: BootstrapResponse["modules"] | null;
       memory: BootstrapResponse["memory"] | null;
       scheduler: BootstrapResponse["scheduler"] | null;
       planning: BootstrapResponse["planning"] | null;
@@ -260,6 +265,11 @@ export default function App() {
               guiSurface,
               kernel: kernelManifest ?? current.kernel,
               shell: shellDescriptor ?? current.shell,
+              user: boot.user ?? current.user,
+              namespace: boot.namespace ?? current.namespace,
+              policy: boot.policy ?? current.policy,
+              toolAvailability: boot.tool_availability ?? current.toolAvailability,
+              modules: boot.modules ?? current.modules,
               memory: boot.memory ?? current.memory,
               scheduler: boot.scheduler ?? current.scheduler,
               planning: boot.planning ?? current.planning,
@@ -311,6 +321,11 @@ export default function App() {
             guiSurface,
             kernel: kernelManifest ?? null,
             shell: shellDescriptor,
+            user: boot.user ?? null,
+            namespace: boot.namespace ?? null,
+            policy: boot.policy ?? null,
+            toolAvailability: boot.tool_availability ?? null,
+            modules: boot.modules ?? null,
             memory: boot.memory ?? null,
             scheduler: boot.scheduler ?? null,
             planning: boot.planning ?? null,
@@ -531,6 +546,11 @@ export default function App() {
         runtimeSurface={state.guiSurface}
         kernelManifest={state.kernel}
         shellDescriptor={state.shell}
+        user={state.user}
+        namespace={state.namespace}
+        policy={state.policy}
+        toolAvailability={state.toolAvailability}
+        modules={state.modules}
         onSettingsPayloadChange={(payload) => {
           setState((current) => {
             if (current.status !== "ready" || !payload.kernel) return current;
@@ -893,6 +913,11 @@ function Shell({
   runtimeSurface,
   kernelManifest,
   shellDescriptor,
+  user,
+  namespace,
+  policy,
+  toolAvailability,
+  modules,
   onSettingsPayloadChange,
   onSelectProfile,
   onSelectShell,
@@ -904,6 +929,11 @@ function Shell({
   runtimeSurface: RuntimeSurface;
   kernelManifest: KernelManifestPayload | null;
   shellDescriptor: ShellDescriptorPayload | null;
+  user: BootstrapResponse["user"] | null;
+  namespace: BootstrapResponse["namespace"] | null;
+  policy: BootstrapResponse["policy"] | null;
+  toolAvailability: BootstrapResponse["tool_availability"] | null;
+  modules: BootstrapResponse["modules"] | null;
   onSettingsPayloadChange: (payload: SettingsPayload) => void;
   onSelectProfile: (registryName: string) => Promise<void>;
   onSelectShell: (registryName: string) => Promise<void>;
@@ -1587,6 +1617,11 @@ function Shell({
                   initialSection={settingsInitialSection}
                   initialSettings={settingsSnapshot}
                   kernelManifest={kernelManifest}
+                  runtimeUser={user}
+                  runtimeNamespace={namespace}
+                  runtimePolicy={policy}
+                  runtimeToolAvailability={toolAvailability}
+                  runtimeModules={modules}
                   onSelectProfile={onSelectProfile}
                   onSelectShell={onSelectShell}
                   showSidebar={view === "settings"}

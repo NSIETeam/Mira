@@ -434,6 +434,28 @@ class GatewayHTTPHandler:
             "memory": MemoryStore(user.memory_workspace).memory_audit(user.memory_workspace),
             "scheduler": kernel.scheduler_snapshot() if kernel is not None else None,
             "user": user.payload(),
+            "namespace": {
+                "workspace": {
+                    "kind": "mount",
+                    "path": str(user.workspace),
+                    "isolated": user.user_id != "default",
+                },
+                "session": {
+                    "kind": "process",
+                    "prefix": f"u:{user.user_id}:" if user.user_id != "default" else "",
+                    "isolated": user.user_id != "default",
+                },
+                "memory": {
+                    "kind": "group-volume",
+                    "path": str(user.memory_workspace),
+                    "scope": policy.memory_scope,
+                    "shared_by_group": user.group_id,
+                },
+                "execution": {
+                    "kind": "supervised-gate",
+                    "posture": policy.exec_posture,
+                },
+            },
             "policy": policy.to_dict(),
             "tool_availability": {
                 "denied": sorted(policy.deny_tools),
