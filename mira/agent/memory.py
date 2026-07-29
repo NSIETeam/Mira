@@ -412,6 +412,46 @@ class MemoryStore:
         path.write_text(content, encoding="utf-8")
         return path
 
+    def append_topic_graph_links(
+        self,
+        topic_name: str,
+        *,
+        entity_id: str,
+        graph: dict[str, Any],
+        category: str = "topic",
+    ) -> Path:
+        path = self.ensure_topic_file(topic_name, summary=topic_name, category=category)
+        relations = graph.get("relations", []) if isinstance(graph.get("relations"), list) else []
+        related_lines: list[str] = []
+        for relation in relations:
+            if not isinstance(relation, dict):
+                continue
+            source = str(relation.get("source") or "").strip()
+            target = str(relation.get("target") or "").strip()
+            rel_type = str(relation.get("type") or "").strip()
+            if not rel_type:
+                continue
+            if source == entity_id and target:
+                related_lines.append(f"- {rel_type}: {target}")
+            elif target == entity_id and source:
+                related_lines.append(f"- {rel_type}: {source}")
+        if not related_lines:
+            return path
+        content = self.read_file(path)
+        header = "## Graph Links"
+        existing = set()
+        for line in content.splitlines():
+            if line.startswith("- ") and ":" in line:
+                existing.add(line.strip())
+        additions = [line for line in related_lines if line not in existing]
+        if not additions:
+            return path
+        if header not in content:
+            content = content.rstrip() + f"\n\n{header}\n"
+        content = content.rstrip() + "\n" + "\n".join(additions) + "\n"
+        path.write_text(content, encoding="utf-8")
+        return path
+
     def referenced_topic_files(self) -> list[Path]:
         index = self.read_memory()
         names = {
@@ -726,6 +766,12 @@ class MemoryStore:
                     relation_type="tracks_issue",
                     target=issue_entity_id,
                 )
+            self.append_topic_graph_links(
+                f"issue-{issue_id}",
+                entity_id=issue_entity_id,
+                graph=graph,
+                category="issue",
+            )
 
         for decision_text in self._extract_decisions(text):
             decision_entity_id = self._upsert_graph_entity(
@@ -746,6 +792,12 @@ class MemoryStore:
                     relation_type="records_decision",
                     target=decision_entity_id,
                 )
+            self.append_topic_graph_links(
+                decision_text,
+                entity_id=decision_entity_id,
+                graph=graph,
+                category="decision",
+            )
 
         for topic_path in self.referenced_topic_files():
             topic_name = topic_path.stem
@@ -767,6 +819,12 @@ class MemoryStore:
                 topic_name,
                 summary=topic_name,
                 evidence=summary,
+                category="topic",
+            )
+            self.append_topic_graph_links(
+                topic_name,
+                entity_id=topic_entity_id,
+                graph=graph,
                 category="topic",
             )
         self.write_graph(graph)
