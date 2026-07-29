@@ -378,10 +378,12 @@ export interface BootstrapResponse {
       top_sessions?: Array<{
         session_key: string;
         count: number;
+        share?: number;
       }>;
       error_labels?: string[];
       multi_session_contention?: boolean;
       dominant_session?: string | null;
+      dominant_session_share?: number;
     };
   };
   planning?: {

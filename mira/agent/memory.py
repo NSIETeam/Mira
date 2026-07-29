@@ -899,11 +899,16 @@ class MemoryStore:
             for label, count in sorted(label_counts.items(), key=lambda item: (-item[1], item[0]))[:3]
         ]
         top_sessions = [
-            {"session_key": session_key, "count": count}
+            {
+                "session_key": session_key,
+                "count": count,
+                "share": round((count / max(1, len(subagent_files))) * 100, 1),
+            }
             for session_key, count in sorted(session_counts.items(), key=lambda item: (-item[1], item[0]))[:3]
         ]
         multi_session_contention = len(session_counts) >= 2
         dominant_session = top_sessions[0]["session_key"] if top_sessions else None
+        dominant_session_share = top_sessions[0]["share"] if top_sessions else 0.0
         return {
             "layers": [
                 {
@@ -947,6 +952,7 @@ class MemoryStore:
                 "error_labels": error_labels[:3],
                 "multi_session_contention": multi_session_contention,
                 "dominant_session": dominant_session,
+                "dominant_session_share": dominant_session_share,
             },
         }
 

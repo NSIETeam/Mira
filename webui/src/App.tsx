@@ -653,6 +653,7 @@ function RuntimeSnapshotPanel({
   const subagentErrorLabels = memory?.subagent_memory?.error_labels ?? [];
   const multiSessionContention = memory?.subagent_memory?.multi_session_contention ?? false;
   const dominantSession = memory?.subagent_memory?.dominant_session ?? null;
+  const dominantSessionShare = memory?.subagent_memory?.dominant_session_share ?? 0;
   const loadedLayers = memory?.layers?.filter((layer) => layer.loaded).length ?? 0;
   const loadedLayerLabels = memory?.layers
     ?.filter((layer) => layer.loaded)
@@ -791,10 +792,11 @@ function RuntimeSnapshotPanel({
                   <span key={`label-${entry.label}`}>{entry.label} {entry.count}</span>
                 ))}
                 {subagentTopSessions.map((entry) => (
-                  <span key={`session-${entry.session_key}`}>session {entry.count}</span>
+                  <span key={`session-${entry.session_key}`}>{entry.session_key} {entry.count} {entry.share ?? 0}%</span>
                 ))}
                 {multiSessionContention ? <span>contention multi-session</span> : null}
                 {dominantSession ? <span>dominant {dominantSession}</span> : null}
+                {dominantSession ? <span>share {dominantSessionShare}%</span> : null}
                 {subagentErrorLabels.map((label) => (
                   <span key={`error-${label}`}>error:{label}</span>
                 ))}
