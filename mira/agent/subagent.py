@@ -102,8 +102,10 @@ class SubagentManager:
 
     _DEFAULT_SUBAGENT_MEMORY_MB = 10
     _DEFAULT_QUEUE_FACTOR = 4
-    _NEAR_QUEUE_WEIGHT_THRESHOLD = 3
-    _FAR_QUEUE_AGE_PROMOTION_S = 15.0
+    _HOT_QUEUE_WEIGHT_THRESHOLD = 4
+    _WARM_QUEUE_WEIGHT_THRESHOLD = 2
+    _COLD_TO_WARM_PROMOTION_S = 15.0
+    _WARM_TO_HOT_PROMOTION_S = 30.0
 
     @staticmethod
     def _host_memory_mb() -> int | None:
@@ -215,8 +217,9 @@ class SubagentManager:
         self._running_tasks: dict[str, asyncio.Task[str]] = {}
         self._task_statuses: dict[str, SubagentStatus] = {}
         self._session_tasks: dict[str, set[str]] = {}  # session_key -> {task_id, ...}
-        self._pending_near: list[PendingSubagent] = []
-        self._pending_far: list[PendingSubagent] = []
+        self._pending_hot: list[PendingSubagent] = []
+        self._pending_warm: list[PendingSubagent] = []
+        self._pending_cold: list[PendingSubagent] = []
         self._dispatch_lock = asyncio.Lock()
 
     def set_provider(self, provider: LLMProvider, model: str) -> None:
@@ -401,7 +404,7 @@ class SubagentManager:
     async def _dispatch_pending(self) -> None:
         async with self._dispatch_lock:
             while self._pending_count() and len(self._running_tasks) < self.max_concurrent_subagents:
-                self._promote_far_pending_locked()
+                self._promote_pending_locked()
                 pending = self._pop_next_pending_locked()
                 if pending is None:
                     break
@@ -423,32 +426,46 @@ class SubagentManager:
         return best_index
 
     def _pending_count(self) -> int:
-        return len(self._pending_near) + len(self._pending_far)
+        return len(self._pending_hot) + len(self._pending_warm) + len(self._pending_cold)
 
     def _push_pending(self, pending: PendingSubagent) -> None:
-        if pending.weight >= self._NEAR_QUEUE_WEIGHT_THRESHOLD:
-            self._pending_near.append(pending)
+        if pending.weight >= self._HOT_QUEUE_WEIGHT_THRESHOLD:
+            self._pending_hot.append(pending)
+        elif pending.weight >= self._WARM_QUEUE_WEIGHT_THRESHOLD:
+            self._pending_warm.append(pending)
         else:
-            self._pending_far.append(pending)
+            self._pending_cold.append(pending)
 
-    def _promote_far_pending_locked(self) -> None:
+    def _promote_pending_locked(self) -> None:
         now = time.monotonic()
-        keep_far: list[PendingSubagent] = []
-        for pending in self._pending_far:
+        keep_cold: list[PendingSubagent] = []
+        for pending in self._pending_cold:
             age = max(now - pending.queued_at, 0.0)
-            if age >= self._FAR_QUEUE_AGE_PROMOTION_S:
-                self._pending_near.append(pending)
+            if age >= self._COLD_TO_WARM_PROMOTION_S:
+                self._pending_warm.append(pending)
             else:
-                keep_far.append(pending)
-        self._pending_far = keep_far
+                keep_cold.append(pending)
+        self._pending_cold = keep_cold
+
+        keep_warm: list[PendingSubagent] = []
+        for pending in self._pending_warm:
+            age = max(now - pending.queued_at, 0.0)
+            if age >= self._WARM_TO_HOT_PROMOTION_S:
+                self._pending_hot.append(pending)
+            else:
+                keep_warm.append(pending)
+        self._pending_warm = keep_warm
 
     def _pop_next_pending_locked(self) -> PendingSubagent | None:
-        if self._pending_near:
-            index = self._pick_next_pending_index(self._pending_near)
-            return self._pending_near.pop(index)
-        if self._pending_far:
-            index = self._pick_next_pending_index(self._pending_far)
-            return self._pending_far.pop(index)
+        if self._pending_hot:
+            index = self._pick_next_pending_index(self._pending_hot)
+            return self._pending_hot.pop(index)
+        if self._pending_warm:
+            index = self._pick_next_pending_index(self._pending_warm)
+            return self._pending_warm.pop(index)
+        if self._pending_cold:
+            index = self._pick_next_pending_index(self._pending_cold)
+            return self._pending_cold.pop(index)
         return None
 
     async def run_inline(
@@ -718,16 +735,20 @@ class SubagentManager:
         """Cancel all subagents for the given session. Returns count cancelled."""
         queued_ids = {
             pending.task_id
-            for pending in [*self._pending_near, *self._pending_far]
+            for pending in [*self._pending_hot, *self._pending_warm, *self._pending_cold]
             if pending.origin.get("session_key") == session_key
         }
         if queued_ids:
-            self._pending_near = [
-                pending for pending in self._pending_near
+            self._pending_hot = [
+                pending for pending in self._pending_hot
                 if pending.task_id not in queued_ids
             ]
-            self._pending_far = [
-                pending for pending in self._pending_far
+            self._pending_warm = [
+                pending for pending in self._pending_warm
+                if pending.task_id not in queued_ids
+            ]
+            self._pending_cold = [
+                pending for pending in self._pending_cold
                 if pending.task_id not in queued_ids
             ]
             for task_id in queued_ids:
@@ -743,8 +764,9 @@ class SubagentManager:
 
     async def close(self) -> None:
         """Cancel running subagents and close their shared exec sessions."""
-        self._pending_near.clear()
-        self._pending_far.clear()
+        self._pending_hot.clear()
+        self._pending_warm.clear()
+        self._pending_cold.clear()
         tasks = [task for task in self._running_tasks.values() if not task.done()]
         for task in tasks:
             task.cancel()
@@ -798,8 +820,9 @@ class SubagentManager:
             "running": len(self._running_tasks),
             "running_limit": self.max_concurrent_subagents,
             "queued": self._pending_count(),
-            "queued_near": len(self._pending_near),
-            "queued_far": len(self._pending_far),
+            "queued_hot": len(self._pending_hot),
+            "queued_warm": len(self._pending_warm),
+            "queued_cold": len(self._pending_cold),
             "queue_limit": self.max_pending_subagents,
             "estimated_subagent_memory_mb": self.subagent_memory_mb,
             "host_memory_mb": self._host_memory_mb(),
