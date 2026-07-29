@@ -270,8 +270,18 @@ class MemoryStore:
         slug = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip().lower()).strip("-.")
         return slug or "untitled"
 
+    def _existing_topic_slug(self, topic_name: str) -> str | None:
+        wanted = self._topic_slug(topic_name)
+        wanted_norm = wanted.replace("-", "").replace("_", "")
+        for path in self.list_topic_files():
+            candidate = path.stem
+            candidate_norm = candidate.replace("-", "").replace("_", "")
+            if candidate == wanted or candidate_norm == wanted_norm:
+                return candidate
+        return None
+
     def ensure_topic_index_entry(self, topic_name: str, summary: str | None = None) -> Path:
-        slug = self._topic_slug(topic_name)
+        slug = self._existing_topic_slug(topic_name) or self._topic_slug(topic_name)
         filename = f"{slug}.md"
         link = f"[{slug}](memory/topics/{filename})"
         summary_text = truncate_text((summary or topic_name).strip(), 120)
@@ -346,6 +356,32 @@ class MemoryStore:
                 f"- {truncate_text(evidence.strip().replace(chr(10), ' '), 240)}",
             ])
         path.write_text("\n".join(body).rstrip() + "\n", encoding="utf-8")
+        return path
+
+    def append_topic_evidence(
+        self,
+        topic_name: str,
+        *,
+        summary: str | None = None,
+        evidence: str | None = None,
+        category: str = "topic",
+    ) -> Path:
+        path = self.ensure_topic_file(
+            topic_name,
+            summary=summary,
+            evidence=evidence,
+            category=category,
+        )
+        if not evidence:
+            return path
+        content = self.read_file(path)
+        evidence_line = f"- {truncate_text(evidence.strip().replace(chr(10), ' '), 240)}"
+        if evidence_line in content:
+            return path
+        if "## Evidence" not in content:
+            content = content.rstrip() + "\n\n## Evidence\n"
+        content = content.rstrip() + "\n" + evidence_line + "\n"
+        path.write_text(content, encoding="utf-8")
         return path
 
     def referenced_topic_files(self) -> list[Path]:
@@ -649,7 +685,7 @@ class MemoryStore:
                 name=f"issue-{issue_id}",
                 metadata={"number": issue_id},
             )
-            self.ensure_topic_file(
+            self.append_topic_evidence(
                 f"issue-{issue_id}",
                 summary=f"Tracked issue #{issue_id}",
                 evidence=summary,
@@ -669,7 +705,7 @@ class MemoryStore:
                 entity_type="decision",
                 name=decision_text,
             )
-            self.ensure_topic_file(
+            self.append_topic_evidence(
                 decision_text,
                 summary=decision_text,
                 evidence=summary,
@@ -699,6 +735,12 @@ class MemoryStore:
                     relation_type="touches_topic",
                     target=topic_entity_id,
                 )
+            self.append_topic_evidence(
+                topic_name,
+                summary=topic_name,
+                evidence=summary,
+                category="topic",
+            )
         self.write_graph(graph)
 
     def graph_memory_context(self, *, max_items: int = 12) -> str:
