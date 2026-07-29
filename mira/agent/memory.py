@@ -265,6 +265,40 @@ class MemoryStore:
     def write_memory(self, content: str) -> None:
         self.memory_file.write_text(content, encoding="utf-8")
 
+    @staticmethod
+    def _topic_slug(value: str) -> str:
+        slug = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip().lower()).strip("-.")
+        return slug or "untitled"
+
+    def ensure_topic_index_entry(self, topic_name: str, summary: str | None = None) -> Path:
+        slug = self._topic_slug(topic_name)
+        filename = f"{slug}.md"
+        link = f"[{slug}](memory/topics/{filename})"
+        summary_text = truncate_text((summary or topic_name).strip(), 120)
+        content = self.read_memory().strip()
+        section_header = "## Topic Index"
+        entry_line = f"- {link}: {summary_text}"
+        if not content:
+            self.write_memory(f"{section_header}\n{entry_line}\n")
+            return self.topic_dir / filename
+        if f"(memory/topics/{filename})" in content:
+            return self.topic_dir / filename
+        lines = content.splitlines()
+        insert_at = len(lines)
+        section_index = next((i for i, line in enumerate(lines) if line.strip() == section_header), None)
+        if section_index is None:
+            if lines and lines[-1].strip():
+                lines.append("")
+            lines.append(section_header)
+            lines.append(entry_line)
+        else:
+            insert_at = section_index + 1
+            while insert_at < len(lines) and lines[insert_at].startswith("- "):
+                insert_at += 1
+            lines.insert(insert_at, entry_line)
+        self.write_memory("\n".join(lines).rstrip() + "\n")
+        return self.topic_dir / filename
+
     def list_topic_files(self) -> list[Path]:
         return sorted(self.topic_dir.glob("*.md"))
 
@@ -284,6 +318,34 @@ class MemoryStore:
             safe_slug = f"{safe_slug}.md"
         path = self.topic_dir / safe_slug
         path.write_text(content, encoding="utf-8")
+        return path
+
+    def ensure_topic_file(
+        self,
+        topic_name: str,
+        *,
+        summary: str | None = None,
+        evidence: str | None = None,
+        category: str = "topic",
+    ) -> Path:
+        path = self.ensure_topic_index_entry(topic_name, summary=summary)
+        if path.exists() and path.read_text(encoding="utf-8").strip():
+            return path
+        title = topic_name.strip() or path.stem
+        body = [
+            f"# {title}",
+            "",
+            f"- category: {category}",
+        ]
+        if summary:
+            body.append(f"- summary: {truncate_text(summary.strip(), 180)}")
+        if evidence:
+            body.extend([
+                "",
+                "## Evidence",
+                f"- {truncate_text(evidence.strip().replace(chr(10), ' '), 240)}",
+            ])
+        path.write_text("\n".join(body).rstrip() + "\n", encoding="utf-8")
         return path
 
     def referenced_topic_files(self) -> list[Path]:
@@ -587,6 +649,12 @@ class MemoryStore:
                 name=f"issue-{issue_id}",
                 metadata={"number": issue_id},
             )
+            self.ensure_topic_file(
+                f"issue-{issue_id}",
+                summary=f"Tracked issue #{issue_id}",
+                evidence=summary,
+                category="issue",
+            )
             if session_entity_id:
                 self._upsert_graph_relation(
                     graph,
@@ -600,6 +668,12 @@ class MemoryStore:
                 graph,
                 entity_type="decision",
                 name=decision_text,
+            )
+            self.ensure_topic_file(
+                decision_text,
+                summary=decision_text,
+                evidence=summary,
+                category="decision",
             )
             if session_entity_id:
                 self._upsert_graph_relation(
