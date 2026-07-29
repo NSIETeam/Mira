@@ -792,7 +792,9 @@ function RuntimeSnapshotPanel({
                   <span key={`label-${entry.label}`}>{entry.label} {entry.count}</span>
                 ))}
                 {subagentTopSessions.map((entry) => (
-                  <span key={`session-${entry.session_key}`}>{entry.session_key} {entry.count} {entry.share ?? 0}%</span>
+                  <span key={`session-${entry.session_key}`}>
+                    session:{entry.session_key} {entry.count} {entry.share ?? 0}%
+                  </span>
                 ))}
                 {multiSessionContention ? <span>contention multi-session</span> : null}
                 {dominantSession ? <span>dominant {dominantSession}</span> : null}
