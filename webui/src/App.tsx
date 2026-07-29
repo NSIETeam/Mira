@@ -85,6 +85,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   executeKernelOperatorCommand,
+  fetchKernelScheduler,
   fetchKernelState,
   fetchSettings,
   updateSettings,
@@ -114,6 +115,7 @@ type BootState =
 
 const TOKEN_REFRESH_MARGIN_MS = 30_000;
 const TOKEN_REFRESH_MIN_DELAY_MS = 5_000;
+const RUNTIME_SNAPSHOT_REFRESH_MS = 10_000;
 const loadSettingsView = () => import("@/components/settings/SettingsView");
 const SettingsView = lazy(async () => {
   const module = await loadSettingsView();
@@ -338,6 +340,32 @@ export default function App() {
     }, tokenRefreshDelayMs(state.tokenExpiresAt));
     return () => window.clearTimeout(timer);
   }, [refreshReadyClient, state]);
+
+  useEffect(() => {
+    if (state.status !== "ready") return;
+    let cancelled = false;
+    const refreshScheduler = async () => {
+      try {
+        const payload = await fetchKernelScheduler(state.token);
+        if (cancelled) return;
+        setState((current) =>
+          current.status === "ready"
+            ? { ...current, scheduler: payload.scheduler ?? current.scheduler }
+            : current,
+        );
+      } catch {
+        // keep last known scheduler snapshot
+      }
+    };
+    void refreshScheduler();
+    const timer = window.setInterval(() => {
+      void refreshScheduler();
+    }, RUNTIME_SNAPSHOT_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [state.status === "ready" ? state.token : null]);
 
   useEffect(() => {
     const saved = consumeUrlBootstrapSecret() || loadSavedSecret();
