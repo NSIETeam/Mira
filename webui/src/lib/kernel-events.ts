@@ -65,7 +65,25 @@ function goalRuntimeText(status: string): string {
 }
 
 function goalStateText(goal: GoalStateWsPayload): string {
-  return goalSummary(goal) || (goal.active ? "active sustained goal" : "goal state cleared");
+  if (goal.active) {
+    const summary = goalSummary(goal);
+    const acceptance = typeof goal.acceptance === "string" ? goal.acceptance.trim() : "";
+    if (summary && acceptance) return `${summary} · acceptance ${acceptance}`;
+    return summary || "active sustained goal";
+  }
+  const status = typeof goal.status === "string" ? goal.status.trim() : "";
+  const outcome = typeof goal.outcome === "string" ? goal.outcome.trim() : "";
+  const verification = typeof goal.verification_status === "string" ? goal.verification_status.trim() : "";
+  const evidence = typeof goal.evidence === "string" ? goal.evidence.trim() : "";
+  const recap = typeof goal.recap === "string" ? goal.recap.trim() : "";
+  const parts = [
+    status || "goal state cleared",
+    outcome,
+    verification,
+    evidence ? `evidence ${evidence}` : "",
+    recap ? `recap ${recap}` : "",
+  ].filter(Boolean);
+  return parts.join(" · ") || "goal state cleared";
 }
 
 function modelUpdateText(prefix: string, modelName: string): string {

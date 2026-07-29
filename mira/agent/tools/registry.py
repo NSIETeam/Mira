@@ -201,10 +201,30 @@ class ToolRegistry:
             assert tool is not None  # guarded by prepare_call()
             result = await tool.execute(**params)
             if is_tool_error_result(name, result):
-                return ToolResult.error(str(result) + hint)
+                return ToolResult.error(self._format_tool_failure(tool, str(result)) + hint)
             return result
         except Exception as e:
-            return ToolResult.error(f"Error executing {name}: {str(e)}" + hint)
+            return ToolResult.error(
+                self._format_tool_failure(tool, f"Error executing {name}: {str(e)}") + hint
+            )
+
+    @staticmethod
+    def _format_tool_failure(tool: Tool, message: str) -> str:
+        reliability = getattr(tool, "reliability_tier", "variable")
+        fallback_policy = getattr(tool, "fallback_policy", "retry_or_fail")
+        failure_mode = getattr(tool, "failure_mode", "recoverable")
+        policy_text = (
+            f"Tool runtime: reliability={reliability}, fallback={fallback_policy}, failure={failure_mode}."
+        )
+        if fallback_policy == "retry_or_fail":
+            action_text = "Retry with narrower inputs or switch tools if the same failure repeats."
+        elif fallback_policy == "degrade_or_fail":
+            action_text = "A degraded path may be acceptable; explain the downgrade before continuing."
+        elif fallback_policy == "fail_closed":
+            action_text = "Do not silently bypass this failure; stop or ask for a safer path."
+        else:
+            action_text = "Choose the next step explicitly instead of assuming silent recovery."
+        return f"{message}\n\n{policy_text} {action_text}"
 
     @property
     def tool_names(self) -> list[str]:
