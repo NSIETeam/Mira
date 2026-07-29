@@ -43,4 +43,6 @@ def test_doctor_lightweight_profile_reports_python_launcher(tmp_path):
         dry_run=True,
     )
 
-    assert "lightweight.launcher.python" in {finding.id for finding in findings}
+    ids = {finding.id for finding in findings}
+    assert "lightweight.launcher.python" in ids
+    assert "release.signing.missing" in ids

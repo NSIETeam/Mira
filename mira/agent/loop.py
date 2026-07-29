@@ -292,6 +292,7 @@ class AgentLoop:
         disabled_skills: list[str] | None = None,
         tools_config: ToolsConfig | None = None,
         modules_config: Any | None = None,
+        security_config: Any | None = None,
         image_generation_provider_config: ProviderConfig | None = None,
         image_generation_provider_configs: dict[str, ProviderConfig] | None = None,
         provider_snapshot_loader: Callable[..., ProviderSnapshot] | None = None,
@@ -369,6 +370,7 @@ class AgentLoop:
         )
         self.tools_config = _tc
         self.modules_config = modules_config
+        self.security_config = security_config
         self.web_config = _tc.web
         self.exec_config = _tc.exec
         self._image_generation_provider_configs = dict(image_generation_provider_configs or {})
@@ -522,7 +524,11 @@ class AgentLoop:
         user = metadata.get(WEBUI_USER_METADATA_KEY)
         if not isinstance(user, str) or user in ("", "default"):
             return self.tools
-        policy = effective_principal_policy(user_id=user, group_id=metadata.get(WEBUI_GROUP_METADATA_KEY))
+        policy = effective_principal_policy(
+            self.security_config,
+            user_id=user,
+            group_id=metadata.get(WEBUI_GROUP_METADATA_KEY),
+        )
         return self.tools.filtered_copy(exclude=set(policy.deny_tools))
 
     def _module_enabled(self, name: str, *, default: bool = True) -> bool:
@@ -580,6 +586,7 @@ class AgentLoop:
             consolidation_ratio=defaults.consolidation_ratio,
             tools_config=config.tools,
             modules_config=config.modules,
+            security_config=config.security,
             model_presets=preset_helpers.configured_model_presets(config),
             model_preset=defaults.model_preset,
             restart_mode=config.gateway.restart_mode,

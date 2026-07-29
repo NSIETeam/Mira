@@ -48,6 +48,8 @@ def _status(name: str, profile: KernelProfile, configured: object | None = None)
     module_cfg = registry.get(name) if isinstance(registry, dict) else None
     if module_cfg is not None:
         enabled = bool(getattr(module_cfg, "enabled", enabled))
+    elif configured is not None and callable(getattr(configured, "is_enabled", None)):
+        enabled = bool(configured.is_enabled(name, default=enabled))
     return "enabled" if enabled else "disabled"
 
 

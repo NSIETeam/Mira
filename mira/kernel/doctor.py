@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import socket
 import sys
 from dataclasses import asdict, dataclass
@@ -146,6 +147,28 @@ class KernelDoctor:
                 repairable=False,
                 detail="set runtime.launcher to rust-launcher when the native launcher is packaged",
             ))
+        self._check_release_signing(findings)
+
+    def _check_release_signing(self, findings: list[DoctorFinding]) -> None:
+        macos_ready = bool(
+            os.environ.get("MIRA_MACOS_CODESIGN_IDENTITY")
+            and os.environ.get("MIRA_APPLE_TEAM_ID")
+        )
+        windows_ready = bool(os.environ.get("MIRA_WINDOWS_CODESIGN_CERT"))
+        missing = []
+        if not macos_ready:
+            missing.append("macOS identity/team")
+        if not windows_ready:
+            missing.append("Windows certificate")
+        if not missing:
+            return
+        findings.append(DoctorFinding(
+            "release.signing.missing",
+            "warning",
+            "release signing credentials are not configured",
+            repairable=False,
+            detail=", ".join(missing),
+        ))
 
     def _check_web_assets(self, findings: list[DoctorFinding]) -> None:
         index = Path(__file__).resolve().parents[1] / "web" / "dist" / "index.html"

@@ -388,10 +388,33 @@ class ModulesConfig(Base):
 
     profile: Literal["standard", "lightweight", "server"] = "standard"
     registry: dict[str, ModuleConfig] = Field(default_factory=dict)
+    _LIGHTWEIGHT_DISABLED_DEFAULTS: ClassVar[frozenset[str]] = frozenset({
+        "mcp",
+        "subagents",
+        "image_generation",
+        "transcription",
+        "discord",
+        "slack",
+        "telegram",
+        "feishu",
+        "matrix",
+        "whatsapp",
+        "wechat",
+        "wecom",
+        "dingtalk",
+        "email",
+        "mattermost",
+        "qq",
+        "msteams",
+    })
 
     def is_enabled(self, name: str, *, default: bool = True) -> bool:
         module = self.registry.get(name)
-        return default if module is None else module.enabled
+        if module is not None:
+            return module.enabled
+        if self.profile == "lightweight" and name in self._LIGHTWEIGHT_DISABLED_DEFAULTS:
+            return False
+        return default
 
 
 class RuntimeConfig(Base):
