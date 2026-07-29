@@ -61,6 +61,9 @@ The current Mira track is Linux-style maturity without a full rewrite:
 
 Active follow-up work is tracked in [GitHub Issues](https://github.com/NSIETeam/Mira/issues), including release signing, Admin v2, and optional Rust boundary tools.
 
+The current Claude Code maturity gap closure is tracked in
+[docs/cc-gap-closure.md](./docs/cc-gap-closure.md).
+
 ### Operational Commands
 
 ```bash
