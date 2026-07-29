@@ -717,6 +717,19 @@ class SubagentManager:
             memory_policy=resolved_memory_policy,
             inherited_memory_layers=inherited_memory_layers,
         )
+        running_for_session = self.get_running_count_by_session(session_key) if session_key else 0
+        if len(self._running_tasks) >= self.max_concurrent_subagents:
+            self._task_statuses.pop(task_id, None)
+            return ToolResult.error(
+                "Cannot run inline subagent: shared running limit reached "
+                f"({len(self._running_tasks)}/{self.max_concurrent_subagents})."
+            )
+        if session_key and running_for_session >= self.max_running_subagents_per_session:
+            self._task_statuses.pop(task_id, None)
+            return ToolResult.error(
+                "Cannot run inline subagent: session running limit reached "
+                f"({running_for_session}/{self.max_running_subagents_per_session})."
+            )
         self._task_statuses[task_id] = status
         logger.info("Running inline subagent [{}]: {}", task_id, display_label)
         inline_task = asyncio.create_task(
