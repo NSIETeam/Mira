@@ -55,6 +55,22 @@ class SubagentStatus:
     error: str | None = None
 
 
+@dataclass(slots=True)
+class PendingSubagent:
+    """Queued subagent request awaiting an execution slot."""
+
+    task_id: str
+    task: str
+    label: str
+    origin: dict[str, str]
+    runtime: LLMRuntime
+    origin_message_id: str | None = None
+    workspace_scope: WorkspaceScope | None = None
+    temperature: float | None = None
+    queued_at: float = field(default_factory=time.monotonic)
+    weight: int = 1
+
+
 class _SubagentHook(AgentHook):
     """Hook for subagent execution — logs tool calls and updates status."""
 
@@ -167,6 +183,8 @@ class SubagentManager:
         self._running_tasks: dict[str, asyncio.Task[str]] = {}
         self._task_statuses: dict[str, SubagentStatus] = {}
         self._session_tasks: dict[str, set[str]] = {}  # session_key -> {task_id, ...}
+        self._pending: list[PendingSubagent] = []
+        self._dispatch_lock = asyncio.Lock()
 
     def set_provider(self, provider: LLMProvider, model: str) -> None:
         """Update the deprecated runtime source used by legacy ``spawn`` calls."""
@@ -244,6 +262,7 @@ class SubagentManager:
         origin_message_id: str | None = None,
         temperature: float | None = None,
         workspace_scope: WorkspaceScope | None = None,
+        weight: int = 1,
         *,
         runtime: LLMRuntime | None = None,
     ) -> str:
@@ -263,35 +282,97 @@ class SubagentManager:
             started_at=time.monotonic(),
         )
         self._task_statuses[task_id] = status
+        pending = PendingSubagent(
+            task_id=task_id,
+            task=task,
+            label=display_label,
+            origin=origin,
+            runtime=runtime,
+            origin_message_id=origin_message_id,
+            workspace_scope=workspace_scope,
+            temperature=temperature,
+            weight=max(1, weight),
+        )
+        if not await self._enqueue_or_start(pending, status):
+            queued = len(self._pending)
+            logger.info("Queued subagent [{}]: {}", task_id, display_label)
+            return (
+                f"Subagent [{display_label}] queued (id: {task_id}). "
+                f"It will start automatically when a shared execution slot is free. "
+                f"Queue depth: {queued}."
+            )
 
+        logger.info("Spawned subagent [{}]: {}", task_id, display_label)
+        return f"Subagent [{display_label}] started (id: {task_id}). I'll notify you when it completes."
+
+    async def _enqueue_or_start(
+        self,
+        pending: PendingSubagent,
+        status: SubagentStatus,
+    ) -> bool:
+        async with self._dispatch_lock:
+            if len(self._running_tasks) >= self.max_concurrent_subagents:
+                status.phase = "queued"
+                self._pending.append(pending)
+                return False
+            self._start_pending_locked(pending, status)
+            return True
+
+    def _start_pending_locked(
+        self,
+        pending: PendingSubagent,
+        status: SubagentStatus,
+    ) -> None:
+        session_key = pending.origin.get("session_key")
         bg_task = asyncio.create_task(
             self._run_subagent(
-                task_id,
-                task,
-                display_label,
-                origin,
+                pending.task_id,
+                pending.task,
+                pending.label,
+                pending.origin,
                 status,
-                runtime,
-                origin_message_id,
-                workspace_scope,
+                pending.runtime,
+                pending.origin_message_id,
+                pending.workspace_scope,
             )
         )
-        self._running_tasks[task_id] = bg_task
+        self._running_tasks[pending.task_id] = bg_task
+        status.phase = "initializing"
         if session_key:
-            self._session_tasks.setdefault(session_key, set()).add(task_id)
+            self._session_tasks.setdefault(session_key, set()).add(pending.task_id)
 
+        task_id = pending.task_id
         def _cleanup(_: asyncio.Task) -> None:
             self._running_tasks.pop(task_id, None)
-            self._task_statuses.pop(task_id, None)
             if session_key and (ids := self._session_tasks.get(session_key)):
                 ids.discard(task_id)
                 if not ids:
                     del self._session_tasks[session_key]
-
+            self._task_statuses.pop(task_id, None)
+            asyncio.create_task(self._dispatch_pending())
         bg_task.add_done_callback(_cleanup)
 
-        logger.info("Spawned subagent [{}]: {}", task_id, display_label)
-        return f"Subagent [{display_label}] started (id: {task_id}). I'll notify you when it completes."
+    async def _dispatch_pending(self) -> None:
+        async with self._dispatch_lock:
+            while self._pending and len(self._running_tasks) < self.max_concurrent_subagents:
+                index = self._pick_next_pending_index()
+                pending = self._pending.pop(index)
+                status = self._task_statuses.get(pending.task_id)
+                if status is None:
+                    continue
+                self._start_pending_locked(pending, status)
+
+    def _pick_next_pending_index(self) -> int:
+        best_index = 0
+        best_score = float("-inf")
+        now = time.monotonic()
+        for index, pending in enumerate(self._pending):
+            age = max(now - pending.queued_at, 0.0)
+            score = age * max(1, pending.weight)
+            if score > best_score:
+                best_score = score
+                best_index = index
+        return best_index
 
     async def run_inline(
         self,
@@ -558,6 +639,18 @@ class SubagentManager:
 
     async def cancel_by_session(self, session_key: str) -> int:
         """Cancel all subagents for the given session. Returns count cancelled."""
+        queued_ids = {
+            pending.task_id
+            for pending in self._pending
+            if pending.origin.get("session_key") == session_key
+        }
+        if queued_ids:
+            self._pending = [
+                pending for pending in self._pending
+                if pending.task_id not in queued_ids
+            ]
+            for task_id in queued_ids:
+                self._task_statuses.pop(task_id, None)
         tasks = [self._running_tasks[tid] for tid in self._session_tasks.get(session_key, [])
                  if tid in self._running_tasks and not self._running_tasks[tid].done()]
         for t in tasks:
@@ -565,10 +658,11 @@ class SubagentManager:
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         await self._exec_session_manager.terminate_by_owner(session_key)
-        return len(tasks)
+        return len(tasks) + len(queued_ids)
 
     async def close(self) -> None:
         """Cancel running subagents and close their shared exec sessions."""
+        self._pending.clear()
         tasks = [task for task in self._running_tasks.values() if not task.done()]
         for task in tasks:
             task.cancel()
@@ -611,6 +705,7 @@ class SubagentManager:
                     "usage": dict(status.usage),
                     "stop_reason": status.stop_reason,
                     "error": status.error,
+                    "queued": status.phase == "queued",
                 }
             )
         return rows

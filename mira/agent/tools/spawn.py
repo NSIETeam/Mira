@@ -9,6 +9,7 @@ from mira.agent.tools.context import current_request_context
 from mira.agent.tools.schema import (
     ArraySchema,
     BooleanSchema,
+    IntegerSchema,
     NumberSchema,
     ObjectSchema,
     StringSchema,
@@ -27,6 +28,14 @@ if TYPE_CHECKING:
             ObjectSchema(
                 task=StringSchema("The task for the subagent to complete"),
                 label=StringSchema("Optional short label for the task (for display)", nullable=True),
+                weight=IntegerSchema(
+                    description=(
+                        "Optional scheduling weight for queued subagents. Higher values are "
+                        "chosen sooner when execution slots free up."
+                    ),
+                    minimum=1,
+                    maximum=8,
+                ),
                 required=["task"],
             ),
             description=(
@@ -38,6 +47,14 @@ if TYPE_CHECKING:
             nullable=True,
         ),
         label=StringSchema("Optional short label for the task (for display)"),
+        weight=IntegerSchema(
+            description=(
+                "Optional scheduling weight for queued subagents. Higher values are "
+                "chosen sooner when execution slots free up."
+            ),
+            minimum=1,
+            maximum=8,
+        ),
         temperature=NumberSchema(
             description=(
                 "Optional sampling temperature for the subagent "
@@ -90,6 +107,7 @@ class SpawnTool(Tool):
         task: str | None = None,
         tasks: list[dict[str, Any]] | None = None,
         label: str | None = None,
+        weight: int = 1,
         temperature: float | None = None,
         wait: bool = False,
         **kwargs: Any,
@@ -98,9 +116,9 @@ class SpawnTool(Tool):
         request_ctx = current_request_context()
         if request_ctx is None or request_ctx.runtime is None:
             return ToolResult.error("Error: spawn requires an active model runtime")
-        requested_tasks: list[tuple[str, str | None]] = []
+        requested_tasks: list[tuple[str, str | None, int]] = []
         if task:
-            requested_tasks.append((task, label))
+            requested_tasks.append((task, label, max(1, weight)))
         for item in tasks or ():
             if not isinstance(item, dict):
                 continue
@@ -108,29 +126,25 @@ class SpawnTool(Tool):
             if not item_task:
                 continue
             item_label = item.get("label")
-            requested_tasks.append((item_task, str(item_label) if item_label is not None else None))
+            item_weight = item.get("weight")
+            parsed_weight = int(item_weight) if isinstance(item_weight, int) and not isinstance(item_weight, bool) else 1
+            requested_tasks.append((item_task, str(item_label) if item_label is not None else None, max(1, parsed_weight)))
         if not requested_tasks:
             return ToolResult.error("Error: spawn requires `task` or at least one entry in `tasks`.")
 
         running = self._manager.get_running_count()
         limit = self._manager.max_concurrent_subagents
-        available = max(limit - running, 0)
-        if available <= 0:
-            return (
-                f"Cannot spawn subagent: concurrency limit reached "
-                f"({running}/{limit} running). Wait for a running subagent "
-                f"to complete before spawning a new one."
-            )
         origin_channel = request_ctx.channel
         origin_chat_id = request_ctx.chat_id
         session_key = request_ctx.session_key or f"{origin_channel}:{origin_chat_id}"
         method = self._manager.run_inline if wait else self._manager.spawn
         if wait or len(requested_tasks) == 1:
-            chosen_task, chosen_label = requested_tasks[0]
+            chosen_task, chosen_label, chosen_weight = requested_tasks[0]
             return await method(
                 task=chosen_task,
                 runtime=request_ctx.runtime,
                 label=chosen_label,
+                weight=chosen_weight,
                 origin_channel=origin_channel,
                 origin_chat_id=origin_chat_id,
                 session_key=session_key,
@@ -139,14 +153,13 @@ class SpawnTool(Tool):
                 workspace_scope=current_workspace_scope(),
             )
 
-        dispatched = requested_tasks[:available]
-        skipped = len(requested_tasks) - len(dispatched)
         results: list[str] = []
-        for item_task, item_label in dispatched:
+        for item_task, item_label, item_weight in requested_tasks:
             results.append(await self._manager.spawn(
                 task=item_task,
                 runtime=request_ctx.runtime,
                 label=item_label,
+                weight=item_weight,
                 origin_channel=origin_channel,
                 origin_chat_id=origin_chat_id,
                 session_key=session_key,
@@ -154,10 +167,12 @@ class SpawnTool(Tool):
                 temperature=temperature,
                 workspace_scope=current_workspace_scope(),
             ))
-        summary = [f"Spawned {len(dispatched)} subagent(s) with lightweight parallelism."]
+        queued = sum("queued" in line.lower() for line in results)
+        started = len(results) - queued
+        summary = [f"Started {started} subagent(s); queued {queued} subagent(s) with lightweight parallelism."]
         summary.extend(f"- {line}" for line in results)
-        if skipped > 0:
+        if running >= limit:
             summary.append(
-                f"- Deferred {skipped} task(s) because host/session concurrency is capped at {limit}."
+                f"- Host/session concurrency is currently saturated at {running}/{limit}; new tasks entered the shared queue."
             )
         return "\n".join(summary)
