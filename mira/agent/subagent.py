@@ -414,10 +414,18 @@ class SubagentManager:
         if not await self._enqueue_or_start(pending, status):
             if status.phase == "error":
                 error_detail = status.error or "shared queue rejected the request"
+                session_key = origin.get("session_key")
+                session_queue = self._pending_count_for_session(session_key)
+                session_fragment = (
+                    f", session queued: {session_queue}/{self.max_pending_subagents_per_session}"
+                    if session_key
+                    else ""
+                )
                 return (
                     f"Subagent [{display_label}] rejected. {error_detail}. "
                     f"Running: {len(self._running_tasks)}/{self.max_concurrent_subagents}, "
-                    f"queued: {self._pending_count()}/{self.max_pending_subagents}."
+                    f"queued: {self._pending_count()}/{self.max_pending_subagents}"
+                    f"{session_fragment}."
                 )
             queued = self._pending_count()
             logger.info("Queued subagent [{}]: {}", task_id, display_label)
