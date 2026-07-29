@@ -292,6 +292,7 @@ class MemoryStore:
             self.write_memory(f"{section_header}\n{entry_line}\n")
             return self.topic_dir / filename
         if f"(memory/topics/{filename})" in content:
+            self.write_memory(self._dedupe_topic_index(content.rstrip() + "\n"))
             return self.topic_dir / filename
         lines = content.splitlines()
         insert_at = len(lines)
@@ -306,8 +307,35 @@ class MemoryStore:
             while insert_at < len(lines) and lines[insert_at].startswith("- "):
                 insert_at += 1
             lines.insert(insert_at, entry_line)
-        self.write_memory("\n".join(lines).rstrip() + "\n")
+        self.write_memory(self._dedupe_topic_index("\n".join(lines).rstrip() + "\n"))
         return self.topic_dir / filename
+
+    def _dedupe_topic_index(self, content: str) -> str:
+        lines = content.splitlines()
+        section_header = "## Topic Index"
+        section_index = next((i for i, line in enumerate(lines) if line.strip() == section_header), None)
+        if section_index is None:
+            return content
+        prefix = lines[: section_index + 1]
+        suffix_start = section_index + 1
+        topic_lines: list[str] = []
+        while suffix_start < len(lines) and lines[suffix_start].startswith("- "):
+            topic_lines.append(lines[suffix_start])
+            suffix_start += 1
+        suffix = lines[suffix_start:]
+
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for line in topic_lines:
+            match = self._TOPIC_LINK_RE.search(line)
+            key = match.group(1) if match else line.strip()
+            normalized = key.replace("-", "").replace("_", "").lower()
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            deduped.append(line)
+        merged = prefix + deduped + suffix
+        return "\n".join(merged).rstrip() + "\n"
 
     def list_topic_files(self) -> list[Path]:
         return sorted(self.topic_dir.glob("*.md"))
