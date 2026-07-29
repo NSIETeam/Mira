@@ -255,20 +255,20 @@ export const ExecutionList = memo(function ExecutionList({
                       ? relativeTime(s.updatedAt ?? s.createdAt)
                       : "";
                     const projectMode = group.kind === "project";
-                    const activityState = running.has(s.chatId)
+                    const executionState = running.has(s.chatId)
                       ? "running"
                       : updated.has(s.chatId) && !active
-                        ? "updated"
-                        : null;
+                        ? "attention"
+                        : "complete";
                     return (
                       <li key={s.key} className="min-w-0">
                         <div
                           className={cn(
-                            "group flex min-w-0 max-w-full items-center gap-2 rounded-xl px-2 text-[13px] transition-colors",
-                            compact ? "min-h-7" : "min-h-8",
+                            "group flex min-w-0 max-w-full items-center gap-2 rounded-lg px-2 text-[13px] transition-colors",
+                            compact ? "min-h-7" : "min-h-[2.125rem]",
                             active
-                              ? "bg-sidebar-accent/70 text-sidebar-accent-foreground shadow-[inset_0_0_0_1px_hsl(var(--sidebar-border)/0.16)]"
-                              : "text-sidebar-foreground/82 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                              ? "bg-sidebar-accent/72 text-sidebar-accent-foreground shadow-[inset_0_0_0_1px_hsl(var(--sidebar-border)/0.18)]"
+                              : "text-sidebar-foreground/82 hover:bg-sidebar-accent/45 hover:text-sidebar-foreground",
                           )}
                         >
                           <button
@@ -312,14 +312,14 @@ export const ExecutionList = memo(function ExecutionList({
                               </span>
                             ) : null}
                           </button>
-                          <SessionActivityIndicator state={activityState} />
+                          <SessionActivityIndicator state={executionState} />
                           <DropdownMenu modal={false}>
                             <DropdownMenuTrigger
                               className={cn(
-                                "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/75 opacity-40 transition-opacity",
-                                "hover:bg-sidebar-accent hover:text-sidebar-foreground group-hover:opacity-100",
-                                "focus-visible:opacity-100",
-                                active && "opacity-100",
+                                "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/64 transition-colors",
+                                "hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                                "focus-visible:bg-sidebar-accent focus-visible:text-sidebar-foreground",
+                                active && "text-sidebar-foreground/78",
                               )}
                               aria-label={t("chat.actions", { title })}
                             >
@@ -554,7 +554,7 @@ function ChatsFoldFooter({
 function SessionActivityIndicator({
   state,
 }: {
-  state: "running" | "updated" | null;
+  state: "running" | "attention" | "complete";
 }) {
   const { t } = useTranslation();
 
@@ -566,12 +566,12 @@ function SessionActivityIndicator({
         title={label}
         className="grid h-4 w-4 shrink-0 place-items-center"
       >
-        <span className="h-3 w-3 animate-spin rounded-full border border-blue-500/25 border-t-blue-500 [animation-duration:1.4s] motion-reduce:animate-none dark:border-blue-400/25 dark:border-t-blue-400" />
+        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.14),0_0_10px_rgba(239,68,68,0.35)] motion-reduce:animate-none" />
       </span>
     );
   }
 
-  if (state === "updated") {
+  if (state === "attention") {
     const label = t("chat.activity.updated");
     return (
       <span
@@ -579,10 +579,19 @@ function SessionActivityIndicator({
         title={label}
         className="grid h-4 w-4 shrink-0 place-items-center"
       >
-        <span className="h-2 w-2 rounded-full bg-[#ff8a3d] shadow-[0_0_0_2px_rgba(255,138,61,0.16)]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.18),0_0_8px_rgba(251,191,36,0.28)]" />
       </span>
     );
   }
 
-  return <span className="h-4 w-4 shrink-0" aria-hidden="true" />;
+  const label = t("chat.activity.complete", { defaultValue: "Processed" });
+  return (
+    <span
+      aria-label={label}
+      title={label}
+      className="grid h-4 w-4 shrink-0 place-items-center"
+    >
+      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.14)]" />
+    </span>
+  );
 }

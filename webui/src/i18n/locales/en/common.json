@@ -831,7 +831,7 @@
     "activity": {
       "running": "Agent running",
       "complete": "Agent finished",
-      "updated": "New activity"
+      "updated": "Needs attention"
     },
     "pin": "Pin",
     "unpin": "Unpin",

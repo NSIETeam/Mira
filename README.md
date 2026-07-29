@@ -51,11 +51,25 @@ Mira is designed as execution infrastructure first, product shell second: the lo
 
 ### Current Productization Track
 
-- [#29](https://github.com/NSIETeam/Mira/issues/29) Auto-memory index and topic compaction
-- [#30](https://github.com/NSIETeam/Mira/issues/30) Knowledge-graph auxiliary memory layer
-- [#31](https://github.com/NSIETeam/Mira/issues/31) Claude Code-style layered memory contract
-- [#32](https://github.com/NSIETeam/Mira/issues/32) Memory observability and audit surfaces
-- [#33](https://github.com/NSIETeam/Mira/issues/33) Subagent-isolated memory with explicit inheritance rules
+The current Mira track is Linux-style maturity without a full rewrite:
+
+- **Micro-kernel path** — default boot stays focused on config, bus, session, provider, scheduler, auth, and minimal chat
+- **Linux-style users** — `--user` isolates sessions/workspaces; `--group` shares project memory and policy
+- **Lazy modules** — channels, MCP, document tools, desktop host, doctor repair, and memory consolidation load on demand
+- **Policy table** — tool allow/deny, workspace root, memory scope, and execution posture are derived per user/group
+- **Package discipline** — release artifacts are audited against a 119 MB budget before upload
+
+Active follow-up work is tracked in [GitHub Issues](https://github.com/NSIETeam/Mira/issues), including release signing, Admin v2, and optional Rust boundary tools.
+
+### Operational Commands
+
+```bash
+mira webui --user alice --group growth
+mira doctor --profile lightweight
+mira modules list
+mira policy show --user alice --group growth
+python scripts/package_size_report.py dist/Mira.app --budget-mb 119
+```
 
 ### Quick Start
 
@@ -121,6 +135,8 @@ Packaged desktop builds are published through GitHub Releases on version tags. T
 - `Mira.dmg`
 - `Mira-Setup.exe`
 - `Mira-linux.tar.gz`
+
+Unsigned local macOS builds can still trigger Gatekeeper warnings. Public tag releases are intended to be signed and notarized when the required Apple and Windows signing secrets are configured in GitHub Actions.
 
 ### Architecture
 
@@ -206,11 +222,25 @@ Mira 优先被设计成执行基础设施，而不是某个单一产品：主循
 
 ### 当前产品化改造主线
 
-- [#29](https://github.com/NSIETeam/Mira/issues/29) 自动记忆索引与主题压缩
-- [#30](https://github.com/NSIETeam/Mira/issues/30) 知识图谱辅助记忆层
-- [#31](https://github.com/NSIETeam/Mira/issues/31) 对齐 Claude Code 的分层记忆契约
-- [#32](https://github.com/NSIETeam/Mira/issues/32) 记忆可观测性与审计面板
-- [#33](https://github.com/NSIETeam/Mira/issues/33) Subagent 独立记忆与显式继承规则
+当前 Mira 的方向是“不全量重写”的 Linux-style 成熟化：
+
+- **微内核启动路径** — 默认只保留 config、bus、session、provider、scheduler、auth 和最小聊天
+- **Linux 用户模型** — `--user` 隔离 session/workspace，`--group` 共享项目 memory 和 policy
+- **模块懒加载** — channel、MCP、文档工具、桌面壳、doctor repair、memory consolidation 按需加载
+- **策略表权限** — 每个 user/group 派生工具 allow/deny、workspace root、memory scope 和执行姿态
+- **包体纪律** — release 上传前按 119 MB 预算审计包体
+
+后续工作继续在 [GitHub Issues](https://github.com/NSIETeam/Mira/issues) 里跟踪，包括签名公证、Admin v2 和可选 Rust 边界工具。
+
+### 运维命令
+
+```bash
+mira webui --user alice --group growth
+mira doctor --profile lightweight
+mira modules list
+mira policy show --user alice --group growth
+python scripts/package_size_report.py dist/Mira.app --budget-mb 119
+```
 
 ### 快速开始
 

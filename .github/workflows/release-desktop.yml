@@ -247,6 +247,15 @@ PY
           (dist / "SHA256SUMS").write_text("\n".join(rows) + ("\n" if rows else ""), encoding="utf-8")
           PY
 
+      - name: Audit package size
+        shell: bash
+        run: |
+          if [[ -d dist/Mira.app ]]; then
+            python scripts/package_size_report.py dist/Mira.app --budget-mb 119 --fail-on-over-budget
+          elif [[ -d dist/Mira ]]; then
+            python scripts/package_size_report.py dist/Mira --budget-mb 119 --fail-on-over-budget
+          fi
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
