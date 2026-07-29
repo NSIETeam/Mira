@@ -405,6 +405,14 @@ export interface BootstrapResponse {
     plan_first_default?: boolean;
     parallelism_mode?: string;
     host_strategy_profile?: string;
+    host_strategy_reason?: string;
+    queue_policy?: string;
+    queue_promotions?: {
+      cold_to_warm_s?: number;
+      warm_to_hot_s?: number;
+      hot_weight_threshold?: number;
+      warm_weight_threshold?: number;
+    };
   } | null;
 }
 

@@ -197,6 +197,18 @@ class SubagentManager:
             return "throughput_shared"
         return "balanced_shared"
 
+    @classmethod
+    def _host_strategy_reason(cls) -> str:
+        cpu = os.cpu_count() or 2
+        memory_mb = cls._host_memory_mb()
+        strategy = cls._host_strategy_profile()
+        memory_label = f"{memory_mb}MB" if memory_mb is not None else "unknown-memory"
+        if strategy == "conservative":
+            return f"low host headroom cpu={cpu} memory={memory_label}"
+        if strategy == "throughput_shared":
+            return f"high shared capacity cpu={cpu} memory={memory_label}"
+        return f"mixed shared host cpu={cpu} memory={memory_label}"
+
     def __init__(
         self,
         provider: LLMProvider | None = None,
@@ -949,4 +961,12 @@ class SubagentManager:
             "plan_first_default": True,
             "parallelism_mode": "lightweight",
             "host_strategy_profile": self._host_strategy_profile(),
+            "host_strategy_reason": self._host_strategy_reason(),
+            "queue_policy": "weighted_hot_warm_cold",
+            "queue_promotions": {
+                "cold_to_warm_s": self._COLD_TO_WARM_PROMOTION_S,
+                "warm_to_hot_s": self._WARM_TO_HOT_PROMOTION_S,
+                "hot_weight_threshold": self._HOT_QUEUE_WEIGHT_THRESHOLD,
+                "warm_weight_threshold": self._WARM_QUEUE_WEIGHT_THRESHOLD,
+            },
         }

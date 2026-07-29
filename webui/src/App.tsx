@@ -620,6 +620,13 @@ function RuntimeSnapshotPanel({
         hostStrategyProfile: typeof scheduler.host_strategy_profile === "string"
           ? scheduler.host_strategy_profile
           : null,
+        hostStrategyReason: typeof scheduler.host_strategy_reason === "string"
+          ? scheduler.host_strategy_reason
+          : null,
+        queuePolicy: typeof scheduler.queue_policy === "string"
+          ? scheduler.queue_policy
+          : null,
+        queuePromotions: scheduler.queue_promotions ?? null,
         defaultMemoryPolicy: typeof scheduler.default_memory_policy === "string"
           ? scheduler.default_memory_policy
           : null,
@@ -702,6 +709,9 @@ function RuntimeSnapshotPanel({
               {schedulerSummary.hostStrategyProfile ? (
                 <span>strategy {schedulerSummary.hostStrategyProfile}</span>
               ) : null}
+              {schedulerSummary.queuePolicy ? (
+                <span>queue {schedulerSummary.queuePolicy}</span>
+              ) : null}
               <span>running {schedulerSummary.running}/{schedulerSummary.runningLimit}</span>
               {schedulerSummary.recommendedConcurrency ? (
                 <span>recommended {schedulerSummary.recommendedConcurrency}</span>
@@ -721,6 +731,25 @@ function RuntimeSnapshotPanel({
               ) : null}
               {schedulerSummary.subagentMemoryMb ? (
                 <span>subagent {schedulerSummary.subagentMemoryMb}MB</span>
+              ) : null}
+            </div>
+          ) : null}
+          {schedulerSummary?.hostStrategyReason || schedulerSummary?.queuePromotions ? (
+            <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+              {schedulerSummary.hostStrategyReason ? (
+                <span>{schedulerSummary.hostStrategyReason}</span>
+              ) : null}
+              {schedulerSummary.queuePromotions?.cold_to_warm_s ? (
+                <span>cold→warm {schedulerSummary.queuePromotions.cold_to_warm_s}s</span>
+              ) : null}
+              {schedulerSummary.queuePromotions?.warm_to_hot_s ? (
+                <span>warm→hot {schedulerSummary.queuePromotions.warm_to_hot_s}s</span>
+              ) : null}
+              {schedulerSummary.queuePromotions?.warm_weight_threshold ? (
+                <span>warm≥{schedulerSummary.queuePromotions.warm_weight_threshold}</span>
+              ) : null}
+              {schedulerSummary.queuePromotions?.hot_weight_threshold ? (
+                <span>hot≥{schedulerSummary.queuePromotions.hot_weight_threshold}</span>
               ) : null}
             </div>
           ) : null}
