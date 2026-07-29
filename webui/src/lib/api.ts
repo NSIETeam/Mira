@@ -180,6 +180,10 @@ export interface KernelEmbeddedPayload {
   embedded_topology: KernelManifestPayload["embedded_topology"];
 }
 
+export interface KernelMemoryPayload {
+  memory: BootstrapResponse["memory"];
+}
+
 export interface KernelSchedulerPayload {
   scheduler: KernelManifestPayload["scheduler"];
 }
@@ -221,6 +225,18 @@ export async function fetchKernelEmbedded(
 ): Promise<KernelEmbeddedPayload> {
   return request<KernelEmbeddedPayload>(
     `${base}/api/kernel/embedded`,
+    token,
+    undefined,
+    API_READ_TIMEOUT_MS,
+  );
+}
+
+export async function fetchKernelMemory(
+  token: string,
+  base: string = "",
+): Promise<KernelMemoryPayload> {
+  return request<KernelMemoryPayload>(
+    `${base}/api/kernel/memory`,
     token,
     undefined,
     API_READ_TIMEOUT_MS,

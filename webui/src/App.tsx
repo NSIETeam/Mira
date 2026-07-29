@@ -84,6 +84,7 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  fetchKernelMemory,
   executeKernelOperatorCommand,
   fetchKernelScheduler,
   fetchKernelState,
@@ -344,22 +345,29 @@ export default function App() {
   useEffect(() => {
     if (state.status !== "ready") return;
     let cancelled = false;
-    const refreshScheduler = async () => {
+    const refreshRuntimeSnapshot = async () => {
       try {
-        const payload = await fetchKernelScheduler(state.token);
+        const [schedulerPayload, memoryPayload] = await Promise.all([
+          fetchKernelScheduler(state.token),
+          fetchKernelMemory(state.token),
+        ]);
         if (cancelled) return;
         setState((current) =>
           current.status === "ready"
-            ? { ...current, scheduler: payload.scheduler ?? current.scheduler }
+            ? {
+                ...current,
+                scheduler: schedulerPayload.scheduler ?? current.scheduler,
+                memory: memoryPayload.memory ?? current.memory,
+              }
             : current,
         );
       } catch {
-        // keep last known scheduler snapshot
+        // keep last known runtime snapshot
       }
     };
-    void refreshScheduler();
+    void refreshRuntimeSnapshot();
     const timer = window.setInterval(() => {
-      void refreshScheduler();
+      void refreshRuntimeSnapshot();
     }, RUNTIME_SNAPSHOT_REFRESH_MS);
     return () => {
       cancelled = true;

@@ -804,6 +804,8 @@ class GatewayHTTPHandler:
             return self._handle_kernel_topology(request)
         if got == "/api/kernel/embedded":
             return self._handle_kernel_embedded(request)
+        if got == "/api/kernel/memory":
+            return self._handle_kernel_memory(request)
         if got == "/api/kernel/scheduler":
             return self._handle_kernel_scheduler(request)
         if got == "/api/kernel/workers":
@@ -886,6 +888,13 @@ class GatewayHTTPHandler:
         if kernel is None:
             return _http_error(503, "kernel runtime unavailable")
         return _http_json_response({"embedded_topology": kernel.embedded_topology_snapshot()})
+
+    def _handle_kernel_memory(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        return _http_json_response({
+            "memory": MemoryStore(self.skills_workspace_path).memory_audit(self.skills_workspace_path),
+        })
 
     def _handle_kernel_scheduler(self, request: WsRequest) -> Response:
         if not self.check_api_token(request):
