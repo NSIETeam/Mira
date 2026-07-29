@@ -85,6 +85,9 @@ class MemoryStore:
     _PROJECT_CLAUDE_FILE = "CLAUDE.md"
     _LOCAL_CLAUDE_FILE = "CLAUDE.local.md"
     _GRAPH_FILE = "graph.json"
+    _TOPICS_DIR = "topics"
+    _TOPIC_LINK_RE = re.compile(r"\((?:\./)?memory/topics/([A-Za-z0-9._-]+\.md)\)")
+    _TOPIC_HEADING_RE = re.compile(r"^##\s+Topic:\s+([A-Za-z0-9._-]+)", re.MULTILINE)
 
     def __init__(self, workspace: Path, max_history_entries: int = _DEFAULT_MAX_HISTORY):
         self.workspace = workspace
@@ -99,6 +102,7 @@ class MemoryStore:
         self.local_claude_file = workspace / self._LOCAL_CLAUDE_FILE
         self.user_claude_file = Path.home() / ".mira" / self._PROJECT_CLAUDE_FILE
         self.graph_file = self.memory_dir / self._GRAPH_FILE
+        self.topic_dir = ensure_dir(self.memory_dir / self._TOPICS_DIR)
         self._cursor_file = self.memory_dir / ".cursor"
         self._dream_cursor_file = self.memory_dir / ".dream_cursor"
         self._corruption_logged = False  # rate-limit invalid cursor warning
@@ -253,6 +257,52 @@ class MemoryStore:
     def write_memory(self, content: str) -> None:
         self.memory_file.write_text(content, encoding="utf-8")
 
+    def list_topic_files(self) -> list[Path]:
+        return sorted(self.topic_dir.glob("*.md"))
+
+    def read_topic_file(self, slug: str) -> str:
+        safe_slug = re.sub(r"[^A-Za-z0-9._-]+", "-", slug).strip("-.")
+        if not safe_slug:
+            return ""
+        if not safe_slug.endswith(".md"):
+            safe_slug = f"{safe_slug}.md"
+        return self.read_file(self.topic_dir / safe_slug)
+
+    def write_topic_file(self, slug: str, content: str) -> Path:
+        safe_slug = re.sub(r"[^A-Za-z0-9._-]+", "-", slug).strip("-.")
+        if not safe_slug:
+            safe_slug = "untitled"
+        if not safe_slug.endswith(".md"):
+            safe_slug = f"{safe_slug}.md"
+        path = self.topic_dir / safe_slug
+        path.write_text(content, encoding="utf-8")
+        return path
+
+    def referenced_topic_files(self) -> list[Path]:
+        index = self.read_memory()
+        names = {
+            match.group(1)
+            for match in self._TOPIC_LINK_RE.finditer(index)
+        }
+        names.update(f"{match.group(1)}.md" for match in self._TOPIC_HEADING_RE.finditer(index))
+        files: list[Path] = []
+        for name in sorted(names):
+            path = self.topic_dir / name
+            if path.exists():
+                files.append(path)
+        return files
+
+    def topic_memory_context(self, *, max_files: int = 8, max_chars: int = 1200) -> str:
+        blocks: list[str] = []
+        for path in self.referenced_topic_files()[:max_files]:
+            content = self.read_file(path).strip()
+            if not content:
+                continue
+            blocks.append(
+                f"### {path.name}\n{truncate_text(content, max_chars)}"
+            )
+        return "\n\n".join(blocks)
+
     # -- SOUL.md -------------------------------------------------------------
 
     def read_soul(self) -> str:
@@ -350,6 +400,8 @@ class MemoryStore:
     def memory_audit(self, workspace: Path | None = None) -> dict[str, Any]:
         layers = self.instruction_layers(workspace)
         graph = self.read_graph()
+        topic_files = self.list_topic_files()
+        referenced_topics = self.referenced_topic_files()
         return {
             "layers": [
                 {
@@ -366,6 +418,9 @@ class MemoryStore:
                 "index_path": str(self.memory_file),
                 "history_path": str(self.history_file),
                 "loaded": bool(self.read_memory().strip()),
+                "topic_dir": str(self.topic_dir),
+                "topic_file_count": len(topic_files),
+                "referenced_topic_count": len(referenced_topics),
             },
             "graph": {
                 "path": str(self.graph_file),
@@ -379,7 +434,13 @@ class MemoryStore:
 
     def get_memory_context(self) -> str:
         long_term = self.read_memory()
-        return f"## Long-term Memory\n{long_term}" if long_term else ""
+        topics = self.topic_memory_context()
+        sections: list[str] = []
+        if long_term:
+            sections.append(f"## Long-term Memory Index\n{long_term}")
+        if topics:
+            sections.append(f"## Topic Memory\n{topics}")
+        return "\n\n".join(sections)
 
     # -- history.jsonl — append-only, JSONL format ---------------------------
 

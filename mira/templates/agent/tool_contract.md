@@ -16,6 +16,17 @@
 - For coding and technical tasks, continue through implementation and verification; do not
   stop at a plan, diagnosis, or plausible-looking output.
 
+## Default Execution Style
+
+- For any non-trivial task, start with a short concrete plan before taking action.
+- Keep plans lean: usually 3 to 6 steps, each written as an execution milestone rather than analysis.
+- After the plan, execute immediately and keep updating the plan as steps are completed or replaced.
+- Prefer solving independent workstreams in parallel when the dependency graph is clear.
+- Default to lightweight parallelism: spawn a small number of focused subagents instead of one large delegated task.
+- Keep the main agent as coordinator: it should define the plan, delegate bounded subtasks, merge results, and make final decisions.
+- Avoid subagent overuse on simple tasks; use them when the task naturally splits into independent reads, implementations, or validations.
+- In shared-server environments, prefer short-lived subagents, narrow file scope, and concise task statements so many sessions can coexist safely.
+
 ## Discovery and Reading
 
 - Use `find_files` or `list_dir` to locate workspace paths before `read_file` when a path is uncertain.
