@@ -584,6 +584,17 @@ function RuntimeSnapshotPanel({
   const graphEntities = memory?.graph?.entity_count ?? 0;
   const graphRelations = memory?.graph?.relation_count ?? 0;
   const loadedLayers = memory?.layers?.filter((layer) => layer.loaded).length ?? 0;
+  const loadedLayerLabels = memory?.layers
+    ?.filter((layer) => layer.loaded)
+    .map((layer) => layer.id)
+    .join(" / ") ?? "";
+  const schedulerPressure = schedulerSummary
+    ? schedulerSummary.queued >= schedulerSummary.queueLimit && schedulerSummary.queueLimit > 0
+      ? "saturated"
+      : schedulerSummary.queued > schedulerSummary.runningLimit
+        ? "busy"
+        : "steady"
+    : null;
 
   if (!memory && !schedulerSummary) return null;
 
@@ -597,12 +608,14 @@ function RuntimeSnapshotPanel({
           {memory ? (
             <div className="flex flex-wrap items-center gap-3">
               <span>memory layers {loadedLayers}</span>
+              {loadedLayerLabels ? <span>loaded {loadedLayerLabels}</span> : null}
               <span>topics {topicCount}</span>
               <span>graph {graphEntities}/{graphRelations}</span>
             </div>
           ) : null}
           {schedulerSummary ? (
             <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
+              {schedulerPressure ? <span>pressure {schedulerPressure}</span> : null}
               <span>running {schedulerSummary.running}/{schedulerSummary.runningLimit}</span>
               <span>queued {schedulerSummary.queued}/{schedulerSummary.queueLimit}</span>
               <span>hot {schedulerSummary.queuedHot}</span>
