@@ -598,6 +598,9 @@ function RuntimeSnapshotPanel({
         queueLimit: scheduler.queue_limit ?? 0,
         hostMemoryMb: scheduler.host_memory_mb ?? null,
         subagentMemoryMb: scheduler.estimated_subagent_memory_mb ?? null,
+        pressure: "pressure" in scheduler && typeof scheduler.pressure === "string"
+          ? scheduler.pressure
+          : null,
       }
     : null;
   const topicCount = memory?.auto_memory?.topic_file_count ?? 0;
@@ -610,13 +613,7 @@ function RuntimeSnapshotPanel({
     ?.filter((layer) => layer.loaded)
     .map((layer) => layer.id)
     .join(" / ") ?? "";
-  const schedulerPressure = schedulerSummary
-    ? schedulerSummary.queued >= schedulerSummary.queueLimit && schedulerSummary.queueLimit > 0
-      ? "saturated"
-      : schedulerSummary.queued > schedulerSummary.runningLimit
-        ? "busy"
-        : "steady"
-    : null;
+  const schedulerPressure = schedulerSummary?.pressure ?? null;
 
   if (!memory && !schedulerSummary) return null;
 

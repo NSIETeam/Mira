@@ -824,14 +824,25 @@ class SubagentManager:
 
     def scheduler_snapshot(self) -> dict[str, Any]:
         """Return lightweight scheduler pressure indicators."""
+        running = len(self._running_tasks)
+        running_limit = self.max_concurrent_subagents
+        queued = self._pending_count()
+        queue_limit = self.max_pending_subagents
+        if queue_limit > 0 and queued >= queue_limit:
+            pressure = "saturated"
+        elif queued > running_limit:
+            pressure = "busy"
+        else:
+            pressure = "steady"
         return {
-            "running": len(self._running_tasks),
-            "running_limit": self.max_concurrent_subagents,
-            "queued": self._pending_count(),
+            "running": running,
+            "running_limit": running_limit,
+            "queued": queued,
             "queued_hot": len(self._pending_hot),
             "queued_warm": len(self._pending_warm),
             "queued_cold": len(self._pending_cold),
-            "queue_limit": self.max_pending_subagents,
+            "queue_limit": queue_limit,
+            "pressure": pressure,
             "estimated_subagent_memory_mb": self.subagent_memory_mb,
             "host_memory_mb": self._host_memory_mb(),
         }
