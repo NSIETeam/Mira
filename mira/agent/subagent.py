@@ -936,4 +936,6 @@ class SubagentManager:
             "default_memory_policy": self._DEFAULT_MEMORY_POLICY,
             "default_inherited_memory_layers": self._memory_layers_for_policy(self._DEFAULT_MEMORY_POLICY),
             "recommended_concurrency": self._recommended_concurrency(),
+            "plan_first_default": True,
+            "parallelism_mode": "lightweight",
         }

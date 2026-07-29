@@ -362,7 +362,12 @@ export interface BootstrapResponse {
       dir: string;
       entry_count: number;
       loaded: boolean;
-      recent_entries?: string[];
+      recent_entries?: Array<{
+        path: string;
+        label?: string;
+        status?: string;
+        memory_policy?: string;
+      }>;
     };
   };
   scheduler?: KernelManifestPayload["scheduler"] | {
@@ -376,6 +381,8 @@ export interface BootstrapResponse {
     pressure?: "steady" | "busy" | "saturated" | string;
     estimated_subagent_memory_mb?: number;
     host_memory_mb?: number | null;
+    plan_first_default?: boolean;
+    parallelism_mode?: string;
   } | null;
 }
 

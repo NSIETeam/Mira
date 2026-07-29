@@ -606,6 +606,10 @@ function RuntimeSnapshotPanel({
         queueLimit: scheduler.queue_limit ?? 0,
         hostMemoryMb: scheduler.host_memory_mb ?? null,
         subagentMemoryMb: scheduler.estimated_subagent_memory_mb ?? null,
+        planFirstDefault: scheduler.plan_first_default ?? false,
+        parallelismMode: typeof scheduler.parallelism_mode === "string"
+          ? scheduler.parallelism_mode
+          : null,
         defaultMemoryPolicy: typeof scheduler.default_memory_policy === "string"
           ? scheduler.default_memory_policy
           : null,
@@ -624,6 +628,7 @@ function RuntimeSnapshotPanel({
   const graphRelations = memory?.graph?.relation_count ?? 0;
   const subagentMemoryCount = memory?.subagent_memory?.entry_count ?? 0;
   const subagentMemoryLoaded = memory?.subagent_memory?.loaded ?? false;
+  const recentSubagentEntries = memory?.subagent_memory?.recent_entries ?? [];
   const loadedLayers = memory?.layers?.filter((layer) => layer.loaded).length ?? 0;
   const loadedLayerLabels = memory?.layers
     ?.filter((layer) => layer.loaded)
@@ -665,6 +670,10 @@ function RuntimeSnapshotPanel({
           {schedulerSummary ? (
             <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
               {schedulerPressure ? <span>pressure {schedulerPressure}</span> : null}
+              {schedulerSummary.planFirstDefault ? <span>plan-first</span> : null}
+              {schedulerSummary.parallelismMode ? (
+                <span>parallel {schedulerSummary.parallelismMode}</span>
+              ) : null}
               <span>running {schedulerSummary.running}/{schedulerSummary.runningLimit}</span>
               {schedulerSummary.recommendedConcurrency ? (
                 <span>recommended {schedulerSummary.recommendedConcurrency}</span>
@@ -685,6 +694,17 @@ function RuntimeSnapshotPanel({
               {schedulerSummary.subagentMemoryMb ? (
                 <span>subagent {schedulerSummary.subagentMemoryMb}MB</span>
               ) : null}
+            </div>
+          ) : null}
+          {recentSubagentEntries.length ? (
+            <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+              {recentSubagentEntries.slice(-3).map((entry) => (
+                <div key={entry.path} className="flex flex-wrap items-center gap-2">
+                  <span>{entry.label ?? entry.path}</span>
+                  <span>{entry.status ?? "unknown"}</span>
+                  <span>{entry.memory_policy ?? "default"}</span>
+                </div>
+              ))}
             </div>
           ) : null}
         </div>

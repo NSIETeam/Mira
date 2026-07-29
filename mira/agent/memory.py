@@ -866,6 +866,18 @@ class MemoryStore:
         topic_files = self.list_topic_files()
         referenced_topics = self.referenced_topic_files()
         subagent_files = sorted(self.subagent_dir.rglob("*.json"))
+        recent_subagent_entries: list[dict[str, Any]] = []
+        for path in subagent_files[-5:]:
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                payload = {}
+            recent_subagent_entries.append({
+                "path": str(path.relative_to(self.workspace)),
+                "label": str(payload.get("label") or path.stem),
+                "status": str(payload.get("status") or "unknown"),
+                "memory_policy": str(payload.get("memory_policy") or "default"),
+            })
         return {
             "layers": [
                 {
@@ -901,7 +913,7 @@ class MemoryStore:
                 "dir": str(self.subagent_dir),
                 "entry_count": len(subagent_files),
                 "loaded": bool(subagent_files),
-                "recent_entries": [str(path.relative_to(self.workspace)) for path in subagent_files[-5:]],
+                "recent_entries": recent_subagent_entries,
             },
         }
 
