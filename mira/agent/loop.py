@@ -973,6 +973,36 @@ class AgentLoop:
                     except asyncio.QueueEmpty:
                         break
 
+            subagent_items = [
+                item for item in items
+                if item.get("injected_event") == "subagent_result"
+            ]
+            if len(subagent_items) >= 2:
+                lines = [
+                    "Structured subagent result summary:",
+                    f"- completed_results: {len(subagent_items)}",
+                ]
+                for item in subagent_items[:6]:
+                    task_id = str(item.get("subagent_task_id") or "unknown")
+                    content = item.get("content")
+                    if isinstance(content, list):
+                        text_parts = []
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "text":
+                                text_parts.append(str(block.get("text") or ""))
+                        content_text = " ".join(part.strip() for part in text_parts if part.strip())
+                    else:
+                        content_text = str(content or "")
+                    content_text = " ".join(content_text.split())
+                    if len(content_text) > 280:
+                        content_text = content_text[:277] + "..."
+                    lines.append(f"- {task_id}: {content_text}")
+                items.insert(0, {
+                    "role": "user",
+                    "content": "\n".join(lines),
+                    HIDDEN_HISTORY_META: {"kind": "subagent_result_rollup"},
+                })
+
             return items
 
         active_session_key = session.key if session else session_key
