@@ -357,6 +357,17 @@ export interface BootstrapResponse {
       topic_dir?: string;
       topic_file_count?: number;
       referenced_topic_count?: number;
+      governance?: {
+        confidence_counts?: {
+          high?: number;
+          medium?: number;
+          low?: number;
+        };
+        source_hint_count?: number;
+        conflict_count?: number;
+        rollback_hint_count?: number;
+        review_required?: boolean;
+      };
     };
     graph: {
       path: string;
@@ -415,6 +426,7 @@ export interface BootstrapResponse {
   scheduler?: KernelManifestPayload["scheduler"] | {
     running?: number;
     running_limit?: number;
+    recommended_concurrency?: number;
     queued?: number;
     queued_hot?: number;
     queued_warm?: number;
@@ -447,6 +459,8 @@ export interface BootstrapResponse {
     host_strategy_profile?: string;
     host_strategy_reason?: string;
     queue_policy?: string;
+    default_memory_policy?: string;
+    default_inherited_memory_layers?: string[];
     queue_promotions?: {
       cold_to_warm_s?: number;
       warm_to_hot_s?: number;

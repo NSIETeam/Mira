@@ -2,6 +2,7 @@ import type {
   ApiServicePayload,
   AutomationsPayload,
   AutomationUpdatePayload,
+  BootstrapResponse,
   ChannelConfigurePayload,
   ChannelConnectPayload,
   ChannelValidationPayload,
