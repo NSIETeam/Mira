@@ -188,6 +188,11 @@ export interface KernelSchedulerPayload {
   scheduler: KernelManifestPayload["scheduler"];
 }
 
+export interface KernelRuntimeSnapshotPayload {
+  memory: BootstrapResponse["memory"];
+  scheduler: BootstrapResponse["scheduler"];
+}
+
 export interface KernelWorkersPayload {
   workers: KernelManifestPayload["workers"];
 }
@@ -237,6 +242,18 @@ export async function fetchKernelMemory(
 ): Promise<KernelMemoryPayload> {
   return request<KernelMemoryPayload>(
     `${base}/api/kernel/memory`,
+    token,
+    undefined,
+    API_READ_TIMEOUT_MS,
+  );
+}
+
+export async function fetchKernelRuntimeSnapshot(
+  token: string,
+  base: string = "",
+): Promise<KernelRuntimeSnapshotPayload> {
+  return request<KernelRuntimeSnapshotPayload>(
+    `${base}/api/kernel/runtime-snapshot`,
     token,
     undefined,
     API_READ_TIMEOUT_MS,

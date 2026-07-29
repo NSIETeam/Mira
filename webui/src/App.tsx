@@ -84,9 +84,8 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  fetchKernelMemory,
   executeKernelOperatorCommand,
-  fetchKernelScheduler,
+  fetchKernelRuntimeSnapshot,
   fetchKernelState,
   fetchSettings,
   updateSettings,
@@ -347,17 +346,14 @@ export default function App() {
     let cancelled = false;
     const refreshRuntimeSnapshot = async () => {
       try {
-        const [schedulerPayload, memoryPayload] = await Promise.all([
-          fetchKernelScheduler(state.token),
-          fetchKernelMemory(state.token),
-        ]);
+        const snapshot = await fetchKernelRuntimeSnapshot(state.token);
         if (cancelled) return;
         setState((current) =>
           current.status === "ready"
             ? {
                 ...current,
-                scheduler: schedulerPayload.scheduler ?? current.scheduler,
-                memory: memoryPayload.memory ?? current.memory,
+                scheduler: snapshot.scheduler ?? current.scheduler,
+                memory: snapshot.memory ?? current.memory,
               }
             : current,
         );

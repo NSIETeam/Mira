@@ -806,6 +806,8 @@ class GatewayHTTPHandler:
             return self._handle_kernel_embedded(request)
         if got == "/api/kernel/memory":
             return self._handle_kernel_memory(request)
+        if got == "/api/kernel/runtime-snapshot":
+            return self._handle_kernel_runtime_snapshot(request)
         if got == "/api/kernel/scheduler":
             return self._handle_kernel_scheduler(request)
         if got == "/api/kernel/workers":
@@ -894,6 +896,16 @@ class GatewayHTTPHandler:
             return _http_error(401, "Unauthorized")
         return _http_json_response({
             "memory": MemoryStore(self.skills_workspace_path).memory_audit(self.skills_workspace_path),
+        })
+
+    def _handle_kernel_runtime_snapshot(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        kernel = self._get_kernel_app()
+        scheduler = kernel.scheduler_snapshot() if kernel is not None else None
+        return _http_json_response({
+            "memory": MemoryStore(self.skills_workspace_path).memory_audit(self.skills_workspace_path),
+            "scheduler": scheduler,
         })
 
     def _handle_kernel_scheduler(self, request: WsRequest) -> Response:
