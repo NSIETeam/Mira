@@ -413,8 +413,9 @@ class SubagentManager:
         )
         if not await self._enqueue_or_start(pending, status):
             if status.phase == "error":
+                error_detail = status.error or "shared queue rejected the request"
                 return (
-                    f"Subagent [{display_label}] rejected because the shared queue is full. "
+                    f"Subagent [{display_label}] rejected. {error_detail}. "
                     f"Running: {len(self._running_tasks)}/{self.max_concurrent_subagents}, "
                     f"queued: {self._pending_count()}/{self.max_pending_subagents}."
                 )
