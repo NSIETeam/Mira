@@ -427,6 +427,7 @@ export interface BootstrapResponse {
       running: number;
       queued: number;
       total: number;
+      running_limited?: boolean;
     }>;
     pressure?: "steady" | "busy" | "saturated" | string;
     estimated_subagent_memory_mb?: number;

@@ -761,7 +761,7 @@ function RuntimeSnapshotPanel({
               ) : null}
               {schedulerSummary.sessionLoads.length ? (
                 <span>
-                  loads {schedulerSummary.sessionLoads.map((row) => `${row.session_key}:${row.total}`).join(",")}
+                  loads {schedulerSummary.sessionLoads.map((row) => `${row.session_key}:${row.total}${row.running_limited ? "!" : ""}`).join(",")}
                 </span>
               ) : null}
               <span>hot {schedulerSummary.queuedHot}</span>

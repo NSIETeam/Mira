@@ -619,6 +619,7 @@ class SubagentManager:
                 "running": running,
                 "queued": queued,
                 "total": total,
+                "running_limited": running >= self.max_running_subagents_per_session,
             })
         rows.sort(key=lambda item: (-int(item["total"]), str(item["session_key"])))
         return rows[:limit]
