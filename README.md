@@ -40,6 +40,23 @@ Mira is designed as execution infrastructure first, product shell second: the lo
 - **API & SDK** — OpenAI-compatible API and Python SDK for integrations
 - **Deploy anywhere** — local desktop, Docker, or cloud (Render one-click)
 
+### Mature Agent Traits
+
+- **Plan-first by default** — turns are expected to decompose into explicit steps before execution, matching Codex-style operator workflow
+- **Four-layer memory** — repository instructions, local/user overlays, indexed topic memory, and a knowledge graph work together instead of one flat history file
+- **Knowledge graph assist** — sessions, files, modules, issues, decisions, and topics are linked so the agent can recover structure instead of only replaying text
+- **Lightweight multi-subagent runtime** — subagents are scheduled like cheap shared-host threads, not heavyweight isolated workers
+- **Host-aware scheduling** — concurrency, queue depth, and pressure adapt to available CPU and memory instead of assuming a dedicated machine
+- **Operator-visible runtime state** — the GUI exposes memory layers, graph size, queue pressure, and runtime snapshots instead of hiding the kernel
+
+### Current Productization Track
+
+- [#29](https://github.com/NSIETeam/Mira/issues/29) Auto-memory index and topic compaction
+- [#30](https://github.com/NSIETeam/Mira/issues/30) Knowledge-graph auxiliary memory layer
+- [#31](https://github.com/NSIETeam/Mira/issues/31) Claude Code-style layered memory contract
+- [#32](https://github.com/NSIETeam/Mira/issues/32) Memory observability and audit surfaces
+- [#33](https://github.com/NSIETeam/Mira/issues/33) Subagent-isolated memory with explicit inheritance rules
+
 ### Quick Start
 
 **One command (macOS / Linux):**
@@ -163,6 +180,23 @@ Mira 优先被设计成执行基础设施，而不是某个单一产品：主循
 - **自动化** — 定时任务和触发器驱动的工作流
 - **API & SDK** — 兼容 OpenAI 的 API 和 Python SDK
 - **随处部署** — 本地桌面、Docker 或云端（Render 一键部署）
+
+### 成熟 Agent 特性
+
+- **默认先规划再执行** — 每次任务先拆步骤，再逐个攻克，工作流接近 Codex
+- **四层记忆** — 仓库指令、用户/本地覆盖、主题索引记忆、知识图谱辅助记忆协同工作，而不是只堆一份历史
+- **知识图谱辅助恢复上下文** — 会话、文件、模块、issue、决策、主题之间建立关系，恢复的是结构，不只是文本
+- **超轻量多 Subagent** — 子 Agent 更像共享宿主资源的线程，而不是昂贵的独立进程
+- **宿主感知调度** — 并发、排队深度、压力级别会根据 CPU 和内存自动调整，不假设机器独占
+- **运行时状态可见** — GUI 直接暴露记忆层、图谱规模、队列压力和 runtime snapshot，而不是把内核藏起来
+
+### 当前产品化改造主线
+
+- [#29](https://github.com/NSIETeam/Mira/issues/29) 自动记忆索引与主题压缩
+- [#30](https://github.com/NSIETeam/Mira/issues/30) 知识图谱辅助记忆层
+- [#31](https://github.com/NSIETeam/Mira/issues/31) 对齐 Claude Code 的分层记忆契约
+- [#32](https://github.com/NSIETeam/Mira/issues/32) 记忆可观测性与审计面板
+- [#33](https://github.com/NSIETeam/Mira/issues/33) Subagent 独立记忆与显式继承规则
 
 ### 快速开始
 
