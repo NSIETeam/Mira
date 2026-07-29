@@ -193,6 +193,7 @@ class GatewayHTTPHandler:
         media: WebUIMediaGateway,
         ingress: WebUIIngressPolicy,
         workspaces: WebUIWorkspaceController,
+        users: Any,
         skills_workspace_path: Path,
         disabled_skills: set[str] | None = None,
         cron_service: CronService | None = None,
@@ -212,6 +213,7 @@ class GatewayHTTPHandler:
         self.media = media
         self.ingress = ingress
         self.workspaces = workspaces
+        self.users = users
         self.skills_workspace_path = skills_workspace_path
         self.disabled_skills = disabled_skills or set()
         self.cron_service = cron_service
@@ -242,6 +244,9 @@ class GatewayHTTPHandler:
 
     def check_api_token(self, request: WsRequest) -> bool:
         return self.tokens.check_api_token(request)
+
+    def api_user_id(self, request: WsRequest) -> str | None:
+        return self.tokens.api_token_user(request)
 
     # -- Main dispatch ------------------------------------------------------
 
@@ -342,7 +347,9 @@ class GatewayHTTPHandler:
                 len(self.tokens.issued_tokens),
             )
             return _http_json_response({"error": "too many outstanding tokens"}, status=429)
-        token_value = self.tokens.issue_token(self.config.token_ttl_s)
+        query = _parse_query(request.path)
+        user = self.users.ensure(_query_first(query, "user"))
+        token_value = self.tokens.issue_token(self.config.token_ttl_s, user_id=user.user_id)
         return _http_json_response(token_response_payload(token_value, self.config.token_ttl_s))
 
     # -- Bootstrap ----------------------------------------------------------
@@ -363,9 +370,15 @@ class GatewayHTTPHandler:
                 status=429,
                 content_type="application/json; charset=utf-8",
             )
-        token = self.tokens.issue_token(self.config.token_ttl_s, audience="webui")
+        query = _parse_query(request.path)
+        user = self.users.ensure(_query_first(query, "user"))
+        token = self.tokens.issue_token(
+            self.config.token_ttl_s,
+            audience="webui",
+            user_id=user.user_id,
+        )
         api_token = (
-            self.tokens.issue_api_token(self.config.token_ttl_s)
+            self.tokens.issue_api_token(self.config.token_ttl_s, user_id=user.user_id)
             if api_token_allowed
             else None
         )
@@ -391,6 +404,7 @@ class GatewayHTTPHandler:
             "kernel": kernel_payload,
             "memory": MemoryStore(self.skills_workspace_path).memory_audit(self.skills_workspace_path),
             "scheduler": kernel.scheduler_snapshot() if kernel is not None else None,
+            "user": user.payload(),
         }
         if api_token is not None:
             payload["api_token"] = api_token
@@ -438,10 +452,10 @@ class GatewayHTTPHandler:
             return _http_error(401, "Unauthorized")
         if self.session_manager is None:
             return _http_error(503, "session manager unavailable")
-        payload = await asyncio.to_thread(self._sessions_list_payload)
+        payload = await asyncio.to_thread(self._sessions_list_payload, self.api_user_id(request))
         return _http_json_response(payload)
 
-    def _sessions_list_payload(self) -> dict[str, Any]:
+    def _sessions_list_payload(self, user_id: str | None = None) -> dict[str, Any]:
         assert self.session_manager is not None
         sessions = list_webui_sessions(self.session_manager)
         from mira.session.webui_turns import websocket_turn_wall_started_at
@@ -450,6 +464,8 @@ class GatewayHTTPHandler:
         for s in sessions:
             key = s.get("key")
             if not (isinstance(key, str) and key.startswith("websocket:")):
+                continue
+            if user_id is not None and not self.users.session_key_allowed(user_id, key):
                 continue
             row = {k: v for k, v in s.items() if k != "path"}
             chat_id = key.split(":", 1)[1]
@@ -471,6 +487,8 @@ class GatewayHTTPHandler:
             return _http_error(400, "invalid session key")
         if not _is_websocket_channel_session_key(decoded_key):
             return _http_error(404, "session not found")
+        if not self.users.session_key_allowed(self.api_user_id(request), decoded_key):
+            return _http_error(404, "session not found")
         data = self.session_manager.read_session_file(decoded_key)
         if data is None:
             return _http_error(404, "session not found")
@@ -490,6 +508,8 @@ class GatewayHTTPHandler:
         if decoded_key is None:
             return _http_error(400, "invalid session key")
         if not _is_websocket_channel_session_key(decoded_key):
+            return _http_error(404, "session not found")
+        if not self.users.session_key_allowed(self.api_user_id(request), decoded_key):
             return _http_error(404, "session not found")
         scope = self.workspaces.scope_for_session_key(decoded_key)
         session_messages: list[dict[str, Any]] | None = None
@@ -536,6 +556,8 @@ class GatewayHTTPHandler:
             return _http_error(400, "invalid session key")
         if not _is_websocket_channel_session_key(decoded_key):
             return _http_error(404, "session not found")
+        if not self.users.session_key_allowed(self.api_user_id(request), decoded_key):
+            return _http_error(404, "session not found")
         query = _parse_query(request.path)
         path = _query_first(query, "path")
         is_probe = _query_first(query, "probe") == "1"
@@ -559,6 +581,8 @@ class GatewayHTTPHandler:
             return _http_error(400, "invalid session key")
         if not _is_websocket_channel_session_key(decoded_key):
             return _http_error(404, "session not found")
+        if not self.users.session_key_allowed(self.api_user_id(request), decoded_key):
+            return _http_error(404, "session not found")
         pending_job_ids = self._pending_automation_ids_for_session(decoded_key)
         return _http_json_response(
             session_automations_payload(
@@ -578,6 +602,8 @@ class GatewayHTTPHandler:
         if decoded_key is None:
             return _http_error(400, "invalid session key")
         if not _is_websocket_channel_session_key(decoded_key):
+            return _http_error(404, "session not found")
+        if not self.users.session_key_allowed(self.api_user_id(request), decoded_key):
             return _http_error(404, "session not found")
         query = _parse_query(request.path)
         delete_automations = (_query_first(query, "delete_automations") or "").lower()

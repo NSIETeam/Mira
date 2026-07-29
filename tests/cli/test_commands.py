@@ -279,6 +279,24 @@ def test_onboard_recommends_webui(mock_paths):
     assert " mira is ready. Run: mira webui" in result.stdout
 
 
+def test_webui_browser_url_can_target_temporary_user():
+    config = Config.model_validate(
+        {
+            "channels": {
+                "websocket": {
+                    "tokenIssueSecret": "secret",
+                    "port": 8765,
+                }
+            }
+        }
+    )
+
+    url = cli_commands._webui_browser_url(config, user="alice")
+
+    assert "bootstrapSecret=secret" in url
+    assert "user=alice" in url
+
+
 def test_onboard_existing_config_refresh(mock_paths):
     """Config exists, user declines overwrite — should refresh (load-merge-save)."""
     config_file, workspace_dir, _ = mock_paths

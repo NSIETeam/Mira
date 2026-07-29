@@ -12,6 +12,7 @@ from mira.webui.gateway_tokens import GatewayTokenStore
 from mira.webui.ingress_policy import DEFAULT_WEBUI_INGRESS_POLICY, WebUIIngressPolicy
 from mira.webui.media_gateway import WebUIMediaGateway
 from mira.webui.transcript import WebUITranscriptRecorder
+from mira.webui.users import WebUITemporaryUserManager
 from mira.webui.workspaces import WebUIWorkspaceController
 from mira.webui.ws_http import GatewayHTTPHandler
 
@@ -26,6 +27,7 @@ class GatewayServices:
     ingress: WebUIIngressPolicy
     transcripts: WebUITranscriptRecorder
     workspaces: WebUIWorkspaceController
+    users: WebUITemporaryUserManager
     session_manager: Any | None
     cron_service: Any | None
     local_trigger_store: Any | None
@@ -54,6 +56,7 @@ def build_gateway_services(
     logger: Any = default_logger,
 ) -> GatewayServices:
     tokens = GatewayTokenStore()
+    users = WebUITemporaryUserManager(workspace_path.parent / "users")
     ingress = DEFAULT_WEBUI_INGRESS_POLICY
     minimum_frame_bytes = ingress.minimum_full_policy_frame_bytes()
     if config.max_message_bytes < minimum_frame_bytes:
@@ -86,6 +89,7 @@ def build_gateway_services(
         media=media,
         ingress=ingress,
         workspaces=workspaces,
+        users=users,
         skills_workspace_path=workspace_path,
         disabled_skills=disabled_skills,
         cron_service=cron_service,
@@ -103,6 +107,7 @@ def build_gateway_services(
         ingress=ingress,
         transcripts=transcripts,
         workspaces=workspaces,
+        users=users,
         session_manager=session_manager,
         cron_service=cron_service,
         local_trigger_store=local_trigger_store,

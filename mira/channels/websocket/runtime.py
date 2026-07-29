@@ -41,6 +41,7 @@ from mira.runtime_context import (
 from mira.security.workspace_access import (
     WORKSPACE_SCOPE_METADATA_KEY,
     WorkspaceScopeError,
+    build_workspace_scope,
 )
 from mira.session.goal_state import goal_state_ws_blob
 from mira.session.webui_turns import websocket_turn_wall_started_at
@@ -258,6 +259,7 @@ class WebSocketChannel(BaseChannel):
         self._conn_default: dict[Any, str] = {}
         # Connections authenticated with a one-time token from /webui/bootstrap.
         self._webui_connections: set[Any] = set()
+        self._conn_users: dict[Any, str] = {}
         self._stop_event: asyncio.Event | None = None
         self._server_task: asyncio.Task[None] | None = None
 
@@ -293,6 +295,7 @@ class WebSocketChannel(BaseChannel):
                 self._subs.pop(cid, None)
         self._conn_default.pop(connection, None)
         self._webui_connections.discard(connection)
+        self._conn_users.pop(connection, None)
 
     async def _maybe_push_active_goal_state(self, chat_id: str) -> None:
         """Replay an active sustained goal from session metadata after *chat_id* is subscribed.
@@ -397,10 +400,24 @@ class WebSocketChannel(BaseChannel):
         return None
 
     def _consume_issued_token(self, connection: Any, token: str) -> bool:
-        audience = self._tokens.take_issued_token_audience(token)
+        result = self._tokens.take_issued_token(token)
+        if result is None:
+            return False
+        audience, user_id = result
+        self._conn_users[connection] = user_id
         if audience == "webui":
             self._webui_connections.add(connection)
-        return audience is not None
+        return True
+
+    def _user_id_for_connection(self, connection: Any) -> str:
+        return self._conn_users.get(connection, "default")
+
+    def _scoped_chat_id(self, connection: Any, chat_id: str) -> str:
+        return self.gateway.users.scoped_chat_id(self._user_id_for_connection(connection), chat_id)
+
+    def _user_workspace_scope(self, connection: Any) -> Any:
+        user = self.gateway.users.ensure(self._user_id_for_connection(connection))
+        return build_workspace_scope(user.workspace, "restricted", source_channel="webui")
 
     # -- Server lifecycle and connection ingress ---------------------------
 
@@ -503,7 +520,7 @@ class WebSocketChannel(BaseChannel):
             self.logger.warning("client_id too long ({} chars), truncating", len(client_id))
             client_id = client_id[:128]
 
-        default_chat_id = str(uuid.uuid4())
+        default_chat_id = self._scoped_chat_id(connection, str(uuid.uuid4()))
 
         try:
             await connection.send(
@@ -563,7 +580,7 @@ class WebSocketChannel(BaseChannel):
         """Route one typed inbound envelope (``new_chat`` / ``attach`` / ``message``)."""
         t = envelope.get("type")
         if t == "new_chat":
-            new_id = str(uuid.uuid4())
+            new_id = self._scoped_chat_id(connection, str(uuid.uuid4()))
             scope = await self._workspace_scope_or_error(
                 connection,
                 lambda: self._workspaces.scope_for_new_chat(
@@ -573,6 +590,11 @@ class WebSocketChannel(BaseChannel):
             )
             if scope is None:
                 return
+            if (
+                WORKSPACE_SCOPE_METADATA_KEY not in envelope
+                and self.gateway.users.is_isolated_user(self._user_id_for_connection(connection))
+            ):
+                scope = self._user_workspace_scope(connection)
             self._workspaces.persist_scope(new_id, scope)
             self._attach(connection, new_id)
             await self._send_event(connection, "attached", chat_id=new_id)
@@ -593,6 +615,7 @@ class WebSocketChannel(BaseChannel):
             if not _is_valid_chat_id(cid):
                 await self._send_event(connection, "error", detail="invalid chat_id")
                 return
+            cid = self._scoped_chat_id(connection, cid)
             self._attach(connection, cid)
             await self._send_event(connection, "attached", chat_id=cid)
             await self._hydrate_after_subscribe(cid)
@@ -602,6 +625,7 @@ class WebSocketChannel(BaseChannel):
             if not _is_valid_chat_id(cid):
                 await self._send_event(connection, "error", detail="invalid chat_id")
                 return
+            cid = self._scoped_chat_id(connection, cid)
             scope = await self._workspace_scope_or_error(
                 connection,
                 lambda: self._workspaces.scope_for_set_request(
@@ -633,6 +657,7 @@ class WebSocketChannel(BaseChannel):
             if not _is_valid_chat_id(cid):
                 await self._send_event(connection, "error", detail="invalid chat_id")
                 return
+            cid = self._scoped_chat_id(connection, cid)
             if not isinstance(content, str):
                 await self._send_event(connection, "error", detail="missing content")
                 return
@@ -700,6 +725,11 @@ class WebSocketChannel(BaseChannel):
             mcp_presets = normalize_mcp_preset_mentions(envelope.get("mcp_presets"))
             if mcp_presets:
                 metadata["mcp_presets"] = mcp_presets
+            if (
+                WORKSPACE_SCOPE_METADATA_KEY not in envelope
+                and self.gateway.users.is_isolated_user(self._user_id_for_connection(connection))
+            ):
+                scope = self._user_workspace_scope(connection)
             metadata[WORKSPACE_SCOPE_METADATA_KEY] = scope.metadata()
             self._workspaces.persist_scope(cid, scope)
             if metadata.get("webui") is True and self.is_allowed(client_id):

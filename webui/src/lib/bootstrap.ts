@@ -3,6 +3,7 @@ import { fetchWithTimeout } from "./http";
 
 const SECRET_STORAGE_KEY = "mira-webui.bootstrap-secret";
 const URL_SECRET_PARAM = "bootstrapSecret";
+const URL_USER_PARAM = "user";
 
 export class BootstrapAuthRequiredError extends Error {
   constructor(message = "bootstrap authentication required") {
@@ -62,6 +63,15 @@ export function consumeUrlBootstrapSecret(): string {
   return secret;
 }
 
+export function currentUrlBootstrapUser(): string {
+  if (typeof window === "undefined") return "";
+  const hash = window.location.hash || "";
+  const queryStart = hash.indexOf("?");
+  if (queryStart < 0) return "";
+  const params = new URLSearchParams(hash.slice(queryStart + 1));
+  return params.get(URL_USER_PARAM)?.trim() || "";
+}
+
 /**
  * Fetch a short-lived token + the WebSocket path from the gateway's
  * ``/webui/bootstrap`` endpoint.
@@ -75,7 +85,9 @@ export async function fetchBootstrap(
   if (secret) {
     headers["X-mira-Auth"] = secret;
   }
-  const res = await fetchWithTimeout(`${baseUrl}/webui/bootstrap`, {
+  const user = currentUrlBootstrapUser();
+  const suffix = user ? `?user=${encodeURIComponent(user)}` : "";
+  const res = await fetchWithTimeout(`${baseUrl}/webui/bootstrap${suffix}`, {
     method: "GET",
     credentials: "same-origin",
     headers,
