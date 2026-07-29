@@ -101,7 +101,37 @@ def _bwrap(
     return shlex.join(args)
 
 
-_BACKENDS = {"bwrap": _bwrap}
+def _native(
+    command: str,
+    workspace: str,
+    cwd: str,
+    *,
+    sandbox_ro_binds: Iterable[str] | None = None,
+    sandbox_rw_binds: Iterable[str] | None = None,
+) -> str:
+    """Wrap command with the optional Rust mira-sandbox helper."""
+    ws = Path(workspace).resolve()
+    try:
+        sandbox_cwd = str(Path(cwd).resolve().relative_to(ws))
+    except ValueError:
+        sandbox_cwd = "."
+    helper = os.environ.get("MIRA_SANDBOX_BIN", "mira-sandbox")
+    args = [
+        helper,
+        "--workspace",
+        str(ws),
+        "--cwd",
+        sandbox_cwd,
+    ]
+    for path in _normalize_bind_paths(sandbox_ro_binds, workspace=ws):
+        args += ["--path", path]
+    for path in _normalize_bind_paths(sandbox_rw_binds, workspace=ws):
+        args += ["--path", path]
+    args += ["--", "sh", "-c", command]
+    return shlex.join(args)
+
+
+_BACKENDS = {"bwrap": _bwrap, "native": _native}
 
 
 def wrap_command(

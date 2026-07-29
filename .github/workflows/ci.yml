@@ -110,6 +110,25 @@ jobs:
           uv run --no-sync python -m pytest
           --durations=25 --durations-min=1.0
 
+  rust-native:
+    name: Optional Rust native tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check native workspace
+        working-directory: native
+        run: cargo check --workspace
+
+      - name: Test native workspace
+        working-directory: native
+        run: cargo test --workspace
+
   webui:
     runs-on: ubuntu-latest
     timeout-minutes: 15

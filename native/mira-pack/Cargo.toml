@@ -8,8 +8,3 @@ description = "Tiny package size auditor for Mira release artifacts."
 [[bin]]
 name = "mira-pack"
 path = "src/main.rs"
-
-[profile.release]
-lto = true
-codegen-units = 1
-panic = "abort"

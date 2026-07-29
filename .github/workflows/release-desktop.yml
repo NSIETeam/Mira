@@ -52,21 +52,22 @@ PY
       - name: Build native diagnostics
         shell: bash
         run: |
-          cargo build --release --manifest-path native/mira-launcher/Cargo.toml
-          cargo build --release --manifest-path native/mira-pack/Cargo.toml
+          cargo build --release --manifest-path native/Cargo.toml --workspace
 
       - name: Stage native diagnostics
         shell: bash
         run: |
           mkdir -p dist/native
-          launcher="native/mira-launcher/target/release/mira-launcher"
-          pack="native/mira-pack/target/release/mira-pack"
+          native_dir="native/target/release"
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            launcher="${launcher}.exe"
-            pack="${pack}.exe"
+            for bin in mira-launcher.exe mira-sandbox.exe mira-pack.exe; do
+              cp "$native_dir/$bin" dist/native/
+            done
+          else
+            for bin in mira-launcher mira-sandbox mira-pack; do
+              cp "$native_dir/$bin" dist/native/
+            done
           fi
-          cp "$launcher" dist/native/
-          cp "$pack" dist/native/
 
       - name: Install Linux desktop libraries
         if: runner.os == 'Linux'
@@ -93,6 +94,31 @@ PY
             --windowed \
             --collect-all webview \
             scripts/mira_desktop.py
+
+      - name: Include optional Rust native tools
+        shell: bash
+        run: |
+          native_dir="native/target/release"
+          if [[ ! -d "$native_dir" ]]; then
+            echo "optional Rust native tools were not built"
+            exit 0
+          fi
+          if [[ "$RUNNER_OS" == "macOS" && -d dist/Mira.app/Contents/MacOS ]]; then
+            dest="dist/Mira.app/Contents/MacOS"
+            for bin in mira-launcher mira-sandbox mira-pack; do
+              [[ -f "$native_dir/$bin" ]] && cp -f "$native_dir/$bin" "$dest/$bin"
+            done
+          elif [[ "$RUNNER_OS" == "Windows" && -d dist/Mira ]]; then
+            dest="dist/Mira"
+            for bin in mira-launcher.exe mira-sandbox.exe mira-pack.exe; do
+              [[ -f "$native_dir/$bin" ]] && cp -f "$native_dir/$bin" "$dest/$bin"
+            done
+          elif [[ -d dist/Mira ]]; then
+            dest="dist/Mira"
+            for bin in mira-launcher mira-sandbox mira-pack; do
+              [[ -f "$native_dir/$bin" ]] && cp -f "$native_dir/$bin" "$dest/$bin"
+            done
+          fi
 
       - name: Install macOS packaging tools
         if: runner.os == 'macOS'
@@ -233,7 +259,7 @@ PY
       - name: Audit release package size
         shell: bash
         run: |
-          tool="native/mira-pack/target/release/mira-pack"
+          tool="native/target/release/mira-pack"
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             tool="${tool}.exe"
             artifact="dist/Mira-Setup.exe"
@@ -297,6 +323,13 @@ PY
         shell: bash
         run: |
           bundle_limit="${MIRA_RELEASE_BUNDLE_LIMIT_MB:-119}"
+          tool="native/target/release/mira-pack"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            tool="${tool}.exe"
+          fi
+          if [[ -x "$tool" ]]; then
+            "$tool" dist --json --limit-mb "$bundle_limit" > dist/mira-pack-report.json || true
+          fi
           if [[ -d dist/Mira.app ]]; then
             python scripts/package_size_report.py dist/Mira.app --budget-mb "$bundle_limit" --fail-on-over-budget
           elif [[ -d dist/Mira ]]; then
@@ -314,6 +347,7 @@ PY
             dist/Mira-trust-*.json
             dist/SHA256SUMS
             dist/native/*
+            dist/mira-pack-report.json
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

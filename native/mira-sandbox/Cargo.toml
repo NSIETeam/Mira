@@ -8,8 +8,3 @@ description = "Small optional workspace-bound command runner for Mira."
 [[bin]]
 name = "mira-sandbox"
 path = "src/main.rs"
-
-[profile.release]
-lto = true
-codegen-units = 1
-panic = "abort"

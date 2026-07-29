@@ -223,6 +223,35 @@ class TestBwrapBackend:
         assert (str(parent), str(parent)) not in bind_try_pairs
 
 
+class TestNativeBackend:
+    def test_basic_structure(self, tmp_path):
+        ws = tmp_path / "project"
+        result = wrap_command("native", "echo hi", str(ws), str(ws))
+        tokens = _parse(result)
+
+        assert tokens[:3] == ["mira-sandbox", "--workspace", str(ws.resolve())]
+        assert "--cwd" in tokens
+        sep = tokens.index("--")
+        assert tokens[sep + 1:] == ["sh", "-c", "echo hi"]
+
+    def test_helper_can_be_overridden(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("MIRA_SANDBOX_BIN", "/opt/mira/mira-sandbox")
+        ws = tmp_path / "project"
+        result = wrap_command("native", "pwd", str(ws), str(ws))
+        tokens = _parse(result)
+
+        assert tokens[0] == "/opt/mira/mira-sandbox"
+
+    def test_cwd_outside_workspace_falls_back(self, tmp_path):
+        ws = tmp_path / "project"
+        outside = tmp_path / "other"
+        result = wrap_command("native", "pwd", str(ws), str(outside))
+        tokens = _parse(result)
+
+        cwd_idx = tokens.index("--cwd")
+        assert tokens[cwd_idx + 1] == "."
+
+
 class TestUnknownBackend:
     def test_raises_value_error(self, tmp_path):
         ws = str(tmp_path / "project")
