@@ -58,8 +58,19 @@ The current Mira track is Linux-style maturity without a full rewrite:
 - **Lazy modules** — channels, MCP, document tools, desktop host, doctor repair, and memory consolidation load on demand
 - **Policy table** — tool allow/deny, workspace root, memory scope, and execution posture are derived per user/group
 - **Package discipline** — release artifacts are audited against a 119 MB budget before upload
+- **Optional Rust boundaries** — `mira-launcher`, `mira-sandbox`, and `mira-pack` provide small native helpers without moving ownership of the Python kernel loop
 
-Active follow-up work is tracked in [GitHub Issues](https://github.com/NSIETeam/Mira/issues), including release signing, Admin v2, and optional Rust boundary tools.
+### Native Rust Tools
+
+The optional Rust boundary track is implemented in the `native/` workspace:
+
+- `mira-launcher` — native entry point that locates Python/config/package roots and forwards to the Mira CLI with explicit errors
+- `mira-sandbox` — app-layer execution helper that validates workspace paths, caps output, enforces timeouts, and returns structured JSON results
+- `mira-pack` — release size auditor with JSON/table output, category totals, top offenders, and budget checks
+
+This branch covers the acceptance scope for [#76](https://github.com/NSIETeam/Mira/issues/76), [#77](https://github.com/NSIETeam/Mira/issues/77), [#78](https://github.com/NSIETeam/Mira/issues/78), and [#79](https://github.com/NSIETeam/Mira/issues/79). GitHub still shows those issues open until the branch is merged and maintainers close them. Follow-up product-loop gaps remain tracked in [#99](https://github.com/NSIETeam/Mira/issues/99), including deeper desktop launcher wiring and release trust metadata.
+
+Active follow-up work is tracked in [GitHub Issues](https://github.com/NSIETeam/Mira/issues), including release signing, Admin v2, and native Rust productization follow-ups.
 
 The current Claude Code maturity gap closure is tracked in
 [docs/cc-gap-closure.md](./docs/cc-gap-closure.md).
@@ -72,6 +83,8 @@ mira doctor --profile lightweight
 mira modules list
 mira policy show --user alice --group growth
 python scripts/package_size_report.py dist/Mira.app --budget-mb 119
+cd native && cargo check --workspace && cargo test --workspace
+cargo run --manifest-path native/Cargo.toml --bin mira-pack -- dist --format json --budget-mb 119
 ```
 
 ### Quick Start
@@ -232,8 +245,19 @@ Mira 优先被设计成执行基础设施，而不是某个单一产品：主循
 - **模块懒加载** — channel、MCP、文档工具、桌面壳、doctor repair、memory consolidation 按需加载
 - **策略表权限** — 每个 user/group 派生工具 allow/deny、workspace root、memory scope 和执行姿态
 - **包体纪律** — release 上传前按 119 MB 预算审计包体
+- **可选 Rust 边界** — `mira-launcher`、`mira-sandbox`、`mira-pack` 提供小型 native helper，但 Python 仍然拥有内核主循环
 
-后续工作继续在 [GitHub Issues](https://github.com/NSIETeam/Mira/issues) 里跟踪，包括签名公证、Admin v2 和可选 Rust 边界工具。
+### Native Rust 工具
+
+可选 Rust 边界工具已经落在 `native/` workspace 中：
+
+- `mira-launcher` — native 入口，定位 Python/config/package root，并把参数转发给 Mira CLI，失败时返回明确错误
+- `mira-sandbox` — 应用层执行 helper，校验 workspace 路径，限制输出，执行 timeout，并返回结构化 JSON 结果
+- `mira-pack` — release 包体审计工具，输出 JSON/table，统计分类、top offenders 和预算检查结果
+
+当前分支覆盖 [#76](https://github.com/NSIETeam/Mira/issues/76)、[#77](https://github.com/NSIETeam/Mira/issues/77)、[#78](https://github.com/NSIETeam/Mira/issues/78)、[#79](https://github.com/NSIETeam/Mira/issues/79) 的 acceptance scope。GitHub 上这些 issue 在分支合并、维护者关闭之前仍会显示 open。后续产品闭环缺口继续由 [#99](https://github.com/NSIETeam/Mira/issues/99) 跟踪，包括更深入的桌面 launcher wiring 和 release trust metadata。
+
+后续工作继续在 [GitHub Issues](https://github.com/NSIETeam/Mira/issues) 里跟踪，包括签名公证、Admin v2 和 native Rust 产品化 follow-up。
 
 ### 运维命令
 
@@ -243,6 +267,8 @@ mira doctor --profile lightweight
 mira modules list
 mira policy show --user alice --group growth
 python scripts/package_size_report.py dist/Mira.app --budget-mb 119
+cd native && cargo check --workspace && cargo test --workspace
+cargo run --manifest-path native/Cargo.toml --bin mira-pack -- dist --format json --budget-mb 119
 ```
 
 ### 快速开始
