@@ -17,6 +17,7 @@ from mira.agent.context_governance import (
     ContextGovernor,
 )
 from mira.agent.hook import AgentHook, AgentHookContext, AgentRunHookContext
+from mira.agent.maturity import ToolMiddlewareStack
 from mira.agent.tools.registry import ToolRegistry, is_tool_error_result
 from mira.execution_gate import ExecutionGate, ExecutionGateClosedError
 from mira.providers.base import LLMProvider, LLMResponse, ToolCallRequest
@@ -101,6 +102,7 @@ class AgentRunSpec:
     goal_continue_message: GoalContinueMessage | None = None
     finalize_on_max_iterations: bool = True
     execution_gate: ExecutionGate | None = None
+    tool_middlewares: list[Any] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -1310,6 +1312,17 @@ class AgentRunner:
                 RuntimeError(prep_error) if spec.fail_on_tool_error else None
             )
         await hook.before_execute_tool(context, tool_call, tool, params)
+        middleware_stack = ToolMiddlewareStack(list(spec.tool_middlewares))
+        middleware_result = await middleware_stack.before_execute(tool_call, tool, params)
+        if middleware_result is not None:
+            event = {
+                "name": tool_call.name,
+                "status": "error",
+                "detail": str(middleware_result).replace("\n", " ").strip()[:120],
+            }
+            return middleware_result, event, (
+                RuntimeError(str(middleware_result)) if spec.fail_on_tool_error else None
+            )
         try:
             if tool is not None:
                 result = await tool.execute(**params)
@@ -1318,6 +1331,7 @@ class AgentRunner:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            await middleware_stack.on_error(tool_call, tool, params, exc)
             await hook.on_execute_tool_error(context, tool_call, tool, params, exc)
             event = {
                 "name": tool_call.name,
@@ -1340,6 +1354,7 @@ class AgentRunner:
             return payload, event, None
 
         if is_tool_error_result(tool_call.name, result):
+            await middleware_stack.on_error(tool_call, tool, params, result)
             await hook.on_execute_tool_error(context, tool_call, tool, params, result)
             event = {
                 "name": tool_call.name,
@@ -1360,6 +1375,7 @@ class AgentRunner:
             return result + hint, event, None
 
         await hook.after_execute_tool(context, tool_call, tool, params, result)
+        await middleware_stack.after_execute(tool_call, tool, params, result)
 
         detail = "" if result is None else str(result)
         detail = detail.replace("\n", " ").strip()

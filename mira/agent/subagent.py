@@ -15,6 +15,7 @@ from loguru import logger
 
 from mira.agent.hook import AgentHook, AgentHookContext
 from mira.agent.memory import MemoryStore
+from mira.agent.maturity import apply_agent_role_to_task, resolve_agent_role_profile
 from mira.agent.runner import AgentRunner, AgentRunSpec
 from mira.agent.tools.base import ToolResult
 from mira.agent.tools.context import (
@@ -78,6 +79,7 @@ class SubagentStatus:
     error: str | None = None
     memory_policy: str = "default"
     inherited_memory_layers: list[str] = field(default_factory=list)
+    role: str = "default"
 
 
 @dataclass(slots=True)
@@ -96,6 +98,7 @@ class PendingSubagent:
     weight: int = 1
     memory_policy: str = "default"
     inherited_memory_layers: list[str] = field(default_factory=list)
+    role: str = "default"
 
 
 class _SubagentHook(AgentHook):
@@ -428,6 +431,7 @@ class SubagentManager:
         workspace_scope: WorkspaceScope | None = None,
         weight: int = 1,
         memory_policy: str | None = None,
+        role: str | None = None,
         *,
         runtime: LLMRuntime | None = None,
     ) -> str:
@@ -440,6 +444,10 @@ class SubagentManager:
         display_label = label or task[:30] + ("..." if len(task) > 30 else "")
         origin = {"channel": origin_channel, "chat_id": origin_chat_id, "session_key": session_key}
         resolved_memory_policy = self._normalize_memory_policy(memory_policy)
+        role_profile = resolve_agent_role_profile(role)
+        if role_profile is not None and memory_policy in {None, "auto"}:
+            resolved_memory_policy = role_profile.default_memory_policy
+        resolved_role = role_profile.name if role_profile is not None else "default"
         inherited_memory_layers = self._memory_layers_for_policy(resolved_memory_policy)
 
         status = SubagentStatus(
@@ -449,6 +457,7 @@ class SubagentManager:
             started_at=time.monotonic(),
             memory_policy=resolved_memory_policy,
             inherited_memory_layers=inherited_memory_layers,
+            role=resolved_role,
         )
         self._task_statuses[task_id] = status
         pending = PendingSubagent(
@@ -463,6 +472,7 @@ class SubagentManager:
             weight=max(1, weight),
             memory_policy=resolved_memory_policy,
             inherited_memory_layers=inherited_memory_layers,
+            role=resolved_role,
         )
         if not await self._enqueue_or_start(pending, status):
             if status.phase == "error":
@@ -577,6 +587,7 @@ class SubagentManager:
                 pending.workspace_scope,
                 pending.memory_policy,
                 pending.inherited_memory_layers,
+                pending.role,
             )
         )
         self._running_tasks[pending.task_id] = bg_task
@@ -752,6 +763,7 @@ class SubagentManager:
         temperature: float | None = None,
         workspace_scope: WorkspaceScope | None = None,
         memory_policy: str | None = None,
+        role: str | None = None,
         *,
         runtime: LLMRuntime | None = None,
     ) -> str:
@@ -768,6 +780,10 @@ class SubagentManager:
             "session_key": session_key,
         }
         resolved_memory_policy = self._normalize_memory_policy(memory_policy)
+        role_profile = resolve_agent_role_profile(role)
+        if role_profile is not None and memory_policy in {None, "auto"}:
+            resolved_memory_policy = role_profile.default_memory_policy
+        resolved_role = role_profile.name if role_profile is not None else "default"
         inherited_memory_layers = self._memory_layers_for_policy(resolved_memory_policy)
         status = SubagentStatus(
             task_id=task_id,
@@ -776,6 +792,7 @@ class SubagentManager:
             started_at=time.monotonic(),
             memory_policy=resolved_memory_policy,
             inherited_memory_layers=inherited_memory_layers,
+            role=resolved_role,
         )
         running_for_session = self._running_count_by_session(session_key) if session_key else 0
         if len(self._running_tasks) >= self.max_concurrent_subagents:
@@ -804,6 +821,7 @@ class SubagentManager:
                 workspace_scope,
                 resolved_memory_policy,
                 inherited_memory_layers,
+                resolved_role,
                 announce=False,
             )
         )
@@ -835,6 +853,7 @@ class SubagentManager:
         workspace_scope: WorkspaceScope | None = None,
         memory_policy: str = _DEFAULT_MEMORY_POLICY,
         inherited_memory_layers: list[str] | None = None,
+        role: str = "default",
         *,
         announce: bool = True,
     ) -> str:
@@ -862,7 +881,7 @@ class SubagentManager:
             )
             messages: list[dict[str, Any]] = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": task},
+                {"role": "user", "content": apply_agent_role_to_task(task, role)},
             ]
 
             llm_timeout = (
@@ -1040,6 +1059,7 @@ class SubagentManager:
         session_key: str | None = None,
         memory_policy: str = _DEFAULT_MEMORY_POLICY,
         inherited_memory_layers: list[str] | None = None,
+        role: str = "default",
     ) -> str:
         """Build a focused system prompt for the subagent."""
         from mira.agent.skills import SkillsLoader
@@ -1061,6 +1081,7 @@ class SubagentManager:
             parent_session_ref="[redacted]" if memory_view.parent_session_visible and session_key else "",
             memory_policy=memory_policy,
             inherited_memory_layers=", ".join(inherited_memory_layers or []) or "none",
+            subagent_role=role,
             skills_summary=skills_summary or "",
         )
 

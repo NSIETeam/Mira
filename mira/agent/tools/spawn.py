@@ -71,6 +71,19 @@ if TYPE_CHECKING:
                 "live session scratchpad. `auto` maps to `default`."
             ),
         ),
+        role=EnumSchema(
+            [
+                "auto",
+                "implementer",
+                "reviewer",
+                "researcher",
+                "doctor",
+            ],
+            description=(
+                "Optional subagent role profile. `implementer` ships changes, "
+                "`reviewer` finds risks, `researcher` gathers facts, and `doctor` diagnoses failures."
+            ),
+        ),
         temperature=NumberSchema(
             description=(
                 "Optional sampling temperature for the subagent "
@@ -125,6 +138,7 @@ class SpawnTool(Tool):
         label: str | None = None,
         weight: int = 1,
         memory_policy: str = "auto",
+        role: str = "auto",
         temperature: float | None = None,
         wait: bool = False,
         **kwargs: Any,
@@ -175,6 +189,7 @@ class SpawnTool(Tool):
                     "temperature": temperature,
                     "workspace_scope": current_workspace_scope(),
                     "memory_policy": memory_policy,
+                    "role": role,
                 },
             )
 
@@ -194,6 +209,7 @@ class SpawnTool(Tool):
                     "temperature": temperature,
                     "workspace_scope": current_workspace_scope(),
                     "memory_policy": memory_policy,
+                    "role": role,
                 },
             ))
         queued = sum("queued" in line.lower() for line in results)

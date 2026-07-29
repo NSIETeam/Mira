@@ -417,6 +417,41 @@ class ModulesConfig(Base):
         return default
 
 
+class MaturityConfig(Base):
+    """Lightweight mature-agent feature contracts."""
+
+    virtual_context: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("virtualContext", "virtual_context"),
+        serialization_alias="virtualContext",
+    )
+    agent_roles: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("agentRoles", "agent_roles"),
+        serialization_alias="agentRoles",
+    )
+    tool_middleware: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("toolMiddleware", "tool_middleware"),
+        serialization_alias="toolMiddleware",
+    )
+    multimodal_contract: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("multimodalContract", "multimodal_contract"),
+        serialization_alias="multimodalContract",
+    )
+    workflow_dsl: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("workflowDsl", "workflow_dsl"),
+        serialization_alias="workflowDsl",
+    )
+    computer_use: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("computerUse", "computer_use"),
+        serialization_alias="computerUse",
+    )
+
+
 class RuntimeConfig(Base):
     """Runtime launcher selection."""
 
@@ -540,6 +575,7 @@ class Config(BaseSettings):
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     kernel: KernelConfig = Field(default_factory=KernelConfig)
     modules: ModulesConfig = Field(default_factory=ModulesConfig)
+    maturity: MaturityConfig = Field(default_factory=MaturityConfig)
     runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
