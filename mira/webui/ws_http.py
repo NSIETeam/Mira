@@ -374,6 +374,7 @@ class GatewayHTTPHandler:
         expected_path = _normalize_config_path(self.config.path)
         shell = _bootstrap_shell_from_config()
         profile = _bootstrap_profile_from_config()
+        kernel = self._get_kernel_app()
         kernel_payload = self._kernel_manifest_payload(profile=profile, shell=shell)
         payload = {
             "token": token,
@@ -389,6 +390,7 @@ class GatewayHTTPHandler:
             "shell": shell.to_dict(),
             "kernel": kernel_payload,
             "memory": MemoryStore(self.skills_workspace_path).memory_audit(self.skills_workspace_path),
+            "scheduler": kernel.scheduler_snapshot() if kernel is not None else None,
         }
         if api_token is not None:
             payload["api_token"] = api_token
