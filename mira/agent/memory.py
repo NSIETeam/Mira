@@ -902,6 +902,8 @@ class MemoryStore:
             {"session_key": session_key, "count": count}
             for session_key, count in sorted(session_counts.items(), key=lambda item: (-item[1], item[0]))[:3]
         ]
+        multi_session_contention = len(session_counts) >= 2
+        dominant_session = top_sessions[0]["session_key"] if top_sessions else None
         return {
             "layers": [
                 {
@@ -943,6 +945,8 @@ class MemoryStore:
                 "top_labels": top_labels,
                 "top_sessions": top_sessions,
                 "error_labels": error_labels[:3],
+                "multi_session_contention": multi_session_contention,
+                "dominant_session": dominant_session,
             },
         }
 

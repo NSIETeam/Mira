@@ -380,6 +380,8 @@ export interface BootstrapResponse {
         count: number;
       }>;
       error_labels?: string[];
+      multi_session_contention?: boolean;
+      dominant_session?: string | null;
     };
   };
   planning?: {
