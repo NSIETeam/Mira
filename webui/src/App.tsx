@@ -662,6 +662,12 @@ function RuntimeSnapshotPanel({
     .map((layer) => `${layer.id}:${layer.source_detail ?? layer.source}`)
     .join(" / ") ?? "";
   const schedulerPressure = schedulerSummary?.pressure ?? null;
+  const operatorAdvice = (() => {
+    if (recommendedAction) return recommendedAction;
+    if (schedulerPressure === "saturated") return "reduce fan-out or defer queued work";
+    if (schedulerPressure === "busy") return "watch queue growth";
+    return "system steady";
+  })();
   const planningSummary = planning
     ? {
         active: planning.active ?? false,
@@ -740,6 +746,9 @@ function RuntimeSnapshotPanel({
               ) : null}
             </div>
           ) : null}
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+            <span>advice {operatorAdvice}</span>
+          </div>
           {schedulerSummary?.hostStrategyReason || schedulerSummary?.queuePromotions ? (
             <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
               {schedulerSummary.hostStrategyReason ? (
