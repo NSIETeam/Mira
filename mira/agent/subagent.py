@@ -102,6 +102,8 @@ class SubagentManager:
 
     _DEFAULT_SUBAGENT_MEMORY_MB = 10
     _DEFAULT_QUEUE_FACTOR = 4
+    _NEAR_QUEUE_WEIGHT_THRESHOLD = 3
+    _FAR_QUEUE_AGE_PROMOTION_S = 15.0
 
     @staticmethod
     def _host_memory_mb() -> int | None:
@@ -213,7 +215,8 @@ class SubagentManager:
         self._running_tasks: dict[str, asyncio.Task[str]] = {}
         self._task_statuses: dict[str, SubagentStatus] = {}
         self._session_tasks: dict[str, set[str]] = {}  # session_key -> {task_id, ...}
-        self._pending: list[PendingSubagent] = []
+        self._pending_near: list[PendingSubagent] = []
+        self._pending_far: list[PendingSubagent] = []
         self._dispatch_lock = asyncio.Lock()
 
     def set_provider(self, provider: LLMProvider, model: str) -> None:
@@ -328,9 +331,9 @@ class SubagentManager:
                 return (
                     f"Subagent [{display_label}] rejected because the shared queue is full. "
                     f"Running: {len(self._running_tasks)}/{self.max_concurrent_subagents}, "
-                    f"queued: {len(self._pending)}/{self.max_pending_subagents}."
+                    f"queued: {self._pending_count()}/{self.max_pending_subagents}."
                 )
-            queued = len(self._pending)
+            queued = self._pending_count()
             logger.info("Queued subagent [{}]: {}", task_id, display_label)
             return (
                 f"Subagent [{display_label}] queued (id: {task_id}). "
@@ -348,7 +351,7 @@ class SubagentManager:
     ) -> bool:
         async with self._dispatch_lock:
             if len(self._running_tasks) >= self.max_concurrent_subagents:
-                if len(self._pending) >= self.max_pending_subagents:
+                if self._pending_count() >= self.max_pending_subagents:
                     status.phase = "error"
                     status.error = (
                         "queued-subagent limit reached; host is saturated and the shared queue is full"
@@ -356,7 +359,7 @@ class SubagentManager:
                     self._task_statuses.pop(pending.task_id, None)
                     return False
                 status.phase = "queued"
-                self._pending.append(pending)
+                self._push_pending(pending)
                 return False
             self._start_pending_locked(pending, status)
             return True
@@ -397,25 +400,56 @@ class SubagentManager:
 
     async def _dispatch_pending(self) -> None:
         async with self._dispatch_lock:
-            while self._pending and len(self._running_tasks) < self.max_concurrent_subagents:
-                index = self._pick_next_pending_index()
-                pending = self._pending.pop(index)
+            while self._pending_count() and len(self._running_tasks) < self.max_concurrent_subagents:
+                self._promote_far_pending_locked()
+                pending = self._pop_next_pending_locked()
+                if pending is None:
+                    break
                 status = self._task_statuses.get(pending.task_id)
                 if status is None:
                     continue
                 self._start_pending_locked(pending, status)
 
-    def _pick_next_pending_index(self) -> int:
+    def _pick_next_pending_index(self, queue: list[PendingSubagent]) -> int:
         best_index = 0
         best_score = float("-inf")
         now = time.monotonic()
-        for index, pending in enumerate(self._pending):
+        for index, pending in enumerate(queue):
             age = max(now - pending.queued_at, 0.0)
             score = age * max(1, pending.weight)
             if score > best_score:
                 best_score = score
                 best_index = index
         return best_index
+
+    def _pending_count(self) -> int:
+        return len(self._pending_near) + len(self._pending_far)
+
+    def _push_pending(self, pending: PendingSubagent) -> None:
+        if pending.weight >= self._NEAR_QUEUE_WEIGHT_THRESHOLD:
+            self._pending_near.append(pending)
+        else:
+            self._pending_far.append(pending)
+
+    def _promote_far_pending_locked(self) -> None:
+        now = time.monotonic()
+        keep_far: list[PendingSubagent] = []
+        for pending in self._pending_far:
+            age = max(now - pending.queued_at, 0.0)
+            if age >= self._FAR_QUEUE_AGE_PROMOTION_S:
+                self._pending_near.append(pending)
+            else:
+                keep_far.append(pending)
+        self._pending_far = keep_far
+
+    def _pop_next_pending_locked(self) -> PendingSubagent | None:
+        if self._pending_near:
+            index = self._pick_next_pending_index(self._pending_near)
+            return self._pending_near.pop(index)
+        if self._pending_far:
+            index = self._pick_next_pending_index(self._pending_far)
+            return self._pending_far.pop(index)
+        return None
 
     async def run_inline(
         self,
@@ -684,12 +718,16 @@ class SubagentManager:
         """Cancel all subagents for the given session. Returns count cancelled."""
         queued_ids = {
             pending.task_id
-            for pending in self._pending
+            for pending in [*self._pending_near, *self._pending_far]
             if pending.origin.get("session_key") == session_key
         }
         if queued_ids:
-            self._pending = [
-                pending for pending in self._pending
+            self._pending_near = [
+                pending for pending in self._pending_near
+                if pending.task_id not in queued_ids
+            ]
+            self._pending_far = [
+                pending for pending in self._pending_far
                 if pending.task_id not in queued_ids
             ]
             for task_id in queued_ids:
@@ -705,7 +743,8 @@ class SubagentManager:
 
     async def close(self) -> None:
         """Cancel running subagents and close their shared exec sessions."""
-        self._pending.clear()
+        self._pending_near.clear()
+        self._pending_far.clear()
         tasks = [task for task in self._running_tasks.values() if not task.done()]
         for task in tasks:
             task.cancel()
@@ -758,7 +797,9 @@ class SubagentManager:
         return {
             "running": len(self._running_tasks),
             "running_limit": self.max_concurrent_subagents,
-            "queued": len(self._pending),
+            "queued": self._pending_count(),
+            "queued_near": len(self._pending_near),
+            "queued_far": len(self._pending_far),
             "queue_limit": self.max_pending_subagents,
             "estimated_subagent_memory_mb": self.subagent_memory_mb,
             "host_memory_mb": self._host_memory_mb(),
