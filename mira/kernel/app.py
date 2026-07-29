@@ -1004,6 +1004,42 @@ class KernelApp:
         except Exception:
             return []
 
+    @staticmethod
+    def _planning_snapshot(checkpoint: dict[str, Any]) -> dict[str, Any]:
+        if not checkpoint:
+            return {
+                "plan_first_default": True,
+                "active": False,
+                "stage": "idle",
+                "iteration": 0,
+                "pending_tool_calls": 0,
+                "completed_tool_results": 0,
+            }
+        phase = str(checkpoint.get("phase") or "running")
+        iteration = int(checkpoint.get("iteration", 0) or 0)
+        pending_tool_calls = len(list(checkpoint.get("pending_tool_calls", [])))
+        completed_tool_results = len(list(checkpoint.get("completed_tool_results", [])))
+        if phase == "awaiting_tools":
+            stage = "executing"
+        elif phase == "tools_completed":
+            stage = "synthesizing"
+        elif phase == "final_response":
+            stage = "responding"
+        elif phase == "error":
+            stage = "error"
+        elif iteration <= 1 and pending_tool_calls == 0 and completed_tool_results == 0:
+            stage = "planning"
+        else:
+            stage = "coordinating"
+        return {
+            "plan_first_default": True,
+            "active": True,
+            "stage": stage,
+            "iteration": iteration,
+            "pending_tool_calls": pending_tool_calls,
+            "completed_tool_results": completed_tool_results,
+        }
+
     def _refresh_live_event_log(self) -> None:
         native_snapshot = snapshot_native_bridge()
         if native_snapshot is not None:
@@ -3239,6 +3275,7 @@ class KernelApp:
             snapshot["snapshot"]["phase"] = checkpoint.get("phase")
             snapshot["snapshot"]["iteration"] = checkpoint.get("iteration")
             snapshot["snapshot"]["pending_tool_calls"] = len(list(checkpoint.get("pending_tool_calls", [])))
+        snapshot["snapshot"]["planning"] = self._planning_snapshot(checkpoint)
         subagent_rows = self._subagent_snapshot(self._active_session_key)
         if subagent_rows:
             snapshot["snapshot"]["subagent_workers"] = len(subagent_rows)

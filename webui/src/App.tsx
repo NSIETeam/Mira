@@ -111,6 +111,7 @@ type BootState =
       shell: ShellDescriptorPayload | null;
       memory: BootstrapResponse["memory"] | null;
       scheduler: BootstrapResponse["scheduler"] | null;
+      planning: BootstrapResponse["planning"] | null;
       runtimeSnapshotAt: number | null;
     };
 
@@ -261,6 +262,7 @@ export default function App() {
               shell: shellDescriptor ?? current.shell,
               memory: boot.memory ?? current.memory,
               scheduler: boot.scheduler ?? current.scheduler,
+              planning: boot.planning ?? current.planning,
               runtimeSnapshotAt: current.runtimeSnapshotAt,
             }
           : current,
@@ -311,6 +313,7 @@ export default function App() {
             shell: shellDescriptor,
             memory: boot.memory ?? null,
             scheduler: boot.scheduler ?? null,
+            planning: boot.planning ?? null,
             runtimeSnapshotAt: null,
           });
         } catch (e) {
@@ -386,6 +389,7 @@ export default function App() {
                 ...current,
                 scheduler: snapshot.scheduler ?? current.scheduler,
                 memory: snapshot.memory ?? current.memory,
+                planning: snapshot.planning ?? current.planning,
                 runtimeSnapshotAt: snapshot.snapshot_at ?? current.runtimeSnapshotAt,
               }
             : current,
@@ -517,11 +521,12 @@ export default function App() {
       modelName={state.modelName}
       ingressLimits={state.ingressLimits}
     >
-      <RuntimeSnapshotPanel
-        memory={state.memory}
-        scheduler={state.scheduler}
-        runtimeSnapshotAt={state.runtimeSnapshotAt}
-      />
+        <RuntimeSnapshotPanel
+          memory={state.memory}
+          scheduler={state.scheduler}
+          planning={state.planning}
+          runtimeSnapshotAt={state.runtimeSnapshotAt}
+        />
       <Shell
         runtimeSurface={state.guiSurface}
         kernelManifest={state.kernel}
@@ -588,10 +593,12 @@ export default function App() {
 function RuntimeSnapshotPanel({
   memory,
   scheduler,
+  planning,
   runtimeSnapshotAt,
 }: {
   memory: BootstrapResponse["memory"] | null;
   scheduler: BootstrapResponse["scheduler"] | null;
+  planning: BootstrapResponse["planning"] | null;
   runtimeSnapshotAt: number | null;
 }) {
   const schedulerSummary = scheduler && "running" in scheduler
@@ -635,8 +642,18 @@ function RuntimeSnapshotPanel({
     .map((layer) => `${layer.id}:${layer.source_detail ?? layer.source}`)
     .join(" / ") ?? "";
   const schedulerPressure = schedulerSummary?.pressure ?? null;
+  const planningSummary = planning
+    ? {
+        active: planning.active ?? false,
+        stage: planning.stage ?? "idle",
+        iteration: planning.iteration ?? 0,
+        pendingToolCalls: planning.pending_tool_calls ?? 0,
+        completedToolResults: planning.completed_tool_results ?? 0,
+        planFirstDefault: planning.plan_first_default ?? false,
+      }
+    : null;
 
-  if (!memory && !schedulerSummary) return null;
+  if (!memory && !schedulerSummary && !planningSummary) return null;
 
   const snapshotLabel = runtimeSnapshotAt
     ? new Date(runtimeSnapshotAt).toLocaleTimeString()
@@ -694,6 +711,15 @@ function RuntimeSnapshotPanel({
               {schedulerSummary.subagentMemoryMb ? (
                 <span>subagent {schedulerSummary.subagentMemoryMb}MB</span>
               ) : null}
+            </div>
+          ) : null}
+          {planningSummary ? (
+            <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+              {planningSummary.planFirstDefault ? <span>planner default on</span> : null}
+              <span>planner {planningSummary.active ? planningSummary.stage : "idle"}</span>
+              <span>iter {planningSummary.iteration}</span>
+              <span>pending tools {planningSummary.pendingToolCalls}</span>
+              <span>done tools {planningSummary.completedToolResults}</span>
             </div>
           ) : null}
           {recentSubagentEntries.length ? (

@@ -370,6 +370,14 @@ export interface BootstrapResponse {
       }>;
     };
   };
+  planning?: {
+    plan_first_default?: boolean;
+    active?: boolean;
+    stage?: string;
+    iteration?: number;
+    pending_tool_calls?: number;
+    completed_tool_results?: number;
+  } | null;
   scheduler?: KernelManifestPayload["scheduler"] | {
     running?: number;
     running_limit?: number;

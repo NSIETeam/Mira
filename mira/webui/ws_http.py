@@ -903,10 +903,16 @@ class GatewayHTTPHandler:
             return _http_error(401, "Unauthorized")
         kernel = self._get_kernel_app()
         scheduler = kernel.scheduler_snapshot() if kernel is not None else None
+        diagnostics = kernel.diagnostics_snapshot if kernel is not None else None
         return _http_json_response({
             "snapshot_at": int(time.time() * 1000),
             "memory": MemoryStore(self.skills_workspace_path).memory_audit(self.skills_workspace_path),
             "scheduler": scheduler,
+            "planning": (
+                dict((diagnostics or {}).get("snapshot", {}).get("planning", {}))
+                if isinstance(diagnostics, dict)
+                else None
+            ),
         })
 
     def _handle_kernel_scheduler(self, request: WsRequest) -> Response:
