@@ -418,6 +418,10 @@ export interface BootstrapResponse {
     session_running_limit?: number;
     fair_share_bias?: string;
     fair_share_penalty?: number;
+    running_sessions?: Array<{
+      session_key: string;
+      running: number;
+    }>;
     queued_sessions?: Array<{
       session_key: string;
       queued: number;

@@ -616,6 +616,19 @@ class SubagentManager:
             for session_key, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:limit]
         ]
 
+    def _running_sessions_summary(self, limit: int = 3) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for session_key in sorted(self._session_tasks.keys()):
+            running = self.get_running_count_by_session(session_key)
+            if running <= 0:
+                continue
+            rows.append({
+                "session_key": session_key,
+                "running": running,
+            })
+        rows.sort(key=lambda item: (-int(item["running"]), str(item["session_key"])))
+        return rows[:limit]
+
     def _session_load_summary(self, limit: int = 3) -> list[dict[str, Any]]:
         session_keys = {
             str(pending.origin.get("session_key") or "").strip()
@@ -1104,6 +1117,7 @@ class SubagentManager:
             "session_running_limit": self.max_running_subagents_per_session,
             "fair_share_bias": "session_load_penalty",
             "fair_share_penalty": self._SESSION_LOAD_PENALTY,
+            "running_sessions": self._running_sessions_summary(),
             "queued_sessions": self._pending_sessions_summary(),
             "session_loads": self._session_load_summary(),
             "pressure": pressure,

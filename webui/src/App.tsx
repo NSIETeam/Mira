@@ -619,6 +619,7 @@ function RuntimeSnapshotPanel({
         fairSharePenalty: typeof scheduler.fair_share_penalty === "number"
           ? scheduler.fair_share_penalty
           : null,
+        runningSessions: Array.isArray(scheduler.running_sessions) ? scheduler.running_sessions : [],
         queuedSessions: Array.isArray(scheduler.queued_sessions) ? scheduler.queued_sessions : [],
         sessionLoads: Array.isArray(scheduler.session_loads) ? scheduler.session_loads : [],
         hostMemoryMb: scheduler.host_memory_mb ?? null,
@@ -753,6 +754,11 @@ function RuntimeSnapshotPanel({
               ) : null}
               {schedulerSummary.fairSharePenalty ? (
                 <span>penalty {schedulerSummary.fairSharePenalty}</span>
+              ) : null}
+              {schedulerSummary.runningSessions.length ? (
+                <span>
+                  running {schedulerSummary.runningSessions.map((row) => `${row.session_key}:${row.running}`).join(",")}
+                </span>
               ) : null}
               {schedulerSummary.queuedSessions.length ? (
                 <span>
