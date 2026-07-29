@@ -13,6 +13,7 @@ import asyncio
 import json
 import mimetypes
 import os
+import sys
 import re
 import time
 from collections.abc import Callable
@@ -183,7 +184,14 @@ def _launcher_log_path() -> Path:
     configured = os.environ.get("MIRA_LOG_DIR")
     if configured:
         return Path(configured).expanduser() / "launcher.log"
-    return Path.home() / "Library" / "Logs" / "Mira" / "launcher.log"
+    if sys.platform == "win32":
+        root = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+        return Path(root) / "Mira" / "Logs" / "launcher.log"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Logs" / "Mira" / "launcher.log"
+    state_home = os.environ.get("XDG_STATE_HOME")
+    root = Path(state_home).expanduser() if state_home else Path.home() / ".local" / "state"
+    return root / "mira" / "logs" / "launcher.log"
 
 
 def _tail_text(path: Path, *, max_bytes: int = 16_000) -> str:

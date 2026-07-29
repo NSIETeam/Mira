@@ -203,7 +203,11 @@ export interface KernelWorkersPayload {
 }
 
 export interface KernelDiagnosticsPayload {
-  diagnostics: KernelManifestPayload["diagnostics"] | KernelDiagnosticsApiPayload["diagnostics"];
+  diagnostics: KernelManifestPayload["diagnostics"];
+}
+
+export interface KernelRecoveryDiagnosticsPayload {
+  diagnostics: KernelDiagnosticsApiPayload["diagnostics"];
 }
 
 export interface KernelLanesPayload {
@@ -309,8 +313,15 @@ export async function fetchKernelWorkers(
 export async function fetchKernelDiagnostics(
   token: string,
   base: string = "",
-): Promise<KernelDiagnosticsPayload> {
-  return request<KernelDiagnosticsPayload>(
+): Promise<KernelRecoveryDiagnosticsPayload> {
+  return fetchKernelRecoveryDiagnostics(token, base);
+}
+
+export async function fetchKernelRecoveryDiagnostics(
+  token: string,
+  base: string = "",
+): Promise<KernelRecoveryDiagnosticsPayload> {
+  return request<KernelRecoveryDiagnosticsPayload>(
     `${base}/api/kernel/diagnostics`,
     token,
     undefined,

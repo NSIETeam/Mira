@@ -26,11 +26,35 @@ fn default_log_dir() -> PathBuf {
     if let Ok(value) = env::var("MIRA_LOG_DIR") {
         return PathBuf::from(value);
     }
+    if cfg!(target_os = "windows") {
+        if let Ok(root) = env::var("LOCALAPPDATA") {
+            return PathBuf::from(root).join("Mira").join("Logs");
+        }
+        if let Ok(home) = env::var("USERPROFILE") {
+            return PathBuf::from(home)
+                .join("AppData")
+                .join("Local")
+                .join("Mira")
+                .join("Logs");
+        }
+    }
+    if cfg!(target_os = "macos") {
+        if let Ok(home) = env::var("HOME") {
+            return PathBuf::from(home)
+                .join("Library")
+                .join("Logs")
+                .join("Mira");
+        }
+    }
+    if let Ok(root) = env::var("XDG_STATE_HOME") {
+        return PathBuf::from(root).join("mira").join("logs");
+    }
     if let Ok(home) = env::var("HOME") {
         return PathBuf::from(home)
-            .join("Library")
-            .join("Logs")
-            .join("Mira");
+            .join(".local")
+            .join("state")
+            .join("mira")
+            .join("logs");
     }
     env::temp_dir().join("mira-logs")
 }
@@ -54,7 +78,7 @@ fn parse_port(args: &[String]) -> u16 {
 fn parse_config() -> LaunchConfig {
     let mut raw_args: Vec<String> = env::args().skip(1).collect();
     let dry_run = raw_args.iter().any(|arg| arg == "--dry-run" || arg == "doctor");
-    raw_args.retain(|arg| arg != "--dry-run");
+    raw_args.retain(|arg| arg != "--dry-run" && arg != "doctor");
     let python = env::var("MIRA_PYTHON").unwrap_or_else(|_| "python3".to_string());
     let port = parse_port(&raw_args);
     LaunchConfig {
@@ -92,8 +116,10 @@ fn port_available(port: u16) -> bool {
 }
 
 fn print_doctor(config: &LaunchConfig, python_version: &str, port_free: bool) {
+    let status = if port_free { "ok" } else { "port_unavailable" };
     println!(
-        "{{\"status\":\"ok\",\"python\":\"{}\",\"python_version\":\"{}\",\"port\":{},\"port_available\":{},\"log_dir\":\"{}\",\"dry_run\":true}}",
+        "{{\"status\":\"{}\",\"python\":\"{}\",\"python_version\":\"{}\",\"port\":{},\"port_available\":{},\"log_dir\":\"{}\",\"dry_run\":true}}",
+        status,
         escape_json(&config.python),
         escape_json(python_version),
         config.port,

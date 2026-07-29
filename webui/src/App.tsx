@@ -85,6 +85,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   executeKernelOperatorCommand,
+  fetchKernelRecoveryDiagnostics,
   fetchKernelRuntimeSnapshot,
   fetchKernelState,
   fetchSettings,
@@ -237,6 +238,40 @@ export default function App() {
   const { t } = useTranslation();
   const [state, setState] = useState<BootState>({ status: "loading" });
   const bootstrapSecretRef = useRef("");
+
+  useEffect(() => {
+    if (state.status !== "ready") return undefined;
+    const handleDiagnosticsRequest = (event: Event) => {
+      const detail = event instanceof CustomEvent ? event.detail : {};
+      const label = typeof detail?.label === "string" ? detail.label : "session";
+      void (async () => {
+        try {
+          const payload = await fetchKernelRecoveryDiagnostics(state.token);
+          const diagnostics = payload.diagnostics;
+          const actions = diagnostics.recovery_actions
+            .map((action) => action.command || action.path || action.label)
+            .filter(Boolean)
+            .join("\n");
+          window.alert(
+            [
+              `Diagnostics for ${label}`,
+              `Status: ${diagnostics.status}`,
+              `Launcher log: ${diagnostics.launcher_log_path}`,
+              diagnostics.launcher_log_tail
+                ? `Recent log:\n${diagnostics.launcher_log_tail.slice(-1200)}`
+                : "Recent log: unavailable",
+              actions ? `Recovery actions:\n${actions}` : "",
+            ].filter(Boolean).join("\n\n"),
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          window.alert(`Diagnostics unavailable for ${label}\n\n${message}`);
+        }
+      })();
+    };
+    window.addEventListener("mira:request-diagnostics", handleDiagnosticsRequest);
+    return () => window.removeEventListener("mira:request-diagnostics", handleDiagnosticsRequest);
+  }, [state]);
 
   const refreshReadyClient = useCallback(
     async (client: miraClient, fallbackSurface: KernelGuiSurface) => {
