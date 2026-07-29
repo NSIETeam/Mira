@@ -183,6 +183,7 @@ export interface KernelEmbeddedPayload {
 
 export interface KernelMemoryPayload {
   memory: BootstrapResponse["memory"];
+  volume?: BootstrapResponse["volume"];
 }
 
 export interface KernelSchedulerPayload {
@@ -245,6 +246,23 @@ export async function fetchKernelMemory(
 ): Promise<KernelMemoryPayload> {
   return request<KernelMemoryPayload>(
     `${base}/api/kernel/memory`,
+    token,
+    undefined,
+    API_READ_TIMEOUT_MS,
+  );
+}
+
+export async function updateKernelModule(
+  token: string,
+  name: string,
+  enabled: boolean,
+  base: string = "",
+): Promise<{ ok: boolean; requires_restart: boolean; modules: BootstrapResponse["modules"] }> {
+  const query = new URLSearchParams();
+  query.set("name", name);
+  query.set("enabled", String(enabled));
+  return request(
+    `${base}/api/kernel/modules/update?${query.toString()}`,
     token,
     undefined,
     API_READ_TIMEOUT_MS,

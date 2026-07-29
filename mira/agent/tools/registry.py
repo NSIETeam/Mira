@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from mira.agent.tools.base import Tool, ToolResult
 from mira.agent.tools.context import ContextAware, current_request_context
+from mira.security.policy import EffectivePrincipalPolicy
 from mira.tool_contracts import tool_contract_family
 
 if TYPE_CHECKING:
@@ -129,6 +130,13 @@ class ToolRegistry:
         params: Any,
     ) -> tuple[Tool | None, Any, str | None]:
         """Resolve, cast, and validate one tool call."""
+        ctx = current_request_context()
+        policy = getattr(ctx, "policy", None) if ctx is not None else None
+        if isinstance(policy, EffectivePrincipalPolicy) and not policy.allows_tool(name):
+            return None, params, ToolResult.error(
+                f"Error: Tool '{name}' is denied by policy for "
+                f"user '{policy.user_id}' group '{policy.group_id}'."
+            )
         tool = self._tools.get(name)
         if not tool:
             suggestion = self._suggest_name(str(name))
@@ -142,7 +150,7 @@ class ToolRegistry:
         # Compatibility for external tools that still implement the legacy
         # setter protocol. Built-ins read the authoritative ContextVar
         # directly and never copy routing state.
-        if isinstance(tool, ContextAware) and (ctx := current_request_context()) is not None:
+        if isinstance(tool, ContextAware) and ctx is not None:
             tool.set_context(ctx)
 
         params = self._coerce_params(tool, params)

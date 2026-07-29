@@ -25,6 +25,7 @@ class EffectivePrincipalPolicy:
     workspace_root: str = ""
     memory_scope: str = "group"
     exec_posture: str = "restricted"
+    memory_quota_mb: int = 0
 
     def allows_tool(self, name: str) -> bool:
         if name in self.deny_tools:
@@ -41,6 +42,7 @@ class EffectivePrincipalPolicy:
             "workspace_root": self.workspace_root,
             "memory_scope": self.memory_scope,
             "exec_posture": self.exec_posture,
+            "memory_quota_mb": self.memory_quota_mb,
         }
 
 
@@ -58,6 +60,7 @@ def effective_principal_policy(
     workspace_root = ""
     memory_scope = "global" if user == "default" and group == "default" else "group"
     exec_posture = "full" if user == "default" else "restricted"
+    memory_quota_mb = 0
 
     for key in (f"role:{role}", f"group:{group}", f"user:{user}"):
         policy = getattr(security, "policies", {}).get(key) if security is not None else None
@@ -69,6 +72,7 @@ def effective_principal_policy(
         workspace_root = getattr(policy, "workspace_root", workspace_root)
         memory_scope = getattr(policy, "memory_scope", memory_scope)
         exec_posture = getattr(policy, "exec_posture", exec_posture)
+        memory_quota_mb = int(getattr(policy, "memory_quota_mb", memory_quota_mb) or 0)
 
     return EffectivePrincipalPolicy(
         role=role,
@@ -79,4 +83,5 @@ def effective_principal_policy(
         workspace_root=workspace_root,
         memory_scope=memory_scope,
         exec_posture=exec_posture,
+        memory_quota_mb=memory_quota_mb,
     )

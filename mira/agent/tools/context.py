@@ -29,6 +29,7 @@ class RequestContext:
     sender_id: str | None = None
     turn_id: str | None = None
     workspace: Path | None = None
+    policy: Any | None = None
 
 
 @runtime_checkable

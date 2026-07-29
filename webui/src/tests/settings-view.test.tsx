@@ -356,6 +356,7 @@ function renderSettingsView(
     runtimePolicy?: BootstrapResponse["policy"];
     runtimeToolAvailability?: BootstrapResponse["tool_availability"];
     runtimeModules?: BootstrapResponse["modules"];
+    runtimeVolume?: BootstrapResponse["volume"];
   } = {},
 ) {
   render(
@@ -375,6 +376,7 @@ function renderSettingsView(
         runtimePolicy={options.runtimePolicy}
         runtimeToolAvailability={options.runtimeToolAvailability}
         runtimeModules={options.runtimeModules}
+        runtimeVolume={options.runtimeVolume}
       />
     </ClientProvider>,
   );
@@ -547,6 +549,16 @@ describe("SettingsView Apps catalog", () => {
           { name: "agent", status: "enabled", lazy: false },
           { name: "mcp", status: "disabled", lazy: true },
         ],
+      },
+      runtimeVolume: {
+        group: "growth",
+        path: "/tmp/mira-users/_groups/growth",
+        bytes: 4096,
+        size_mb: 0.01,
+        last_update: null,
+        topic_count: 2,
+        quota_mb: 64,
+        quota_breached: false,
       },
     });
 

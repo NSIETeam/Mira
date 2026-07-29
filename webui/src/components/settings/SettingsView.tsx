@@ -129,6 +129,7 @@ import {
   updateImageGenerationSettings,
   updateMcpServerTools,
   updateModelCallOrder,
+  updateKernelModule,
   updateModelConfiguration,
   updateNetworkSafetySettings,
   updateProviderSettings,
@@ -418,6 +419,7 @@ interface SettingsViewProps {
   runtimePolicy?: BootstrapResponse["policy"] | null;
   runtimeToolAvailability?: BootstrapResponse["tool_availability"] | null;
   runtimeModules?: BootstrapResponse["modules"] | null;
+  runtimeVolume?: BootstrapResponse["volume"] | null;
   onSelectProfile?: (registryName: string) => void;
   onSelectShell?: (registryName: string) => void;
   showSidebar?: boolean;
@@ -635,6 +637,7 @@ export function SettingsView({
   runtimePolicy = null,
   runtimeToolAvailability = null,
   runtimeModules = null,
+  runtimeVolume = null,
   onSelectProfile,
   onSelectShell,
   showSidebar = true,
@@ -2267,6 +2270,7 @@ export function SettingsView({
             policy={runtimePolicy}
             toolAvailability={runtimeToolAvailability}
             modules={runtimeModules}
+            volume={runtimeVolume}
             dirty={runtimeDirty}
             saving={saving}
             onSave={saveRuntimeSettings}
@@ -8399,17 +8403,21 @@ function CliAppLogo({ app, showBrandLogos }: { app: CliAppInfo; showBrandLogos: 
 }
 
 function RuntimeAdminPanel({
+  token,
   user,
   namespace,
   policy,
   toolAvailability,
   modules,
+  volume,
 }: {
+  token: string;
   user: BootstrapResponse["user"] | null;
   namespace: BootstrapResponse["namespace"] | null;
   policy: BootstrapResponse["policy"] | null;
   toolAvailability: BootstrapResponse["tool_availability"] | null;
   modules: BootstrapResponse["modules"] | null;
+  volume: BootstrapResponse["volume"] | null;
 }) {
   const { t } = useTranslation();
   const tx = (key: string, fallback: string) => t(key, { defaultValue: fallback });
@@ -8423,6 +8431,31 @@ function RuntimeAdminPanel({
   const execPosture = toolAvailability?.exec_posture ?? policy?.exec_posture ?? "unknown";
   const memoryPath = namespace?.memory.path ?? user?.memory_workspace ?? "";
   const workspacePath = namespace?.workspace.path ?? user?.workspace ?? "";
+  const canChangeModules = runtimeRole !== "guest" && runtimeRole !== "service";
+  const [moduleAction, setModuleAction] = useState<string | null>(null);
+  const [moduleMessage, setModuleMessage] = useState<string | null>(null);
+  const toggleModule = async (name: string, enabled: boolean) => {
+    if (!canChangeModules) {
+      setModuleMessage(tx(
+        "settings.runtimeAdmin.readOnlyReason",
+        "This principal is read-only by policy and cannot change modules.",
+      ));
+      return;
+    }
+    setModuleAction(name);
+    setModuleMessage(null);
+    try {
+      await updateKernelModule(token, name, enabled);
+      setModuleMessage(tx(
+        "settings.runtimeAdmin.moduleUpdated",
+        "Module setting saved. Restart Mira for the change to take effect.",
+      ));
+    } catch (err) {
+      setModuleMessage((err as Error).message);
+    } finally {
+      setModuleAction(null);
+    }
+  };
 
   return (
     <section>
@@ -8484,6 +8517,21 @@ function RuntimeAdminPanel({
               : tx("settings.values.unavailable", "Unavailable")
           }
         />
+        {volume ? (
+          <SettingsRow
+            title={tx("settings.runtimeAdmin.memoryVolume", "Memory volume")}
+            description={`${volume.path} · ${volume.topic_count} topics`}
+          >
+            <div className="flex flex-wrap justify-end gap-2 text-xs">
+              <StatusPill tone={volume.quota_breached ? "warning" : "success"}>
+                {volume.size_mb} MB
+              </StatusPill>
+              <StatusPill tone="neutral">
+                {volume.quota_mb > 0 ? `${volume.quota_mb} MB quota` : "no quota"}
+              </StatusPill>
+            </div>
+          </SettingsRow>
+        ) : null}
         <SettingsRow
           title={tx("settings.runtimeAdmin.tools", "Tool availability")}
           description={
@@ -8499,14 +8547,32 @@ function RuntimeAdminPanel({
         {modules ? (
           <SettingsRow
             title={tx("settings.runtimeAdmin.modules", "Modules")}
-            description={moduleRows
-              .map((row) => `${row.name}:${row.status}${row.lazy ? ":lazy" : ""}`)
-              .join(" / ")}
+            description={
+              moduleMessage
+                ?? (canChangeModules
+                  ? tx("settings.runtimeAdmin.moduleHelp", "Safe module toggles are saved to config and require restart.")
+                  : tx("settings.runtimeAdmin.moduleReadOnly", "Current policy makes module controls read-only."))
+            }
           >
-            <div className="flex flex-wrap justify-end gap-2 text-xs">
+            <div className="flex max-w-[420px] flex-wrap justify-end gap-2 text-xs">
               <StatusPill tone="success">{modules.enabled}/{modules.total} enabled</StatusPill>
               <StatusPill tone="neutral">{modules.lazy} lazy</StatusPill>
               <StatusPill tone="neutral">{modules.estimated_memory_cost_mb} MB</StatusPill>
+              {moduleRows.map((row) => {
+                const enabled = row.status !== "disabled";
+                return (
+                  <Button
+                    key={row.name}
+                    size="sm"
+                    variant="outline"
+                    disabled={moduleAction === row.name || !canChangeModules}
+                    className="h-7 rounded-full px-2 text-[11px]"
+                    onClick={() => void toggleModule(row.name, !enabled)}
+                  >
+                    {row.name}: {enabled ? "on" : "off"}
+                  </Button>
+                );
+              })}
             </div>
           </SettingsRow>
         ) : null}
@@ -8524,6 +8590,7 @@ function RuntimeSettings({
   policy,
   toolAvailability,
   modules,
+  volume,
   dirty,
   saving,
   onSave,
@@ -8549,6 +8616,7 @@ function RuntimeSettings({
   policy: BootstrapResponse["policy"] | null;
   toolAvailability: BootstrapResponse["tool_availability"] | null;
   modules: BootstrapResponse["modules"] | null;
+  volume: BootstrapResponse["volume"] | null;
   dirty: boolean;
   saving: boolean;
   onSave: () => void;
@@ -8570,6 +8638,7 @@ function RuntimeSettings({
   onInstallCapability: (name: string) => void;
 }) {
   const { t } = useTranslation();
+  const { token } = useClient();
   const tx = (key: string, fallback: string) => t(key, { defaultValue: fallback });
   const runtimeSurface = settings.surface ?? settings.runtime_surface;
   const runtimeHost = getRuntimeHost(runtimeSurface, settings.runtime_capabilities);
@@ -8648,11 +8717,13 @@ function RuntimeSettings({
   return (
     <div className="space-y-7">
       <RuntimeAdminPanel
+        token={token}
         user={user}
         namespace={namespace}
         policy={policy}
         toolAvailability={toolAvailability}
         modules={modules}
+        volume={volume}
       />
 
       <section>

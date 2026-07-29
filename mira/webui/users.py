@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+import shutil
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -102,3 +104,53 @@ class WebUITemporaryUserManager:
 
     def is_isolated_user(self, user_id: str | None) -> bool:
         return self.normalize(user_id) != _DEFAULT_USER
+
+    def active_users_payload(self, *, ttl_hours: int = 24) -> dict[str, Any]:
+        users: list[dict[str, Any]] = []
+        for path in sorted(self.root.iterdir()) if self.root.exists() else []:
+            if not path.is_dir() or path.name.startswith("_"):
+                continue
+            stat = path.stat()
+            workspace = path / "workspace"
+            users.append({
+                "id": path.name,
+                "root": str(path),
+                "workspace": str(workspace),
+                "workspace_exists": workspace.exists(),
+                "temporary": path.name != _DEFAULT_USER,
+                "updated_at": stat.st_mtime,
+                "stale": (stat.st_mtime + ttl_hours * 3600) < time.time(),
+            })
+        groups: list[dict[str, Any]] = []
+        groups_root = self.root / "_groups"
+        if groups_root.exists():
+            for path in sorted(groups_root.iterdir()):
+                if path.is_dir():
+                    groups.append({"id": path.name, "path": str(path), "bytes": _dir_size(path)})
+        return {"users": users, "groups": groups, "ttl_hours": ttl_hours}
+
+    def cleanup_stale(self, *, ttl_hours: int = 24) -> dict[str, Any]:
+        removed: list[str] = []
+        cutoff = time.time() - ttl_hours * 3600
+        for path in sorted(self.root.iterdir()) if self.root.exists() else []:
+            if not path.is_dir() or path.name.startswith("_") or path.name == _DEFAULT_USER:
+                continue
+            try:
+                if path.stat().st_mtime >= cutoff:
+                    continue
+                shutil.rmtree(path)
+                removed.append(path.name)
+            except OSError:
+                continue
+        return {"removed": removed, "ttl_hours": ttl_hours}
+
+
+def _dir_size(path: Path) -> int:
+    total = 0
+    for item in path.rglob("*"):
+        if item.is_file():
+            try:
+                total += item.stat().st_size
+            except OSError:
+                continue
+    return total

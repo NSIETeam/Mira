@@ -114,6 +114,7 @@ type BootState =
       policy: BootstrapResponse["policy"] | null;
       toolAvailability: BootstrapResponse["tool_availability"] | null;
       modules: BootstrapResponse["modules"] | null;
+      volume: BootstrapResponse["volume"] | null;
       memory: BootstrapResponse["memory"] | null;
       scheduler: BootstrapResponse["scheduler"] | null;
       planning: BootstrapResponse["planning"] | null;
@@ -270,6 +271,7 @@ export default function App() {
               policy: boot.policy ?? current.policy,
               toolAvailability: boot.tool_availability ?? current.toolAvailability,
               modules: boot.modules ?? current.modules,
+              volume: boot.volume ?? current.volume,
               memory: boot.memory ?? current.memory,
               scheduler: boot.scheduler ?? current.scheduler,
               planning: boot.planning ?? current.planning,
@@ -326,6 +328,7 @@ export default function App() {
             policy: boot.policy ?? null,
             toolAvailability: boot.tool_availability ?? null,
             modules: boot.modules ?? null,
+            volume: boot.volume ?? null,
             memory: boot.memory ?? null,
             scheduler: boot.scheduler ?? null,
             planning: boot.planning ?? null,
@@ -551,6 +554,7 @@ export default function App() {
         policy={state.policy}
         toolAvailability={state.toolAvailability}
         modules={state.modules}
+        volume={state.volume}
         onSettingsPayloadChange={(payload) => {
           setState((current) => {
             if (current.status !== "ready" || !payload.kernel) return current;
@@ -918,6 +922,7 @@ function Shell({
   policy,
   toolAvailability,
   modules,
+  volume,
   onSettingsPayloadChange,
   onSelectProfile,
   onSelectShell,
@@ -934,6 +939,7 @@ function Shell({
   policy: BootstrapResponse["policy"] | null;
   toolAvailability: BootstrapResponse["tool_availability"] | null;
   modules: BootstrapResponse["modules"] | null;
+  volume: BootstrapResponse["volume"] | null;
   onSettingsPayloadChange: (payload: SettingsPayload) => void;
   onSelectProfile: (registryName: string) => Promise<void>;
   onSelectShell: (registryName: string) => Promise<void>;
@@ -1622,6 +1628,7 @@ function Shell({
                   runtimePolicy={policy}
                   runtimeToolAvailability={toolAvailability}
                   runtimeModules={modules}
+                  runtimeVolume={volume}
                   onSelectProfile={onSelectProfile}
                   onSelectShell={onSelectShell}
                   showSidebar={view === "settings"}

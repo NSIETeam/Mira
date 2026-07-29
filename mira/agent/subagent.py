@@ -21,6 +21,7 @@ from mira.agent.tools.context import (
     RequestContext,
     ToolContext,
     bind_request_context,
+    current_request_context,
     reset_request_context,
 )
 from mira.agent.tools.exec_session import ExecSessionManager
@@ -869,12 +870,14 @@ class SubagentManager:
                 if self._llm_wall_timeout_for_session
                 else None
             )
+            parent_ctx = current_request_context()
             request_token = bind_request_context(RequestContext(
                 channel=origin["channel"],
                 chat_id=origin["chat_id"],
                 message_id=origin_message_id,
                 session_key=sess_key,
                 runtime=runtime,
+                policy=getattr(parent_ctx, "policy", None),
             ))
             token = bind_workspace_scope(workspace_scope) if workspace_scope is not None else None
             try:

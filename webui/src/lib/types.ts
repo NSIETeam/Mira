@@ -379,6 +379,7 @@ export interface BootstrapResponse {
     workspace_root: string;
     memory_scope: string;
     exec_posture: string;
+    memory_quota_mb?: number;
   };
   tool_availability?: {
     denied: string[];
@@ -460,6 +461,16 @@ export interface BootstrapResponse {
       latest_activity_at?: string;
       latest_activity_freshness?: string;
     };
+  };
+  volume?: {
+    group: string;
+    path: string;
+    bytes: number;
+    size_mb: number;
+    last_update?: number | null;
+    topic_count: number;
+    quota_mb: number;
+    quota_breached: boolean;
   };
   planning?: {
     plan_first_default?: boolean;

@@ -531,6 +531,15 @@ class AgentLoop:
         )
         return self.tools.filtered_copy(exclude=set(policy.deny_tools))
 
+    def _policy_for_metadata(self, metadata: Mapping[str, Any] | None) -> Any | None:
+        if not isinstance(metadata, Mapping):
+            return None
+        user = metadata.get(WEBUI_USER_METADATA_KEY)
+        group = metadata.get(WEBUI_GROUP_METADATA_KEY)
+        if not isinstance(user, str) or not user.strip():
+            return None
+        return effective_principal_policy(self.security_config, user_id=user, group_id=group)
+
     def _module_enabled(self, name: str, *, default: bool = True) -> bool:
         is_enabled = getattr(self.modules_config, "is_enabled", None)
         return bool(is_enabled(name, default=default)) if callable(is_enabled) else default
@@ -832,6 +841,7 @@ class AgentLoop:
             sender_id=ctx.msg.sender_id,
             turn_id=ctx.turn_id,
             workspace=scope.project_path,
+            policy=self._policy_for_metadata(ctx.msg.metadata),
         )
 
     async def _resolve_runtime_context_for_turn(
@@ -1103,6 +1113,7 @@ class AgentLoop:
             runtime=runtime,
             metadata=dict(metadata or {}),
             workspace=effective_scope.project_path,
+            policy=self._policy_for_metadata(metadata),
         )
         file_state_token = bind_file_states(self._file_state_store.for_session(active_session_key))
         request_token = bind_request_context(request_ctx)

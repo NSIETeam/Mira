@@ -3,6 +3,9 @@ from __future__ import annotations
 import asyncio
 
 from mira.agent.loop import AgentLoop
+from mira.agent.tools.base import Tool
+from mira.agent.tools.context import RequestContext, request_context
+from mira.agent.tools.registry import ToolRegistry
 from mira.bus.queue import MessageBus
 from mira.config.schema import Config, ModuleConfig, ModulesConfig
 from mira.kernel.module_registry import module_summary
@@ -99,3 +102,44 @@ def test_agent_loop_applies_configured_policy_to_tool_registry(tmp_path):
     assert "message" in loop.tools.tool_names
     assert "message" not in tools.tool_names
     assert "not found" in str(asyncio.run(tools.execute("message", {"content": "blocked"})))
+
+
+class _NoopTool(Tool):
+    name = "exec"
+    description = "noop"
+    parameters = {"type": "object", "properties": {}}
+
+    async def execute(self):
+        return "ran"
+
+
+def test_tool_registry_direct_execution_fails_closed_under_policy():
+    registry = ToolRegistry()
+    registry.register(_NoopTool())
+    policy = effective_principal_policy(user_id="alice", group_id="growth")
+
+    with request_context(RequestContext(
+        channel="websocket",
+        chat_id="u:alice:chat",
+        policy=policy,
+    )):
+        result = asyncio.run(registry.execute("exec", {}))
+
+    assert "denied by policy" in str(result)
+
+
+def test_policy_exposes_group_memory_quota():
+    config = Config.model_validate({
+        "security": {
+            "policies": {
+                "group:growth": {
+                    "memoryQuotaMb": 64,
+                }
+            }
+        }
+    })
+
+    policy = effective_principal_policy(config.security, user_id="alice", group_id="growth")
+
+    assert policy.memory_quota_mb == 64
+    assert policy.to_dict()["memory_quota_mb"] == 64

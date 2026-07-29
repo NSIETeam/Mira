@@ -418,6 +418,7 @@ class GatewayHTTPHandler:
         )
         kernel = self._get_kernel_app()
         kernel_payload = self._kernel_manifest_payload(profile=profile, shell=shell)
+        memory_volume = self._memory_volume_payload(user.group_id, user.memory_workspace, policy)
         payload = {
             "token": token,
             "ws_path": expected_path,
@@ -432,6 +433,7 @@ class GatewayHTTPHandler:
             "shell": shell.to_dict(),
             "kernel": kernel_payload,
             "memory": MemoryStore(user.memory_workspace).memory_audit(user.memory_workspace),
+            "volume": memory_volume,
             "scheduler": kernel.scheduler_snapshot() if kernel is not None else None,
             "user": user.payload(),
             "namespace": {
@@ -892,6 +894,14 @@ class GatewayHTTPHandler:
             return self._handle_kernel_embedded(request)
         if got == "/api/kernel/memory":
             return self._handle_kernel_memory(request)
+        if got == "/api/kernel/users":
+            return self._handle_kernel_users(request)
+        if got == "/api/kernel/users/cleanup":
+            return self._handle_kernel_users_cleanup(request)
+        if got == "/api/kernel/modules":
+            return self._handle_kernel_modules(request)
+        if got == "/api/kernel/modules/update":
+            return self._handle_kernel_modules_update(request)
         if got == "/api/kernel/runtime-snapshot":
             return self._handle_kernel_runtime_snapshot(request)
         if got == "/api/kernel/scheduler":
@@ -980,8 +990,70 @@ class GatewayHTTPHandler:
     def _handle_kernel_memory(self, request: WsRequest) -> Response:
         if not self.check_api_token(request):
             return _http_error(401, "Unauthorized")
+        user_id = self.api_user_id(request) or "default"
+        group_id = self.api_group_id(request) or "default"
+        policy = self._effective_policy_for_request(request)
+        group_workspace = self.users.memory_workspace(group_id)
+        volume = self._memory_volume_payload(group_id, group_workspace, policy)
         return _http_json_response({
-            "memory": MemoryStore(self.skills_workspace_path).memory_audit(self.skills_workspace_path),
+            "memory": MemoryStore(group_workspace).memory_audit(group_workspace),
+            "volume": volume,
+            "user_id": user_id,
+            "group_id": group_id,
+        })
+
+    def _handle_kernel_users(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        policy = self._effective_policy_for_request(request)
+        if policy.role in {"guest", "service"}:
+            return _http_error(403, "read-only principal cannot audit users")
+        return _http_json_response(self.users.active_users_payload())
+
+    def _handle_kernel_users_cleanup(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        policy = self._effective_policy_for_request(request)
+        if policy.role in {"guest", "service"}:
+            return _http_error(403, "temporary user cleanup requires admin/root posture")
+        query = _parse_query(request.path)
+        raw_ttl = _query_first(query, "ttl_hours") or "24"
+        try:
+            ttl_hours = max(1, min(24 * 30, int(raw_ttl)))
+        except ValueError:
+            return _http_error(400, "ttl_hours must be an integer")
+        return _http_json_response(self.users.cleanup_stale(ttl_hours=ttl_hours))
+
+    def _handle_kernel_modules(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        return _http_json_response({"modules": self._module_summary_payload()})
+
+    def _handle_kernel_modules_update(self, request: WsRequest) -> Response:
+        if not self.check_api_token(request):
+            return _http_error(401, "Unauthorized")
+        policy = self._effective_policy_for_request(request)
+        if policy.role in {"guest", "service"}:
+            return _http_error(403, "module changes require admin/root posture")
+        query = _parse_query(request.path)
+        name = (_query_first(query, "name") or "").strip()
+        enabled_raw = (_query_first(query, "enabled") or "").strip().lower()
+        if not re.match(r"^[A-Za-z0-9_.-]{1,64}$", name):
+            return _http_error(400, "invalid module name")
+        if enabled_raw not in {"true", "false"}:
+            return _http_error(400, "enabled must be true or false")
+        from mira.config.loader import load_config, save_config
+        from mira.config.schema import ModuleConfig
+
+        loaded = load_config()
+        current = loaded.modules.registry.get(name) or ModuleConfig()
+        current.enabled = enabled_raw == "true"
+        loaded.modules.registry[name] = current
+        save_config(loaded)
+        return _http_json_response({
+            "ok": True,
+            "requires_restart": True,
+            "modules": self._module_summary_payload(),
         })
 
     def _handle_kernel_runtime_snapshot(self, request: WsRequest) -> Response:
@@ -1000,6 +1072,50 @@ class GatewayHTTPHandler:
                 else None
             ),
         })
+
+    def _effective_policy_for_request(self, request: WsRequest):
+        bootstrap_config = _bootstrap_config_or_none()
+        return effective_principal_policy(
+            getattr(bootstrap_config, "security", None),
+            user_id=self.api_user_id(request) or "default",
+            group_id=self.api_group_id(request) or "default",
+        )
+
+    def _module_summary_payload(self) -> dict[str, Any]:
+        bootstrap_config = _bootstrap_config_or_none()
+        if bootstrap_config is None:
+            return {"profile": "unknown", "total": 0, "enabled": 0, "lazy": 0, "estimated_memory_cost_mb": 0, "modules": []}
+        from mira.kernel.module_registry import module_summary
+
+        return module_summary(get_profile(bootstrap_config.kernel.profile_name), bootstrap_config.modules)
+
+    def _memory_volume_payload(self, group_id: str, path: Path, policy: Any) -> dict[str, Any]:
+        size = 0
+        topic_count = 0
+        last_update = 0.0
+        for item in path.rglob("*") if path.exists() else []:
+            if not item.is_file():
+                continue
+            try:
+                stat = item.stat()
+            except OSError:
+                continue
+            size += stat.st_size
+            last_update = max(last_update, stat.st_mtime)
+            if item.parent.name == "topics" and item.suffix == ".md":
+                topic_count += 1
+        quota_mb = int(getattr(policy, "memory_quota_mb", 0) or 0)
+        size_mb = round(size / 1024 / 1024, 2)
+        return {
+            "group": group_id,
+            "path": str(path),
+            "bytes": size,
+            "size_mb": size_mb,
+            "last_update": last_update or None,
+            "topic_count": topic_count,
+            "quota_mb": quota_mb,
+            "quota_breached": bool(quota_mb and size_mb > quota_mb),
+        }
 
     def _handle_kernel_scheduler(self, request: WsRequest) -> Response:
         if not self.check_api_token(request):

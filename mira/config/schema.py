@@ -452,6 +452,12 @@ class PrincipalPolicyConfig(Base):
         validation_alias=AliasChoices("execPosture", "exec_posture"),
         serialization_alias="execPosture",
     )
+    memory_quota_mb: int = Field(
+        default=0,
+        ge=0,
+        validation_alias=AliasChoices("memoryQuotaMb", "memory_quota_mb"),
+        serialization_alias="memoryQuotaMb",
+    )
 
 
 class SecurityConfig(Base):
