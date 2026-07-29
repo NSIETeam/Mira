@@ -108,6 +108,7 @@ class SubagentManager:
     _DEFAULT_SUBAGENT_MEMORY_MB = 10
     _DEFAULT_QUEUE_FACTOR = 4
     _DEFAULT_MEMORY_POLICY = "default"
+    _SESSION_LOAD_PENALTY = 5.0
     _HOT_QUEUE_WEIGHT_THRESHOLD = 4
     _WARM_QUEUE_WEIGHT_THRESHOLD = 2
     _COLD_TO_WARM_PROMOTION_S = 15.0
@@ -530,7 +531,7 @@ class SubagentManager:
             age = max(now - pending.queued_at, 0.0)
             session_key = pending.origin.get("session_key")
             session_load = self.get_running_count_by_session(session_key) + self._pending_count_for_session(session_key)
-            fairness_penalty = max(0, session_load - 1) * 5.0
+            fairness_penalty = max(0, session_load - 1) * self._SESSION_LOAD_PENALTY
             score = (age * max(1, pending.weight)) - fairness_penalty
             if score > best_score:
                 best_score = score
@@ -560,6 +561,30 @@ class SubagentManager:
             {"session_key": session_key, "queued": count}
             for session_key, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:limit]
         ]
+
+    def _session_load_summary(self, limit: int = 3) -> list[dict[str, Any]]:
+        session_keys = {
+            str(pending.origin.get("session_key") or "").strip()
+            for pending in [*self._pending_hot, *self._pending_warm, *self._pending_cold]
+        }
+        session_keys.update(self._session_tasks.keys())
+        rows: list[dict[str, Any]] = []
+        for session_key in session_keys:
+            if not session_key:
+                continue
+            running = self.get_running_count_by_session(session_key)
+            queued = self._pending_count_for_session(session_key)
+            total = running + queued
+            if total <= 0:
+                continue
+            rows.append({
+                "session_key": session_key,
+                "running": running,
+                "queued": queued,
+                "total": total,
+            })
+        rows.sort(key=lambda item: (-int(item["total"]), str(item["session_key"])))
+        return rows[:limit]
 
     def _push_pending(self, pending: PendingSubagent) -> None:
         if pending.weight >= self._HOT_QUEUE_WEIGHT_THRESHOLD:
@@ -1009,7 +1034,9 @@ class SubagentManager:
             "queue_limit": queue_limit,
             "session_queue_limit": self.max_pending_subagents_per_session,
             "fair_share_bias": "session_load_penalty",
+            "fair_share_penalty": self._SESSION_LOAD_PENALTY,
             "queued_sessions": self._pending_sessions_summary(),
+            "session_loads": self._session_load_summary(),
             "pressure": pressure,
             "estimated_subagent_memory_mb": self.subagent_memory_mb,
             "host_memory_mb": self._host_memory_mb(),

@@ -615,7 +615,11 @@ function RuntimeSnapshotPanel({
         fairShareBias: typeof scheduler.fair_share_bias === "string"
           ? scheduler.fair_share_bias
           : null,
+        fairSharePenalty: typeof scheduler.fair_share_penalty === "number"
+          ? scheduler.fair_share_penalty
+          : null,
         queuedSessions: Array.isArray(scheduler.queued_sessions) ? scheduler.queued_sessions : [],
+        sessionLoads: Array.isArray(scheduler.session_loads) ? scheduler.session_loads : [],
         hostMemoryMb: scheduler.host_memory_mb ?? null,
         subagentMemoryMb: scheduler.estimated_subagent_memory_mb ?? null,
         planFirstDefault: scheduler.plan_first_default ?? false,
@@ -743,9 +747,17 @@ function RuntimeSnapshotPanel({
               {schedulerSummary.fairShareBias ? (
                 <span>bias {schedulerSummary.fairShareBias}</span>
               ) : null}
+              {schedulerSummary.fairSharePenalty ? (
+                <span>penalty {schedulerSummary.fairSharePenalty}</span>
+              ) : null}
               {schedulerSummary.queuedSessions.length ? (
                 <span>
                   sessions {schedulerSummary.queuedSessions.map((row) => `${row.session_key}:${row.queued}`).join(",")}
+                </span>
+              ) : null}
+              {schedulerSummary.sessionLoads.length ? (
+                <span>
+                  loads {schedulerSummary.sessionLoads.map((row) => `${row.session_key}:${row.total}`).join(",")}
                 </span>
               ) : null}
               <span>hot {schedulerSummary.queuedHot}</span>

@@ -416,9 +416,16 @@ export interface BootstrapResponse {
     queue_limit?: number;
     session_queue_limit?: number;
     fair_share_bias?: string;
+    fair_share_penalty?: number;
     queued_sessions?: Array<{
       session_key: string;
       queued: number;
+    }>;
+    session_loads?: Array<{
+      session_key: string;
+      running: number;
+      queued: number;
+      total: number;
     }>;
     pressure?: "steady" | "busy" | "saturated" | string;
     estimated_subagent_memory_mb?: number;
