@@ -7,8 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from agent.runner_helpers import make_run_spec
+
 from mira.config.schema import AgentDefaults
 from mira.providers.base import LLMProvider, LLMResponse, ToolCallRequest
 

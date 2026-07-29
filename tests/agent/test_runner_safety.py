@@ -5,8 +5,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from agent.runner_helpers import make_run_spec
+
 from mira.agent.runner import AgentRunner
 from mira.agent.tools import ToolResult
 from mira.config.schema import AgentDefaults

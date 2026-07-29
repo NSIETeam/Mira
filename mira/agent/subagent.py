@@ -14,8 +14,8 @@ from typing import Any, Callable
 from loguru import logger
 
 from mira.agent.hook import AgentHook, AgentHookContext
-from mira.agent.memory import MemoryStore
 from mira.agent.maturity import apply_agent_role_to_task, resolve_agent_role_profile
+from mira.agent.memory import MemoryStore
 from mira.agent.runner import AgentRunner, AgentRunSpec
 from mira.agent.tools.base import ToolResult
 from mira.agent.tools.context import (

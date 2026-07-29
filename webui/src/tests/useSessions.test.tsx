@@ -10,9 +10,9 @@ vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api")>();
   return {
     ...actual,
-    listSessions: vi.fn(),
-    deleteSession: vi.fn(),
-    fetchWebuiThread: vi.fn(),
+    listExecutions: vi.fn(),
+    deleteExecution: vi.fn(),
+    fetchExecutionHistory: vi.fn(),
   };
 });
 
@@ -33,7 +33,9 @@ function fakeClient() {
       for (const handler of sessionUpdateHandlers) handler(chatId, scope);
     },
     sendMessage: vi.fn(),
+    newExecution: vi.fn(),
     newChat: vi.fn(),
+    forkExecution: vi.fn(),
     forkChat: vi.fn(),
     attach: vi.fn(),
     connect: vi.fn(),
@@ -57,9 +59,9 @@ function wrap(client: ReturnType<typeof fakeClient>) {
 
 describe("useSessions", () => {
   beforeEach(() => {
-    vi.mocked(api.listSessions).mockReset();
-    vi.mocked(api.deleteSession).mockReset();
-    vi.mocked(api.fetchWebuiThread).mockReset();
+    vi.mocked(api.listExecutions).mockReset();
+    vi.mocked(api.deleteExecution).mockReset();
+    vi.mocked(api.fetchExecutionHistory).mockReset();
   });
 
   it("does not use low-information greetings as fallback session titles", () => {
@@ -71,7 +73,7 @@ describe("useSessions", () => {
       updatedAt: "2026-04-16T10:00:00Z",
       title: "",
       preview: "hi",
-    })).toBe("New topic");
+    })).toBe("New execution");
 
     expect(sessionTitle({
       key: "websocket:chat-work",
@@ -85,7 +87,7 @@ describe("useSessions", () => {
   });
 
   it("removes a session from the local list after delete succeeds", async () => {
-    vi.mocked(api.listSessions).mockResolvedValue([
+    vi.mocked(api.listExecutions).mockResolvedValue([
       {
         key: "websocket:chat-a",
         channel: "websocket",
@@ -103,7 +105,7 @@ describe("useSessions", () => {
         preview: "Beta",
       },
     ]);
-    vi.mocked(api.deleteSession).mockResolvedValue({ deleted: true });
+    vi.mocked(api.deleteExecution).mockResolvedValue({ deleted: true });
 
     const { result } = renderHook(() => useSessions(), {
       wrapper: wrap(fakeClient()),
@@ -115,12 +117,12 @@ describe("useSessions", () => {
       await result.current.deleteChat("websocket:chat-a");
     });
 
-    expect(api.deleteSession).toHaveBeenCalledWith("tok", "websocket:chat-a", undefined);
+    expect(api.deleteExecution).toHaveBeenCalledWith("tok", "websocket:chat-a", undefined);
     expect(result.current.sessions.map((s) => s.key)).toEqual(["websocket:chat-b"]);
   });
 
   it("keeps a session when delete is blocked by bound automations", async () => {
-    vi.mocked(api.listSessions).mockResolvedValue([
+    vi.mocked(api.listExecutions).mockResolvedValue([
       {
         key: "websocket:chat-a",
         channel: "websocket",
@@ -130,7 +132,7 @@ describe("useSessions", () => {
         preview: "Alpha",
       },
     ]);
-    vi.mocked(api.deleteSession).mockResolvedValue({
+    vi.mocked(api.deleteExecution).mockResolvedValue({
       deleted: false,
       blocked_by_automations: true,
       automations: [],
@@ -152,7 +154,7 @@ describe("useSessions", () => {
   });
 
   it("refreshes sessions when the websocket reports a session update", async () => {
-    vi.mocked(api.listSessions)
+    vi.mocked(api.listExecutions)
       .mockResolvedValueOnce([
       {
         key: "websocket:chat-a",
@@ -187,11 +189,11 @@ describe("useSessions", () => {
     });
 
     await waitFor(() => expect(result.current.sessions[0]?.title).toBe("生成的小标题"));
-    expect(api.listSessions).toHaveBeenCalledTimes(2);
+    expect(api.listExecutions).toHaveBeenCalledTimes(2);
   });
 
   it("keeps a newly created chat visible until the server session list catches up", async () => {
-    vi.mocked(api.listSessions)
+    vi.mocked(api.listExecutions)
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -206,7 +208,7 @@ describe("useSessions", () => {
         },
       ]);
     const client = fakeClient();
-    client.newChat.mockResolvedValue("chat-new");
+    client.newExecution.mockResolvedValue("chat-new");
 
     const { result } = renderHook(() => useSessions(), {
       wrapper: wrap(client),
@@ -219,7 +221,7 @@ describe("useSessions", () => {
       await result.current.createChat();
     });
 
-    expect(client.newChat).toHaveBeenCalledWith(60_000, undefined);
+    expect(client.newExecution).toHaveBeenCalledWith(60_000, undefined);
     expect(result.current.sessions.map((s) => s.key)).toEqual(["websocket:chat-new"]);
 
     await act(async () => {
@@ -239,9 +241,9 @@ describe("useSessions", () => {
   });
 
   it("stores optimistic workspace scope when creating a chat", async () => {
-    vi.mocked(api.listSessions).mockResolvedValue([]);
+    vi.mocked(api.listExecutions).mockResolvedValue([]);
     const client = fakeClient();
-    client.newChat.mockResolvedValue("chat-workspace");
+    client.newExecution.mockResolvedValue("chat-workspace");
     const workspaceScope = {
       project_path: "/tmp/project",
       project_name: "project",
@@ -258,12 +260,12 @@ describe("useSessions", () => {
       await result.current.createChat(workspaceScope);
     });
 
-    expect(client.newChat).toHaveBeenCalledWith(60_000, workspaceScope);
+    expect(client.newExecution).toHaveBeenCalledWith(60_000, workspaceScope);
     expect(result.current.sessions[0]?.workspaceScope).toEqual(workspaceScope);
   });
 
   it("passes through WebUI transcript user media as images and media", async () => {
-    vi.mocked(api.fetchWebuiThread).mockResolvedValue({
+    vi.mocked(api.fetchExecutionHistory).mockResolvedValue({
       schemaVersion: 3,
       messages: [
         {
@@ -307,7 +309,7 @@ describe("useSessions", () => {
   });
 
   it("passes through assistant video media from transcript replay", async () => {
-    vi.mocked(api.fetchWebuiThread).mockResolvedValue({
+    vi.mocked(api.fetchExecutionHistory).mockResolvedValue({
       schemaVersion: 3,
       messages: [
         {
@@ -334,7 +336,7 @@ describe("useSessions", () => {
   });
 
   it("passes through assistant reasoning from transcript replay", async () => {
-    vi.mocked(api.fetchWebuiThread).mockResolvedValue({
+    vi.mocked(api.fetchExecutionHistory).mockResolvedValue({
       schemaVersion: 3,
       messages: [
         {
@@ -360,7 +362,7 @@ describe("useSessions", () => {
   });
 
   it("accepts transcript rows produced by the server replay reducer", async () => {
-    vi.mocked(api.fetchWebuiThread).mockResolvedValue({
+    vi.mocked(api.fetchExecutionHistory).mockResolvedValue({
       schemaVersion: 3,
       messages: [
         { id: "u1", role: "user", content: "research this", createdAt: 1 },
@@ -393,7 +395,7 @@ describe("useSessions", () => {
   });
 
   it("flags transcript ending with a trace row as pending", async () => {
-    vi.mocked(api.fetchWebuiThread).mockResolvedValue({
+    vi.mocked(api.fetchExecutionHistory).mockResolvedValue({
       schemaVersion: 3,
       messages: [
         {
@@ -417,7 +419,7 @@ describe("useSessions", () => {
   });
 
   it("uses the server pending flag for completed tails that still end with trace rows", async () => {
-    vi.mocked(api.fetchWebuiThread).mockResolvedValue({
+    vi.mocked(api.fetchExecutionHistory).mockResolvedValue({
       schemaVersion: 3,
       has_pending_tool_calls: false,
       messages: [
@@ -451,7 +453,7 @@ describe("useSessions", () => {
   });
 
   it("does not flag transcript as pending when last row is not a trace", async () => {
-    vi.mocked(api.fetchWebuiThread).mockResolvedValue({
+    vi.mocked(api.fetchExecutionHistory).mockResolvedValue({
       schemaVersion: 3,
       messages: [
         { id: "a1", role: "assistant", content: "All done", createdAt: 1 },
@@ -468,7 +470,7 @@ describe("useSessions", () => {
   });
 
   it("treats missing transcript (404) as empty history", async () => {
-    vi.mocked(api.fetchWebuiThread).mockResolvedValue(null);
+    vi.mocked(api.fetchExecutionHistory).mockResolvedValue(null);
 
     const { result } = renderHook(() => useSessionHistory("websocket:new-chat"), {
       wrapper: wrap(fakeClient()),
@@ -481,7 +483,7 @@ describe("useSessions", () => {
   });
 
   it("loads older transcript pages before the current history", async () => {
-    vi.mocked(api.fetchWebuiThread)
+    vi.mocked(api.fetchExecutionHistory)
       .mockResolvedValueOnce({
         schemaVersion: 3,
         messages: [
@@ -514,7 +516,7 @@ describe("useSessions", () => {
     });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(api.fetchWebuiThread).toHaveBeenCalledWith("tok", "websocket:paged", {
+    expect(api.fetchExecutionHistory).toHaveBeenCalledWith("tok", "websocket:paged", {
       limit: 160,
       direction: "latest",
     });
@@ -525,7 +527,7 @@ describe("useSessions", () => {
       await result.current.loadOlder();
     });
 
-    expect(api.fetchWebuiThread).toHaveBeenLastCalledWith("tok", "websocket:paged", {
+    expect(api.fetchExecutionHistory).toHaveBeenLastCalledWith("tok", "websocket:paged", {
       limit: 120,
       before: "cursor-2",
     });
@@ -540,7 +542,7 @@ describe("useSessions", () => {
   });
 
   it("keeps the session in the list when delete fails", async () => {
-    vi.mocked(api.listSessions).mockResolvedValue([
+    vi.mocked(api.listExecutions).mockResolvedValue([
       {
         key: "websocket:chat-a",
         channel: "websocket",
@@ -550,7 +552,7 @@ describe("useSessions", () => {
         preview: "Alpha",
       },
     ]);
-    vi.mocked(api.deleteSession).mockRejectedValue(new Error("boom"));
+    vi.mocked(api.deleteExecution).mockRejectedValue(new Error("boom"));
 
     const { result } = renderHook(() => useSessions(), {
       wrapper: wrap(fakeClient()),

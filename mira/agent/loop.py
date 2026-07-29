@@ -701,6 +701,7 @@ class AgentLoop:
         ctx = ToolContext(
             config=self.tools_config,
             workspace=str(self.workspace),
+            modules_config=self.modules_config,
             bus=self.bus,
             subagent_manager=self.subagents,
             cron_service=self.cron_service,

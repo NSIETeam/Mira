@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from agent.runner_helpers import make_run_spec
+
 from mira.agent.context_governance import (
     BACKFILL_CONTENT,
     MICROCOMPACT_KEEP_RECENT,

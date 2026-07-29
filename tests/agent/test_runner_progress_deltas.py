@@ -4,8 +4,8 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from agent.runner_helpers import make_run_spec
+
 from mira.agent.hook import CompositeHook
 from mira.agent.hooks import FileEditActivityHook
 from mira.agent.progress_hook import AgentProgressHook
