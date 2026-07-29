@@ -56,17 +56,84 @@ jobs:
             --collect-all webview \
             scripts/mira_desktop.py
 
-      - name: Package artifact (macOS)
+      - name: Install macOS packaging tools
+        if: runner.os == 'macOS'
+        run: |
+          brew install create-dmg
+
+      - name: Package installer (macOS)
         if: runner.os == 'macOS'
         run: |
           cd dist
-          ditto -c -k --sequesterRsrc --keepParent Mira.app Mira-macos.zip
+          mkdir -p dmg-root
+          cp -R Mira.app dmg-root/Mira.app
+          ln -s /Applications dmg-root/Applications
+          create-dmg \
+            --volname "Mira Installer" \
+            --window-pos 200 120 \
+            --window-size 840 520 \
+            --icon-size 120 \
+            --icon "Mira.app" 220 250 \
+            --icon "Applications" 620 250 \
+            --hide-extension "Mira.app" \
+            --app-drop-link 620 250 \
+            "Mira.dmg" \
+            "dmg-root"
 
-      - name: Package artifact (Windows)
+      - name: Install Inno Setup (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path dist/Mira/* -DestinationPath dist/Mira-windows.zip -Force
+          choco install innosetup --no-progress -y
+
+      - name: Write installer script (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          @'
+          #define MyAppName "Mira"
+          #define MyAppVersion "0.3.0"
+          #define MyAppPublisher "NSIETeam"
+          #define MyAppExeName "Mira.exe"
+
+          [Setup]
+          AppId={{8D5FB5A0-4D4B-49BA-8A18-2A3D5C82C5E8}
+          AppName={#MyAppName}
+          AppVersion={#MyAppVersion}
+          AppPublisher={#MyAppPublisher}
+          DefaultDirName={autopf}\{#MyAppName}
+          DefaultGroupName={#MyAppName}
+          DisableProgramGroupPage=yes
+          OutputDir=dist
+          OutputBaseFilename=Mira-Setup
+          Compression=lzma
+          SolidCompression=yes
+          WizardStyle=modern
+          ArchitecturesInstallIn64BitMode=x64compatible
+          UninstallDisplayIcon={app}\{#MyAppExeName}
+
+          [Languages]
+          Name: "english"; MessagesFile: "compiler:Default.isl"
+
+          [Tasks]
+          Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"; Flags: unchecked
+
+          [Files]
+          Source: "dist\Mira\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+          [Icons]
+          Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+          Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+
+          [Run]
+          Filename: "{app}\{#MyAppExeName}"; Description: "Launch Mira"; Flags: nowait postinstall skipifsilent
+          '@ | Set-Content -Path installer.iss -Encoding ascii
+
+      - name: Package installer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 
       - name: Package artifact (Linux)
         if: runner.os == 'Linux'
@@ -79,8 +146,8 @@ jobs:
         with:
           name: mira-desktop-${{ runner.os }}
           path: |
-            dist/Mira-macos.zip
-            dist/Mira-windows.zip
+            dist/Mira.dmg
+            dist/Mira-Setup.exe
             dist/Mira-linux.tar.gz
 
   release:
@@ -98,5 +165,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-artifacts/**/*.zip
+            release-artifacts/**/*.dmg
+            release-artifacts/**/*.exe
             release-artifacts/**/*.tar.gz

@@ -118,8 +118,8 @@ mira gateway              # Long-running service
 
 Packaged desktop builds are published through GitHub Releases on version tags. The release workflow emits:
 
-- `Mira-macos.zip`
-- `Mira-windows.zip`
+- `Mira.dmg`
+- `Mira-Setup.exe`
 - `Mira-linux.tar.gz`
 
 ### Architecture
