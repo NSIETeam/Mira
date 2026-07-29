@@ -415,6 +415,7 @@ export interface BootstrapResponse {
     queued_cold?: number;
     queue_limit?: number;
     session_queue_limit?: number;
+    fair_share_bias?: string;
     queued_sessions?: Array<{
       session_key: string;
       queued: number;

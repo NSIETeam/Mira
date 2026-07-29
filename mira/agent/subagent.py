@@ -528,7 +528,10 @@ class SubagentManager:
         now = time.monotonic()
         for index, pending in enumerate(queue):
             age = max(now - pending.queued_at, 0.0)
-            score = age * max(1, pending.weight)
+            session_key = pending.origin.get("session_key")
+            session_load = self.get_running_count_by_session(session_key) + self._pending_count_for_session(session_key)
+            fairness_penalty = max(0, session_load - 1) * 5.0
+            score = (age * max(1, pending.weight)) - fairness_penalty
             if score > best_score:
                 best_score = score
                 best_index = index
@@ -1005,6 +1008,7 @@ class SubagentManager:
             "queued_cold": len(self._pending_cold),
             "queue_limit": queue_limit,
             "session_queue_limit": self.max_pending_subagents_per_session,
+            "fair_share_bias": "session_load_penalty",
             "queued_sessions": self._pending_sessions_summary(),
             "pressure": pressure,
             "estimated_subagent_memory_mb": self.subagent_memory_mb,
