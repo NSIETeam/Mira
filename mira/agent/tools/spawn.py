@@ -9,6 +9,7 @@ from mira.agent.tools.context import current_request_context
 from mira.agent.tools.schema import (
     ArraySchema,
     BooleanSchema,
+    EnumSchema,
     IntegerSchema,
     NumberSchema,
     ObjectSchema,
@@ -54,6 +55,20 @@ if TYPE_CHECKING:
             ),
             minimum=1,
             maximum=8,
+        ),
+        memory_policy=EnumSchema(
+            [
+                "auto",
+                "task_only",
+                "default",
+                "full",
+            ],
+            description=(
+                "How much memory the subagent inherits from the main agent. "
+                "`task_only` keeps only the explicit task, `default` shares stable "
+                "instructions plus topic/graph memory, and `full` also shares the "
+                "live session scratchpad. `auto` maps to `default`."
+            ),
         ),
         temperature=NumberSchema(
             description=(
@@ -108,6 +123,7 @@ class SpawnTool(Tool):
         tasks: list[dict[str, Any]] | None = None,
         label: str | None = None,
         weight: int = 1,
+        memory_policy: str = "auto",
         temperature: float | None = None,
         wait: bool = False,
         **kwargs: Any,
@@ -151,6 +167,7 @@ class SpawnTool(Tool):
                 origin_message_id=request_ctx.message_id,
                 temperature=temperature,
                 workspace_scope=current_workspace_scope(),
+                memory_policy=memory_policy,
             )
 
         results: list[str] = []
@@ -166,6 +183,7 @@ class SpawnTool(Tool):
                 origin_message_id=request_ctx.message_id,
                 temperature=temperature,
                 workspace_scope=current_workspace_scope(),
+                memory_policy=memory_policy,
             ))
         queued = sum("queued" in line.lower() for line in results)
         started = len(results) - queued

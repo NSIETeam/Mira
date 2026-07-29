@@ -598,6 +598,7 @@ function RuntimeSnapshotPanel({
     ? {
         running: scheduler.running ?? 0,
         runningLimit: scheduler.running_limit ?? 0,
+        recommendedConcurrency: scheduler.recommended_concurrency ?? 0,
         queued: scheduler.queued ?? 0,
         queuedHot: scheduler.queued_hot ?? 0,
         queuedWarm: scheduler.queued_warm ?? 0,
@@ -605,6 +606,12 @@ function RuntimeSnapshotPanel({
         queueLimit: scheduler.queue_limit ?? 0,
         hostMemoryMb: scheduler.host_memory_mb ?? null,
         subagentMemoryMb: scheduler.estimated_subagent_memory_mb ?? null,
+        defaultMemoryPolicy: typeof scheduler.default_memory_policy === "string"
+          ? scheduler.default_memory_policy
+          : null,
+        inheritedLayers: Array.isArray(scheduler.default_inherited_memory_layers)
+          ? scheduler.default_inherited_memory_layers.join("/")
+          : null,
         pressure: "pressure" in scheduler && typeof scheduler.pressure === "string"
           ? scheduler.pressure
           : null,
@@ -656,10 +663,19 @@ function RuntimeSnapshotPanel({
             <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
               {schedulerPressure ? <span>pressure {schedulerPressure}</span> : null}
               <span>running {schedulerSummary.running}/{schedulerSummary.runningLimit}</span>
+              {schedulerSummary.recommendedConcurrency ? (
+                <span>recommended {schedulerSummary.recommendedConcurrency}</span>
+              ) : null}
               <span>queued {schedulerSummary.queued}/{schedulerSummary.queueLimit}</span>
               <span>hot {schedulerSummary.queuedHot}</span>
               <span>warm {schedulerSummary.queuedWarm}</span>
               <span>cold {schedulerSummary.queuedCold}</span>
+              {schedulerSummary.defaultMemoryPolicy ? (
+                <span>inherit {schedulerSummary.defaultMemoryPolicy}</span>
+              ) : null}
+              {schedulerSummary.inheritedLayers ? (
+                <span>layers {schedulerSummary.inheritedLayers}</span>
+              ) : null}
               {schedulerSummary.hostMemoryMb ? (
                 <span>host {schedulerSummary.hostMemoryMb}MB</span>
               ) : null}

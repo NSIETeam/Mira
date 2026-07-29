@@ -25,8 +25,10 @@ Parent session key: {{ session_key }}
 
 ## Memory inheritance
 
-- Inherit stable user memory, project memory, local project instructions, indexed topic memory, and knowledge-graph memory from the main agent.
-- Do not assume access to the full live scratchpad of the main agent beyond what is explicitly included in this task.
+- Active memory policy: {{ memory_policy }}
+- Inherited memory layers: {{ inherited_memory_layers }}
+- Inherit stable user memory, project memory, local project instructions, indexed topic memory, and knowledge-graph memory from the main agent when the policy allows it.
+- Only assume access to the full live scratchpad of the main agent when the memory policy explicitly includes it.
 - Treat your own reasoning and intermediate execution as isolated to this subtask unless the main agent asks you to persist a result.
 - Report back distilled outcomes, not your full working state. The main agent decides what becomes shared memory.
 {% if skills_summary %}

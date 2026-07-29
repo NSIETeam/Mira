@@ -53,6 +53,8 @@ class SubagentStatus:
     usage: dict = field(default_factory=dict)          # token usage
     stop_reason: str | None = None
     error: str | None = None
+    memory_policy: str = "default"
+    inherited_memory_layers: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -69,6 +71,8 @@ class PendingSubagent:
     temperature: float | None = None
     queued_at: float = field(default_factory=time.monotonic)
     weight: int = 1
+    memory_policy: str = "default"
+    inherited_memory_layers: list[str] = field(default_factory=list)
 
 
 class _SubagentHook(AgentHook):
@@ -102,10 +106,27 @@ class SubagentManager:
 
     _DEFAULT_SUBAGENT_MEMORY_MB = 10
     _DEFAULT_QUEUE_FACTOR = 4
+    _DEFAULT_MEMORY_POLICY = "default"
     _HOT_QUEUE_WEIGHT_THRESHOLD = 4
     _WARM_QUEUE_WEIGHT_THRESHOLD = 2
     _COLD_TO_WARM_PROMOTION_S = 15.0
     _WARM_TO_HOT_PROMOTION_S = 30.0
+    _MEMORY_POLICY_LAYERS = {
+        "task_only": [],
+        "default": [
+            "repo_instructions",
+            "user_overlay",
+            "topic_memory",
+            "knowledge_graph",
+        ],
+        "full": [
+            "repo_instructions",
+            "user_overlay",
+            "topic_memory",
+            "knowledge_graph",
+            "session_scratchpad",
+        ],
+    }
 
     @staticmethod
     def _host_memory_mb() -> int | None:
@@ -150,6 +171,20 @@ class SubagentManager:
         available_mb = max(memory_mb - reserve_mb, cls._DEFAULT_SUBAGENT_MEMORY_MB)
         memory_budget_tasks = max(1, available_mb // cls._DEFAULT_SUBAGENT_MEMORY_MB)
         return max(concurrency, min(base, memory_budget_tasks))
+
+    @classmethod
+    def _normalize_memory_policy(cls, memory_policy: str | None) -> str:
+        normalized = str(memory_policy or cls._DEFAULT_MEMORY_POLICY).strip().lower()
+        if normalized == "auto":
+            return cls._DEFAULT_MEMORY_POLICY
+        if normalized not in cls._MEMORY_POLICY_LAYERS:
+            return cls._DEFAULT_MEMORY_POLICY
+        return normalized
+
+    @classmethod
+    def _memory_layers_for_policy(cls, memory_policy: str | None) -> list[str]:
+        normalized = cls._normalize_memory_policy(memory_policy)
+        return list(cls._MEMORY_POLICY_LAYERS.get(normalized, cls._MEMORY_POLICY_LAYERS[cls._DEFAULT_MEMORY_POLICY]))
 
     def __init__(
         self,
@@ -307,6 +342,7 @@ class SubagentManager:
         temperature: float | None = None,
         workspace_scope: WorkspaceScope | None = None,
         weight: int = 1,
+        memory_policy: str | None = None,
         *,
         runtime: LLMRuntime | None = None,
     ) -> str:
@@ -318,12 +354,16 @@ class SubagentManager:
         task_id = str(uuid.uuid4())[:8]
         display_label = label or task[:30] + ("..." if len(task) > 30 else "")
         origin = {"channel": origin_channel, "chat_id": origin_chat_id, "session_key": session_key}
+        resolved_memory_policy = self._normalize_memory_policy(memory_policy)
+        inherited_memory_layers = self._memory_layers_for_policy(resolved_memory_policy)
 
         status = SubagentStatus(
             task_id=task_id,
             label=display_label,
             task_description=task,
             started_at=time.monotonic(),
+            memory_policy=resolved_memory_policy,
+            inherited_memory_layers=inherited_memory_layers,
         )
         self._task_statuses[task_id] = status
         pending = PendingSubagent(
@@ -336,6 +376,8 @@ class SubagentManager:
             workspace_scope=workspace_scope,
             temperature=temperature,
             weight=max(1, weight),
+            memory_policy=resolved_memory_policy,
+            inherited_memory_layers=inherited_memory_layers,
         )
         if not await self._enqueue_or_start(pending, status):
             if status.phase == "error":
@@ -349,11 +391,14 @@ class SubagentManager:
             return (
                 f"Subagent [{display_label}] queued (id: {task_id}). "
                 f"It will start automatically when a shared execution slot is free. "
-                f"Queue depth: {queued}."
+                f"Queue depth: {queued}. Memory policy: {resolved_memory_policy}."
             )
 
         logger.info("Spawned subagent [{}]: {}", task_id, display_label)
-        return f"Subagent [{display_label}] started (id: {task_id}). I'll notify you when it completes."
+        return (
+            f"Subagent [{display_label}] started (id: {task_id}). "
+            f"Memory policy: {resolved_memory_policy}. I'll notify you when it completes."
+        )
 
     async def _enqueue_or_start(
         self,
@@ -391,6 +436,8 @@ class SubagentManager:
                 pending.runtime,
                 pending.origin_message_id,
                 pending.workspace_scope,
+                pending.memory_policy,
+                pending.inherited_memory_layers,
             )
         )
         self._running_tasks[pending.task_id] = bg_task
@@ -486,6 +533,7 @@ class SubagentManager:
         origin_message_id: str | None = None,
         temperature: float | None = None,
         workspace_scope: WorkspaceScope | None = None,
+        memory_policy: str | None = None,
         *,
         runtime: LLMRuntime | None = None,
     ) -> str:
@@ -501,11 +549,15 @@ class SubagentManager:
             "chat_id": origin_chat_id,
             "session_key": session_key,
         }
+        resolved_memory_policy = self._normalize_memory_policy(memory_policy)
+        inherited_memory_layers = self._memory_layers_for_policy(resolved_memory_policy)
         status = SubagentStatus(
             task_id=task_id,
             label=display_label,
             task_description=task,
             started_at=time.monotonic(),
+            memory_policy=resolved_memory_policy,
+            inherited_memory_layers=inherited_memory_layers,
         )
         self._task_statuses[task_id] = status
         logger.info("Running inline subagent [{}]: {}", task_id, display_label)
@@ -519,6 +571,8 @@ class SubagentManager:
                 runtime,
                 origin_message_id,
                 workspace_scope,
+                resolved_memory_policy,
+                inherited_memory_layers,
                 announce=False,
             )
         )
@@ -548,6 +602,8 @@ class SubagentManager:
         runtime: LLMRuntime,
         origin_message_id: str | None = None,
         workspace_scope: WorkspaceScope | None = None,
+        memory_policy: str = _DEFAULT_MEMORY_POLICY,
+        inherited_memory_layers: list[str] | None = None,
         *,
         announce: bool = True,
     ) -> str:
@@ -567,7 +623,12 @@ class SubagentManager:
             # Construct from the agent workspace; the bound scope below supplies the project cwd.
             sess_key = origin.get("session_key")
             tools = self._build_tools(tools_config=cfg)
-            system_prompt = self._build_subagent_prompt(workspace=root, session_key=sess_key)
+            system_prompt = self._build_subagent_prompt(
+                workspace=root,
+                session_key=sess_key,
+                memory_policy=memory_policy,
+                inherited_memory_layers=inherited_memory_layers or [],
+            )
             messages: list[dict[str, Any]] = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": task},
@@ -720,6 +781,8 @@ class SubagentManager:
         self,
         workspace: Path | None = None,
         session_key: str | None = None,
+        memory_policy: str = _DEFAULT_MEMORY_POLICY,
+        inherited_memory_layers: list[str] | None = None,
     ) -> str:
         """Build a focused system prompt for the subagent."""
         from mira.agent.skills import SkillsLoader
@@ -736,6 +799,8 @@ class SubagentManager:
             agent_workspace=str(agent_workspace),
             history_log=str(agent_workspace / "memory" / "history.jsonl"),
             session_key=session_key or "",
+            memory_policy=memory_policy,
+            inherited_memory_layers=", ".join(inherited_memory_layers or []) or "none",
             skills_summary=skills_summary or "",
         )
 
@@ -818,6 +883,8 @@ class SubagentManager:
                     "stop_reason": status.stop_reason,
                     "error": status.error,
                     "queued": status.phase == "queued",
+                    "memory_policy": status.memory_policy,
+                    "inherited_memory_layers": list(status.inherited_memory_layers),
                 }
             )
         return rows
@@ -845,4 +912,7 @@ class SubagentManager:
             "pressure": pressure,
             "estimated_subagent_memory_mb": self.subagent_memory_mb,
             "host_memory_mb": self._host_memory_mb(),
+            "default_memory_policy": self._DEFAULT_MEMORY_POLICY,
+            "default_inherited_memory_layers": self._memory_layers_for_policy(self._DEFAULT_MEMORY_POLICY),
+            "recommended_concurrency": self._recommended_concurrency(),
         }
