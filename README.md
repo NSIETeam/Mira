@@ -74,19 +74,19 @@ irm https://raw.githubusercontent.com/NSIETeam/Mira/main/scripts/install.ps1 | i
 **With uv:**
 
 ```bash
-uv tool install mira
+uv tool install mira-ai
 ```
 
 **From PyPI:**
 
 ```bash
-pip install mira
+pip install mira-ai
 ```
 
 **Desktop host (native window):**
 
 ```bash
-pip install "mira[desktop]"
+pip install "mira-ai[desktop]"
 mira desktop
 ```
 
@@ -229,13 +229,13 @@ irm https://raw.githubusercontent.com/NSIETeam/Mira/main/scripts/install.ps1 | i
 **使用 uv：**
 
 ```bash
-uv tool install mira
+uv tool install mira-ai
 ```
 
 **从 PyPI 安装：**
 
 ```bash
-pip install mira
+pip install mira-ai
 ```
 
 **从源码安装：**

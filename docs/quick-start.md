@@ -135,25 +135,25 @@ Use one method, then continue at [Configure Your Model](#2-configure-your-model)
 **uv**
 
 ```bash
-uv tool install mira
+uv tool install mira-ai
 mira webui
 ```
 
 **pip in a virtual environment**
 
 ```bash
-python -m pip install mira
+python -m pip install mira-ai
 mira webui
 ```
 
-If pip reports `externally-managed-environment`, use the recommended installer, `uv tool install mira`, `pipx install mira`, or create a virtual environment. Do not force a system-wide install.
+If pip reports `externally-managed-environment`, use the recommended installer, `uv tool install mira-ai`, `pipx install mira-ai`, or create a virtual environment. Do not force a system-wide install.
 
 **Current source**
 
 `bun` or `npm` must be available. Activate a virtual environment first, then run:
 
 ```bash
-git clone https://github.com/HKUDS/mira.git
+git clone https://github.com/NSIETeam/Mira.git
 cd mira
 python -m pip install .
 mira webui
@@ -209,7 +209,7 @@ Upgrade with the same method you used to install:
 
 ```bash
 # Recommended installer
-curl -fsSL https://raw.githubusercontent.com/HKUDS/mira/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/NSIETeam/Mira/main/scripts/install.sh | sh
 
 # Or one of these
 uv tool upgrade mira

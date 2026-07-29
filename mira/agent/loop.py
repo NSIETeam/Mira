@@ -299,8 +299,9 @@ class AgentLoop:
         local_trigger_store: Any | None = None,
         idle_compact_check_interval_seconds: int = 0,
     ):
-        from mira.config.schema import ToolsConfig
+        from mira.config.schema import ToolsConfig, ensure_tool_config_refs
 
+        ensure_tool_config_refs()
         _tc = tools_config or ToolsConfig()
         defaults = AgentDefaults()
         self.bus = bus

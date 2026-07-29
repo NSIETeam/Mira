@@ -79,7 +79,7 @@ This is the practical line between "intentional compatibility" and "still-visibl
 | WebUI visible storage keys | Mixed, partly Mira-first | No | New front-facing keys should prefer `mira.*` when safe |
 | README positioning | Mira-first with compatibility notes | No | Should present Mira as the default product identity |
 | Release-critical docs landing pages | Mira-first | No | Should not feel nanobot-first to a new user |
-| Repo metadata and remote URLs | `origin` and hosted repo aligned to `NSIETeam/Mira`; `upstream` intentionally tracks `HKUDS/nanobot` | Yes | Public delivery should resolve through Mira, upstream remains source-sync only |
+| Repo metadata and remote URLs | `origin` and hosted repo aligned to `NSIETeam/Mira`; `upstream` intentionally tracks `HKUDS/nanobot (historical upstream)` | Yes | Public delivery should resolve through Mira, upstream remains source-sync only |
 
 ### Treat as compatibility, not a blocker by itself
 
@@ -123,7 +123,7 @@ Current repository facts verified on July 28, 2026:
 1. local `origin` points to `https://github.com/NSIETeam/Mira.git`
 2. hosted repo resolves as `NSIETeam/Mira`
 3. hosted default branch is `main`
-4. `upstream` still points to `HKUDS/nanobot` and should be treated as source-sync only
+4. `upstream` still points to `HKUDS/nanobot (historical upstream)` and should be treated as source-sync only
 
 This means the Mira repository-name migration is complete for the delivery remote, while the upstream nanobot remote remains intentionally retained for reference and sync.
 

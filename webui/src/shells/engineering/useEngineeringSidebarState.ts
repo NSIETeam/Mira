@@ -1,6 +1,11 @@
 import { useCallback, useMemo } from "react";
 
-import type { ExecutionSummary, WorkspaceScopePayload } from "@/lib/types";
+import type { SettingsSectionKey } from "@/components/settings/SettingsView";
+import type {
+  ExecutionSummary,
+  SidebarStatePayload,
+  WorkspaceScopePayload,
+} from "@/lib/types";
 import type { ShellRoute } from "@/shells/host";
 
 interface UseEngineeringSidebarStateOptions {
@@ -9,21 +14,10 @@ interface UseEngineeringSidebarStateOptions {
   activeKey: string | null;
   loading: boolean;
   activeShellView: "chat" | "settings" | "apps" | "automations" | "skills";
-  sidebarState: {
-    pinned_keys: string[];
-    archived_keys: string[];
-    title_overrides: Record<string, string>;
-    project_name_overrides: Record<string, string>;
-    collapsed_groups: Record<string, boolean>;
-    view: {
-      density?: "comfortable" | "compact";
-      show_previews?: boolean;
-      show_timestamps?: boolean;
-      show_archived: boolean;
-      sort?: "updated_desc" | "created_desc" | "title_asc";
-    };
-  };
-  updateSidebarState: (updater: (current: any) => any) => Promise<any> | void;
+  sidebarState: SidebarStatePayload;
+  updateSidebarState: (
+    updater: (current: SidebarStatePayload) => SidebarStatePayload,
+  ) => Promise<unknown> | void;
   navigate: (route: ShellRoute, options?: { replace?: boolean }) => void;
   setUpdatedExecutionIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   setDraftWorkspaceScope: React.Dispatch<React.SetStateAction<WorkspaceScopePayload | null>>;
@@ -36,7 +30,7 @@ interface UseEngineeringSidebarStateOptions {
   onToggleArchive: (key: string) => void;
   onRequestRenameProject: (key: string, label: string) => void;
   onNewExecutionInProject: (projectPath: string, projectName: string) => void;
-  onOpenSettings: (section?: any) => void;
+  onOpenSettings: (section?: SettingsSectionKey) => void;
   onOpenApps: () => void;
   onOpenAutomations: () => void;
   onOpenSkills: () => void;

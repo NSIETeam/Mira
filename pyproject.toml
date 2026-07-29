@@ -1,5 +1,5 @@
 [project]
-name = "mira"
+name = "mira-ai"
 version = "0.3.0"
 description = "Mira: a lightweight execution kernel and personal AI agent framework"
 readme = { file = "README.md", content-type = "text/markdown" }

@@ -425,6 +425,19 @@ export default function App() {
     return bootstrapWithSecret(saved);
   }, [bootstrapWithSecret]);
 
+  useEffect(() => {
+    if (state.status !== "ready") return;
+    if (typeof document === "undefined") return;
+    const shellName = state.shell?.name || "engineering";
+    const shellTheme = state.shell?.theme || "engineering";
+    const shellDescription = state.shell?.description || "";
+    document.title = state.shell?.display_name || "Mira";
+    document.documentElement.dataset.shellName = shellName;
+    document.documentElement.dataset.shellTheme = shellTheme;
+    document.documentElement.dataset.shellDescription = shellDescription;
+    document.documentElement.classList.toggle("shell-engineering", shellTheme === "engineering");
+  }, [state]);
+
   if (state.status === "loading") {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -467,19 +480,6 @@ export default function App() {
       current.status === "ready" ? { ...current, modelName } : current,
     );
   };
-
-  useEffect(() => {
-    if (state.status !== "ready") return;
-    if (typeof document === "undefined") return;
-    const shellName = state.shell?.name || "engineering";
-    const shellTheme = state.shell?.theme || "engineering";
-    const shellDescription = state.shell?.description || "";
-    document.title = state.shell?.display_name || "Mira";
-    document.documentElement.dataset.shellName = shellName;
-    document.documentElement.dataset.shellTheme = shellTheme;
-    document.documentElement.dataset.shellDescription = shellDescription;
-    document.documentElement.classList.toggle("shell-engineering", shellTheme === "engineering");
-  }, [state]);
 
   const handleLogout = () => {
     if (state.status === "ready") {

@@ -145,7 +145,7 @@ For production use:
    ```bash
    # Run in a container or VM
    docker run --rm -it python:3.11
-   pip install mira
+   pip install mira-ai
    ```
 
 2. **Use a Dedicated User**
@@ -268,8 +268,8 @@ Before deploying mira:
 **Last Updated**: 2026-07-21
 
 For the latest security updates and announcements, check:
-- GitHub Security Advisories: https://github.com/HKUDS/mira/security/advisories
-- Release Notes: https://github.com/HKUDS/mira/releases
+- GitHub Security Advisories: https://github.com/NSIETeam/Mira/security/advisories
+- Release Notes: https://github.com/NSIETeam/Mira/releases
 
 ## License
 

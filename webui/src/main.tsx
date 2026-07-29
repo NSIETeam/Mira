@@ -26,5 +26,5 @@ if (!root) throw new Error("root element missing");
 
 initializeLoopbackRuntimeHost();
 
-/* StrictMode disabled: dev double-invokes state updaters; delta accumulation must stay pure — see usemiraStream. */
+/* StrictMode disabled: dev double-invokes state updaters; delta accumulation must stay pure — see useMiraStream. */
 ReactDOM.createRoot(root).render(<App />);

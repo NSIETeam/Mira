@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { fetchPairingRequests, runPairingAction } from "@/lib/api";
-import type { ExecutionSummary, PairingRequestInfo, SessionAutomationJob } from "@/lib/types";
+import type {
+  ExecutionSummary,
+  PairingRequestInfo,
+  SessionAutomationJob,
+  SidebarStatePayload,
+} from "@/lib/types";
 import type { ShellRoute } from "@/shells/host";
 
 const PAIRING_POLL_INTERVAL_MS = 5_000;
@@ -25,7 +30,9 @@ interface UseEngineeringOverlayStateOptions {
   activeKey: string | null;
   sessions: ExecutionSummary[];
   archivedKeys: string[];
-  updateSidebarState: (updater: (current: any) => any) => Promise<any> | void;
+  updateSidebarState: (
+    updater: (current: SidebarStatePayload) => SidebarStatePayload,
+  ) => Promise<unknown> | void;
   navigate: (route: ShellRoute, options?: { replace?: boolean }) => void;
   getExecutionAutomations: (key: string) => Promise<SessionAutomationJob[]>;
   deleteExecution: (

@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$Package = "mira"
+$Package = "mira-ai"
 $MainSource = "https://github.com/NSIETeam/Mira/archive/refs/heads/main.zip"
 $InstallTarget = $Package
 $InstallSource = "PyPI"
@@ -40,7 +40,7 @@ function Show-InstallFailureHint {
 function Show-Usage {
     Write-Host "Usage: install.ps1 [-Dev|--dev] [-DryRun|--dry-run]"
     Write-Host ""
-    Write-Host "By default this installs or upgrades Mira from PyPI."
+    Write-Host "By default this installs or upgrades Mira from the NSIETeam-controlled mira-ai distribution."
     Write-Host "Use --dev to install from the current main branch on GitHub."
     Write-Host "Use --dry-run to print what would happen without installing or starting setup."
 }

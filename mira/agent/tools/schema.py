@@ -149,6 +149,30 @@ class BooleanSchema(Schema):
         return d
 
 
+class EnumSchema(Schema):
+    """String enum parameter with a compact legacy-compatible constructor."""
+
+    def __init__(
+        self,
+        values: tuple[Any, ...] | list[Any],
+        *,
+        description: str = "",
+        nullable: bool = False,
+    ) -> None:
+        self._values = list(values)
+        self._description = description
+        self._nullable = nullable
+
+    def to_json_schema(self) -> dict[str, Any]:
+        t: Any = "string"
+        if self._nullable:
+            t = ["string", "null"]
+        d: dict[str, Any] = {"type": t, "enum": self._values}
+        if self._description:
+            d["description"] = self._description
+        return d
+
+
 class ArraySchema(Schema):
     """Array parameter: element schema is given by ``items``."""
 

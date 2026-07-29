@@ -448,6 +448,12 @@ class Config(BaseSettings):
             _resolve_tool_config_refs()
         super().__init__(**values)
 
+    @classmethod
+    def model_validate(cls, obj: Any, *args: Any, **kwargs: Any) -> "Config":
+        if not cls.__pydantic_complete__:
+            _resolve_tool_config_refs()
+        return super().model_validate(obj, *args, **kwargs)
+
     @model_validator(mode="after")
     def _validate_model_preset(self) -> "Config":
         if "default" in self.model_presets:
@@ -666,6 +672,41 @@ def _resolve_tool_config_refs() -> None:
 
     ToolsConfig.model_rebuild()
     Config.model_rebuild()
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy compatibility exports for tool config classes.
+
+    Some tests and integrations import tool configs from this module while a
+    tool module is already importing ``mira.config.schema``. Resolve those names
+    on demand so the old import path remains stable across import order.
+    """
+    exports = {
+        "CliAppsToolConfig": ("mira.agent.tools.cli_apps", "CliAppsToolConfig"),
+        "ExecToolConfig": ("mira.agent.tools.shell", "ExecToolConfig"),
+        "FileToolsConfig": ("mira.agent.tools.filesystem", "FileToolsConfig"),
+        "ImageGenerationToolConfig": (
+            "mira.agent.tools.image_generation",
+            "ImageGenerationToolConfig",
+        ),
+        "MyToolConfig": ("mira.agent.tools.self", "MyToolConfig"),
+        "WebFetchConfig": ("mira.agent.tools.web", "WebFetchConfig"),
+        "WebSearchConfig": ("mira.agent.tools.web", "WebSearchConfig"),
+        "WebToolsConfig": ("mira.agent.tools.web", "WebToolsConfig"),
+    }
+    if name not in exports:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import importlib
+
+    module_name, attr = exports[name]
+    value = getattr(importlib.import_module(module_name), attr)
+    globals()[name] = value
+    return value
+
+
+def ensure_tool_config_refs() -> None:
+    """Ensure tool config forward references are rebuilt before instantiation."""
+    _resolve_tool_config_refs()
 
 
 # Eagerly resolve when the import chain allows it (no circular deps at this

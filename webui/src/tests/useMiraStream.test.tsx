@@ -2,14 +2,16 @@ import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { usemiraStream } from "@/hooks/useMiraStream";
-import type { InboundEvent, GoalStateWsPayload } from "@/lib/types";
+import { useMiraStream } from "@/hooks/useMiraStream";
+import { toKernelEventPayload } from "@/lib/kernel-events";
+import type { InboundEvent, GoalStateWsPayload, KernelEventPayload } from "@/lib/types";
 import { ClientProvider } from "@/providers/ClientProvider";
 
 const EMPTY_MESSAGES: import("@/lib/types").UIMessage[] = [];
 
 function fakeClient() {
   const handlers = new Map<string, Set<(ev: InboundEvent) => void>>();
+  const kernelHandlers = new Map<string, Set<(ev: KernelEventPayload) => void>>();
   const runStartedAtByChatId = new Map<string, number>();
   const goalStateByChatId = new Map<string, GoalStateWsPayload>();
 
@@ -58,6 +60,15 @@ function fakeClient() {
         set.add(h);
         return () => set!.delete(h);
       },
+      onKernelExecution(chatId: string, h: (ev: KernelEventPayload) => void) {
+        let set = kernelHandlers.get(chatId);
+        if (!set) {
+          set = new Set();
+          kernelHandlers.set(chatId, set);
+        }
+        set.add(h);
+        return () => set!.delete(h);
+      },
       sendMessage: vi.fn(),
       newChat: vi.fn(),
       forkChat: vi.fn(),
@@ -70,6 +81,12 @@ function fakeClient() {
       recordGoalStatusForRunStrip(chatId, ev);
       recordGoalStateSnapshot(chatId, ev);
       const set = handlers.get(chatId);
+      set?.forEach((h) => h(ev));
+      const kernelSet = kernelHandlers.get(chatId);
+      kernelSet?.forEach((h) => h(toKernelEventPayload(ev)));
+    },
+    emitKernel(chatId: string, ev: KernelEventPayload) {
+      const set = kernelHandlers.get(chatId);
       set?.forEach((h) => h(ev));
     },
   };
@@ -96,11 +113,11 @@ async function flushStreamFrame() {
   });
 }
 
-describe("usemiraStream", () => {
+describe("useMiraStream", () => {
   it("batches answer deltas into one animation-frame update", async () => {
     const fake = fakeClient();
     const requestFrame = vi.spyOn(window, "requestAnimationFrame");
-    const { result } = renderHook(() => usemiraStream("chat-batch", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-batch", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -143,7 +160,7 @@ describe("usemiraStream", () => {
     try {
       const fake = fakeClient();
       const { result } = renderHook(
-        () => usemiraStream("chat-background", EMPTY_MESSAGES),
+        () => useMiraStream("chat-background", EMPTY_MESSAGES),
         { wrapper: wrap(fake.client) },
       );
 
@@ -182,7 +199,7 @@ describe("usemiraStream", () => {
 
   it("flushes pending delta text before turn_end finalizes the turn", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-flush", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-flush", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -209,7 +226,7 @@ describe("usemiraStream", () => {
 
   it("preserves proactive automation source metadata on complete assistant messages", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-cron", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-cron", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -251,7 +268,7 @@ describe("usemiraStream", () => {
     ];
 
     const { result } = renderHook(
-      () => usemiraStream("chat-cron-done", initialMessages),
+      () => useMiraStream("chat-cron-done", initialMessages),
       { wrapper: wrap(fake.client) },
     );
 
@@ -262,7 +279,7 @@ describe("usemiraStream", () => {
   it("drops pending stream work when switching chats", async () => {
     const fake = fakeClient();
     const { result, rerender } = renderHook(
-      ({ chatId }: { chatId: string }) => usemiraStream(chatId, EMPTY_MESSAGES),
+      ({ chatId }: { chatId: string }) => useMiraStream(chatId, EMPTY_MESSAGES),
       {
         wrapper: wrap(fake.client),
         initialProps: { chatId: "chat-old" },
@@ -304,7 +321,7 @@ describe("usemiraStream", () => {
       createdAt: Date.now(),
     }];
     const { result } = renderHook(
-      () => usemiraStream("chat-p", initialMessages, true),
+      () => useMiraStream("chat-p", initialMessages, true),
       {
         wrapper: wrap(fake.client),
       },
@@ -315,7 +332,7 @@ describe("usemiraStream", () => {
 
   it("collapses consecutive tool_hint frames into one trace row", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-t", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-t", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -357,7 +374,7 @@ describe("usemiraStream", () => {
 
   it("treats progress with arbitrary agent_ui like ordinary trace text", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-au", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-au", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
     act(() => {
@@ -379,7 +396,7 @@ describe("usemiraStream", () => {
 
   it("renders live tool traces from structured tool events", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-tool-events", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-tool-events", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -416,7 +433,7 @@ describe("usemiraStream", () => {
 
   it("dedupes finish-phase tool events after their start trace", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-tool-finish", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-tool-finish", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -470,7 +487,7 @@ describe("usemiraStream", () => {
 
   it("keeps phase updates when a tool event trace line is deduped", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-tool-phase", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-tool-phase", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -518,7 +535,7 @@ describe("usemiraStream", () => {
 
   it("renders live file_edit events as their own activity trace", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-file-edit", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-file-edit", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -584,7 +601,7 @@ describe("usemiraStream", () => {
 
   it("replaces matching write_file tool events with live file edit activity", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-file-edit-events", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-file-edit-events", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -647,7 +664,7 @@ describe("usemiraStream", () => {
 
   it("keeps live file edits separate from mixed non-file tool traces", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-file-edit-mixed-tools", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-file-edit-mixed-tools", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -712,7 +729,7 @@ describe("usemiraStream", () => {
 
   it("keeps every file from one apply_patch call", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-apply-patch-many", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-apply-patch-many", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -768,7 +785,7 @@ describe("usemiraStream", () => {
 
   it("upgrades pending file_edit placeholders when the path arrives", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-file-edit-pending", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-file-edit-pending", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -820,7 +837,7 @@ describe("usemiraStream", () => {
 
   it("merges file_edit updates after interleaved progress events", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-file-edit-progress", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-file-edit-progress", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -883,7 +900,7 @@ describe("usemiraStream", () => {
 
   it("keeps interrupted pre-tool text as assistant output before activity", async () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-stream-segments", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-stream-segments", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -930,7 +947,7 @@ describe("usemiraStream", () => {
 
   it("does not replace interrupted pre-tool text with final stream_end text", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-stream-end-final", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-stream-end-final", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -976,7 +993,7 @@ describe("usemiraStream", () => {
 
   it("splits live assistant output around tool hints without moving it into reasoning", async () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-live-segments", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-live-segments", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1021,7 +1038,7 @@ describe("usemiraStream", () => {
 
   it("opens a new activity segment for reasoning after file edit activity", async () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-file-segments", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-file-segments", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1076,7 +1093,7 @@ describe("usemiraStream", () => {
 
   it("keeps file edit blocks ordered across a new reasoning phase", async () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-file-order", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-file-order", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1135,7 +1152,7 @@ describe("usemiraStream", () => {
 
   it("accumulates reasoning_delta chunks on a placeholder until reasoning_end", async () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-r", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-r", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1169,7 +1186,7 @@ describe("usemiraStream", () => {
 
   it("absorbs a streaming reasoning placeholder into the answer turn that follows", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-r2", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-r2", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1196,7 +1213,7 @@ describe("usemiraStream", () => {
 
   it("ignores empty reasoning_delta frames", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-r3", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-r3", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1213,7 +1230,7 @@ describe("usemiraStream", () => {
 
   it("treats legacy kind=reasoning messages as a complete delta + end pair", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-r4", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-r4", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1233,7 +1250,7 @@ describe("usemiraStream", () => {
 
   it("starts a new Thought block when reasoning arrives after visible output", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-r5", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-r5", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1268,7 +1285,7 @@ describe("usemiraStream", () => {
     dateNow.mockImplementation(() => now);
     try {
       const fake = fakeClient();
-      const { result } = renderHook(() => usemiraStream("chat-r5-lat", EMPTY_MESSAGES), {
+      const { result } = renderHook(() => useMiraStream("chat-r5-lat", EMPTY_MESSAGES), {
         wrapper: wrap(fake.client),
       });
       await act(async () => {});
@@ -1299,7 +1316,7 @@ describe("usemiraStream", () => {
 
   it("keeps alternating reasoning and answer deltas in separate ordered blocks", async () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-r5b", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-r5b", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1362,7 +1379,7 @@ describe("usemiraStream", () => {
       },
     ];
     const { result } = renderHook(
-      () => usemiraStream("chat-r6", initialMessages),
+      () => useMiraStream("chat-r6", initialMessages),
       { wrapper: wrap(fake.client) },
     );
 
@@ -1386,7 +1403,7 @@ describe("usemiraStream", () => {
 
   it("does not attach reasoning across a tool trace boundary", async () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-r7", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-r7", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1427,7 +1444,7 @@ describe("usemiraStream", () => {
 
   it("keeps tool-call reasoning before the matching live tool trace", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-tool-reasoning", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-tool-reasoning", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1470,7 +1487,7 @@ describe("usemiraStream", () => {
 
   it("absorbs non-streamed final answers into the preceding reasoning placeholder", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-final-reasoning", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-final-reasoning", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1517,7 +1534,7 @@ describe("usemiraStream", () => {
 
   it("prunes reasoning-only placeholders when a turn ends without an answer", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-empty-thinking", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-empty-thinking", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1554,7 +1571,7 @@ describe("usemiraStream", () => {
       },
     ];
     const { result } = renderHook(
-      () => usemiraStream("chat-stale-thinking", initialMessages),
+      () => useMiraStream("chat-stale-thinking", initialMessages),
       { wrapper: wrap(fake.client) },
     );
 
@@ -1572,7 +1589,7 @@ describe("usemiraStream", () => {
   it("returns the submitted turn identity used by the optimistic row and wire frame", () => {
     const fake = fakeClient();
     const { result } = renderHook(
-      () => usemiraStream("chat-submitted-turn", EMPTY_MESSAGES),
+      () => useMiraStream("chat-submitted-turn", EMPTY_MESSAGES),
       { wrapper: wrap(fake.client) },
     );
 
@@ -1598,7 +1615,7 @@ describe("usemiraStream", () => {
 
   it("adds optimistic user file attachments as media", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-file-send", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-file-send", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
     const attachment = {
@@ -1629,7 +1646,7 @@ describe("usemiraStream", () => {
 
   it("inlines quoted context into the optimistic and outbound user message", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-quote", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-quote", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1648,7 +1665,7 @@ describe("usemiraStream", () => {
 
   it("attaches assistant media_urls to complete messages", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-m", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-m", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1669,7 +1686,7 @@ describe("usemiraStream", () => {
 
   it("keeps assistant html media as a file attachment", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-html-media", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-html-media", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1689,7 +1706,7 @@ describe("usemiraStream", () => {
 
   it("infers assistant svg media as an image attachment", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-svg-media", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-svg-media", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1709,7 +1726,7 @@ describe("usemiraStream", () => {
 
   it("corrects explicit image media when the name is a non-image file", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-mislabelled-html", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-mislabelled-html", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1729,7 +1746,7 @@ describe("usemiraStream", () => {
 
   it("suppresses redundant stream confirmation after assistant media", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-img-result", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-img-result", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1768,7 +1785,7 @@ describe("usemiraStream", () => {
 
   it("stops the active turn without adding a user slash command bubble", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-stop", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-stop", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1790,7 +1807,7 @@ describe("usemiraStream", () => {
 
   it("does not mark side-channel slash commands as streaming", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-status", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-status", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1821,7 +1838,7 @@ describe("usemiraStream", () => {
 
   it("finalizes active streaming before turn-ending side-channel commands", async () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-new", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-new", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -1880,7 +1897,7 @@ describe("usemiraStream", () => {
     vi.useFakeTimers();
     try {
       const fake = fakeClient();
-      const { result } = renderHook(() => usemiraStream("chat-status-loop", EMPTY_MESSAGES), {
+      const { result } = renderHook(() => useMiraStream("chat-status-loop", EMPTY_MESSAGES), {
         wrapper: wrap(fake.client),
       });
 
@@ -1929,7 +1946,7 @@ describe("usemiraStream", () => {
 
   it("keeps guided output in place while the active turn resumes", async () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-guide", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-guide", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -2011,7 +2028,7 @@ describe("usemiraStream", () => {
 
   it("keeps length-recovery segments in one assistant message", async () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-length", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-length", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -2085,7 +2102,7 @@ describe("usemiraStream", () => {
   it("keeps streaming alive across stream_end when tool activity follows", async () => {
     const fake = fakeClient();
     const onTurnEnd = vi.fn();
-    const { result } = renderHook(() => usemiraStream("chat-s", EMPTY_MESSAGES, false, onTurnEnd), {
+    const { result } = renderHook(() => useMiraStream("chat-s", EMPTY_MESSAGES, false, onTurnEnd), {
       wrapper: wrap(fake.client),
     });
 
@@ -2145,7 +2162,7 @@ describe("usemiraStream", () => {
 
   it("replaces streamed content with final stream_end text when provided", async () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-stream-final", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-stream-final", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -2177,7 +2194,7 @@ describe("usemiraStream", () => {
 
   it("creates an assistant bubble from final stream_end text without prior delta", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-stream-end-only", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-stream-end-only", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -2202,7 +2219,7 @@ describe("usemiraStream", () => {
     const dateNow = vi.spyOn(Date, "now").mockReturnValue(completedAt);
     try {
       const fake = fakeClient();
-      const { result } = renderHook(() => usemiraStream("chat-lat", EMPTY_MESSAGES), {
+      const { result } = renderHook(() => useMiraStream("chat-lat", EMPTY_MESSAGES), {
         wrapper: wrap(fake.client),
       });
 
@@ -2234,7 +2251,7 @@ describe("usemiraStream", () => {
 
   it("tracks goal_status running and clears on idle", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-g", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-g", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -2265,7 +2282,7 @@ describe("usemiraStream", () => {
 
   it("clears runStartedAt on turn_end even without idle", () => {
     const fake = fakeClient();
-    const { result } = renderHook(() => usemiraStream("chat-g", EMPTY_MESSAGES), {
+    const { result } = renderHook(() => useMiraStream("chat-g", EMPTY_MESSAGES), {
       wrapper: wrap(fake.client),
     });
 
@@ -2293,7 +2310,7 @@ describe("usemiraStream", () => {
   it("restores runStartedAt after switching away and back when goal_status was recorded without a subscriber", () => {
     const fake = fakeClient();
     const { result, rerender } = renderHook(
-      ({ chatId }: { chatId: string }) => usemiraStream(chatId, EMPTY_MESSAGES),
+      ({ chatId }: { chatId: string }) => useMiraStream(chatId, EMPTY_MESSAGES),
       {
         wrapper: wrap(fake.client),
         initialProps: { chatId: "chat-a" },
@@ -2332,7 +2349,7 @@ describe("usemiraStream", () => {
   it("tracks goal_state per chat and restores after switching sessions", () => {
     const fake = fakeClient();
     const { result, rerender } = renderHook(
-      ({ chatId }: { chatId: string }) => usemiraStream(chatId, EMPTY_MESSAGES),
+      ({ chatId }: { chatId: string }) => useMiraStream(chatId, EMPTY_MESSAGES),
       {
         wrapper: wrap(fake.client),
         initialProps: { chatId: "chat-a" },

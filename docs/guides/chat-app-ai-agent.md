@@ -19,7 +19,7 @@ private DMs, team channels, group chats, email threads, or bot workspaces.
 ## Install
 
 ```bash
-python -m pip install mira
+python -m pip install mira-ai
 mira onboard --wizard
 mira webui
 ```

@@ -18,7 +18,7 @@ not already named in mira.
 ## Install
 
 ```bash
-python -m pip install mira
+python -m pip install mira-ai
 mira onboard --wizard
 ```
 

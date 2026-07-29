@@ -16,6 +16,7 @@ from typing import Any
 from loguru import logger
 
 from mira.config.paths import get_webui_dir
+from mira.cron.session_turns import CRON_HISTORY_META
 from mira.session.history_visibility import is_hidden_history_message
 from mira.session.manager import (
     _SESSION_LIST_PREVIEW_MAX_CHARS,
@@ -157,7 +158,7 @@ def _preview_from_messages(messages: list[dict[str, Any]]) -> str:
             or scanned_chars > _SESSION_LIST_PREVIEW_MAX_CHARS
         ):
             break
-        if is_hidden_history_message(item):
+        if is_hidden_history_message(item) or item.get(CRON_HISTORY_META) is True:
             continue
         text = _message_preview_text(item)
         if not text:
@@ -302,7 +303,7 @@ def _scan_session_row(session_manager: SessionManager, path: Path) -> dict[str, 
                         continue
                     if item.get("_type") == "metadata":
                         continue
-                    if is_hidden_history_message(item):
+                    if is_hidden_history_message(item) or item.get(CRON_HISTORY_META) is True:
                         continue
                     text = _message_preview_text(item)
                     if not text:

@@ -6,6 +6,7 @@ from typing import Any, Mapping
 
 from mira.cron.types import CronJob
 from mira.session.automation_turns import (
+    AUTOMATION_HISTORY_META,
     AutomationTurnSpec,
     automation_history_overrides_for_spec,
     automation_trigger,
@@ -13,6 +14,7 @@ from mira.session.automation_turns import (
 
 CRON_TRIGGER_META = "_cron_trigger"
 CRON_DEFER_UNTIL_IDLE_META = "_cron_defer_until_session_idle"
+CRON_HISTORY_META = "_cron_history"
 
 
 def _cron_history_text(trigger: Mapping[str, Any]) -> str | None:
@@ -63,7 +65,11 @@ def cron_run_id(metadata: Mapping[str, Any] | None) -> str | None:
 
 def cron_history_overrides(metadata: Mapping[str, Any] | None) -> tuple[str | None, dict[str, Any]]:
     """Return session-history text/metadata overrides for a cron turn."""
-    return automation_history_overrides_for_spec(metadata, CRON_AUTOMATION_SPEC)
+    text, extra = automation_history_overrides_for_spec(metadata, CRON_AUTOMATION_SPEC)
+    if extra:
+        extra[CRON_HISTORY_META] = True
+        extra.setdefault(AUTOMATION_HISTORY_META, {"kind": "cron"})
+    return text, extra
 
 
 def is_bound_cron_job(job: CronJob) -> bool:

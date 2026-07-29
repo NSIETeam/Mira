@@ -46,6 +46,8 @@ def automation_history_overrides_for_spec(
         details[history_key] = value
 
     text = spec.text_builder(trigger) if spec.text_builder else None
+    if spec.kind == "cron":
+        extra["_cron_history"] = True
     return text, extra
 
 

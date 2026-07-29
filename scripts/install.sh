@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-package="mira"
-main_source="https://github.com/HKUDS/mira/archive/refs/heads/main.zip"
+package="mira-ai"
+main_source="https://github.com/NSIETeam/Mira/archive/refs/heads/main.zip"
 install_target="$package"
 install_source="PyPI"
 dry_run="0"
@@ -34,7 +34,7 @@ usage() {
   cat <<'EOF'
 Usage: install.sh [--dev] [--dry-run]
 
-By default this installs or upgrades mira from PyPI.
+By default this installs or upgrades Mira from the NSIETeam-controlled mira-ai distribution.
 Use --dev to install from the current main branch on GitHub.
 Use --dry-run to print what would happen without installing or starting setup.
 EOF

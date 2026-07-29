@@ -59,7 +59,7 @@ understand, and customize than the full upstream surface.
 
 As of `2026-07-27`, publishing is blocked by external GitHub state:
 
-- local checkout only has `upstream = HKUDS/mira`
+- local checkout only has `upstream = NSIETeam/Mira`
 - GitHub CLI reports the `NSIETeam` token is invalid
 - the target repository name/url has not yet been identified in this checkout
 

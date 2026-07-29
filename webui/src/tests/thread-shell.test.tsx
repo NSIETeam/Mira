@@ -6,8 +6,14 @@ import { preloadMarkdownText } from "@/components/MarkdownText";
 import { ThreadCameraController } from "@/components/thread/thread-camera";
 import { ThreadShell } from "@/components/thread/ThreadShell";
 import { CLI_APPS_CHANGED_EVENT } from "@/lib/cli-app-events";
+import { toKernelEventPayload } from "@/lib/kernel-events";
 import { ClientProvider } from "@/providers/ClientProvider";
-import type { CliAppsPayload, SettingsPayload, UIMessage } from "@/lib/types";
+import type {
+  CliAppsPayload,
+  KernelEventPayload,
+  SettingsPayload,
+  UIMessage,
+} from "@/lib/types";
 
 const HERO_GREETING_PATTERN =
   /What should we work on\?|Where should we start\?|What are we building today\?|What should we tackle together\?/;
@@ -15,6 +21,7 @@ const HERO_GREETING_PATTERN =
 function makeClient() {
   const errorHandlers = new Set<(err: { kind: string }) => void>();
   const chatHandlers = new Map<string, Set<(ev: import("@/lib/types").InboundEvent) => void>>();
+  const kernelHandlers = new Map<string, Set<(ev: KernelEventPayload) => void>>();
   const runtimeModelHandlers = new Set<
     (modelName: string | null, modelPreset?: string | null) => void
   >();
@@ -40,6 +47,17 @@ function makeClient() {
       if (!handlers) {
         handlers = new Set();
         chatHandlers.set(chatId, handlers);
+      }
+      handlers.add(handler);
+      return () => {
+        handlers?.delete(handler);
+      };
+    },
+    onKernelExecution: (chatId: string, handler: (ev: KernelEventPayload) => void) => {
+      let handlers = kernelHandlers.get(chatId);
+      if (!handlers) {
+        handlers = new Set();
+        kernelHandlers.set(chatId, handlers);
       }
       handlers.add(handler);
       return () => {
@@ -78,6 +96,10 @@ function makeClient() {
         goalStateByChatId.set(chatId, ev.goal_state);
       }
       for (const h of chatHandlers.get(chatId) ?? []) h(ev);
+      for (const h of kernelHandlers.get(chatId) ?? []) h(toKernelEventPayload(ev));
+    },
+    _emitKernel(chatId: string, ev: KernelEventPayload) {
+      for (const h of kernelHandlers.get(chatId) ?? []) h(ev);
     },
     _emitRuntimeModelUpdate(modelName: string | null, modelPreset?: string | null) {
       for (const h of runtimeModelHandlers) h(modelName, modelPreset);

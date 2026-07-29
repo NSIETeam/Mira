@@ -65,14 +65,14 @@ Use the same Python command for install checks and module fallback. On macOS/Lin
 | Symptom | Check |
 |---|---|
 | `python: command not found` | Try `python3 --version` on macOS/Linux or `py --version` on Windows. Then replace `python` in docs commands with the command that worked. |
-| `curl: command not found` | The macOS/Linux one-command installer could not download the script. Install curl, or use a manual isolated install such as `uv tool install mira` or `pipx install mira`. |
-| `irm` is not recognized | PowerShell could not run the download helper. Use manual install: `uv tool install mira`, `pipx install mira`, or `py -m pip install mira` inside an environment you control. |
+| `curl: command not found` | The macOS/Linux one-command installer could not download the script. Install curl, or use a manual isolated install such as `uv tool install mira-ai` or `pipx install mira-ai`. |
+| `irm` is not recognized | PowerShell could not run the download helper. Use manual install: `uv tool install mira-ai`, `pipx install mira-ai`, or `py -m pip install mira-ai` inside an environment you control. |
 | Could not download `raw.githubusercontent.com` | Your network, proxy, or firewall blocked the installer script download. Use manual install from PyPI, or configure your proxy and rerun the command. |
 | `mira: command not found` | Use the module form, for example `python -m mira ...`, `python3 -m mira ...`, or `py -m mira ...`. Reinstall with the same Python command, or add that Python's scripts directory to `PATH`. |
 | `No module named mira` | You are running a different Python than the one used for installation. Run `python -m pip show mira`, `python3 -m pip show mira`, or `py -m pip show mira`, matching the command that installed mira. |
 | `pip is not available` | When the installer uses a virtual environment, it tries `python -m ensurepip --upgrade`. If that fails, install pip for that Python, or use a Python installer/distribution that includes pip. |
-| `externally-managed-environment` | Your system Python blocks global pip installs. Use the one-command installer, `uv tool install mira`, `pipx install mira`, or create a virtual environment; do not add `--break-system-packages` for mira. |
-| Installer chose the wrong Python | Set `PYTHON` before running the installer, such as `curl -fsSL https://raw.githubusercontent.com/HKUDS/mira/main/scripts/install.sh | PYTHON=python3 sh` or `$env:PYTHON="py"` before the PowerShell command. |
+| `externally-managed-environment` | Your system Python blocks global pip installs. Use the one-command installer, `uv tool install mira-ai`, `pipx install mira-ai`, or create a virtual environment; do not add `--break-system-packages` for mira. |
+| Installer chose the wrong Python | Set `PYTHON` before running the installer, such as `curl -fsSL https://raw.githubusercontent.com/NSIETeam/Mira/main/scripts/install.sh | PYTHON=python3 sh` or `$env:PYTHON="py"` before the PowerShell command. |
 | Editable source install does not update | From the repo root, run `python -m pip install -e .` again with the Python command used for development, then check `python -m mira --version` or `mira --version`. |
 | WebUI build tools missing | They are only needed for WebUI development. Packaged installs already include the WebUI bundle. |
 
@@ -317,4 +317,4 @@ When opening an issue or asking for help, include:
 
 Never paste real API keys, bot tokens, OAuth tokens, or private chat IDs into public issues.
 
-If you find a docs mistake, outdated command, or confusing step, please open an issue: <https://github.com/HKUDS/mira/issues>.
+If you find a docs mistake, outdated command, or confusing step, please open an issue: <https://github.com/NSIETeam/Mira/issues>.

@@ -9,6 +9,7 @@ from typing import Any, Mapping, MutableMapping
 from mira.session.manager import SessionManager
 
 GOAL_STATE_KEY = "goal_state"
+LEGACY_GOAL_STATE_KEY = "thread_goal"
 GOAL_COMMAND = "/goal"
 MAX_GOAL_OBJECTIVE_CHARS = 4000
 _MAX_OBJECTIVE_WS = 600
@@ -21,7 +22,14 @@ def _iso_now() -> str:
 def _session_goal_raw(metadata: Mapping[str, Any] | None) -> Any:
     if not metadata:
         return None
-    return metadata.get(GOAL_STATE_KEY)
+    if GOAL_STATE_KEY in metadata:
+        return metadata.get(GOAL_STATE_KEY)
+    return metadata.get(LEGACY_GOAL_STATE_KEY)
+
+
+def discard_legacy_goal_state_key(metadata: MutableMapping[str, Any]) -> bool:
+    """Remove the old thread-goal key after callers have migrated to goal_state."""
+    return metadata.pop(LEGACY_GOAL_STATE_KEY, None) is not None
 
 
 def goal_state_raw(metadata: Mapping[str, Any] | None) -> Any:

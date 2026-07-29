@@ -20,7 +20,7 @@ the agent must keep running after one terminal command finishes.
 ## Install
 
 ```bash
-python -m pip install mira
+python -m pip install mira-ai
 mira onboard --wizard
 mira agent -m "Hello!"
 ```

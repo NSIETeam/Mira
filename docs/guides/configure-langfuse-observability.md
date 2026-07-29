@@ -19,7 +19,7 @@ cost, or prompt behavior during development or production operation.
 Install mira and prove the agent works:
 
 ```bash
-python -m pip install mira
+python -m pip install mira-ai
 mira onboard --wizard
 mira agent -m "Hello!"
 ```

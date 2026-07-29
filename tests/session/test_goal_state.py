@@ -21,11 +21,18 @@ def test_runtime_lines_empty_when_no_metadata():
     assert goal_state_runtime_lines({}) == []
 
 
-def test_runtime_lines_empty_when_completed():
+def test_runtime_lines_include_completion_contract_when_completed():
     meta = {
-        GOAL_STATE_KEY: {"status": "completed", "objective": "was doing X"},
+        GOAL_STATE_KEY: {
+            "status": "completed",
+            "objective": "was doing X",
+            "evidence": "pytest passed",
+        },
     }
-    assert goal_state_runtime_lines(meta) == []
+    lines = goal_state_runtime_lines(meta)
+    assert "Goal (completed):" in lines
+    assert "was doing X" in lines
+    assert "Evidence: pytest passed" in lines
 
 
 def test_runtime_lines_include_objective_when_active():
@@ -87,6 +94,7 @@ def test_goal_state_ws_blob_inactive_when_missing_or_completed():
     assert goal_state_ws_blob({}) == {"active": False}
     assert goal_state_ws_blob({GOAL_STATE_KEY: {"status": "completed", "objective": "x"}}) == {
         "active": False,
+        "status": "completed",
     }
 
 

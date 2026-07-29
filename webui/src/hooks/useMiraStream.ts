@@ -521,7 +521,7 @@ function eventTurnId(ev: InboundEvent): string | undefined {
   return "turn_id" in ev && typeof ev.turn_id === "string" ? ev.turn_id : undefined;
 }
 
-export function usemiraStream(
+export function useMiraStream(
   chatId: string | null,
   initialMessages: UIMessage[] = [],
   hasPendingToolCalls = false,

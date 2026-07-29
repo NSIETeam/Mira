@@ -11,7 +11,7 @@ import type { ModelPresetOption } from "@/components/thread/ModelPresetBadge";
 import { ThreadHeader } from "@/components/thread/ThreadHeader";
 import { StreamErrorNotice } from "@/components/thread/StreamErrorNotice";
 import { ThreadViewport, type ThreadViewportHandle } from "@/components/thread/ThreadViewport";
-import { usemiraStream, type SendAttachment, type SendOptions } from "@/hooks/useMiraStream";
+import { useMiraStream, type SendAttachment, type SendOptions } from "@/hooks/useMiraStream";
 import { useExecutionHistory } from "@/hooks/useExecutions";
 import {
   ApiError,
@@ -522,7 +522,7 @@ export function ThreadShell({
     setMessages,
     streamError,
     dismissStreamError,
-  } = usemiraStream(chatId, initial, hasPendingToolCalls, handleTurnEnd);
+  } = useMiraStream(chatId, initial, hasPendingToolCalls, handleTurnEnd);
 
   useEffect(() => {
     if (chatId && historyKey) sessionKeyByChatIdRef.current.set(chatId, historyKey);
@@ -791,7 +791,7 @@ export function ThreadShell({
     }
   }, [chatId, displayMessages]);
 
-  // Persist thread to in-memory cache after paint so ``usemiraStream``'s execution switch
+  // Persist thread to in-memory cache after paint so ``useMiraStream``'s execution switch
   // ``useEffect`` reset has flushed; ``skipLayoutCacheRef`` drops the first run that still
   // sees the *previous* execution's ``messages`` (avoids stale rows leaking across sessions).
   useEffect(() => {

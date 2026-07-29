@@ -119,7 +119,6 @@ function findActionById<T extends { id?: string | null }>(
 }
 
 function renderNativeModuleChip({
-  name: _name,
   state,
   operatorPending,
   pane,

@@ -23,8 +23,8 @@ export interface KernelRuntimeInfo {
   engine_transport?: "unix_socket";
 }
 
-export interface RuntimeHost extends KernelHost {}
-export interface HostRuntimeInfo extends KernelRuntimeInfo {}
+export type RuntimeHost = KernelHost;
+export type HostRuntimeInfo = KernelRuntimeInfo;
 
 export interface miraHostApi {
   getRuntimeInfo?(): Promise<KernelRuntimeInfo>;

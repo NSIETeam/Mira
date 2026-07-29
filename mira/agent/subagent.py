@@ -262,6 +262,9 @@ class SubagentManager:
                 model or provider.get_default_model(),
                 context_window_tokens=defaults.context_window_tokens,
             )
+        from mira.config.schema import ensure_tool_config_refs
+
+        ensure_tool_config_refs()
         self.workspace = workspace
         self.bus = bus
         self.tools_config = tools_config or ToolsConfig()

@@ -30,7 +30,7 @@ Install and configure mira first. If you have not done that yet, follow the
 environments, install the package with:
 
 ```bash
-python -m pip install mira
+python -m pip install mira-ai
 ```
 
 `mira.from_config()` reuses your normal `~/.mira/config.json` and

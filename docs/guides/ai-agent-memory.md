@@ -21,7 +21,7 @@ curated durable knowledge.
 ## Install
 
 ```bash
-python -m pip install mira
+python -m pip install mira-ai
 mira onboard --wizard
 mira agent -m "Hello!"
 ```

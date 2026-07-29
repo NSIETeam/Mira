@@ -773,7 +773,7 @@ String and secret fields default to `""`, list fields to `[]`, and boolean field
 ## Local Development
 
 ```bash
-git clone https://github.com/HKUDS/mira.git
+git clone https://github.com/NSIETeam/Mira.git
 cd mira
 python -m pip install -e .
 mira plugins list    # should show the package as "webhook"

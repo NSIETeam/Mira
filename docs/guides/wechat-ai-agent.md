@@ -23,7 +23,7 @@ mira agent -m "Hello!"
 ## Install mira
 
 ```bash
-python -m pip install mira
+python -m pip install mira-ai
 mira onboard --wizard
 ```
 
