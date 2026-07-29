@@ -115,7 +115,8 @@ type BootState =
 
 const TOKEN_REFRESH_MARGIN_MS = 30_000;
 const TOKEN_REFRESH_MIN_DELAY_MS = 5_000;
-const RUNTIME_SNAPSHOT_REFRESH_ACTIVE_MS = 10_000;
+const RUNTIME_SNAPSHOT_REFRESH_ACTIVE_BUSY_MS = 5_000;
+const RUNTIME_SNAPSHOT_REFRESH_ACTIVE_STEADY_MS = 15_000;
 const RUNTIME_SNAPSHOT_REFRESH_IDLE_MS = 60_000;
 const loadSettingsView = () => import("@/components/settings/SettingsView");
 const SettingsView = lazy(async () => {
@@ -348,10 +349,19 @@ export default function App() {
     let timer: number | null = null;
     const scheduleNext = () => {
       if (cancelled) return;
-      const delay =
-        typeof document !== "undefined" && document.visibilityState === "visible"
-          ? RUNTIME_SNAPSHOT_REFRESH_ACTIVE_MS
-          : RUNTIME_SNAPSHOT_REFRESH_IDLE_MS;
+      const visible = typeof document !== "undefined" && document.visibilityState === "visible";
+      const scheduler = state.scheduler;
+      const isBusy = !!(
+        scheduler
+        && "queued" in scheduler
+        && "running_limit" in scheduler
+        && typeof scheduler.queued === "number"
+        && typeof scheduler.running_limit === "number"
+        && scheduler.queued > scheduler.running_limit
+      );
+      const delay = visible
+        ? (isBusy ? RUNTIME_SNAPSHOT_REFRESH_ACTIVE_BUSY_MS : RUNTIME_SNAPSHOT_REFRESH_ACTIVE_STEADY_MS)
+        : RUNTIME_SNAPSHOT_REFRESH_IDLE_MS;
       timer = window.setTimeout(() => {
         void refreshRuntimeSnapshot();
       }, delay);
@@ -390,7 +400,10 @@ export default function App() {
       }
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [state.status === "ready" ? state.token : null]);
+  }, [
+    state.status === "ready" ? state.token : null,
+    state.status === "ready" ? state.scheduler : null,
+  ]);
 
   useEffect(() => {
     const saved = consumeUrlBootstrapSecret() || loadSavedSecret();
