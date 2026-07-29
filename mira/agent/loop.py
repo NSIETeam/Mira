@@ -24,7 +24,7 @@ from mira.agent.automation_turns import publish_next_deferred_turn
 from mira.agent.context import ContextBuilder
 from mira.agent.cron_turns import CronTurnCoordinator
 from mira.agent.hook import AgentHook, AgentTurnHookFactory
-from mira.agent.memory import Consolidator
+from mira.agent.memory import Consolidator, MemoryStore
 from mira.agent.model_runtime import ModelRuntimeResolver
 from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunner, AgentRunSpec
 from mira.agent.subagent import SubagentManager
@@ -93,6 +93,11 @@ from mira.utils.helpers import truncate_text as truncate_text_fn
 from mira.utils.llm_runtime import LLMRuntime
 from mira.utils.runtime import (
     EMPTY_FINAL_RESPONSE_MESSAGE,
+)
+from mira.webui.users import (
+    WEBUI_GROUP_METADATA_KEY,
+    WEBUI_MEMORY_WORKSPACE_METADATA_KEY,
+    WEBUI_USER_METADATA_KEY,
 )
 
 if TYPE_CHECKING:
@@ -446,6 +451,7 @@ class AgentLoop:
             consolidation_ratio=consolidation_ratio,
             unified_session=unified_session,
         )
+        self._memory_consolidators: dict[str, Consolidator] = {}
         self.auto_compact = AutoCompact(
             sessions=self.sessions,
             consolidator=self.consolidator,
@@ -466,6 +472,63 @@ class AgentLoop:
             register_kernel_loop(self)
         except Exception:
             logger.debug("kernel loop registration skipped", exc_info=True)
+
+    def _memory_workspace_from_metadata(self, metadata: Mapping[str, Any] | None) -> Path | None:
+        if not isinstance(metadata, Mapping):
+            return None
+        raw = metadata.get(WEBUI_MEMORY_WORKSPACE_METADATA_KEY)
+        if not isinstance(raw, str) or not raw.strip():
+            return None
+        return Path(raw).expanduser().resolve(strict=False)
+
+    def _memory_store_for_metadata(self, metadata: Mapping[str, Any] | None) -> MemoryStore:
+        return self.context.memory_for_workspace(self._memory_workspace_from_metadata(metadata))
+
+    def _consolidator_for_metadata(self, metadata: Mapping[str, Any] | None) -> Consolidator:
+        workspace = self._memory_workspace_from_metadata(metadata)
+        if workspace is None:
+            return self.consolidator
+        key = str(workspace)
+        cached = self._memory_consolidators.get(key)
+        if cached is None:
+            cached = Consolidator(
+                store=self.context.memory_for_workspace(workspace),
+                sessions=self.sessions,
+                build_messages=self.context.build_messages,
+                get_tool_definitions=self.tools.get_definitions,
+                consolidation_ratio=self.consolidator.consolidation_ratio,
+                unified_session=self._unified_session,
+            )
+            self._memory_consolidators[key] = cached
+        return cached
+
+    def _persist_webui_identity_metadata(self, session: Session, msg: InboundMessage) -> None:
+        metadata = msg.metadata if isinstance(msg.metadata, dict) else {}
+        for key in (
+            WEBUI_USER_METADATA_KEY,
+            WEBUI_GROUP_METADATA_KEY,
+            WEBUI_MEMORY_WORKSPACE_METADATA_KEY,
+        ):
+            value = metadata.get(key)
+            if isinstance(value, str) and value.strip():
+                session.metadata[key] = value
+
+    def _tools_for_metadata(self, metadata: Mapping[str, Any] | None) -> ToolRegistry:
+        if not isinstance(metadata, Mapping):
+            return self.tools
+        user = metadata.get(WEBUI_USER_METADATA_KEY)
+        if not isinstance(user, str) or user in ("", "default"):
+            return self.tools
+        return self.tools.filtered_copy(
+            exclude={
+                "exec",
+                "write_file",
+                "edit_file",
+                "apply_patch",
+                "my_tool",
+                "create_or_update_tool",
+            }
+        )
 
     @classmethod
     def from_config(
@@ -735,6 +798,7 @@ class AgentLoop:
             include_memory_recent_history=not ctx.ephemeral,
             session_key=ctx.session.key,
             unified_session=self._unified_session,
+            memory_workspace=self._memory_workspace_from_metadata(ctx.session.metadata),
         )
 
     def _request_context_for_turn(self, ctx: TurnContext) -> RequestContext:
@@ -1610,6 +1674,7 @@ class AgentLoop:
         await ctx.delivery.started()
         if ctx.kind is TurnKind.USER:
             self.workspace_scopes.persist_message_scope(ctx.session, msg)
+            self._persist_webui_identity_metadata(ctx.session, msg)
 
         if self._restore_runtime_checkpoint(ctx.session):
             self.sessions.save(ctx.session)
@@ -1685,7 +1750,7 @@ class AgentLoop:
             runtime.context_window_tokens
         )
         if not ctx.ephemeral:
-            await self.consolidator.maybe_consolidate_by_tokens(
+            await self._consolidator_for_metadata(ctx.session.metadata).maybe_consolidate_by_tokens(
                 ctx.session,
                 runtime=runtime,
                 replay_max_messages=replay_max_messages,
@@ -1714,6 +1779,7 @@ class AgentLoop:
             ctx.input_persisted_early = True
         ctx.delivery.record_runtime(ctx.runtime)
 
+        ctx.tools = self._tools_for_metadata(ctx.session.metadata)
         ctx.request_context = self._request_context_for_turn(ctx)
         if ctx.kind is TurnKind.USER:
             ctx.runtime_context_blocks = await self._resolve_runtime_context_for_turn(ctx)
@@ -1796,10 +1862,13 @@ class AgentLoop:
         ctx.delivery.record_latency(ctx.turn_latency_ms)
         if not ctx.ephemeral:
             ctx.session.enforce_file_cap(
-                on_archive=partial(self.context.memory.raw_archive, session_key=ctx.session_key)
+                on_archive=partial(
+                    self._memory_store_for_metadata(ctx.session.metadata).raw_archive,
+                    session_key=ctx.session_key,
+                )
             )
             self._schedule_background(
-                self.consolidator.maybe_consolidate_by_tokens(
+                self._consolidator_for_metadata(ctx.session.metadata).maybe_consolidate_by_tokens(
                     ctx.session,
                     runtime=ctx.runtime,
                     replay_max_messages=replay_max_messages_for_context(

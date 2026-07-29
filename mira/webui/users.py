@@ -11,19 +11,26 @@ from mira.utils.helpers import ensure_dir, sync_workspace_templates
 
 _USER_ID_RE = re.compile(r"[^A-Za-z0-9_-]+")
 _DEFAULT_USER = "default"
+WEBUI_USER_METADATA_KEY = "webui_user"
+WEBUI_GROUP_METADATA_KEY = "webui_group"
+WEBUI_MEMORY_WORKSPACE_METADATA_KEY = "memory_workspace"
 
 
 @dataclass(frozen=True)
 class WebUITemporaryUser:
     user_id: str
+    group_id: str
     root: Path
     workspace: Path
+    memory_workspace: Path
 
     def payload(self) -> dict[str, Any]:
         return {
             "id": self.user_id,
+            "group": self.group_id,
             "root": str(self.root),
             "workspace": str(self.workspace),
+            "memory_workspace": str(self.memory_workspace),
             "temporary": True,
         }
 
@@ -38,12 +45,35 @@ class WebUITemporaryUserManager:
         user_id = _USER_ID_RE.sub("-", (raw or "").strip()).strip("-_").lower()
         return (user_id or _DEFAULT_USER)[:24]
 
-    def ensure(self, raw: str | None) -> WebUITemporaryUser:
+    def ensure(self, raw: str | None, *, group: str | None = None) -> WebUITemporaryUser:
         user_id = self.normalize(raw)
+        group_id = self.normalize(group)
         root = ensure_dir(self.root / user_id)
         workspace = ensure_dir(root / "workspace")
+        memory_workspace = ensure_dir(self.root / "_groups" / group_id)
         sync_workspace_templates(workspace, silent=True)
-        return WebUITemporaryUser(user_id=user_id, root=root, workspace=workspace)
+        sync_workspace_templates(memory_workspace, silent=True)
+        return WebUITemporaryUser(
+            user_id=user_id,
+            group_id=group_id,
+            root=root,
+            workspace=workspace,
+            memory_workspace=memory_workspace,
+        )
+
+    def memory_workspace(self, group_id: str | None) -> Path:
+        return ensure_dir(self.root / "_groups" / self.normalize(group_id))
+
+    def turn_metadata(self, user_id: str | None, group_id: str | None) -> dict[str, Any]:
+        user = self.normalize(user_id)
+        group = self.normalize(group_id)
+        metadata: dict[str, Any] = {
+            WEBUI_USER_METADATA_KEY: user,
+            WEBUI_GROUP_METADATA_KEY: group,
+        }
+        if user != _DEFAULT_USER or group != _DEFAULT_USER:
+            metadata[WEBUI_MEMORY_WORKSPACE_METADATA_KEY] = str(self.memory_workspace(group))
+        return metadata
 
     def user_for_chat_id(self, chat_id: str) -> str | None:
         if not chat_id.startswith("u:"):

@@ -248,6 +248,9 @@ class GatewayHTTPHandler:
     def api_user_id(self, request: WsRequest) -> str | None:
         return self.tokens.api_token_user(request)
 
+    def api_group_id(self, request: WsRequest) -> str | None:
+        return self.tokens.api_token_group(request)
+
     # -- Main dispatch ------------------------------------------------------
 
     async def dispatch(self, connection: Any, request: WsRequest) -> Any | None:
@@ -348,8 +351,12 @@ class GatewayHTTPHandler:
             )
             return _http_json_response({"error": "too many outstanding tokens"}, status=429)
         query = _parse_query(request.path)
-        user = self.users.ensure(_query_first(query, "user"))
-        token_value = self.tokens.issue_token(self.config.token_ttl_s, user_id=user.user_id)
+        user = self.users.ensure(_query_first(query, "user"), group=_query_first(query, "group"))
+        token_value = self.tokens.issue_token(
+            self.config.token_ttl_s,
+            user_id=user.user_id,
+            group_id=user.group_id,
+        )
         return _http_json_response(token_response_payload(token_value, self.config.token_ttl_s))
 
     # -- Bootstrap ----------------------------------------------------------
@@ -371,14 +378,19 @@ class GatewayHTTPHandler:
                 content_type="application/json; charset=utf-8",
             )
         query = _parse_query(request.path)
-        user = self.users.ensure(_query_first(query, "user"))
+        user = self.users.ensure(_query_first(query, "user"), group=_query_first(query, "group"))
         token = self.tokens.issue_token(
             self.config.token_ttl_s,
             audience="webui",
             user_id=user.user_id,
+            group_id=user.group_id,
         )
         api_token = (
-            self.tokens.issue_api_token(self.config.token_ttl_s, user_id=user.user_id)
+            self.tokens.issue_api_token(
+                self.config.token_ttl_s,
+                user_id=user.user_id,
+                group_id=user.group_id,
+            )
             if api_token_allowed
             else None
         )
@@ -402,7 +414,7 @@ class GatewayHTTPHandler:
             "runtime_capabilities": self._capabilities,
             "shell": shell.to_dict(),
             "kernel": kernel_payload,
-            "memory": MemoryStore(self.skills_workspace_path).memory_audit(self.skills_workspace_path),
+            "memory": MemoryStore(user.memory_workspace).memory_audit(user.memory_workspace),
             "scheduler": kernel.scheduler_snapshot() if kernel is not None else None,
             "user": user.payload(),
         }

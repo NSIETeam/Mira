@@ -340,6 +340,14 @@ export interface BootstrapResponse {
   runtime_capabilities?: RuntimeCapabilities;
   shell?: ShellDescriptorPayload;
   kernel?: KernelManifestPayload;
+  user?: {
+    id: string;
+    group: string;
+    root: string;
+    workspace: string;
+    memory_workspace: string;
+    temporary: boolean;
+  };
   memory?: {
     layers: Array<{
       id: string;

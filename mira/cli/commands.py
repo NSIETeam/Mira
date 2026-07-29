@@ -1041,7 +1041,12 @@ def _webui_bootstrap_secret(config: Config) -> str:
     return str(ws_cfg.get("tokenIssueSecret") or ws_cfg.get("token") or "").strip()
 
 
-def _webui_browser_url(config: Config, *, user: str | None = None) -> str:
+def _webui_browser_url(
+    config: Config,
+    *,
+    user: str | None = None,
+    group: str | None = None,
+) -> str:
     from urllib.parse import quote
 
     ws_cfg = _webui_config_dict(config)
@@ -1054,6 +1059,8 @@ def _webui_browser_url(config: Config, *, user: str | None = None) -> str:
         params.append(f"bootstrapSecret={quote(secret, safe='')}")
     if user:
         params.append(f"user={quote(user, safe='')}")
+    if group:
+        params.append(f"group={quote(group, safe='')}")
     return f"{base_url}/#/{'?' + '&'.join(params) if params else ''}"
 
 
@@ -1455,6 +1462,11 @@ def webui(
         "--user",
         help="Temporary WebUI user account name for shared gateway use",
     ),
+    group: str | None = typer.Option(
+        None,
+        "--group",
+        help="Temporary WebUI project group; users in the same group share memory",
+    ),
 ) -> None:
     """Prepare the local WebUI, start the gateway, and open the browser workbench."""
     from mira.config.loader import resolve_config_env_vars, save_config
@@ -1501,7 +1513,7 @@ def webui(
             yes=yes,
         )
         _warn_webui_bind_scope(setup_config)
-        webui_url = _webui_browser_url(setup_config, user=user)
+        webui_url = _webui_browser_url(setup_config, user=user, group=group)
     except ValueError as exc:
         console.print(f"[red]Error: invalid WebUI channel config: {exc}[/red]")
         raise typer.Exit(1) from exc

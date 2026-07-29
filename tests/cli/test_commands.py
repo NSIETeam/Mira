@@ -291,10 +291,11 @@ def test_webui_browser_url_can_target_temporary_user():
         }
     )
 
-    url = cli_commands._webui_browser_url(config, user="alice")
+    url = cli_commands._webui_browser_url(config, user="alice", group="growth")
 
     assert "bootstrapSecret=secret" in url
     assert "user=alice" in url
+    assert "group=growth" in url
 
 
 def test_onboard_existing_config_refresh(mock_paths):

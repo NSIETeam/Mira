@@ -65,7 +65,18 @@ class ContextBuilder:
         self.workspace = workspace
         self.timezone = timezone
         self.memory = MemoryStore(workspace)
+        self._memory_stores: dict[str, MemoryStore] = {str(workspace.resolve(strict=False)): self.memory}
         self.skills = SkillsLoader(workspace, disabled_skills=set(disabled_skills) if disabled_skills else None)
+
+    def memory_for_workspace(self, workspace: Path | None = None) -> MemoryStore:
+        if workspace is None:
+            return self.memory
+        key = str(workspace.expanduser().resolve(strict=False))
+        store = self._memory_stores.get(key)
+        if store is None:
+            store = MemoryStore(Path(key))
+            self._memory_stores[key] = store
+        return store
 
     def build_system_prompt(
         self,
@@ -76,9 +87,11 @@ class ContextBuilder:
         include_memory_recent_history: bool = True,
         session_key: str | None = None,
         unified_session: bool = False,
+        memory_workspace: Path | None = None,
     ) -> str:
         """Build the system prompt from identity, bootstrap files, memory, and skills."""
         root = workspace or self.workspace
+        memory_store = self.memory_for_workspace(memory_workspace)
         parts = [self._get_identity(channel=channel, workspace=root)]
 
         bootstrap = self._load_bootstrap_files(root)
@@ -87,11 +100,11 @@ class ContextBuilder:
 
         parts.append(render_template("agent/tool_contract.md"))
 
-        memory = self.memory.get_memory_context()
-        if memory and not self._is_template_content(self.memory.read_memory(), "memory/MEMORY.md"):
+        memory = memory_store.get_memory_context()
+        if memory and not self._is_template_content(memory_store.read_memory(), "memory/MEMORY.md"):
             parts.append(f"# Memory\n\n{memory}")
 
-        memory_audit = self.memory.memory_audit(root)
+        memory_audit = memory_store.memory_audit(memory_store.workspace)
         loaded_layers = [
             f"- {layer['id']}: {Path(layer['path']).name} [{layer['source']}]"
             for layer in memory_audit["layers"]
@@ -119,8 +132,8 @@ class ContextBuilder:
             parts.append(render_template("agent/skills_section.md", skills_summary=skills_summary))
 
         if include_memory_recent_history:
-            entries = self.memory.read_recent_history_for_prompt(
-                since_cursor=self.memory.get_last_dream_cursor(),
+            entries = memory_store.read_recent_history_for_prompt(
+                since_cursor=memory_store.get_last_dream_cursor(),
                 session_key=session_key,
                 unified_session=unified_session,
             )
@@ -220,6 +233,7 @@ class ContextBuilder:
         include_memory_recent_history: bool = True,
         session_key: str | None = None,
         unified_session: bool = False,
+        memory_workspace: Path | None = None,
     ) -> list[dict[str, Any]]:
         """Build the complete message list for an LLM call."""
         root = workspace or self.workspace
@@ -237,6 +251,7 @@ class ContextBuilder:
                     include_memory_recent_history=include_memory_recent_history,
                     session_key=session_key,
                     unified_session=unified_session,
+                    memory_workspace=memory_workspace,
                 ),
             },
             *history,

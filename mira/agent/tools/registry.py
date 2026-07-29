@@ -38,6 +38,14 @@ class ToolRegistry:
         self._tools.pop(name, None)
         self._cached_definitions = None
 
+    def filtered_copy(self, *, exclude: set[str]) -> "ToolRegistry":
+        """Return a registry view excluding selected tools."""
+        registry = ToolRegistry()
+        for name, tool in self._tools.items():
+            if name not in exclude:
+                registry.register(tool)
+        return registry
+
     def get(self, name: str) -> Tool | None:
         """Get a tool by name."""
         return self._tools.get(name)

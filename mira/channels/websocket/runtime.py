@@ -59,6 +59,7 @@ from mira.webui.http_utils import (
 )
 from mira.webui.mcp_presets_api import normalize_mcp_preset_mentions
 from mira.webui.transcription_ws import webui_transcription_event
+from mira.webui.users import WEBUI_MEMORY_WORKSPACE_METADATA_KEY
 from mira.webui.websocket_logging import websockets_server_logger
 
 # Plain HTTP WebUI routes also run through websockets.process_request.
@@ -260,6 +261,7 @@ class WebSocketChannel(BaseChannel):
         # Connections authenticated with a one-time token from /webui/bootstrap.
         self._webui_connections: set[Any] = set()
         self._conn_users: dict[Any, str] = {}
+        self._conn_groups: dict[Any, str] = {}
         self._stop_event: asyncio.Event | None = None
         self._server_task: asyncio.Task[None] | None = None
 
@@ -296,6 +298,7 @@ class WebSocketChannel(BaseChannel):
         self._conn_default.pop(connection, None)
         self._webui_connections.discard(connection)
         self._conn_users.pop(connection, None)
+        self._conn_groups.pop(connection, None)
 
     async def _maybe_push_active_goal_state(self, chat_id: str) -> None:
         """Replay an active sustained goal from session metadata after *chat_id* is subscribed.
@@ -403,8 +406,9 @@ class WebSocketChannel(BaseChannel):
         result = self._tokens.take_issued_token(token)
         if result is None:
             return False
-        audience, user_id = result
+        audience, user_id, group_id = result
         self._conn_users[connection] = user_id
+        self._conn_groups[connection] = group_id
         if audience == "webui":
             self._webui_connections.add(connection)
         return True
@@ -412,12 +416,24 @@ class WebSocketChannel(BaseChannel):
     def _user_id_for_connection(self, connection: Any) -> str:
         return self._conn_users.get(connection, "default")
 
+    def _group_id_for_connection(self, connection: Any) -> str:
+        return self._conn_groups.get(connection, "default")
+
     def _scoped_chat_id(self, connection: Any, chat_id: str) -> str:
         return self.gateway.users.scoped_chat_id(self._user_id_for_connection(connection), chat_id)
 
     def _user_workspace_scope(self, connection: Any) -> Any:
-        user = self.gateway.users.ensure(self._user_id_for_connection(connection))
+        user = self.gateway.users.ensure(
+            self._user_id_for_connection(connection),
+            group=self._group_id_for_connection(connection),
+        )
         return build_workspace_scope(user.workspace, "restricted", source_channel="webui")
+
+    def _user_turn_metadata(self, connection: Any) -> dict[str, Any]:
+        return self.gateway.users.turn_metadata(
+            self._user_id_for_connection(connection),
+            self._group_id_for_connection(connection),
+        )
 
     # -- Server lifecycle and connection ingress ---------------------------
 
@@ -715,7 +731,10 @@ class WebSocketChannel(BaseChannel):
             if scope is None:
                 return
 
-            metadata: dict[str, Any] = {"remote": getattr(connection, "remote_address", None)}
+            metadata: dict[str, Any] = {
+                "remote": getattr(connection, "remote_address", None),
+                **self._user_turn_metadata(connection),
+            }
             if envelope.get("webui") is True:
                 metadata["webui"] = True
                 metadata.update(self._transcripts.client_turn_metadata(envelope.get("turn_id")))
@@ -730,6 +749,10 @@ class WebSocketChannel(BaseChannel):
                 and self.gateway.users.is_isolated_user(self._user_id_for_connection(connection))
             ):
                 scope = self._user_workspace_scope(connection)
+            if self.gateway.users.is_isolated_user(self._user_id_for_connection(connection)):
+                metadata[WEBUI_MEMORY_WORKSPACE_METADATA_KEY] = self._user_turn_metadata(connection)[
+                    WEBUI_MEMORY_WORKSPACE_METADATA_KEY
+                ]
             metadata[WORKSPACE_SCOPE_METADATA_KEY] = scope.metadata()
             self._workspaces.persist_scope(cid, scope)
             if metadata.get("webui") is True and self.is_allowed(client_id):
