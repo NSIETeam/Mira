@@ -871,6 +871,7 @@ class MemoryStore:
         memory_policy_counts: dict[str, int] = {}
         label_counts: dict[str, int] = {}
         error_labels: list[str] = []
+        session_counts: dict[str, int] = {}
         for path in subagent_files[-5:]:
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
@@ -879,9 +880,11 @@ class MemoryStore:
             status_value = str(payload.get("status") or "unknown")
             memory_policy_value = str(payload.get("memory_policy") or "default")
             label_value = str(payload.get("label") or path.stem)
+            session_value = str(payload.get("session_key") or path.parent.name or "unscoped")
             status_counts[status_value] = status_counts.get(status_value, 0) + 1
             memory_policy_counts[memory_policy_value] = memory_policy_counts.get(memory_policy_value, 0) + 1
             label_counts[label_value] = label_counts.get(label_value, 0) + 1
+            session_counts[session_value] = session_counts.get(session_value, 0) + 1
             if status_value == "error" and label_value not in error_labels:
                 error_labels.append(label_value)
             recent_subagent_entries.append({
@@ -889,10 +892,15 @@ class MemoryStore:
                 "label": label_value,
                 "status": status_value,
                 "memory_policy": memory_policy_value,
+                "session_key": session_value,
             })
         top_labels = [
             {"label": label, "count": count}
             for label, count in sorted(label_counts.items(), key=lambda item: (-item[1], item[0]))[:3]
+        ]
+        top_sessions = [
+            {"session_key": session_key, "count": count}
+            for session_key, count in sorted(session_counts.items(), key=lambda item: (-item[1], item[0]))[:3]
         ]
         return {
             "layers": [
@@ -933,6 +941,7 @@ class MemoryStore:
                 "status_counts": status_counts,
                 "memory_policy_counts": memory_policy_counts,
                 "top_labels": top_labels,
+                "top_sessions": top_sessions,
                 "error_labels": error_labels[:3],
             },
         }

@@ -649,6 +649,7 @@ function RuntimeSnapshotPanel({
   const subagentStatusCounts = memory?.subagent_memory?.status_counts ?? {};
   const subagentPolicyCounts = memory?.subagent_memory?.memory_policy_counts ?? {};
   const subagentTopLabels = memory?.subagent_memory?.top_labels ?? [];
+  const subagentTopSessions = memory?.subagent_memory?.top_sessions ?? [];
   const subagentErrorLabels = memory?.subagent_memory?.error_labels ?? [];
   const loadedLayers = memory?.layers?.filter((layer) => layer.loaded).length ?? 0;
   const loadedLayerLabels = memory?.layers
@@ -787,6 +788,9 @@ function RuntimeSnapshotPanel({
                 {subagentTopLabels.map((entry) => (
                   <span key={`label-${entry.label}`}>{entry.label} {entry.count}</span>
                 ))}
+                {subagentTopSessions.map((entry) => (
+                  <span key={`session-${entry.session_key}`}>session {entry.count}</span>
+                ))}
                 {subagentErrorLabels.map((label) => (
                   <span key={`error-${label}`}>error:{label}</span>
                 ))}
@@ -794,6 +798,7 @@ function RuntimeSnapshotPanel({
               {recentSubagentEntries.slice(-3).map((entry) => (
                 <div key={entry.path} className="flex flex-wrap items-center gap-2">
                   <span>{entry.label ?? entry.path}</span>
+                  {entry.session_key ? <span>{entry.session_key}</span> : null}
                   <span>{entry.status ?? "unknown"}</span>
                   <span>{entry.memory_policy ?? "default"}</span>
                 </div>

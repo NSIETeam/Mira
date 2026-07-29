@@ -367,11 +367,16 @@ export interface BootstrapResponse {
         label?: string;
         status?: string;
         memory_policy?: string;
+        session_key?: string;
       }>;
       status_counts?: Record<string, number>;
       memory_policy_counts?: Record<string, number>;
       top_labels?: Array<{
         label: string;
+        count: number;
+      }>;
+      top_sessions?: Array<{
+        session_key: string;
         count: number;
       }>;
       error_labels?: string[];
