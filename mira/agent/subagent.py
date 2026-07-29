@@ -100,16 +100,41 @@ class _SubagentHook(AgentHook):
 class SubagentManager:
     """Manages background subagent execution."""
 
+    _DEFAULT_SUBAGENT_MEMORY_MB = 10
+    _DEFAULT_QUEUE_FACTOR = 4
+
     @staticmethod
-    def _recommended_concurrency() -> int:
+    def _host_memory_mb() -> int | None:
+        try:
+            page_size = os.sysconf("SC_PAGE_SIZE")
+            page_count = os.sysconf("SC_PHYS_PAGES")
+        except (AttributeError, ValueError, OSError):
+            return None
+        if not isinstance(page_size, int) or not isinstance(page_count, int):
+            return None
+        total_bytes = page_size * page_count
+        if total_bytes <= 0:
+            return None
+        return total_bytes // (1024 * 1024)
+
+    @classmethod
+    def _recommended_concurrency(cls) -> int:
         cpu = os.cpu_count() or 2
         if cpu <= 2:
-            return 1
-        if cpu <= 4:
-            return 2
-        if cpu <= 8:
-            return 3
-        return 4
+            cpu_limit = 1
+        elif cpu <= 4:
+            cpu_limit = 2
+        elif cpu <= 8:
+            cpu_limit = 3
+        else:
+            cpu_limit = 4
+        memory_mb = cls._host_memory_mb()
+        if memory_mb is None:
+            return cpu_limit
+        reserve_mb = 512
+        available_mb = max(memory_mb - reserve_mb, cls._DEFAULT_SUBAGENT_MEMORY_MB)
+        memory_limit = max(1, available_mb // cls._DEFAULT_SUBAGENT_MEMORY_MB)
+        return max(1, min(cpu_limit, memory_limit))
 
     def __init__(
         self,
@@ -171,6 +196,11 @@ class SubagentManager:
             configured_subagents
             if configured_subagents > 0
             else self._recommended_concurrency()
+        )
+        self.subagent_memory_mb = self._DEFAULT_SUBAGENT_MEMORY_MB
+        self.max_pending_subagents = max(
+            self.max_concurrent_subagents,
+            self.max_concurrent_subagents * self._DEFAULT_QUEUE_FACTOR,
         )
         self.fail_on_tool_error = (
             fail_on_tool_error
@@ -294,6 +324,12 @@ class SubagentManager:
             weight=max(1, weight),
         )
         if not await self._enqueue_or_start(pending, status):
+            if status.phase == "error":
+                return (
+                    f"Subagent [{display_label}] rejected because the shared queue is full. "
+                    f"Running: {len(self._running_tasks)}/{self.max_concurrent_subagents}, "
+                    f"queued: {len(self._pending)}/{self.max_pending_subagents}."
+                )
             queued = len(self._pending)
             logger.info("Queued subagent [{}]: {}", task_id, display_label)
             return (
@@ -312,6 +348,13 @@ class SubagentManager:
     ) -> bool:
         async with self._dispatch_lock:
             if len(self._running_tasks) >= self.max_concurrent_subagents:
+                if len(self._pending) >= self.max_pending_subagents:
+                    status.phase = "error"
+                    status.error = (
+                        "queued-subagent limit reached; host is saturated and the shared queue is full"
+                    )
+                    self._task_statuses.pop(pending.task_id, None)
+                    return False
                 status.phase = "queued"
                 self._pending.append(pending)
                 return False
@@ -709,3 +752,14 @@ class SubagentManager:
                 }
             )
         return rows
+
+    def scheduler_snapshot(self) -> dict[str, Any]:
+        """Return lightweight scheduler pressure indicators."""
+        return {
+            "running": len(self._running_tasks),
+            "running_limit": self.max_concurrent_subagents,
+            "queued": len(self._pending),
+            "queue_limit": self.max_pending_subagents,
+            "estimated_subagent_memory_mb": self.subagent_memory_mb,
+            "host_memory_mb": self._host_memory_mb(),
+        }
