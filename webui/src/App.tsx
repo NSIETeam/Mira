@@ -651,6 +651,7 @@ function RuntimeSnapshotPanel({
   const subagentTopLabels = memory?.subagent_memory?.top_labels ?? [];
   const subagentTopSessions = memory?.subagent_memory?.top_sessions ?? [];
   const subagentErrorLabels = memory?.subagent_memory?.error_labels ?? [];
+  const activeSessionCount = memory?.subagent_memory?.active_session_count ?? 0;
   const multiSessionContention = memory?.subagent_memory?.multi_session_contention ?? false;
   const dominantSession = memory?.subagent_memory?.dominant_session ?? null;
   const dominantSessionShare = memory?.subagent_memory?.dominant_session_share ?? 0;
@@ -807,6 +808,7 @@ function RuntimeSnapshotPanel({
                     session:{entry.session_key} {entry.count} {entry.share ?? 0}%
                   </span>
                 ))}
+                <span>active sessions {activeSessionCount}</span>
                 <span>contention {contentionSeverity}</span>
                 {multiSessionContention ? <span>contention multi-session</span> : null}
                 {dominantSession ? <span>dominant {dominantSession}</span> : null}

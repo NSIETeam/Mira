@@ -908,6 +908,7 @@ class MemoryStore:
             for session_key, count in sorted(session_counts.items(), key=lambda item: (-item[1], item[0]))[:3]
         ]
         multi_session_contention = len(session_counts) >= 2
+        active_session_count = len(session_counts)
         dominant_session = top_sessions[0]["session_key"] if top_sessions else None
         dominant_session_share = top_sessions[0]["share"] if top_sessions else 0.0
         if not top_sessions:
@@ -969,6 +970,7 @@ class MemoryStore:
                 "top_labels": top_labels,
                 "top_sessions": top_sessions,
                 "error_labels": error_labels[:3],
+                "active_session_count": active_session_count,
                 "multi_session_contention": multi_session_contention,
                 "dominant_session": dominant_session,
                 "dominant_session_share": dominant_session_share,

@@ -381,6 +381,7 @@ export interface BootstrapResponse {
         share?: number;
       }>;
       error_labels?: string[];
+      active_session_count?: number;
       multi_session_contention?: boolean;
       dominant_session?: string | null;
       dominant_session_share?: number;
