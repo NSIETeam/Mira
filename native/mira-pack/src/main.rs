@@ -89,7 +89,11 @@ fn parse_config() -> PackConfig {
 }
 
 fn classify(path: &Path) -> &'static str {
-    let lower = path.display().to_string().replace('\\', "/").to_ascii_lowercase();
+    let lower = path
+        .display()
+        .to_string()
+        .replace('\\', "/")
+        .to_ascii_lowercase();
     if lower.contains("site-packages") || lower.contains("python") || lower.ends_with(".pyc") {
         "python-runtime"
     } else if lower.contains("webui")
@@ -134,7 +138,10 @@ fn dir_size(path: &Path, entries: &mut Vec<Entry>, depth: usize) -> u64 {
     let Ok(children) = fs::read_dir(path) else {
         return 0;
     };
-    let mut child_paths: Vec<PathBuf> = children.filter_map(Result::ok).map(|entry| entry.path()).collect();
+    let mut child_paths: Vec<PathBuf> = children
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .collect();
     child_paths.sort();
     let bytes = child_paths
         .iter()
@@ -178,7 +185,11 @@ fn python_status() -> String {
         Ok(output) if output.status.success() => {
             let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
             let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            if stdout.is_empty() { stderr } else { stdout }
+            if stdout.is_empty() {
+                stderr
+            } else {
+                stdout
+            }
         }
         Ok(output) => format!("{python} exited with {status}", status = output.status),
         Err(error) => format!("{python} unavailable: {error}"),
@@ -202,11 +213,20 @@ fn trim_hint(path: &Path) -> &'static str {
     }
 }
 
-fn print_json(config: &PackConfig, total: u64, entries: &[Entry], categories: &[Category], missing: bool) {
+fn print_json(
+    config: &PackConfig,
+    total: u64,
+    entries: &[Entry],
+    categories: &[Category],
+    missing: bool,
+) {
     let limit_bytes = config.limit_mb * 1024 * 1024;
     let over_limit = total > limit_bytes;
     println!("{{");
-    println!("  \"path\": \"{}\",", escape_json(&config.path.display().to_string()));
+    println!(
+        "  \"path\": \"{}\",",
+        escape_json(&config.path.display().to_string())
+    );
     println!("  \"exists\": {},", !missing);
     println!("  \"bytes\": {},", total);
     println!("  \"total_bytes\": {},", total);
@@ -218,7 +238,11 @@ fn print_json(config: &PackConfig, total: u64, entries: &[Entry], categories: &[
     println!("  \"python\": \"{}\",", escape_json(&python_status()));
     println!("  \"categories\": [");
     for (index, row) in categories.iter().enumerate() {
-        let comma = if index + 1 == categories.len() { "" } else { "," };
+        let comma = if index + 1 == categories.len() {
+            ""
+        } else {
+            ","
+        };
         println!(
             "    {{\"name\":\"{}\",\"bytes\":{}}}{}",
             row.name, row.bytes, comma
@@ -241,7 +265,11 @@ fn print_json(config: &PackConfig, total: u64, entries: &[Entry], categories: &[
     }
     println!("  ],");
     println!("  \"top_offenders\": [");
-    let files: Vec<&Entry> = entries.iter().filter(|entry| !entry.is_dir).take(config.top).collect();
+    let files: Vec<&Entry> = entries
+        .iter()
+        .filter(|entry| !entry.is_dir)
+        .take(config.top)
+        .collect();
     for (index, entry) in files.iter().enumerate() {
         let comma = if index + 1 == files.len() { "" } else { "," };
         println!(
@@ -255,7 +283,13 @@ fn print_json(config: &PackConfig, total: u64, entries: &[Entry], categories: &[
     println!("}}");
 }
 
-fn print_human(config: &PackConfig, total: u64, entries: &[Entry], categories: &[Category], missing: bool) {
+fn print_human(
+    config: &PackConfig,
+    total: u64,
+    entries: &[Entry],
+    categories: &[Category],
+    missing: bool,
+) {
     println!("Mira package audit");
     println!("path: {}", config.path.display());
     println!("exists: {}", !missing);
@@ -268,11 +302,19 @@ fn print_human(config: &PackConfig, total: u64, entries: &[Entry], categories: &
     }
     println!(
         "status: {}",
-        if total > config.limit_mb * 1024 * 1024 { "over limit" } else { "ok" }
+        if total > config.limit_mb * 1024 * 1024 {
+            "over limit"
+        } else {
+            "ok"
+        }
     );
     println!("categories:");
     for category in categories {
-        println!("- {}: {:.2} MB", category.name, category.bytes as f64 / 1024.0 / 1024.0);
+        println!(
+            "- {}: {:.2} MB",
+            category.name,
+            category.bytes as f64 / 1024.0 / 1024.0
+        );
     }
     println!("largest:");
     for entry in entries.iter().take(config.top) {
@@ -287,7 +329,11 @@ fn print_human(config: &PackConfig, total: u64, entries: &[Entry], categories: &
 }
 
 fn print_table(total: u64, categories: &[Category], entries: &[Entry], top: usize) {
-    println!("Total: {} bytes ({:.2} MiB)", total, total as f64 / 1024.0 / 1024.0);
+    println!(
+        "Total: {} bytes ({:.2} MiB)",
+        total,
+        total as f64 / 1024.0 / 1024.0
+    );
     println!("\nCategory                 Bytes");
     for row in categories {
         println!("{:<22} {}", row.name, row.bytes);
@@ -345,7 +391,10 @@ mod tests {
 
     #[test]
     fn classifies_expected_groups() {
-        assert_eq!(classify(Path::new("Python/site-packages/a.py")), "python-runtime");
+        assert_eq!(
+            classify(Path::new("Python/site-packages/a.py")),
+            "python-runtime"
+        );
         assert_eq!(classify(Path::new("webui/assets/app.js")), "webui-assets");
         assert_eq!(classify(Path::new("bin/mira-launcher")), "native-binaries");
         assert_eq!(classify(Path::new("docs/readme.md")), "docs-examples");

@@ -48,7 +48,10 @@ fn default_log_dir() -> PathBuf {
     }
     if cfg!(target_os = "macos") {
         if let Ok(home) = env::var("HOME") {
-            return PathBuf::from(home).join("Library").join("Logs").join("Mira");
+            return PathBuf::from(home)
+                .join("Library")
+                .join("Logs")
+                .join("Mira");
         }
     }
     if let Ok(root) = env::var("XDG_STATE_HOME") {
@@ -78,7 +81,10 @@ fn candidate_pythons(explicit: Option<PathBuf>) -> Vec<PathBuf> {
                 dir.join("python").join("bin").join("python3"),
                 dir.join("python").join("python.exe"),
                 dir.join("runtime").join("python").join("python.exe"),
-                dir.join("runtime").join("python").join("bin").join("python3"),
+                dir.join("runtime")
+                    .join("python")
+                    .join("bin")
+                    .join("python3"),
             ]);
         }
     }
@@ -187,7 +193,12 @@ fn python_available(python: &Path) -> Result<String, String> {
     let output = Command::new(python)
         .arg("--version")
         .output()
-        .map_err(|error| format!("failed to execute `{}` --version: {error}", python.display()))?;
+        .map_err(|error| {
+            format!(
+                "failed to execute `{}` --version: {error}",
+                python.display()
+            )
+        })?;
     if !output.status.success() {
         return Err(format!(
             "`{} --version` exited with {}",
