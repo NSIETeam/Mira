@@ -440,6 +440,10 @@ export default function App() {
       modelName={state.modelName}
       ingressLimits={state.ingressLimits}
     >
+      <RuntimeSnapshotPanel
+        memory={state.memory}
+        scheduler={state.scheduler}
+      />
       <Shell
         runtimeSurface={state.guiSurface}
         kernelManifest={state.kernel}
@@ -500,6 +504,57 @@ export default function App() {
         }}
       />
     </ClientProvider>
+  );
+}
+
+function RuntimeSnapshotPanel({
+  memory,
+  scheduler,
+}: {
+  memory: BootstrapResponse["memory"] | null;
+  scheduler: BootstrapResponse["scheduler"] | null;
+}) {
+  const schedulerSummary = scheduler && "running" in scheduler
+    ? {
+        running: scheduler.running ?? 0,
+        runningLimit: scheduler.running_limit ?? 0,
+        queued: scheduler.queued ?? 0,
+        queuedNear: scheduler.queued_near ?? 0,
+        queuedFar: scheduler.queued_far ?? 0,
+      }
+    : null;
+  const topicCount = memory?.auto_memory?.topic_file_count ?? 0;
+  const graphEntities = memory?.graph?.entity_count ?? 0;
+  const graphRelations = memory?.graph?.relation_count ?? 0;
+  const loadedLayers = memory?.layers?.filter((layer) => layer.loaded).length ?? 0;
+
+  if (!memory && !schedulerSummary) return null;
+
+  return (
+    <div className="pointer-events-none fixed bottom-4 right-4 z-40">
+      <div className="pointer-events-auto rounded-2xl border border-border/60 bg-background/92 px-4 py-3 shadow-xl backdrop-blur">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+          Runtime Snapshot
+        </div>
+        <div className="mt-3 grid gap-2 text-xs text-foreground">
+          {memory ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <span>memory layers {loadedLayers}</span>
+              <span>topics {topicCount}</span>
+              <span>graph {graphEntities}/{graphRelations}</span>
+            </div>
+          ) : null}
+          {schedulerSummary ? (
+            <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
+              <span>running {schedulerSummary.running}/{schedulerSummary.runningLimit}</span>
+              <span>queued {schedulerSummary.queued}</span>
+              <span>near {schedulerSummary.queuedNear}</span>
+              <span>far {schedulerSummary.queuedFar}</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 
