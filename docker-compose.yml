@@ -3,7 +3,7 @@ x-common-config: &common-config
     context: .
     dockerfile: Dockerfile
     args:
-      mira_CHANNELS: ${mira_CHANNELS:-whatsapp}
+      MIRA_CHANNELS: ${MIRA_CHANNELS:-whatsapp}
   volumes:
     - ~/.mira:/home/mira/.mira
   cap_drop:

@@ -78,4 +78,5 @@ class ToolContext:
     image_generation_provider_configs: dict[str, Any] | None = None
     timezone: str = "UTC"
     workspace_sandbox: Any | None = None
+    scope: str = "core"
     runtime_events: Any | None = None

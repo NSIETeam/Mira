@@ -89,12 +89,15 @@ class _FsTool(Tool):
         sandbox_restricts = bool(ctx.config.exec.sandbox)
         allowed_dir = agent_workspace if restrict else None
         # Agent-owned skills stay available from project scopes. History is a narrower
-        # capability: expose only the append-only log, not the surrounding memory directory.
+        # capability and is withheld from subagents unless a future MemoryView grants it.
+        extra_read_allowed_files = []
+        if getattr(ctx, "scope", "core") != "subagent":
+            extra_read_allowed_files.append(resolved_agent_workspace / "memory" / "history.jsonl")
         return cls(
             workspace=agent_workspace,
             allowed_dir=allowed_dir,
             extra_read_allowed_dirs=[BUILTIN_SKILLS_DIR, resolved_agent_workspace / "skills"],
-            extra_read_allowed_files=[resolved_agent_workspace / "memory" / "history.jsonl"],
+            extra_read_allowed_files=extra_read_allowed_files,
             file_states=ctx.file_state_store,
             restrict_to_workspace=ctx.config.restrict_to_workspace,
             sandbox_restricts_workspace=sandbox_restricts,

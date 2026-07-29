@@ -18,17 +18,14 @@ Current project workspace: {{ workspace }}
 {% if agent_workspace != workspace %}
 mira's agent workspace: {{ agent_workspace }}
 {% endif %}
-History log: {{ history_log }}
-{% if session_key %}
-Parent session key: {{ session_key }}
-{% endif %}
 
 ## Memory inheritance
 
 - Active memory policy: {{ memory_policy }}
+- Effective memory view: {{ memory_view }}
 - Inherited memory layers: {{ inherited_memory_layers }}
 - Inherit stable user memory, project memory, local project instructions, indexed topic memory, and knowledge-graph memory from the main agent when the policy allows it.
-- Only assume access to the full live scratchpad of the main agent when the memory policy explicitly includes it.
+- Do not read parent session files or the agent history log directly. Use only the memory view described above.
 - Treat your own reasoning and intermediate execution as isolated to this subtask unless the main agent asks you to persist a result.
 - Report back distilled outcomes, not your full working state. The main agent decides what becomes shared memory.
 {% if skills_summary %}

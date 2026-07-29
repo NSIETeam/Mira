@@ -7,7 +7,9 @@ thin GUI.
 
 from __future__ import annotations
 
+import asyncio
 import os
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -24,6 +26,7 @@ from mira.bus.runtime_events import (
     TurnRunStatusChanged,
 )
 from mira.config.schema import Config
+from mira.execution_gate import ExecutionGate
 from mira.mira import RunResult, RunStream, mira
 from mira.providers.image_generation import image_gen_provider_configs
 from mira.session.goal_state import GOAL_STATE_KEY, goal_state_ws_blob, parse_goal_state
@@ -33,6 +36,7 @@ from mira.session.turn_continuation import (
 )
 from mira.tool_contracts import tool_contract_family
 
+from .authorization import KernelAuthorizer
 from .embedded_plane import build_board_snapshot, build_embedded_topology
 from .events import (
     EXECUTION_LIFECYCLE_STATES,
@@ -741,6 +745,8 @@ class KernelApp:
         self._profile = profile or lite_customer_profile()
         self._shell = shell or default_engineering_shell()
         self._loop = getattr(bot, "_loop", None)
+        self._execution_gate: ExecutionGate = getattr(self._loop, "execution_gate", None) or ExecutionGate()
+        self._authorizer = KernelAuthorizer()
         self._runtime_adapters = list_runtime_adapters()
         self._runtime_modules = list_kernel_modules(self._profile)
         default_adapter = (
@@ -840,6 +846,7 @@ class KernelApp:
 
     def runtime_control_snapshot(self) -> dict[str, Any]:
         state = self.runtime_control
+        state["execution_gate"] = self._execution_gate.snapshot_dict()
         fault_posture = dict(state.get("fault_posture", {}))
         fault_posture["actions"] = _fault_posture_actions()
         state["fault_posture"] = fault_posture
@@ -1451,15 +1458,7 @@ class KernelApp:
     def assert_control_action_allowed(self, action: str, *, raw: str | None = None) -> None:
         if action not in _PRIVILEGED_CONTROL_ACTIONS:
             return
-        host_contract = self._shell.host_contract if isinstance(self._shell.host_contract, dict) else {}
-        surfaces = host_contract.get("surfaces", {}) if isinstance(host_contract.get("surfaces", {}), dict) else {}
-        privilege = host_contract.get("privilege", {}) if isinstance(host_contract.get("privilege", {}), dict) else {}
-        allows_privileged_controls = bool(surfaces.get("allowPrivilegedRuntimeControls"))
-        privilege_role = str(privilege.get("role") or self._operator_privilege_role())
-        can_elevate = bool(privilege.get("canElevate"))
-        if allows_privileged_controls and (privilege_role == "root" or can_elevate):
-            return
-        raise PermissionError(f"operator action requires root privileges: {raw or action}")
+        self._authorizer.assert_allowed(action, raw=raw)
 
     def _refresh_board_runtime_status(self) -> None:
         board = dict(self._runtime_control.get("board", {}))
@@ -2408,6 +2407,58 @@ class KernelApp:
             "family_rows": family_rows,
         }
 
+    def execute_tool_dispatch(
+        self,
+        tool_name: str,
+        params: dict[str, Any] | None = None,
+        *,
+        root: str | None = None,
+        module: str | None = None,
+    ) -> dict[str, Any]:
+        dispatch_id = uuid.uuid4().hex
+        row = {
+            "id": dispatch_id,
+            "tool": tool_name,
+            "family": tool_contract_family(tool_name),
+            "module": module or "runtime",
+            "root": root,
+            "status": "queued",
+            "lifecycle": "queued",
+            "args": dict(params or {}),
+        }
+        self._dispatch_queue.insert(0, row)
+        self._dispatch_queue = self._dispatch_queue[:12]
+        loop = self._loop
+        tools = getattr(loop, "tools", None)
+        if tools is None or not callable(getattr(tools, "execute", None)):
+            row.update({
+                "status": "unavailable",
+                "lifecycle": "unavailable",
+                "error": "no live ToolRegistry is attached to the kernel",
+            })
+            return dict(row, ok=False)
+        try:
+            self._execution_gate.assert_tools_allowed()
+            running_loop = None
+            try:
+                running_loop = asyncio.get_running_loop()
+            except RuntimeError:
+                pass
+            if running_loop is not None and running_loop.is_running():
+                raise RuntimeError("synchronous operator command cannot execute tools inside a running event loop")
+            row["status"] = "running"
+            row["lifecycle"] = "running"
+            result = asyncio.run(tools.execute(tool_name, params or {}))
+            row["status"] = "ok"
+            row["lifecycle"] = "completed"
+            row["result"] = "" if result is None else str(result)
+            return dict(row, ok=True)
+        except Exception as exc:
+            row["status"] = "error"
+            row["lifecycle"] = "failed"
+            row["error"] = str(exc)
+            return dict(row, ok=False)
+
     def switch_runtime_adapter(self, adapter_name: str) -> dict[str, Any]:
         self._runtime_control = set_active_adapter(
             self._runtime_control,
@@ -2609,11 +2660,13 @@ class KernelApp:
 
     def pause_runtime(self, reason: str | None = None) -> dict[str, Any]:
         pause_reason = reason or "operator-paused"
+        gate = self._execution_gate.set_state("paused", reason=pause_reason)
         self._runtime_control = set_execution_gate(
             self._runtime_control,
             gate_state="paused",
             reason=pause_reason,
         )
+        self._runtime_control["execution_gate"] = gate.to_dict()
         self._dispatch_native_control(
             target="runtime",
             action="pause",
@@ -2627,11 +2680,13 @@ class KernelApp:
         return self.runtime_control
 
     def resume_runtime(self) -> dict[str, Any]:
+        gate = self._execution_gate.set_state("open", reason="operator-ready")
         self._runtime_control = set_execution_gate(
             self._runtime_control,
             gate_state="open",
             reason="operator-ready",
         )
+        self._runtime_control["execution_gate"] = gate.to_dict()
         self._runtime_control = set_maintenance_mode(self._runtime_control, enabled=False)
         self._runtime_bridges = set_bridge_maintenance(self._runtime_bridges, enabled=False)
         active_adapter = str(self._runtime_control.get("active_adapter") or "")
@@ -2654,11 +2709,13 @@ class KernelApp:
 
     def degrade_runtime(self, reason: str | None = None) -> dict[str, Any]:
         degrade_reason = reason or "fault-containment"
+        gate = self._execution_gate.set_state("degraded", reason=degrade_reason)
         self._runtime_control = set_execution_gate(
             self._runtime_control,
             gate_state="degraded",
             reason=degrade_reason,
         )
+        self._runtime_control["execution_gate"] = gate.to_dict()
         self._dispatch_native_control(
             target="runtime",
             action="degrade",
@@ -2673,6 +2730,7 @@ class KernelApp:
 
     def enter_maintenance(self, reason: str | None = None) -> dict[str, Any]:
         maintenance_reason = reason or "operator-maintenance-window"
+        gate = self._execution_gate.set_state("maintenance", reason=maintenance_reason)
         self._runtime_control = set_maintenance_mode(
             self._runtime_control,
             enabled=True,
@@ -2683,6 +2741,7 @@ class KernelApp:
             gate_state="paused",
             reason=maintenance_reason,
         )
+        self._runtime_control["execution_gate"] = gate.to_dict()
         self._runtime_bridges = set_bridge_maintenance(
             self._runtime_bridges,
             enabled=True,
@@ -2701,12 +2760,14 @@ class KernelApp:
         return self.runtime_control
 
     def exit_maintenance(self) -> dict[str, Any]:
+        gate = self._execution_gate.set_state("open", reason="operator-ready")
         self._runtime_control = set_maintenance_mode(self._runtime_control, enabled=False)
         self._runtime_control = set_execution_gate(
             self._runtime_control,
             gate_state="open",
             reason="operator-ready",
         )
+        self._runtime_control["execution_gate"] = gate.to_dict()
         self._runtime_bridges = set_bridge_maintenance(self._runtime_bridges, enabled=False)
         active_adapter = str(self._runtime_control.get("active_adapter") or "")
         if active_adapter:

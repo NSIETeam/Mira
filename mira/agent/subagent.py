@@ -29,6 +29,7 @@ from mira.agent.tools.registry import ToolRegistry
 from mira.bus.events import InboundMessage
 from mira.bus.queue import MessageBus
 from mira.config.schema import AgentDefaults, ToolsConfig
+from mira.execution_gate import ExecutionGate
 from mira.providers.base import LLMProvider
 from mira.security.workspace_access import (
     WorkspaceScope,
@@ -38,6 +39,25 @@ from mira.security.workspace_access import (
 )
 from mira.utils.llm_runtime import LLMRuntime
 from mira.utils.prompt_templates import render_template
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryView:
+    policy: str
+    effective_layers: tuple[str, ...]
+    parent_session_visible: bool
+    history_log_visible: bool
+    provenance: tuple[str, ...]
+
+    def summary(self) -> str:
+        layers = ", ".join(self.effective_layers) if self.effective_layers else "none"
+        provenance = ", ".join(self.provenance) if self.provenance else "task only"
+        return (
+            f"policy={self.policy}; layers={layers}; "
+            f"parent_session={'visible' if self.parent_session_visible else 'hidden'}; "
+            f"history_log={'visible' if self.history_log_visible else 'hidden'}; "
+            f"provenance={provenance}"
+        )
 
 
 @dataclass(slots=True)
@@ -201,6 +221,19 @@ class SubagentManager:
         return list(cls._MEMORY_POLICY_LAYERS.get(normalized, cls._MEMORY_POLICY_LAYERS[cls._DEFAULT_MEMORY_POLICY]))
 
     @classmethod
+    def _memory_view_for_policy(cls, memory_policy: str | None) -> MemoryView:
+        normalized = cls._normalize_memory_policy(memory_policy)
+        layers = tuple(cls._memory_layers_for_policy(normalized))
+        full = normalized == "full"
+        return MemoryView(
+            policy=normalized,
+            effective_layers=layers,
+            parent_session_visible=full,
+            history_log_visible=full,
+            provenance=tuple(layer for layer in layers if layer != "session_scratchpad"),
+        )
+
+    @classmethod
     def _host_strategy_profile(cls) -> str:
         cpu = os.cpu_count() or 2
         memory_mb = cls._host_memory_mb() or 0
@@ -235,6 +268,7 @@ class SubagentManager:
         max_iterations: int | None = None,
         max_concurrent_subagents: int | None = None,
         fail_on_tool_error: bool | None = None,
+        execution_gate: ExecutionGate | None = None,
         llm_wall_timeout_for_session: Callable[[str | None], float | None] | None = None,
     ):
         if workspace is None:
@@ -301,6 +335,7 @@ class SubagentManager:
         )
         self.runner = AgentRunner()
         self._exec_session_manager = ExecSessionManager()
+        self.execution_gate = execution_gate or ExecutionGate()
         self._llm_wall_timeout_for_session = llm_wall_timeout_for_session
         self._running_tasks: dict[str, asyncio.Task[str]] = {}
         self._task_statuses: dict[str, SubagentStatus] = {}
@@ -351,7 +386,7 @@ class SubagentManager:
             exec=self.tools_config.exec,
             web=self.tools_config.web,
             file=self.tools_config.file,
-            restrict_to_workspace=self.restrict_to_workspace,
+            restrict_to_workspace=True,
         )
 
     def _build_tools(
@@ -850,6 +885,7 @@ class SubagentManager:
                     session_key=sess_key,
                     workspace=root,
                     llm_timeout_s=llm_timeout,
+                    execution_gate=self.execution_gate,
                 ))
             finally:
                 if token is not None:
@@ -996,6 +1032,7 @@ class SubagentManager:
 
         agent_workspace = self.workspace.expanduser().resolve()
         project_workspace = workspace.expanduser().resolve() if workspace else agent_workspace
+        memory_view = self._memory_view_for_policy(memory_policy)
         skills_summary = SkillsLoader(
             self.workspace,
             disabled_skills=self.disabled_skills,
@@ -1004,8 +1041,8 @@ class SubagentManager:
             "agent/subagent_system.md",
             workspace=str(project_workspace),
             agent_workspace=str(agent_workspace),
-            history_log=str(agent_workspace / "memory" / "history.jsonl"),
-            session_key=session_key or "",
+            memory_view=memory_view.summary(),
+            parent_session_ref="[redacted]" if memory_view.parent_session_visible and session_key else "",
             memory_policy=memory_policy,
             inherited_memory_layers=", ".join(inherited_memory_layers or []) or "none",
             skills_summary=skills_summary or "",

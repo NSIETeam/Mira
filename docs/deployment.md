@@ -76,16 +76,16 @@ Run mira online without managing a server. The blueprint deploys the gateway and
 
 The default image preinstalls WhatsApp dependencies. To bake other enabled
 channels into an image (recommended for deployments without PyPI access), pass
-a comma-separated `mira_CHANNELS` build argument:
+a comma-separated `MIRA_CHANNELS` build argument:
 
 ```bash
-mira_CHANNELS=telegram,slack docker compose build
+MIRA_CHANNELS=telegram,slack docker compose build
 ```
 
 The image keeps mira in a virtual environment owned by its built-in non-root
 runtime user (UID 1000). If an enabled channel was not preinstalled, gateway
 startup can therefore install its manifest-declared dependencies. Rebuilding
-with `mira_CHANNELS` keeps that installation reproducible instead of relying
+with `MIRA_CHANNELS` keeps that installation reproducible instead of relying
 on the container's writable layer. If you override the container with a
 different `--user`, bake every enabled channel into the image because that UID
 is not guaranteed write access to the virtual environment.
@@ -126,7 +126,7 @@ docker build -t mira .
 docker build --build-arg mira_EXTRAS=bedrock -t mira .
 
 # Or preinstall dependencies for a specific set of channels
-docker build --build-arg mira_CHANNELS=telegram,slack -t mira .
+docker build --build-arg MIRA_CHANNELS=telegram,slack -t mira .
 
 # Initialize config (first time only)
 docker run -v ~/.mira:/home/mira/.mira --rm mira onboard

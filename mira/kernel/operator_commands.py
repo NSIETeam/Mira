@@ -6,6 +6,7 @@ preserving the public ``KernelApp.execute_operator_command`` API.
 
 from __future__ import annotations
 
+import json
 import shlex
 from typing import Any
 
@@ -26,6 +27,28 @@ from .scheduler import prioritize_lane
 def _copy_rows(rows: list[dict[str, Any]], *, limit: int | None = None) -> list[dict[str, Any]]:
     source = rows[:limit] if isinstance(limit, int) else rows
     return [dict(row) for row in source]
+
+
+def _parse_dispatch_args(args: list[str]) -> tuple[str, dict[str, Any]]:
+    if not args:
+        raise ValueError("missing tool")
+    tool_name = args[0].strip()
+    params: dict[str, Any] = {}
+    tail = args[1:]
+    if tail:
+        joined = " ".join(tail).strip()
+        if joined.startswith("{"):
+            parsed = json.loads(joined)
+            if not isinstance(parsed, dict):
+                raise ValueError("tool dispatch arguments must be a JSON object")
+            params = parsed
+        else:
+            for item in tail:
+                key, sep, value = item.partition("=")
+                if not sep or not key:
+                    raise ValueError("tool dispatch arguments must be JSON or key=value pairs")
+                params[key] = value
+    return tool_name, params
 
 
 def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
@@ -1273,9 +1296,7 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
             "workspace": str(workspace),
         }
     elif command == "tool-dispatch":
-        if not args:
-            raise ValueError("missing tool")
-        tool_name = " ".join(args).strip()
+        tool_name, tool_params = _parse_dispatch_args(args)
         if tool_name not in self._profile.tools:
             raise ValueError(f"unknown tool contract: {tool_name}")
         tool_family = tool_contract_family(tool_name)
@@ -1285,29 +1306,23 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
             self._runtime_control.get("module_focus")
             or (self._runtime_modules[0].get("name") if self._runtime_modules else "session_state")
         )
-        self._dispatch_queue.insert(
-            0,
-            {
-                "tool": tool_name,
-                "family": tool_family,
-                "module": active_module,
-                "root": str(repo) if repo is not None else str(workspace),
-                "status": "queued",
-                "lifecycle": "queued",
-            },
+        dispatch_result = self.execute_tool_dispatch(
+            tool_name,
+            tool_params,
+            root=str(repo) if repo is not None else str(workspace),
+            module=active_module,
         )
-        self._dispatch_queue = self._dispatch_queue[:12]
         self._record_kernel_event(
-            "tool_dispatch_requested",
-            state="queued",
+            "tool_dispatch_completed" if dispatch_result.get("ok") else "tool_dispatch_failed",
+            state="ok" if dispatch_result.get("ok") else "fault",
             message=(
-                f"{tool_name} [{tool_family}] dispatched via {active_module}"
+                f"{tool_name} [{tool_family}] {dispatch_result.get('lifecycle')}"
                 f" in {(repo if repo is not None else workspace).name or 'workspace'}"
             ),
         )
         target_pane = "runtime"
         state = self.runtime_control_snapshot()
-        output = f"tool dispatched -> {tool_name} [{tool_family}]"
+        output = f"tool dispatch {dispatch_result.get('lifecycle')} -> {tool_name} [{tool_family}]"
         details = {
             "subject": "tool",
             "action": "dispatch",
@@ -1315,7 +1330,11 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
             "family": tool_family,
             "module": active_module,
             "root": str(repo) if repo is not None else str(workspace),
-            "status": "queued",
+            "status": dispatch_result.get("status"),
+            "lifecycle": dispatch_result.get("lifecycle"),
+            "dispatch_id": dispatch_result.get("id"),
+            "result": dispatch_result.get("result"),
+            "error": dispatch_result.get("error"),
         }
     elif command == "tool-queue":
         target_pane = "runtime"

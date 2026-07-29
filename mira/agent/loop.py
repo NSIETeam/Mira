@@ -50,6 +50,7 @@ from mira.bus.runtime_events import (
 )
 from mira.command import CommandContext, CommandRouter, register_builtin_commands
 from mira.config.schema import AgentDefaults, ModelPresetConfig
+from mira.execution_gate import ExecutionGate
 from mira.providers.base import LLMProvider
 from mira.providers.factory import ProviderSnapshot
 from mira.runtime_context import (
@@ -298,6 +299,7 @@ class AgentLoop:
         restart_mode: str = "auto",
         local_trigger_store: Any | None = None,
         idle_compact_check_interval_seconds: int = 0,
+        execution_gate: ExecutionGate | None = None,
     ):
         from mira.config.schema import ToolsConfig, ensure_tool_config_refs
 
@@ -320,6 +322,7 @@ class AgentLoop:
             self.turn_delivery_factory = TurnDeliveryFactory(bus, self.runtime_events)
         self.runtime_event_publisher = self.turn_delivery_factory.runtime_event_publisher
         self.channels_config = channels_config
+        self.execution_gate = execution_gate or ExecutionGate()
         self.restart_mode = restart_mode
         self._runtime_model_publisher = runtime_model_publisher
         self.workspace = workspace
@@ -397,6 +400,7 @@ class AgentLoop:
             max_iterations=self.max_iterations,
             max_concurrent_subagents=max_concurrent_subagents,
             fail_on_tool_error=fail_on_tool_error,
+            execution_gate=self.execution_gate,
             llm_wall_timeout_for_session=lambda sk: runner_wall_llm_timeout_s(self.sessions, sk),
         )
         self._unified_session = unified_session
@@ -1090,6 +1094,7 @@ class AgentLoop:
                 ),
                 goal_active_predicate=lambda: sustained_goal_active(session.metadata) if session is not None else False,
                 goal_continue_message=_goal_continue,
+                execution_gate=self.execution_gate,
                 finalize_on_max_iterations=turn_continuation.should_finalize_on_max_iterations(
                     pending_queue_available=pending_queue is not None and session is not None,
                     session_metadata=session_metadata,
@@ -1245,6 +1250,7 @@ class AgentLoop:
         pending: asyncio.Queue | None = None
         try:
             async with lock, gate:
+                await self.execution_gate.wait_for_turn_admission()
                 # Only the task that owns the session lock may publish the
                 # active mid-turn injection queue for this session.
                 pending = asyncio.Queue(maxsize=20)

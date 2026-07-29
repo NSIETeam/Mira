@@ -205,7 +205,7 @@ These variables are process-level switches. Set them in the same terminal, servi
 | `mira_SKIP_WEBUI_BUILD` | unset | Set to `1` to skip bundling the WebUI during package builds. |
 | `mira_FORCE_WEBUI_BUILD` | unset | Set to `1` to rebuild the bundled WebUI even when `mira/web/dist/index.html` already exists. |
 | `mira_EXTRAS` | unset | Docker build argument containing comma-separated Python extras such as `bedrock`. |
-| `mira_CHANNELS` | `whatsapp` | Docker build argument containing comma-separated channels whose manifest dependencies are preinstalled. |
+| `MIRA_CHANNELS` | `whatsapp` | Docker build argument containing comma-separated channels whose manifest dependencies are preinstalled. |
 | `mira_API_URL` | `http://127.0.0.1:8765` | Gateway target for the Vite WebUI dev server proxy. |
 
 Internal variables such as `mira_RESTART_*` and `mira_PATH_*` are set by mira itself and are not a supported user configuration surface.

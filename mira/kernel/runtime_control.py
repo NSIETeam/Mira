@@ -42,6 +42,11 @@ def build_runtime_control_state(
         "execution_gate": {
             "state": "open",
             "reason": "operator-ready",
+            "actor": "system",
+            "correlation_id": None,
+            "updated_at": None,
+            "permits_turns": True,
+            "permits_tools": True,
         },
         "maintenance_mode": {
             "enabled": False,
@@ -132,12 +137,17 @@ def set_execution_gate(
     gate_state: str,
     reason: str | None = None,
 ) -> dict[str, object]:
-    if gate_state not in {"open", "paused", "degraded"}:
+    if gate_state not in {"open", "paused", "maintenance", "degraded"}:
         raise ValueError(f"Unknown execution gate: {gate_state}")
     next_state = clone_runtime_control_state(state)
     next_state["execution_gate"] = {
         "state": gate_state,
         "reason": reason or ("operator-ready" if gate_state == "open" else "operator-requested"),
+        "actor": "operator",
+        "correlation_id": None,
+        "updated_at": None,
+        "permits_turns": gate_state in {"open", "degraded"},
+        "permits_tools": gate_state == "open",
     }
     return next_state
 

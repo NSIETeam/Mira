@@ -84,6 +84,8 @@ class ToolLoader:
         return plugins
 
     def load(self, ctx: Any, registry: ToolRegistry, *, scope: str = "core") -> list[str]:
+        if hasattr(ctx, "scope"):
+            ctx.scope = scope
         registered: list[str] = []
         builtin_names: set[str] = set()
         sources = [(self.discover(), False), (self._discover_plugins().values(), True)]

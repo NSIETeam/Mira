@@ -18,6 +18,7 @@ from mira.agent.context_governance import (
 )
 from mira.agent.hook import AgentHook, AgentHookContext, AgentRunHookContext
 from mira.agent.tools.registry import ToolRegistry, is_tool_error_result
+from mira.execution_gate import ExecutionGate, ExecutionGateClosedError
 from mira.providers.base import LLMProvider, LLMResponse, ToolCallRequest
 from mira.runtime_context import (
     RUNTIME_CONTEXT_MESSAGE_META,
@@ -99,6 +100,7 @@ class AgentRunSpec:
     goal_active_predicate: Callable[[], bool] | None = None
     goal_continue_message: GoalContinueMessage | None = None
     finalize_on_max_iterations: bool = True
+    execution_gate: ExecutionGate | None = None
 
 
 @dataclass(slots=True)
@@ -1259,6 +1261,16 @@ class AgentRunner:
         hook = hook or AgentHook()
         context = context or AgentHookContext(iteration=0, messages=[])
         hint = "\n\n[Analyze the error above and try a different approach.]"
+        if spec.execution_gate is not None:
+            try:
+                spec.execution_gate.assert_tools_allowed()
+            except ExecutionGateClosedError as exc:
+                event = {
+                    "name": tool_call.name,
+                    "status": "error",
+                    "detail": str(exc),
+                }
+                return f"Error: {exc}", event, exc
         lookup_error = repeated_external_lookup_error(
             tool_call.name,
             tool_call.arguments,
