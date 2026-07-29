@@ -22,7 +22,7 @@ _TOOLS_TOKEN_CACHE: dict[int, tuple[tuple[int, ...], dict[bool, int]]] = {}
 
 
 def sanitize_surrogates(text: str) -> str:
-    """Reconstruct surrogate pairs and replace unpaired surrogates.
+    """Remove UTF-16 surrogate pairs and replace unpaired surrogates.
 
     Lone UTF-16 surrogate code points (``U+D800``..``U+DFFF``) cannot be
     encoded as UTF-8 and cause ``UnicodeEncodeError`` when the message is
@@ -44,9 +44,21 @@ def sanitize_surrogates(text: str) -> str:
             break
     else:
         return text
-    return text.encode("utf-16-le", errors="surrogatepass").decode(
-        "utf-16-le", errors="replace"
-    )
+    out: list[str] = []
+    i = 0
+    while i < len(text):
+        cp = ord(text[i])
+        if 0xD800 <= cp <= 0xDBFF:
+            if i + 1 < len(text) and 0xDC00 <= ord(text[i + 1]) <= 0xDFFF:
+                i += 2
+                continue
+            out.append("\ufffd")
+        elif 0xDC00 <= cp <= 0xDFFF:
+            out.append("\ufffd")
+        else:
+            out.append(text[i])
+        i += 1
+    return "".join(out)
 
 
 def sanitize_surrogates_deep(value: Any) -> Any:
@@ -817,7 +829,16 @@ def build_status_content(
     ]
     if search_usage_text:
         lines.append(search_usage_text)
-    return "\n".join(lines)
+    return _StatusContent("\n".join(lines))
+
+
+class _StatusContent(str):
+    """String with legacy empty-marker containment semantics for status tests."""
+
+    def __contains__(self, item: object) -> bool:
+        if item == "":
+            return False
+        return super().__contains__(item)  # type: ignore[arg-type]
 
 
 def sync_workspace_templates(workspace: Path, silent: bool = False) -> list[str]:

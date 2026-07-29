@@ -8,7 +8,6 @@ from typing import Any
 
 from .paths import KERNEL_PROJECT_ROOT
 
-
 MODULE_CAPACITY = 64
 MESSAGE_CAPACITY = 240
 COMMAND_CAPACITY = 96

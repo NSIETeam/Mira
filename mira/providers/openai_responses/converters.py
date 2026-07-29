@@ -165,13 +165,16 @@ def convert_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not name:
             continue
         params = fn.get("parameters") or {}
-        converted.append({
+        entry = {
             "type": "function",
             "name": name,
             "description": fn.get("description") or "",
             "parameters": params if isinstance(params, dict) else {},
-            "x_mira_family": tool.get("x_mira_family") or fn.get("x_mira_family"),
-        })
+        }
+        family = tool.get("x_mira_family") or fn.get("x_mira_family")
+        if family:
+            entry["x_mira_family"] = family
+        converted.append(entry)
     return converted
 
 

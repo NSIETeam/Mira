@@ -56,7 +56,7 @@ except ImportError:
     ChatbotMessage = None  # type: ignore[assignment,misc]
 
 
-class miraDingTalkHandler(CallbackHandler):
+class miraDingTalkHandler(CallbackHandler):  # noqa: N801
     """
     Standard DingTalk Stream SDK Callback Handler.
     Parses incoming messages and forwards them to the mira channel.

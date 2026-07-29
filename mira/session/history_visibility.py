@@ -19,4 +19,8 @@ def _has_hidden_history_marker(message: Mapping[str, Any] | None) -> bool:
 
 def is_hidden_history_message(message: Mapping[str, Any] | None) -> bool:
     """True for persisted messages that should not be shown as chat turns."""
-    return _has_hidden_history_marker(message) or is_automation_history_message(message)
+    if not message:
+        return False
+    if _has_hidden_history_marker(message) or is_automation_history_message(message):
+        return True
+    return message.get("_cron_history") is True

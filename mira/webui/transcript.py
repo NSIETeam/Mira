@@ -823,6 +823,13 @@ def write_session_messages_as_transcript(
 
 def delete_webui_transcript(session_key: str) -> bool:
     removed = False
+    legacy_snapshot = get_webui_dir() / f"{SessionManager.safe_key(session_key)}.json"
+    if legacy_snapshot.is_file():
+        try:
+            legacy_snapshot.unlink()
+            removed = True
+        except OSError as e:
+            logger.warning("Failed to delete legacy webui snapshot {}: {}", legacy_snapshot, e)
     path = webui_transcript_path(session_key)
     if path.is_file():
         try:
@@ -878,6 +885,8 @@ def _session_user_event(
     message = public_history_message(message)
     content = message.get("content")
     text = content if isinstance(content, str) else ""
+    if _is_legacy_internal_subagent_prompt(text):
+        return None
     media = message.get("media")
     cli_apps = message.get("cli_apps")
     mcp_presets = message.get("mcp_presets")
@@ -888,6 +897,16 @@ def _session_user_event(
         media_paths=media if isinstance(media, list) else None,
         cli_apps=cli_apps if isinstance(cli_apps, list) else None,
         mcp_presets=mcp_presets if isinstance(mcp_presets, list) else None,
+    )
+
+
+def _is_legacy_internal_subagent_prompt(text: str) -> bool:
+    stripped = text.strip()
+    return (
+        stripped.startswith("[Subagent '")
+        and " completed successfully]" in stripped[:160]
+        and "\n\nResult:\n" in stripped
+        and stripped.endswith("Summarize this naturally for the user.")
     )
 
 

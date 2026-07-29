@@ -23,10 +23,17 @@ from loguru import logger
 from websockets.http11 import Request as WsRequest
 from websockets.http11 import Response
 
-from mira.command.builtin import builtin_command_palette
 from mira.agent.memory import MemoryStore
+from mira.command.builtin import builtin_command_palette
 from mira.cron.session_turns import is_bound_cron_job
 from mira.cron.types import CronJob, CronSchedule
+from mira.kernel import (
+    KernelApp,
+    active_kernel_app,
+    build_kernel_manifest,
+    default_engineering_shell,
+    get_profile,
+)
 from mira.runtime_context import public_history_messages
 from mira.triggers.local_types import LocalTrigger
 from mira.utils.subagent_channel_display import scrub_subagent_messages_for_channel
@@ -84,23 +91,16 @@ from mira.webui.session_automations import (
     session_automations_payload,
 )
 from mira.webui.session_list_index import list_webui_sessions
+from mira.webui.settings_api import runtime_capabilities as _rc
+from mira.webui.settings_routes import WebUISettingsRouter
 from mira.webui.sidebar_state import (
     read_webui_sidebar_state,
     write_webui_sidebar_state,
 )
 from mira.webui.skills_api import webui_skill_detail_payload, webui_skills_payload
-from mira.webui.settings_api import runtime_capabilities as _rc
-from mira.webui.settings_routes import WebUISettingsRouter
 from mira.webui.thread_disk import delete_webui_thread
 from mira.webui.transcript import build_webui_thread_response
 from mira.webui.workspaces import WebUIWorkspaceController
-from mira.kernel import (
-    KernelApp,
-    active_kernel_app,
-    build_kernel_manifest,
-    default_engineering_shell,
-    get_profile,
-)
 
 _SLOW_WEBUI_HTTP_LOG_MS = 1_000
 _AUTOMATION_VALUES_HEADER = "X-mira-Automation-Values"

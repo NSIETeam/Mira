@@ -33,7 +33,7 @@ def abbreviate_path(path: str, max_len: int = 40) -> str:
     elif normalized == home:
         normalized = "~"
 
-    # Return early only after normalization and home replacement
+    # Return early only after normalization and home replacement.
     if len(normalized) <= max_len:
         return normalized
 

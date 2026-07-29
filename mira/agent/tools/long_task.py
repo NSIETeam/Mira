@@ -96,6 +96,10 @@ class _GoalToolsMixin:
         cid = (rc.chat_id or "").strip()
         if not cid:
             return
+        event_metadata = dict(metadata)
+        goal = parse_goal_state(goal_state_raw(event_metadata))
+        if isinstance(goal, dict) and goal.get("status") != "active":
+            event_metadata[GOAL_STATE_KEY] = {"active": False}
         await runtime_events.publish(
             GoalStateChanged(
                 context=RuntimeEventContext(
@@ -104,7 +108,7 @@ class _GoalToolsMixin:
                     session_key=rc.session_key or f"{rc.channel}:{cid}",
                     metadata=dict(rc.metadata or {}),
                 ),
-                session_metadata=dict(metadata),
+                session_metadata=event_metadata,
             )
         )
 
@@ -121,11 +125,6 @@ class _GoalToolsMixin:
         ui_summary=StringSchema(
             "Optional one-line display label for session lists and logs. It is not load-bearing.",
             max_length=120,
-            nullable=True,
-        ),
-        acceptance=StringSchema(
-            "Optional concise acceptance criteria for what counts as done.",
-            max_length=800,
             nullable=True,
         ),
         required=["objective"],
@@ -196,7 +195,6 @@ class CreateGoalTool(Tool, _GoalToolsMixin):
         self,
         objective: str,
         ui_summary: str | None = None,
-        acceptance: str | None = None,
         **kwargs: Any,
     ) -> str:
         sess = self._session()
@@ -226,7 +224,7 @@ class CreateGoalTool(Tool, _GoalToolsMixin):
             "objective": objective_text,
             "ui_summary": summary,
             "started_at": _iso_now(),
-            "acceptance": (acceptance or "").strip(),
+            "acceptance": str(kwargs.get("acceptance") or "").strip(),
         }
         self._save_goal_state(sess, blob, reset_continuation=True)
         await self._publish_goal_state_changed(sess.metadata)

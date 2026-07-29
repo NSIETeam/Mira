@@ -5,7 +5,6 @@ import errno
 import json
 import os
 import re
-import shutil
 from collections import OrderedDict
 from contextlib import suppress
 from copy import deepcopy
@@ -17,6 +16,7 @@ from weakref import WeakValueDictionary
 
 from loguru import logger
 
+from mira.config.paths import get_legacy_sessions_dir
 from mira.runtime_context import (
     RUNTIME_CONTEXT_HISTORY_META,
     public_history_message,
@@ -74,7 +74,7 @@ def _sanitize_assistant_replay_text(content: str) -> str:
         if not _LOCAL_IMAGE_BREADCRUMB_RE.match(line)
         and not _TOOL_CALL_ECHO_RE.match(line)
     ]
-    return "\n".join(lines).strip()
+    return "\n".join(lines).strip("\r\n")
 
 
 def _text_preview(content: Any) -> str:
@@ -478,6 +478,27 @@ class SessionManager:
         """Get the collision-resistant workspace path for a session."""
         return self.sessions_dir / f"{self._storage_key(key)}.jsonl"
 
+    def _get_legacy_lossy_path(self, key: str) -> Path:
+        return self.sessions_dir / f"{self.safe_key(key)}.jsonl"
+
+    def _legacy_session_paths(self, key: str) -> list[Path]:
+        stem = f"{self.safe_key(key)}.jsonl"
+        paths = [self._get_legacy_lossy_path(key), get_legacy_sessions_dir() / stem]
+        unique: list[Path] = []
+        for path in paths:
+            if path not in unique:
+                unique.append(path)
+        return unique
+
+    def _resolve_existing_session_path(self, key: str) -> tuple[Path | None, bool]:
+        path = self._get_session_path(key)
+        if path.exists():
+            return path, False
+        for legacy_path in self._legacy_session_paths(key):
+            if legacy_path.exists():
+                return legacy_path, True
+        return None, False
+
     def get_or_create(self, key: str) -> Session:
         """
         Get an existing session or create a new one.
@@ -501,8 +522,8 @@ class SessionManager:
 
     def _load(self, key: str) -> Session | None:
         """Load a session from disk."""
-        path = self._get_session_path(key)
-        if not path.exists():
+        path, is_legacy = self._resolve_existing_session_path(key)
+        if path is None:
             return None
 
         try:
@@ -511,6 +532,7 @@ class SessionManager:
             created_at = None
             updated_at = None
             last_consolidated = 0
+            stored_key = key
 
             with open(path, encoding="utf-8") as f:
                 for line in f:
@@ -527,21 +549,35 @@ class SessionManager:
                         created_at = datetime.fromisoformat(data["created_at"]) if data.get("created_at") else None
                         updated_at = datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else None
                         last_consolidated = data.get("last_consolidated", 0)
+                        stored_key = data.get("key") or key
                     else:
                         messages.append(data)
 
-            return Session(
-                key=key,
+            if stored_key != key:
+                return None
+            session = Session(
+                key=stored_key,
                 messages=messages,
                 created_at=created_at or datetime.now(),
                 updated_at=updated_at or datetime.now(),
                 metadata=metadata,
                 last_consolidated=last_consolidated
             )
+            if is_legacy:
+                self.save(session, fsync=True)
+                with suppress(OSError):
+                    path.unlink()
+            return session
         except _SESSION_DATA_ERRORS as e:
             logger.warning("Failed to load session {}: {}", key, e)
-            repaired = self._repair(key)
+            repaired = self._repair(key, path=path)
             if repaired is not None:
+                if repaired.key != key:
+                    return None
+                if is_legacy:
+                    self.save(repaired, fsync=True)
+                    with suppress(OSError):
+                        path.unlink()
                 logger.info("Recovered session {} from corrupt file ({} messages)", key, len(repaired.messages))
             return repaired
 
@@ -558,6 +594,7 @@ class SessionManager:
             created_at: datetime | None = None
             updated_at: datetime | None = None
             last_consolidated = 0
+            stored_key = key
             skipped = 0
 
             with open(path, encoding="utf-8") as f:
@@ -576,6 +613,7 @@ class SessionManager:
 
                     if data.get("_type") == "metadata":
                         metadata = data.get("metadata", {})
+                        stored_key = data.get("key") or key
                         if data.get("created_at"):
                             with suppress(ValueError, TypeError):
                                 created_at = datetime.fromisoformat(data["created_at"])
@@ -593,7 +631,7 @@ class SessionManager:
                 return None
 
             return Session(
-                key=key,
+                key=stored_key,
                 messages=messages,
                 created_at=created_at or datetime.now(),
                 updated_at=updated_at or datetime.now(),
@@ -704,8 +742,9 @@ class SessionManager:
         """
         self.invalidate(key)
         deleted = False
-        path = self._get_session_path(key)
-        if path.exists():
+        for path in [self._get_session_path(key), *self._legacy_session_paths(key)]:
+            if not path.exists():
+                continue
             try:
                 path.unlink()
                 deleted = True
@@ -775,8 +814,8 @@ class SessionManager:
         Returns ``{"key", "created_at", "updated_at", "metadata", "messages"}`` or
         ``None`` when the session file does not exist or fails to parse.
         """
-        path = self._get_session_path(key)
-        if not path.exists():
+        path, _is_legacy = self._resolve_existing_session_path(key)
+        if path is None:
             return None
         try:
             messages: list[dict[str, Any]] = []
@@ -797,6 +836,8 @@ class SessionManager:
                         stored_key = data.get("key")
                     else:
                         messages.append(data)
+            if stored_key and stored_key != key:
+                return None
             return {
                 "key": stored_key or key,
                 "created_at": created_at,
@@ -818,8 +859,8 @@ class SessionManager:
         This is used by WebUI routes that need session-level metadata but not the
         full conversation transcript.
         """
-        path = self._get_session_path(key)
-        if not path.exists():
+        path, _is_legacy = self._resolve_existing_session_path(key)
+        if path is None:
             return None
         try:
             with open(path, encoding="utf-8") as f:
@@ -833,8 +874,11 @@ class SessionManager:
                     if data.get("_type") != "metadata":
                         return None
                     metadata = data.get("metadata", {})
+                    stored_key = data.get("key") or key
+                    if stored_key != key:
+                        return None
                     return {
-                        "key": data.get("key") or key,
+                        "key": stored_key,
                         "created_at": data.get("created_at"),
                         "updated_at": data.get("updated_at"),
                         "metadata": metadata if isinstance(metadata, dict) else {},

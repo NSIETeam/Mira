@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import TYPE_CHECKING, Any
 
 from mira.agent.tools.base import Tool, ToolResult, tool_parameters
@@ -156,34 +157,44 @@ class SpawnTool(Tool):
         method = self._manager.run_inline if wait else self._manager.spawn
         if wait or len(requested_tasks) == 1:
             chosen_task, chosen_label, chosen_weight = requested_tasks[0]
-            return await method(
-                task=chosen_task,
-                runtime=request_ctx.runtime,
-                label=chosen_label,
-                weight=chosen_weight,
-                origin_channel=origin_channel,
-                origin_chat_id=origin_chat_id,
-                session_key=session_key,
-                origin_message_id=request_ctx.message_id,
-                temperature=temperature,
-                workspace_scope=current_workspace_scope(),
-                memory_policy=memory_policy,
+            if not wait and running >= limit:
+                return ToolResult.error(
+                    f"Cannot spawn subagent: concurrency limit reached ({running}/{limit})."
+                )
+            return await self._call_manager_method(
+                method,
+                {
+                    "task": chosen_task,
+                    "runtime": request_ctx.runtime,
+                    "label": chosen_label,
+                    "weight": chosen_weight,
+                    "origin_channel": origin_channel,
+                    "origin_chat_id": origin_chat_id,
+                    "session_key": session_key,
+                    "origin_message_id": request_ctx.message_id,
+                    "temperature": temperature,
+                    "workspace_scope": current_workspace_scope(),
+                    "memory_policy": memory_policy,
+                },
             )
 
         results: list[str] = []
         for item_task, item_label, item_weight in requested_tasks:
-            results.append(await self._manager.spawn(
-                task=item_task,
-                runtime=request_ctx.runtime,
-                label=item_label,
-                weight=item_weight,
-                origin_channel=origin_channel,
-                origin_chat_id=origin_chat_id,
-                session_key=session_key,
-                origin_message_id=request_ctx.message_id,
-                temperature=temperature,
-                workspace_scope=current_workspace_scope(),
-                memory_policy=memory_policy,
+            results.append(await self._call_manager_method(
+                self._manager.spawn,
+                {
+                    "task": item_task,
+                    "runtime": request_ctx.runtime,
+                    "label": item_label,
+                    "weight": item_weight,
+                    "origin_channel": origin_channel,
+                    "origin_chat_id": origin_chat_id,
+                    "session_key": session_key,
+                    "origin_message_id": request_ctx.message_id,
+                    "temperature": temperature,
+                    "workspace_scope": current_workspace_scope(),
+                    "memory_policy": memory_policy,
+                },
             ))
         queued = sum("queued" in line.lower() for line in results)
         started = len(results) - queued
@@ -194,3 +205,15 @@ class SpawnTool(Tool):
                 f"- Host/session concurrency is currently saturated at {running}/{limit}; new tasks entered the shared queue."
             )
         return "\n".join(summary)
+
+    async def _call_manager_method(self, method: Any, kwargs: dict[str, Any]) -> str:
+        signature = inspect.signature(method)
+        if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()):
+            accepted = kwargs
+        else:
+            accepted = {
+                key: value
+                for key, value in kwargs.items()
+                if key in signature.parameters
+            }
+        return await method(**accepted)

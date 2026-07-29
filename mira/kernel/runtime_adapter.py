@@ -8,7 +8,8 @@ operator loops.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
 from .paths import KERNEL_PROJECT_ROOT
 
 

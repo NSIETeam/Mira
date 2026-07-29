@@ -2,10 +2,12 @@
 Mira - A lightweight execution kernel and AI agent framework
 """
 
+import sys
 import tomllib
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 from pathlib import Path
+from types import ModuleType
 
 
 def _read_pyproject_version() -> str | None:
@@ -30,6 +32,17 @@ __logo__ = ""
 __app_name__ = "Mira"
 __cli_name__ = "mira"
 __legacy_cli_name__ = "mira"
+mira = sys.modules[__name__]
+
+
+class _MiraPackage(ModuleType):
+    def __getattribute__(self, name: str):
+        if name == "mira":
+            return self
+        return super().__getattribute__(name)
+
+
+sys.modules[__name__].__class__ = _MiraPackage
 
 _LAZY_EXPORTS = {
     "ExecutionKernel": ".kernel",

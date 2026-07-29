@@ -176,23 +176,22 @@ class ContextBuilder:
         """Load project instructions plus the agent's global profile files."""
         parts = []
         project_root = workspace or self.workspace
-        agents_path = project_root / "AGENTS.md"
-        if agents_path.exists():
-            content = agents_path.read_text(encoding="utf-8")
-            if content.strip():
-                parts.append(f"## AGENTS.md\n\n{content}")
-
-        for layer in self.memory.instruction_layers(project_root):
-            content = str(layer.get("content") or "")
+        use_selected_project = project_root != self.workspace
+        for filename in self.BOOTSTRAP_FILES:
+            root = project_root if filename == "AGENTS.md" else self.workspace
+            if use_selected_project and filename == "AGENTS.md":
+                root = project_root
+            path = root / filename
+            if not path.exists():
+                continue
+            content = path.read_text(encoding="utf-8")
             if not content.strip():
                 continue
-            filename = Path(layer["path"]).name
             if filename == "SOUL.md" and self._is_template_content(content, "legacy/SOUL.md"):
                 content = load_bundled_template("SOUL.md") or content
             if filename in self._SKIPPABLE_DEFAULTS and self._is_template_content(content, filename):
                 continue
-            heading = layer["label"] if layer.get("source") == "primary" else f"{layer['label']} ({layer.get('fallback_label')})"
-            parts.append(f"## {heading}\n\n{content}")
+            parts.append(f"## {filename}\n\n{content}")
 
         return "\n\n".join(parts) if parts else ""
 

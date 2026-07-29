@@ -24,6 +24,11 @@ mira's agent workspace: {{ agent_workspace }}
 - Active memory policy: {{ memory_policy }}
 - Effective memory view: {{ memory_view }}
 - Inherited memory layers: {{ inherited_memory_layers }}
+{% if history_log_visible %}
+- History log: {{ history_log }}
+{% else %}
+- History log: inherited through the memory view; direct path hidden.
+{% endif %}
 - Inherit stable user memory, project memory, local project instructions, indexed topic memory, and knowledge-graph memory from the main agent when the policy allows it.
 - Do not read parent session files or the agent history log directly. Use only the memory view described above.
 - Treat your own reasoning and intermediate execution as isolated to this subtask unless the main agent asks you to persist a result.

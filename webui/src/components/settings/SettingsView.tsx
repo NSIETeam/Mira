@@ -2892,7 +2892,22 @@ function VersionCheckRow({ currentVersion }: { currentVersion?: string }) {
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<
     | { type: "up-to-date" }
-    | { type: "update"; latestVersion: string; pypiUrl?: string }
+    | {
+        type: "update";
+        latestVersion: string;
+        releaseUrl?: string;
+        pypiUrl?: string;
+        notes?: string;
+        installMode?: "verified-download" | "manual";
+        privacy?: string;
+        artifact?: {
+          name?: string;
+          downloadUrl?: string;
+          sizeBytes?: number;
+          sha256?: string;
+          verified?: boolean;
+        } | null;
+      }
     | { type: "error"; message: string }
     | null
   >(null);
@@ -2906,7 +2921,12 @@ function VersionCheckRow({ currentVersion }: { currentVersion?: string }) {
         setResult({
           type: "update",
           latestVersion: res.updateAvailable.latestVersion,
+          releaseUrl: res.updateAvailable.releaseUrl,
           pypiUrl: res.updateAvailable.pypiUrl,
+          notes: res.updateAvailable.notes,
+          installMode: res.updateAvailable.installMode,
+          privacy: res.updateAvailable.privacy,
+          artifact: res.updateAvailable.artifact,
         });
       } else {
         setResult({ type: "up-to-date" });
@@ -2952,24 +2972,56 @@ function VersionCheckRow({ currentVersion }: { currentVersion?: string }) {
           </span>
         ) : null}
         {result?.type === "update" ? (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-blue-600 dark:text-blue-300">
-            <ArrowUpCircle className="h-3 w-3" aria-hidden />
-            {t("settings.about.updateAvailable", {
-              defaultValue: "Update available v{{version}}",
-              version: result.latestVersion,
-            })}
-            {result.pypiUrl ? (
-              <a
-                href={result.pypiUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-0.5 underline-offset-2 hover:underline"
-              >
-                PyPI
-                <ExternalLink className="h-2.5 w-2.5" aria-hidden />
-              </a>
+          <div className="max-w-[360px] rounded-2xl border border-blue-200/70 bg-blue-50/80 p-3 text-left text-[12px] text-blue-950 shadow-sm dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-100">
+            <div className="flex items-center gap-1.5 font-medium">
+              <ArrowUpCircle className="h-3.5 w-3.5" aria-hidden />
+              {t("settings.about.updateAvailable", {
+                defaultValue: "Update available v{{version}}",
+                version: result.latestVersion,
+              })}
+            </div>
+            {result.artifact ? (
+              <div className="mt-1.5 leading-5">
+                {result.artifact.name}
+                {typeof result.artifact.sizeBytes === "number"
+                  ? ` · ${formatUpdateSize(result.artifact.sizeBytes)}`
+                  : ""}
+                {result.artifact.verified
+                  ? " · SHA-256 verified"
+                  : " · manual verification required"}
+              </div>
             ) : null}
-          </span>
+            {result.notes ? (
+              <div className="mt-1.5 line-clamp-3 leading-5 opacity-80">{result.notes}</div>
+            ) : null}
+            {result.privacy ? (
+              <div className="mt-1.5 leading-5 opacity-70">{result.privacy}</div>
+            ) : null}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {result.artifact?.downloadUrl ? (
+                <a
+                  href={result.artifact.downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-white hover:bg-blue-700"
+                >
+                  Download installer
+                  <ExternalLink className="h-2.5 w-2.5" aria-hidden />
+                </a>
+              ) : null}
+              {result.releaseUrl || result.pypiUrl ? (
+                <a
+                  href={result.releaseUrl || result.pypiUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-full border border-blue-300 px-2.5 py-1 hover:bg-blue-100/70 dark:border-blue-400/40 dark:hover:bg-blue-400/10"
+                >
+                  Release notes
+                  <ExternalLink className="h-2.5 w-2.5" aria-hidden />
+                </a>
+              ) : null}
+            </div>
+          </div>
         ) : null}
         {result?.type === "error" ? (
           <span className="text-[12px] text-destructive">{result.message}</span>
@@ -2977,6 +3029,12 @@ function VersionCheckRow({ currentVersion }: { currentVersion?: string }) {
       </div>
     </div>
   );
+}
+
+function formatUpdateSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "unknown size";
+  const mib = bytes / 1024 / 1024;
+  return `${mib.toFixed(mib >= 10 ? 0 : 1)} MB`;
 }
 
 function AppearanceSettings({

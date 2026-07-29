@@ -224,7 +224,7 @@ async def publish_turn_run_status(
     started_at: float | None = None,
 ) -> None:
     """Notify WebSocket clients while a user turn is executing (timing strip)."""
-    if msg.channel != "websocket" or not is_webui_shell_metadata(msg.metadata):
+    if msg.channel != "websocket":
         return
     cid = str(msg.chat_id)
     started_at_event: float | None = None
@@ -359,7 +359,7 @@ class WebuiTurnCoordinator:
 
     @staticmethod
     def _is_webui_shell_event(ctx: RuntimeEventContext) -> bool:
-        return ctx.channel == "websocket" and is_webui_shell_metadata(ctx.metadata)
+        return ctx.channel == "websocket"
 
     async def _publish_webui_shell_event(
         self,
@@ -369,7 +369,7 @@ class WebuiTurnCoordinator:
         event: GoalStateSyncEvent | TurnEndEvent | SessionUpdatedEvent,
         metadata: dict[str, Any] | None,
     ) -> None:
-        if channel != "websocket" or not is_webui_shell_metadata(metadata):
+        if channel != "websocket":
             return
         await self.bus.publish_outbound(
             outbound_message_for_event(
@@ -462,7 +462,7 @@ class WebuiTurnCoordinator:
         session_key: str,
         latency_ms: int | None,
     ) -> None:
-        if msg.channel != "websocket" or not is_webui_shell_metadata(msg.metadata):
+        if msg.channel != "websocket":
             return
 
         session = self.sessions.get_or_create(session_key)

@@ -29,7 +29,7 @@ def mock_feishu_channel():
     config.app_secret = "test_app_secret"
     config.encrypt_key = None
     config.verification_token = None
-    config.tool_hint_prefix = "\U0001f527"  # 
+    config.tool_hint_prefix = "\U0001f527"  #
     bus = MagicMock()
     channel = FeishuChannel(config, bus)
     channel._client = MagicMock()

@@ -11,6 +11,8 @@ from loguru import logger
 from pydantic import BaseModel
 
 from mira.config.schema import Config, _resolve_tool_config_refs
+from mira.security import credential_store
+from mira.security.credential_store import resolve_secret_ref, store_secret_value
 from mira.utils.helpers import _write_text_atomic
 
 # Global variable to store current config path (for multi-instance support)
@@ -54,6 +56,7 @@ def load_config(config_path: Path | None = None) -> Config:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             data = _migrate_config(data)
+            data = _resolve_secret_refs(data)
             config = Config.model_validate(data)
         except (json.JSONDecodeError, ValueError, pydantic.ValidationError) as e:
             raise ValueError(f"Failed to load config from {path}: {e}") from e
@@ -81,6 +84,8 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
     data = config.model_dump(mode="json", by_alias=True)
+    if _should_externalize_secrets(config_path):
+        data = _externalize_secrets(data)
     # OAuth credentials live in dedicated token stores. Persist only the
     # non-credential request settings consumed by these provider backends.
     for alias, provider in (
@@ -98,6 +103,40 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
 
     # Temp + replace so a crash mid-write cannot leave a truncated config.json.
     _write_text_atomic(path, json.dumps(data, indent=2, ensure_ascii=False))
+
+
+def _resolve_secret_refs(data: Any) -> Any:
+    if isinstance(data, dict):
+        return {key: _resolve_secret_refs(value) for key, value in data.items()}
+    if isinstance(data, list):
+        return [_resolve_secret_refs(value) for value in data]
+    if isinstance(data, str):
+        return resolve_secret_ref(data)
+    return data
+
+
+def _externalize_secrets(data: dict[str, Any]) -> dict[str, Any]:
+    providers = data.get("providers")
+    if isinstance(providers, dict):
+        for name, provider in providers.items():
+            if isinstance(provider, dict):
+                provider["apiKey"] = store_secret_value(
+                    "provider",
+                    str(name),
+                    "apiKey",
+                    provider.get("apiKey"),
+                )
+    api = data.get("api")
+    if isinstance(api, dict):
+        api["apiKey"] = store_secret_value("runtime", "api", "apiKey", api.get("apiKey"))
+    return data
+
+
+def _should_externalize_secrets(config_path: Path | None) -> bool:
+    store = credential_store.system_credential_store()
+    if os.environ.get("PYTEST_CURRENT_TEST") and type(store).__name__ == "MacOSKeychainStore":
+        return False
+    return store.available()
 
 
 def merge_missing_defaults(existing: Any, defaults: Any) -> Any:

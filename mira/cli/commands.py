@@ -734,7 +734,7 @@ def onboard(
         webui_cmd += f' -c "{config_path}"'
 
     typer.echo(
-        f"\n {__app_name__} is ready. Run: {webui_cmd}  (or: {__cli_name__} webui)"
+        f"\n mira is ready. Run: {webui_cmd}  (or: {__cli_name__} webui)"
     )
 
 
@@ -1190,7 +1190,7 @@ def _print_foreground_port_conflict(
     gateway_port: int,
 ) -> None:
     console.print(
-        f"[red]Error: {__app_name__} cannot start because one of its local ports is already in use.[/red]"
+        "[red]Error: mira cannot start because one of its local ports is already in use.[/red]"
     )
     console.print(f"  WebUI: [cyan]{webui_url}[/cyan]")
     console.print(
@@ -1223,11 +1223,11 @@ def _print_webui_foreground_lifecycle(*, attached: bool) -> None:
     """Explain how the browser and gateway lifecycles differ."""
     console.print()
     if attached:
-        console.print(f"[green]{__app_name__} is attached to the existing gateway.[/green]")
+        console.print("[green]mira is attached to the existing gateway.[/green]")
     else:
-        console.print(f"[green]{__app_name__} is running in this terminal.[/green]")
+        console.print("[green]mira is running in this terminal.[/green]")
     console.print("[dim]Closing the browser does not stop channels or automations.[/dim]")
-    console.print(f"[dim]Press Ctrl+C here to stop {__app_name__}.[/dim]")
+    console.print("[dim]Press Ctrl+C here to stop mira.[/dim]")
 
 
 def _attach_to_background_gateway(runtime: Any) -> None:
@@ -1237,7 +1237,7 @@ def _attach_to_background_gateway(runtime: Any) -> None:
         while runtime.status().running:
             time.sleep(0.5)
     except KeyboardInterrupt:
-        console.print(f"\n[yellow]Stopping {__app_name__}...[/yellow]")
+        console.print("\n[yellow]Stopping mira...[/yellow]")
         result = runtime.stop()
         if result.ok or result.message == "gateway_not_running":
             console.print("[green]Gateway stopped.[/green]")
@@ -1651,7 +1651,8 @@ def desktop(
     ),
 ) -> None:
     """Launch the Mira workbench inside a native desktop window."""
-    from mira.config.loader import load_config as _load_config_file, save_config
+    from mira.config.loader import load_config as _load_config_file
+    from mira.config.loader import save_config
     from mira.desktop.app import NativeWindowOptions, launch_native_window
     from mira.gateway import GatewayRuntime, GatewayRuntimePaths
 
@@ -2776,6 +2777,35 @@ def plugins_disable(
 # ============================================================================
 # Status Commands
 # ============================================================================
+
+
+@app.command()
+def doctor(
+    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
+    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
+    fix: bool = typer.Option(False, "--fix", help="Apply safe automatic repairs"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Report repairs without changing files"),
+):
+    """Diagnose and repair common local kernel problems."""
+    from mira.kernel.doctor import KernelDoctor
+
+    config_path = Path(config).expanduser() if config else Path.home() / ".mira" / "config.json"
+    workspace_path = Path(workspace).expanduser() if workspace else None
+    findings = KernelDoctor(config_path=config_path, workspace=workspace_path).run(
+        fix=fix,
+        dry_run=dry_run,
+    )
+    if not findings:
+        console.print("[green]Mira doctor found no local kernel problems.[/green]")
+        return
+    for finding in findings:
+        status = "fixed" if finding.repaired else ("fixable" if finding.repairable else "manual")
+        color = "green" if finding.repaired else ("yellow" if finding.severity == "warning" else "red")
+        console.print(f"[{color}]{finding.id}[/{color}] {status}: {finding.message}")
+        if finding.detail:
+            console.print(f"[dim]  {finding.detail}[/dim]")
+    if any(f.repairable and not f.repaired for f in findings) and not fix:
+        console.print("[dim]Run with --fix to apply safe automatic repairs.[/dim]")
 
 
 @app.command()

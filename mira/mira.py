@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -61,7 +62,7 @@ __all__ = [
 ]
 
 
-class mira:
+class mira:  # noqa: N801
     """Programmatic facade for running the mira agent.
 
     Usage::
@@ -323,3 +324,8 @@ class mira:
 
     async def __aexit__(self, *exc: object) -> None:
         await self.aclose()
+
+
+_parent_package = sys.modules.get(__package__)
+if _parent_package is not None:
+    setattr(_parent_package, "mira", _parent_package)

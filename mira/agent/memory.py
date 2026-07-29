@@ -835,7 +835,6 @@ class MemoryStore:
         graph = self.read_graph()
         entities = graph.get("entities", []) if isinstance(graph.get("entities"), list) else []
         relations = graph.get("relations", []) if isinstance(graph.get("relations"), list) else []
-        evidence = graph.get("evidence", []) if isinstance(graph.get("evidence"), list) else []
         lines: list[str] = []
         for entity in entities[:max_items]:
             if not isinstance(entity, dict):
@@ -852,12 +851,6 @@ class MemoryStore:
             rel_type = str(relation.get("type") or relation.get("relation") or "related_to").strip()
             if source and target:
                 lines.append(f"- relation [{rel_type}]: {source} -> {target}")
-        for item in evidence[:max_items]:
-            if not isinstance(item, dict):
-                continue
-            summary = str(item.get("summary") or item.get("text") or item.get("id") or "").strip()
-            if summary:
-                lines.append(f"- evidence: {truncate_text(summary, 160)}")
         return "\n".join(lines)
 
     def memory_audit(self, workspace: Path | None = None) -> dict[str, Any]:
@@ -1390,15 +1383,7 @@ class MemoryStore:
             ("SOUL.md", self.soul_file),
             ("USER.md", self.user_file),
             ("memory/MEMORY.md", self.memory_file),
-            ("memory/graph.json", self.graph_file),
         ]
-        files.extend(
-            (
-                f"memory/topics/{path.name}",
-                path,
-            )
-            for path in self.referenced_topic_files()
-        )
         blocks = []
         for label, path in files:
             try:

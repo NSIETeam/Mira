@@ -95,7 +95,8 @@ def _fmt_known(tc, fmt: tuple, max_length: int = 40) -> str:
     if val is None:
         return tc.name
     if fmt[2]:  # is_path
-        val = abbreviate_path(val, max_len=max_length)
+        overhead = len(fmt[1].format(""))
+        val = abbreviate_path(val, max_len=max(max_length - overhead, 8))
     elif fmt[3]:  # is_command
         val = _abbreviate_command(val, max_len=max_length)
     return fmt[1].format(val)
@@ -103,7 +104,7 @@ def _fmt_known(tc, fmt: tuple, max_length: int = 40) -> str:
 
 def _abbreviate_command(cmd: str, max_len: int = 40) -> str:
     """Abbreviate paths in a command string, then truncate."""
-    path_max = max(max_len // 2, 25)
+    path_max = min(max(max_len // 3, 10), 18)
 
     def _replace_path(match: re.Match[str]) -> str:
         if match.group("double") is not None:

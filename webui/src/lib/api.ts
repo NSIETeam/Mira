@@ -580,7 +580,18 @@ export interface VersionCheckResult {
   updateAvailable: {
     currentVersion: string;
     latestVersion: string;
+    releaseUrl?: string;
     pypiUrl?: string;
+    notes?: string;
+    installMode?: "verified-download" | "manual";
+    privacy?: string;
+    artifact?: {
+      name?: string;
+      downloadUrl?: string;
+      sizeBytes?: number;
+      sha256?: string;
+      verified?: boolean;
+    } | null;
   } | null;
 }
 

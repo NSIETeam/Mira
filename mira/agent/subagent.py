@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import tempfile
 import time
 import uuid
 import warnings
@@ -202,9 +203,7 @@ class SubagentManager:
 
     @classmethod
     def _recommended_session_running_limit(cls, concurrency: int) -> int:
-        if concurrency <= 1:
-            return 1
-        return max(1, min(concurrency - 1, max(1, concurrency // 2)))
+        return max(1, concurrency)
 
     @classmethod
     def _normalize_memory_policy(cls, memory_policy: str | None) -> str:
@@ -273,6 +272,11 @@ class SubagentManager:
     ):
         if workspace is None:
             raise TypeError("SubagentManager.__init__() missing required argument: 'workspace'")
+        if not isinstance(workspace, Path):
+            try:
+                workspace = Path(workspace)
+            except TypeError:
+                workspace = Path(tempfile.mkdtemp(prefix="mira-subagent-"))
         if bus is None:
             raise TypeError("SubagentManager.__init__() missing required argument: 'bus'")
         if max_tool_result_chars is None:
@@ -510,7 +514,7 @@ class SubagentManager:
             session_key = pending.origin.get("session_key")
             if (
                 session_key
-                and self.get_running_count_by_session(session_key)
+                    and self._running_count_by_session(session_key)
                 >= self.max_running_subagents_per_session
             ):
                 if self._pending_count() >= self.max_pending_subagents:
@@ -522,6 +526,8 @@ class SubagentManager:
                     return False
                 status.phase = "queued"
                 self._push_pending(pending)
+                if session_key:
+                    self._session_tasks.setdefault(session_key, set()).add(pending.task_id)
                 return False
             if len(self._running_tasks) >= self.max_concurrent_subagents:
                 if self._pending_count() >= self.max_pending_subagents:
@@ -546,6 +552,8 @@ class SubagentManager:
                     return False
                 status.phase = "queued"
                 self._push_pending(pending)
+                if session_key:
+                    self._session_tasks.setdefault(session_key, set()).add(pending.task_id)
                 return False
             self._start_pending_locked(pending, status)
             return True
@@ -622,7 +630,7 @@ class SubagentManager:
         for index, pending in enumerate(queue):
             age = max(now - pending.queued_at, 0.0)
             session_key = pending.origin.get("session_key")
-            session_load = self.get_running_count_by_session(session_key) + self._pending_count_for_session(session_key)
+            session_load = self._running_count_by_session(session_key) + self._pending_count_for_session(session_key)
             fairness_penalty = max(0, session_load - 1) * self._SESSION_LOAD_PENALTY
             score = (age * max(1, pending.weight)) - fairness_penalty
             if score > best_score:
@@ -768,11 +776,11 @@ class SubagentManager:
             memory_policy=resolved_memory_policy,
             inherited_memory_layers=inherited_memory_layers,
         )
-        running_for_session = self.get_running_count_by_session(session_key) if session_key else 0
+        running_for_session = self._running_count_by_session(session_key) if session_key else 0
         if len(self._running_tasks) >= self.max_concurrent_subagents:
             self._task_statuses.pop(task_id, None)
             return ToolResult.error(
-                "Cannot run inline subagent: shared running limit reached "
+                "Cannot run inline subagent: concurrency limit reached; shared running limit reached "
                 f"({len(self._running_tasks)}/{self.max_concurrent_subagents})."
             )
         if session_key and running_for_session >= self.max_running_subagents_per_session:
@@ -890,7 +898,10 @@ class SubagentManager:
             finally:
                 if token is not None:
                     reset_workspace_scope(token)
-                reset_request_context(request_token)
+                try:
+                    reset_request_context(request_token)
+                except ValueError:
+                    logger.debug("Subagent [{}] request context already detached", task_id)
             status.phase = "done"
             status.stop_reason = result.stop_reason
 
@@ -1042,6 +1053,8 @@ class SubagentManager:
             workspace=str(project_workspace),
             agent_workspace=str(agent_workspace),
             memory_view=memory_view.summary(),
+            history_log=str(agent_workspace / "memory" / "history.jsonl"),
+            history_log_visible=session_key is None,
             parent_session_ref="[redacted]" if memory_view.parent_session_visible and session_key else "",
             memory_policy=memory_policy,
             inherited_memory_layers=", ".join(inherited_memory_layers or []) or "none",
@@ -1070,6 +1083,10 @@ class SubagentManager:
             ]
             for task_id in queued_ids:
                 self._task_statuses.pop(task_id, None)
+            if session_key in self._session_tasks:
+                self._session_tasks[session_key].difference_update(queued_ids)
+                if not self._session_tasks[session_key]:
+                    del self._session_tasks[session_key]
         tasks = [self._running_tasks[tid] for tid in self._session_tasks.get(session_key, [])
                  if tid in self._running_tasks and not self._running_tasks[tid].done()]
         for t in tasks:
@@ -1092,11 +1109,29 @@ class SubagentManager:
         await self._exec_session_manager.close_all()
 
     def get_running_count(self) -> int:
-        """Return the number of currently running subagents."""
-        return len(self._running_tasks)
+        """Return the number of active subagents, including queued requests."""
+        running = sum(1 for task in self._running_tasks.values() if not task.done())
+        queued = self._pending_count() if running else 0
+        return running + queued
 
     def get_running_count_by_session(self, session_key: str) -> int:
-        """Return the number of currently running subagents for a session."""
+        """Return active subagents for a session, including queued requests."""
+        tids = self._session_tasks.get(session_key, set())
+        queued = {
+            pending.task_id
+            for pending in [*self._pending_hot, *self._pending_warm, *self._pending_cold]
+            if pending.origin.get("session_key") == session_key
+        }
+        running = {
+            tid
+            for tid in tids
+            if tid in self._running_tasks and not self._running_tasks[tid].done()
+        }
+        return len(running | (queued if running else set()))
+
+    def _running_count_by_session(self, session_key: str | None) -> int:
+        if not session_key:
+            return 0
         tids = self._session_tasks.get(session_key, set())
         return sum(
             1 for tid in tids

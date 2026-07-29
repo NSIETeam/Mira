@@ -89,6 +89,7 @@ from .scheduler import (
     prioritize_lane,
     request_background_drain,
 )
+from .session_projection import KernelSessionProjector
 from .shell import ShellDescriptor, default_engineering_shell, get_shell, list_shells
 from .worker_plane import build_worker_registry
 
@@ -778,6 +779,7 @@ class KernelApp:
         self._checkpoint_signatures: dict[str, tuple[Any, ...]] = {}
         self._subagent_signatures: dict[str, tuple[Any, ...]] = {}
         self._board_signatures: dict[str, tuple[Any, ...]] = {}
+        self._session_projector = KernelSessionProjector(self)
         self._attach_runtime_bus()
         self._record_kernel_event(
             "kernel_boot",
@@ -882,11 +884,11 @@ class KernelApp:
         runtime_events = getattr(loop, "runtime_events", None)
         if not isinstance(runtime_events, RuntimeEventBus):
             return
-        runtime_events.subscribe(self._handle_session_turn_started, SessionTurnStarted)
-        runtime_events.subscribe(self._handle_run_status_changed, TurnRunStatusChanged)
-        runtime_events.subscribe(self._handle_turn_completed, TurnCompleted)
-        runtime_events.subscribe(self._handle_goal_state_changed, GoalStateChanged)
-        runtime_events.subscribe(self._handle_runtime_model_changed, RuntimeModelChanged)
+        runtime_events.subscribe(self._session_projector.handle_session_turn_started, SessionTurnStarted)
+        runtime_events.subscribe(self._session_projector.handle_run_status_changed, TurnRunStatusChanged)
+        runtime_events.subscribe(self._session_projector.handle_turn_completed, TurnCompleted)
+        runtime_events.subscribe(self._session_projector.handle_goal_state_changed, GoalStateChanged)
+        runtime_events.subscribe(self._session_projector.handle_runtime_model_changed, RuntimeModelChanged)
         self._runtime_subscription_attached = True
 
     def _active_session_metadata(self) -> dict[str, Any] | None:
@@ -1191,79 +1193,19 @@ class KernelApp:
                     )
 
     def _handle_session_turn_started(self, event: SessionTurnStarted) -> None:
-        session_key = event.context.session_key
-        self._active_session_key = session_key
-        self._session_status[session_key] = "queued"
-        self._record_kernel_event(
-            "session_turn_started",
-            state="running",
-            message=f"session {session_key} admitted to kernel",
-            session_key=session_key,
-            event_type="session",
-        )
+        self._session_projector.handle_session_turn_started(event)
 
     def _handle_run_status_changed(self, event: TurnRunStatusChanged) -> None:
-        session_key = event.context.session_key
-        self._active_session_key = session_key
-        self._session_status[session_key] = event.status
-        if event.status == "running":
-            self._scheduler_state = prioritize_lane(self._scheduler_state, lane="interactive")
-        self._record_kernel_event(
-            "turn_run_status_changed",
-            state=event.status,
-            message=f"session {session_key} status -> {event.status}",
-            session_key=session_key,
-            event_type="turn",
-        )
+        self._session_projector.handle_run_status_changed(event)
 
     def _handle_turn_completed(self, event: TurnCompleted) -> None:
-        session_key = event.context.session_key
-        self._active_session_key = session_key
-        self._session_status[session_key] = "idle"
-        self._session_latency[session_key] = event.latency_ms
-        runtime = event.runtime
-        self._session_runtime[session_key] = (
-            {}
-            if runtime is None
-            else {
-                "model": getattr(runtime, "model", None),
-                "model_preset": getattr(runtime, "model_preset", None),
-                "context_window_tokens": getattr(runtime, "context_window_tokens", None),
-            }
-        )
-        checkpoints = self._loop_runtime_var("session_checkpoints", {})
-        if isinstance(checkpoints, dict):
-            checkpoints.pop(session_key, None)
-        self._checkpoint_signatures.pop(session_key, None)
-        self._subagent_signatures.pop(session_key, None)
-        self._record_kernel_event(
-            "turn_completed",
-            state="ok",
-            message=f"session {session_key} completed",
-            session_key=session_key,
-            event_type="turn",
-            latency_ms=event.latency_ms,
-        )
+        self._session_projector.handle_turn_completed(event)
 
     def _handle_goal_state_changed(self, event: GoalStateChanged) -> None:
-        session_key = event.context.session_key
-        self._active_session_key = session_key
-        self._session_metadata[session_key] = dict(event.session_metadata or {})
-        goal_blob = goal_state_ws_blob(event.session_metadata)
-        self._record_kernel_event(
-            "goal_state_changed",
-            state="active" if goal_blob.get("active") else "idle",
-            message=str(goal_blob.get("ui_summary") or goal_blob.get("objective") or "goal state updated"),
-            session_key=session_key,
-            event_type="goal",
-        )
+        self._session_projector.handle_goal_state_changed(event)
 
     def _handle_runtime_model_changed(self, event: RuntimeModelChanged) -> None:
-        self._record_kernel_event(
-            "runtime_model_changed",
-            state="ready",
-            message=f"runtime model -> {event.model}",
-        )
+        self._session_projector.handle_runtime_model_changed(event)
 
     @classmethod
     def from_config(
