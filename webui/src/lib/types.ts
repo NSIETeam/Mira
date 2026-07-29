@@ -399,6 +399,7 @@ export interface BootstrapResponse {
     host_memory_mb?: number | null;
     plan_first_default?: boolean;
     parallelism_mode?: string;
+    host_strategy_profile?: string;
   } | null;
 }
 

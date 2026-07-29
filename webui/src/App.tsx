@@ -617,6 +617,9 @@ function RuntimeSnapshotPanel({
         parallelismMode: typeof scheduler.parallelism_mode === "string"
           ? scheduler.parallelism_mode
           : null,
+        hostStrategyProfile: typeof scheduler.host_strategy_profile === "string"
+          ? scheduler.host_strategy_profile
+          : null,
         defaultMemoryPolicy: typeof scheduler.default_memory_policy === "string"
           ? scheduler.default_memory_policy
           : null,
@@ -693,6 +696,9 @@ function RuntimeSnapshotPanel({
               {schedulerSummary.planFirstDefault ? <span>plan-first</span> : null}
               {schedulerSummary.parallelismMode ? (
                 <span>parallel {schedulerSummary.parallelismMode}</span>
+              ) : null}
+              {schedulerSummary.hostStrategyProfile ? (
+                <span>strategy {schedulerSummary.hostStrategyProfile}</span>
               ) : null}
               <span>running {schedulerSummary.running}/{schedulerSummary.runningLimit}</span>
               {schedulerSummary.recommendedConcurrency ? (

@@ -187,6 +187,16 @@ class SubagentManager:
         normalized = cls._normalize_memory_policy(memory_policy)
         return list(cls._MEMORY_POLICY_LAYERS.get(normalized, cls._MEMORY_POLICY_LAYERS[cls._DEFAULT_MEMORY_POLICY]))
 
+    @classmethod
+    def _host_strategy_profile(cls) -> str:
+        cpu = os.cpu_count() or 2
+        memory_mb = cls._host_memory_mb() or 0
+        if cpu <= 2 or (memory_mb and memory_mb < 4096):
+            return "conservative"
+        if cpu >= 8 and memory_mb >= 16384:
+            return "throughput_shared"
+        return "balanced_shared"
+
     def __init__(
         self,
         provider: LLMProvider | None = None,
@@ -938,4 +948,5 @@ class SubagentManager:
             "recommended_concurrency": self._recommended_concurrency(),
             "plan_first_default": True,
             "parallelism_mode": "lightweight",
+            "host_strategy_profile": self._host_strategy_profile(),
         }
