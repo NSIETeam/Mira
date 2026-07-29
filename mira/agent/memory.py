@@ -90,6 +90,12 @@ class MemoryStore:
     _TOPIC_HEADING_RE = re.compile(r"^##\s+Topic:\s+([A-Za-z0-9._-]+)", re.MULTILINE)
     _PATH_ENTITY_RE = re.compile(r"`([^`\n]+(?:/[^\n`]+|\.[A-Za-z0-9_-]+))`")
     _INLINE_PATH_RE = re.compile(r"\b([A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+)\b")
+    _ISSUE_RE = re.compile(r"(?:issue|#)\s*(\d+)", re.IGNORECASE)
+    _DECISION_RE = re.compile(
+        r"(?:决定|改为|采用|切换到|use|using|switch to|decision:)\s+([^\n。.!?]{4,120})",
+        re.IGNORECASE,
+    )
+    _MODULE_RE = re.compile(r"\b([A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+|[A-Za-z0-9_.-]+\.(?:py|ts|tsx|js|jsx|md))\b")
 
     def __init__(self, workspace: Path, max_history_entries: int = _DEFAULT_MAX_HISTORY):
         self.workspace = workspace
@@ -477,6 +483,43 @@ class MemoryStore:
                     paths.append(normalized)
         return paths[:12]
 
+    def _extract_issue_ids(self, content: str) -> list[str]:
+        seen: set[str] = set()
+        issues: list[str] = []
+        for match in self._ISSUE_RE.finditer(content):
+            value = match.group(1)
+            if value not in seen:
+                seen.add(value)
+                issues.append(value)
+        return issues[:8]
+
+    def _extract_decisions(self, content: str) -> list[str]:
+        seen: set[str] = set()
+        decisions: list[str] = []
+        for match in self._DECISION_RE.finditer(content):
+            text = " ".join(match.group(1).split()).strip(" -:;,.")
+            if len(text) < 4:
+                continue
+            if text not in seen:
+                seen.add(text)
+                decisions.append(text)
+        return decisions[:6]
+
+    def _extract_modules(self, content: str) -> list[str]:
+        seen: set[str] = set()
+        modules: list[str] = []
+        for match in self._MODULE_RE.finditer(content):
+            value = match.group(1).strip()
+            if "/" not in value and "." not in value:
+                continue
+            if value.startswith(("http://", "https://")):
+                continue
+            normalized = value.strip("./")
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                modules.append(normalized)
+        return modules[:12]
+
     def update_graph_from_history_entry(
         self,
         *,
@@ -521,6 +564,49 @@ class MemoryStore:
                     source=session_entity_id,
                     relation_type="mentions",
                     target=file_entity_id,
+                )
+
+        for module_name in self._extract_modules(text):
+            module_entity_id = self._upsert_graph_entity(
+                graph,
+                entity_type="module",
+                name=module_name,
+            )
+            if session_entity_id:
+                self._upsert_graph_relation(
+                    graph,
+                    source=session_entity_id,
+                    relation_type="touches_module",
+                    target=module_entity_id,
+                )
+
+        for issue_id in self._extract_issue_ids(text):
+            issue_entity_id = self._upsert_graph_entity(
+                graph,
+                entity_type="issue",
+                name=f"issue-{issue_id}",
+                metadata={"number": issue_id},
+            )
+            if session_entity_id:
+                self._upsert_graph_relation(
+                    graph,
+                    source=session_entity_id,
+                    relation_type="tracks_issue",
+                    target=issue_entity_id,
+                )
+
+        for decision_text in self._extract_decisions(text):
+            decision_entity_id = self._upsert_graph_entity(
+                graph,
+                entity_type="decision",
+                name=decision_text,
+            )
+            if session_entity_id:
+                self._upsert_graph_relation(
+                    graph,
+                    source=session_entity_id,
+                    relation_type="records_decision",
+                    target=decision_entity_id,
                 )
 
         for topic_path in self.referenced_topic_files():
