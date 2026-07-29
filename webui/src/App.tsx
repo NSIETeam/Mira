@@ -612,6 +612,7 @@ function RuntimeSnapshotPanel({
         queuedCold: scheduler.queued_cold ?? 0,
         queueLimit: scheduler.queue_limit ?? 0,
         sessionQueueLimit: scheduler.session_queue_limit ?? 0,
+        queuedSessions: Array.isArray(scheduler.queued_sessions) ? scheduler.queued_sessions : [],
         hostMemoryMb: scheduler.host_memory_mb ?? null,
         subagentMemoryMb: scheduler.estimated_subagent_memory_mb ?? null,
         planFirstDefault: scheduler.plan_first_default ?? false,
@@ -735,6 +736,11 @@ function RuntimeSnapshotPanel({
               <span>queued {schedulerSummary.queued}/{schedulerSummary.queueLimit}</span>
               {schedulerSummary.sessionQueueLimit ? (
                 <span>per-session {schedulerSummary.sessionQueueLimit}</span>
+              ) : null}
+              {schedulerSummary.queuedSessions.length ? (
+                <span>
+                  sessions {schedulerSummary.queuedSessions.map((row) => `${row.session_key}:${row.queued}`).join(",")}
+                </span>
               ) : null}
               <span>hot {schedulerSummary.queuedHot}</span>
               <span>warm {schedulerSummary.queuedWarm}</span>

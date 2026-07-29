@@ -546,6 +546,18 @@ class SubagentManager:
                 total += 1
         return total
 
+    def _pending_sessions_summary(self, limit: int = 3) -> list[dict[str, Any]]:
+        counts: dict[str, int] = {}
+        for pending in [*self._pending_hot, *self._pending_warm, *self._pending_cold]:
+            session_key = str(pending.origin.get("session_key") or "").strip()
+            if not session_key:
+                continue
+            counts[session_key] = counts.get(session_key, 0) + 1
+        return [
+            {"session_key": session_key, "queued": count}
+            for session_key, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:limit]
+        ]
+
     def _push_pending(self, pending: PendingSubagent) -> None:
         if pending.weight >= self._HOT_QUEUE_WEIGHT_THRESHOLD:
             self._pending_hot.append(pending)
@@ -993,6 +1005,7 @@ class SubagentManager:
             "queued_cold": len(self._pending_cold),
             "queue_limit": queue_limit,
             "session_queue_limit": self.max_pending_subagents_per_session,
+            "queued_sessions": self._pending_sessions_summary(),
             "pressure": pressure,
             "estimated_subagent_memory_mb": self.subagent_memory_mb,
             "host_memory_mb": self._host_memory_mb(),
