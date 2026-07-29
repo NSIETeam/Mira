@@ -581,6 +581,8 @@ function RuntimeSnapshotPanel({
       }
     : null;
   const topicCount = memory?.auto_memory?.topic_file_count ?? 0;
+  const referencedTopicCount = memory?.auto_memory?.referenced_topic_count ?? 0;
+  const autoMemoryLoaded = memory?.auto_memory?.loaded ?? false;
   const graphEntities = memory?.graph?.entity_count ?? 0;
   const graphRelations = memory?.graph?.relation_count ?? 0;
   const loadedLayers = memory?.layers?.filter((layer) => layer.loaded).length ?? 0;
@@ -609,7 +611,9 @@ function RuntimeSnapshotPanel({
             <div className="flex flex-wrap items-center gap-3">
               <span>memory layers {loadedLayers}</span>
               {loadedLayerLabels ? <span>loaded {loadedLayerLabels}</span> : null}
+              <span>index {autoMemoryLoaded ? "loaded" : "idle"}</span>
               <span>topics {topicCount}</span>
+              <span>referenced {referencedTopicCount}</span>
               <span>graph {graphEntities}/{graphRelations}</span>
             </div>
           ) : null}
