@@ -20,7 +20,10 @@ Claude Code-like product experience.
 - Issue: #98
 - Current closure: release workflow now builds Rust native boundary tools and
   audits DMG/EXE/Linux artifacts through `mira-pack`.
-- Default limit: `180 MB`, override with `MIRA_RELEASE_SIZE_LIMIT_MB`.
+- Default compressed artifact limit: `180 MB`, override with
+  `MIRA_RELEASE_ARTIFACT_LIMIT_MB`.
+- Default unpacked app bundle limit: `119 MB`, override with
+  `MIRA_RELEASE_BUNDLE_LIMIT_MB`.
 - Failure behavior: missing package exits `2`; over-limit package exits `3`.
 
 ### Tool failure recovery

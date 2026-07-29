@@ -242,13 +242,14 @@ PY
           else
             artifact="dist/Mira-linux.tar.gz"
           fi
-          "$tool" "$artifact" --json --limit-mb "${MIRA_RELEASE_SIZE_LIMIT_MB:-180}"
+          artifact_limit="${MIRA_RELEASE_ARTIFACT_LIMIT_MB:-${MIRA_RELEASE_SIZE_LIMIT_MB:-180}}"
+          "$tool" "$artifact" --json --limit-mb "$artifact_limit"
           trusted="false"
           if [[ "$GITHUB_REF" == refs/tags/v* && -f dist/signing-verified.txt ]]; then
             trusted="true"
           fi
           cat > dist/Mira-trust-${RUNNER_OS}.json <<EOF
-          {"artifact":"$artifact","trusted_release":$trusted,"signed_and_verified":$trusted,"size_limit_mb":${MIRA_RELEASE_SIZE_LIMIT_MB:-180}}
+          {"artifact":"$artifact","trusted_release":$trusted,"signed_and_verified":$trusted,"artifact_size_limit_mb":$artifact_limit}
           EOF
 
       - name: Smoke-test packaged app (macOS)
@@ -295,10 +296,11 @@ PY
       - name: Audit package size
         shell: bash
         run: |
+          bundle_limit="${MIRA_RELEASE_BUNDLE_LIMIT_MB:-119}"
           if [[ -d dist/Mira.app ]]; then
-            python scripts/package_size_report.py dist/Mira.app --budget-mb 119 --fail-on-over-budget
+            python scripts/package_size_report.py dist/Mira.app --budget-mb "$bundle_limit" --fail-on-over-budget
           elif [[ -d dist/Mira ]]; then
-            python scripts/package_size_report.py dist/Mira --budget-mb 119 --fail-on-over-budget
+            python scripts/package_size_report.py dist/Mira --budget-mb "$bundle_limit" --fail-on-over-budget
           fi
 
       - name: Upload build artifact
