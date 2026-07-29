@@ -47,6 +47,7 @@ jobs:
           python -m pip install .[desktop,dev]
 
       - name: Build native desktop app
+        shell: bash
         run: |
           python -m PyInstaller \
             --noconfirm \
