@@ -342,6 +342,7 @@ export interface BootstrapResponse {
       source: string;
       loaded: boolean;
       fallback_label?: string | null;
+      source_detail?: string | null;
     }>;
     auto_memory: {
       index_path: string;
@@ -356,6 +357,12 @@ export interface BootstrapResponse {
       entity_count: number;
       relation_count: number;
       evidence_count: number;
+    };
+    subagent_memory?: {
+      dir: string;
+      entry_count: number;
+      loaded: boolean;
+      recent_entries?: string[];
     };
   };
   scheduler?: KernelManifestPayload["scheduler"] | {

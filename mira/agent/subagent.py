@@ -13,6 +13,7 @@ from typing import Any, Callable
 from loguru import logger
 
 from mira.agent.hook import AgentHook, AgentHookContext
+from mira.agent.memory import MemoryStore
 from mira.agent.runner import AgentRunner, AgentRunSpec
 from mira.agent.tools.base import ToolResult
 from mira.agent.tools.context import (
@@ -692,6 +693,16 @@ class SubagentManager:
                     final_status,
                     origin_message_id,
                 )
+            MemoryStore(self.workspace).write_subagent_memory(
+                session_key=sess_key,
+                task_id=task_id,
+                label=label,
+                memory_policy=memory_policy,
+                inherited_memory_layers=inherited_memory_layers or [],
+                task=task,
+                result=final_result,
+                status=final_status,
+            )
             return final_result
 
         except Exception as e:
@@ -699,6 +710,16 @@ class SubagentManager:
             status.error = str(e)
             logger.exception("Subagent [{}] failed", task_id)
             final_result = f"Error: {e}"
+            MemoryStore(self.workspace).write_subagent_memory(
+                session_key=origin.get("session_key"),
+                task_id=task_id,
+                label=label,
+                memory_policy=memory_policy,
+                inherited_memory_layers=inherited_memory_layers or [],
+                task=task,
+                result=final_result,
+                status="error",
+            )
             if announce:
                 await self._announce_result(
                     task_id,

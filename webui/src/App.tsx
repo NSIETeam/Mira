@@ -622,10 +622,12 @@ function RuntimeSnapshotPanel({
   const autoMemoryLoaded = memory?.auto_memory?.loaded ?? false;
   const graphEntities = memory?.graph?.entity_count ?? 0;
   const graphRelations = memory?.graph?.relation_count ?? 0;
+  const subagentMemoryCount = memory?.subagent_memory?.entry_count ?? 0;
+  const subagentMemoryLoaded = memory?.subagent_memory?.loaded ?? false;
   const loadedLayers = memory?.layers?.filter((layer) => layer.loaded).length ?? 0;
   const loadedLayerLabels = memory?.layers
     ?.filter((layer) => layer.loaded)
-    .map((layer) => layer.id)
+    .map((layer) => `${layer.id}:${layer.source_detail ?? layer.source}`)
     .join(" / ") ?? "";
   const schedulerPressure = schedulerSummary?.pressure ?? null;
 
@@ -657,6 +659,7 @@ function RuntimeSnapshotPanel({
               <span>topics {topicCount}</span>
               <span>referenced {referencedTopicCount}</span>
               <span>graph {graphEntities}/{graphRelations}</span>
+              <span>subagents {subagentMemoryLoaded ? subagentMemoryCount : 0}</span>
             </div>
           ) : null}
           {schedulerSummary ? (

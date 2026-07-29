@@ -86,6 +86,7 @@ class MemoryStore:
     _LOCAL_CLAUDE_FILE = "CLAUDE.local.md"
     _GRAPH_FILE = "graph.json"
     _TOPICS_DIR = "topics"
+    _SUBAGENT_DIR = "subagents"
     _TOPIC_LINK_RE = re.compile(r"\((?:\./)?memory/topics/([A-Za-z0-9._-]+\.md)\)")
     _TOPIC_HEADING_RE = re.compile(r"^##\s+Topic:\s+([A-Za-z0-9._-]+)", re.MULTILINE)
     _PATH_ENTITY_RE = re.compile(r"`([^`\n]+(?:/[^\n`]+|\.[A-Za-z0-9_-]+))`")
@@ -111,6 +112,7 @@ class MemoryStore:
         self.user_claude_file = Path.home() / ".mira" / self._PROJECT_CLAUDE_FILE
         self.graph_file = self.memory_dir / self._GRAPH_FILE
         self.topic_dir = ensure_dir(self.memory_dir / self._TOPICS_DIR)
+        self.subagent_dir = ensure_dir(self.memory_dir / self._SUBAGENT_DIR)
         self._cursor_file = self.memory_dir / ".cursor"
         self._dream_cursor_file = self.memory_dir / ".dream_cursor"
         self._corruption_logged = False  # rate-limit invalid cursor warning
@@ -863,6 +865,7 @@ class MemoryStore:
         graph = self.read_graph()
         topic_files = self.list_topic_files()
         referenced_topics = self.referenced_topic_files()
+        subagent_files = sorted(self.subagent_dir.rglob("*.json"))
         return {
             "layers": [
                 {
@@ -872,6 +875,11 @@ class MemoryStore:
                     "source": layer["source"],
                     "loaded": layer["loaded"],
                     "fallback_label": layer["fallback_label"],
+                    "source_detail": (
+                        "primary"
+                        if layer["source"] == "primary"
+                        else (layer["fallback_label"] or "missing")
+                    ),
                 }
                 for layer in layers
             ],
@@ -889,7 +897,42 @@ class MemoryStore:
                 "relation_count": len(graph.get("relations", [])) if isinstance(graph.get("relations"), list) else 0,
                 "evidence_count": len(graph.get("evidence", [])) if isinstance(graph.get("evidence"), list) else 0,
             },
+            "subagent_memory": {
+                "dir": str(self.subagent_dir),
+                "entry_count": len(subagent_files),
+                "loaded": bool(subagent_files),
+                "recent_entries": [str(path.relative_to(self.workspace)) for path in subagent_files[-5:]],
+            },
         }
+
+    def write_subagent_memory(
+        self,
+        *,
+        session_key: str | None,
+        task_id: str,
+        label: str,
+        memory_policy: str,
+        inherited_memory_layers: list[str],
+        task: str,
+        result: str,
+        status: str,
+    ) -> Path:
+        session_slug = self._graph_slug(session_key or "unscoped")
+        target_dir = ensure_dir(self.subagent_dir / session_slug)
+        target_path = target_dir / f"{task_id}.json"
+        payload = {
+            "task_id": task_id,
+            "session_key": session_key,
+            "label": label,
+            "memory_policy": memory_policy,
+            "inherited_memory_layers": list(inherited_memory_layers),
+            "task": truncate_text(task, 2000),
+            "result": truncate_text(result, 4000),
+            "status": status,
+            "updated_at": datetime.now().isoformat(timespec="seconds"),
+        }
+        target_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return target_path
 
     # -- context injection (used by context.py) ------------------------------
 
