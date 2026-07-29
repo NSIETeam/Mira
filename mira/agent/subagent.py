@@ -552,20 +552,29 @@ class SubagentManager:
         async with self._dispatch_lock:
             while self._pending_count() and len(self._running_tasks) < self.max_concurrent_subagents:
                 self._promote_pending_locked()
-                pending = self._pop_next_pending_locked()
+                deferred: list[PendingSubagent] = []
+                pending: PendingSubagent | None = None
+                while True:
+                    candidate = self._pop_next_pending_locked()
+                    if candidate is None:
+                        break
+                    session_key = candidate.origin.get("session_key")
+                    if (
+                        session_key
+                        and self.get_running_count_by_session(session_key)
+                        >= self.max_running_subagents_per_session
+                    ):
+                        deferred.append(candidate)
+                        continue
+                    pending = candidate
+                    break
+                for item in deferred:
+                    self._push_pending(item)
                 if pending is None:
                     break
                 status = self._task_statuses.get(pending.task_id)
                 if status is None:
                     continue
-                session_key = pending.origin.get("session_key")
-                if (
-                    session_key
-                    and self.get_running_count_by_session(session_key)
-                    >= self.max_running_subagents_per_session
-                ):
-                    self._push_pending(pending)
-                    break
                 self._start_pending_locked(pending, status)
 
     def _pick_next_pending_index(self, queue: list[PendingSubagent]) -> int:
