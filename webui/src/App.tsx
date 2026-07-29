@@ -641,6 +641,8 @@ function RuntimeSnapshotPanel({
   const recentSubagentEntries = memory?.subagent_memory?.recent_entries ?? [];
   const subagentStatusCounts = memory?.subagent_memory?.status_counts ?? {};
   const subagentPolicyCounts = memory?.subagent_memory?.memory_policy_counts ?? {};
+  const subagentTopLabels = memory?.subagent_memory?.top_labels ?? [];
+  const subagentErrorLabels = memory?.subagent_memory?.error_labels ?? [];
   const loadedLayers = memory?.layers?.filter((layer) => layer.loaded).length ?? 0;
   const loadedLayerLabels = memory?.layers
     ?.filter((layer) => layer.loaded)
@@ -752,6 +754,12 @@ function RuntimeSnapshotPanel({
                 ))}
                 {Object.entries(subagentPolicyCounts).map(([policy, count]) => (
                   <span key={`policy-${policy}`}>{policy} {count}</span>
+                ))}
+                {subagentTopLabels.map((entry) => (
+                  <span key={`label-${entry.label}`}>{entry.label} {entry.count}</span>
+                ))}
+                {subagentErrorLabels.map((label) => (
+                  <span key={`error-${label}`}>error:{label}</span>
                 ))}
               </div>
               {recentSubagentEntries.slice(-3).map((entry) => (
