@@ -115,7 +115,8 @@ type BootState =
 
 const TOKEN_REFRESH_MARGIN_MS = 30_000;
 const TOKEN_REFRESH_MIN_DELAY_MS = 5_000;
-const RUNTIME_SNAPSHOT_REFRESH_MS = 10_000;
+const RUNTIME_SNAPSHOT_REFRESH_ACTIVE_MS = 10_000;
+const RUNTIME_SNAPSHOT_REFRESH_IDLE_MS = 60_000;
 const loadSettingsView = () => import("@/components/settings/SettingsView");
 const SettingsView = lazy(async () => {
   const module = await loadSettingsView();
@@ -344,6 +345,17 @@ export default function App() {
   useEffect(() => {
     if (state.status !== "ready") return;
     let cancelled = false;
+    let timer: number | null = null;
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const delay =
+        typeof document !== "undefined" && document.visibilityState === "visible"
+          ? RUNTIME_SNAPSHOT_REFRESH_ACTIVE_MS
+          : RUNTIME_SNAPSHOT_REFRESH_IDLE_MS;
+      timer = window.setTimeout(() => {
+        void refreshRuntimeSnapshot();
+      }, delay);
+    };
     const refreshRuntimeSnapshot = async () => {
       try {
         const snapshot = await fetchKernelRuntimeSnapshot(state.token);
@@ -359,15 +371,24 @@ export default function App() {
         );
       } catch {
         // keep last known runtime snapshot
+      } finally {
+        scheduleNext();
       }
     };
     void refreshRuntimeSnapshot();
-    const timer = window.setInterval(() => {
-      void refreshRuntimeSnapshot();
-    }, RUNTIME_SNAPSHOT_REFRESH_MS);
+    const handleVisibilityChange = () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+      scheduleNext();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [state.status === "ready" ? state.token : null]);
 
