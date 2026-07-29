@@ -140,6 +140,17 @@ class SubagentManager:
         memory_limit = max(1, available_mb // cls._DEFAULT_SUBAGENT_MEMORY_MB)
         return max(1, min(cpu_limit, memory_limit))
 
+    @classmethod
+    def _recommended_queue_limit(cls, concurrency: int) -> int:
+        base = max(1, concurrency) * cls._DEFAULT_QUEUE_FACTOR
+        memory_mb = cls._host_memory_mb()
+        if memory_mb is None:
+            return base
+        reserve_mb = 512
+        available_mb = max(memory_mb - reserve_mb, cls._DEFAULT_SUBAGENT_MEMORY_MB)
+        memory_budget_tasks = max(1, available_mb // cls._DEFAULT_SUBAGENT_MEMORY_MB)
+        return max(concurrency, min(base, memory_budget_tasks))
+
     def __init__(
         self,
         provider: LLMProvider | None = None,
@@ -202,10 +213,7 @@ class SubagentManager:
             else self._recommended_concurrency()
         )
         self.subagent_memory_mb = self._DEFAULT_SUBAGENT_MEMORY_MB
-        self.max_pending_subagents = max(
-            self.max_concurrent_subagents,
-            self.max_concurrent_subagents * self._DEFAULT_QUEUE_FACTOR,
-        )
+        self.max_pending_subagents = self._recommended_queue_limit(self.max_concurrent_subagents)
         self.fail_on_tool_error = (
             fail_on_tool_error
             if fail_on_tool_error is not None
