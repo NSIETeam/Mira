@@ -1040,6 +1040,28 @@ class KernelApp:
             "completed_tool_results": completed_tool_results,
         }
 
+    def _planning_trace(self, session_key: str | None, *, limit: int = 5) -> list[dict[str, Any]]:
+        if not session_key:
+            return []
+        rows: list[dict[str, Any]] = []
+        for row in self._event_log:
+            if not isinstance(row, dict):
+                continue
+            if str(row.get("session_key") or "") != session_key:
+                continue
+            action = str(row.get("action") or "")
+            if action not in {"execution_checkpoint", "tool_pending", "tool_completed"}:
+                continue
+            rows.append({
+                "action": action,
+                "state": str(row.get("state") or "unknown"),
+                "message": str(row.get("message") or "").strip(),
+                "iteration": int(row.get("iteration", 0) or 0),
+            })
+            if len(rows) >= limit:
+                break
+        return list(reversed(rows))
+
     def _refresh_live_event_log(self) -> None:
         native_snapshot = snapshot_native_bridge()
         if native_snapshot is not None:
@@ -3275,7 +3297,10 @@ class KernelApp:
             snapshot["snapshot"]["phase"] = checkpoint.get("phase")
             snapshot["snapshot"]["iteration"] = checkpoint.get("iteration")
             snapshot["snapshot"]["pending_tool_calls"] = len(list(checkpoint.get("pending_tool_calls", [])))
-        snapshot["snapshot"]["planning"] = self._planning_snapshot(checkpoint)
+        snapshot["snapshot"]["planning"] = {
+            **self._planning_snapshot(checkpoint),
+            "trace": self._planning_trace(self._active_session_key),
+        }
         subagent_rows = self._subagent_snapshot(self._active_session_key)
         if subagent_rows:
             snapshot["snapshot"]["subagent_workers"] = len(subagent_rows)

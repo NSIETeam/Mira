@@ -636,6 +636,8 @@ function RuntimeSnapshotPanel({
   const subagentMemoryCount = memory?.subagent_memory?.entry_count ?? 0;
   const subagentMemoryLoaded = memory?.subagent_memory?.loaded ?? false;
   const recentSubagentEntries = memory?.subagent_memory?.recent_entries ?? [];
+  const subagentStatusCounts = memory?.subagent_memory?.status_counts ?? {};
+  const subagentPolicyCounts = memory?.subagent_memory?.memory_policy_counts ?? {};
   const loadedLayers = memory?.layers?.filter((layer) => layer.loaded).length ?? 0;
   const loadedLayerLabels = memory?.layers
     ?.filter((layer) => layer.loaded)
@@ -650,6 +652,7 @@ function RuntimeSnapshotPanel({
         pendingToolCalls: planning.pending_tool_calls ?? 0,
         completedToolResults: planning.completed_tool_results ?? 0,
         planFirstDefault: planning.plan_first_default ?? false,
+        trace: planning.trace ?? [],
       }
     : null;
 
@@ -714,16 +717,37 @@ function RuntimeSnapshotPanel({
             </div>
           ) : null}
           {planningSummary ? (
-            <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+            <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-3">
               {planningSummary.planFirstDefault ? <span>planner default on</span> : null}
               <span>planner {planningSummary.active ? planningSummary.stage : "idle"}</span>
               <span>iter {planningSummary.iteration}</span>
               <span>pending tools {planningSummary.pendingToolCalls}</span>
               <span>done tools {planningSummary.completedToolResults}</span>
+              </div>
+              {planningSummary.trace.length ? (
+                <div className="flex flex-col gap-1">
+                  {planningSummary.trace.slice(-3).map((entry, index) => (
+                    <div key={`${entry.action}-${entry.iteration}-${index}`} className="flex flex-wrap items-center gap-2">
+                      <span>{entry.action}</span>
+                      <span>{entry.state}</span>
+                      <span>iter {entry.iteration}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : null}
           {recentSubagentEntries.length ? (
             <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-3">
+                {Object.entries(subagentStatusCounts).map(([status, count]) => (
+                  <span key={`status-${status}`}>{status} {count}</span>
+                ))}
+                {Object.entries(subagentPolicyCounts).map(([policy, count]) => (
+                  <span key={`policy-${policy}`}>{policy} {count}</span>
+                ))}
+              </div>
               {recentSubagentEntries.slice(-3).map((entry) => (
                 <div key={entry.path} className="flex flex-wrap items-center gap-2">
                   <span>{entry.label ?? entry.path}</span>

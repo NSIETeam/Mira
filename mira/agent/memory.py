@@ -867,16 +867,22 @@ class MemoryStore:
         referenced_topics = self.referenced_topic_files()
         subagent_files = sorted(self.subagent_dir.rglob("*.json"))
         recent_subagent_entries: list[dict[str, Any]] = []
+        status_counts: dict[str, int] = {}
+        memory_policy_counts: dict[str, int] = {}
         for path in subagent_files[-5:]:
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 payload = {}
+            status_value = str(payload.get("status") or "unknown")
+            memory_policy_value = str(payload.get("memory_policy") or "default")
+            status_counts[status_value] = status_counts.get(status_value, 0) + 1
+            memory_policy_counts[memory_policy_value] = memory_policy_counts.get(memory_policy_value, 0) + 1
             recent_subagent_entries.append({
                 "path": str(path.relative_to(self.workspace)),
                 "label": str(payload.get("label") or path.stem),
-                "status": str(payload.get("status") or "unknown"),
-                "memory_policy": str(payload.get("memory_policy") or "default"),
+                "status": status_value,
+                "memory_policy": memory_policy_value,
             })
         return {
             "layers": [
@@ -914,6 +920,8 @@ class MemoryStore:
                 "entry_count": len(subagent_files),
                 "loaded": bool(subagent_files),
                 "recent_entries": recent_subagent_entries,
+                "status_counts": status_counts,
+                "memory_policy_counts": memory_policy_counts,
             },
         }
 

@@ -368,6 +368,8 @@ export interface BootstrapResponse {
         status?: string;
         memory_policy?: string;
       }>;
+      status_counts?: Record<string, number>;
+      memory_policy_counts?: Record<string, number>;
     };
   };
   planning?: {
@@ -377,6 +379,12 @@ export interface BootstrapResponse {
     iteration?: number;
     pending_tool_calls?: number;
     completed_tool_results?: number;
+    trace?: Array<{
+      action: string;
+      state: string;
+      message: string;
+      iteration: number;
+    }>;
   } | null;
   scheduler?: KernelManifestPayload["scheduler"] | {
     running?: number;
