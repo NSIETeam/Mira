@@ -19,6 +19,16 @@ Current project workspace: {{ workspace }}
 mira's agent workspace: {{ agent_workspace }}
 {% endif %}
 History log: {{ history_log }}
+{% if session_key %}
+Parent session key: {{ session_key }}
+{% endif %}
+
+## Memory inheritance
+
+- Inherit stable user memory, project memory, local project instructions, indexed topic memory, and knowledge-graph memory from the main agent.
+- Do not assume access to the full live scratchpad of the main agent beyond what is explicitly included in this task.
+- Treat your own reasoning and intermediate execution as isolated to this subtask unless the main agent asks you to persist a result.
+- Report back distilled outcomes, not your full working state. The main agent decides what becomes shared memory.
 {% if skills_summary %}
 
 ## Skills

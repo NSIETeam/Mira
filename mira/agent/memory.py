@@ -88,6 +88,8 @@ class MemoryStore:
     _TOPICS_DIR = "topics"
     _TOPIC_LINK_RE = re.compile(r"\((?:\./)?memory/topics/([A-Za-z0-9._-]+\.md)\)")
     _TOPIC_HEADING_RE = re.compile(r"^##\s+Topic:\s+([A-Za-z0-9._-]+)", re.MULTILINE)
+    _PATH_ENTITY_RE = re.compile(r"`([^`\n]+(?:/[^\n`]+|\.[A-Za-z0-9_-]+))`")
+    _INLINE_PATH_RE = re.compile(r"\b([A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+)\b")
 
     def __init__(self, workspace: Path, max_history_entries: int = _DEFAULT_MAX_HISTORY):
         self.workspace = workspace
@@ -397,6 +399,148 @@ class MemoryStore:
             encoding="utf-8",
         )
 
+    @staticmethod
+    def _graph_default() -> dict[str, Any]:
+        return {
+            "version": 1,
+            "entities": [],
+            "relations": [],
+            "evidence": [],
+        }
+
+    @staticmethod
+    def _graph_slug(value: str) -> str:
+        return re.sub(r"[^a-z0-9._/-]+", "-", value.lower()).strip("-") or "unknown"
+
+    @classmethod
+    def _upsert_graph_entity(
+        cls,
+        graph: dict[str, Any],
+        *,
+        entity_type: str,
+        name: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
+        entity_id = f"{entity_type}:{cls._graph_slug(name)}"
+        entities = graph.setdefault("entities", [])
+        for entity in entities:
+            if isinstance(entity, dict) and entity.get("id") == entity_id:
+                if metadata:
+                    entity.setdefault("metadata", {}).update(metadata)
+                return entity_id
+        entry: dict[str, Any] = {
+            "id": entity_id,
+            "type": entity_type,
+            "name": name,
+        }
+        if metadata:
+            entry["metadata"] = metadata
+        entities.append(entry)
+        return entity_id
+
+    @staticmethod
+    def _upsert_graph_relation(
+        graph: dict[str, Any],
+        *,
+        source: str,
+        relation_type: str,
+        target: str,
+    ) -> None:
+        relations = graph.setdefault("relations", [])
+        for relation in relations:
+            if (
+                isinstance(relation, dict)
+                and relation.get("source") == source
+                and relation.get("type") == relation_type
+                and relation.get("target") == target
+            ):
+                return
+        relations.append({
+            "source": source,
+            "type": relation_type,
+            "target": target,
+        })
+
+    def _extract_graph_paths(self, content: str) -> list[str]:
+        seen: set[str] = set()
+        paths: list[str] = []
+        for regex in (self._PATH_ENTITY_RE, self._INLINE_PATH_RE):
+            for match in regex.finditer(content):
+                value = match.group(1).strip()
+                if "/" not in value or len(value) > 180:
+                    continue
+                if value.startswith(("http://", "https://")):
+                    continue
+                normalized = value.strip("./")
+                if normalized and normalized not in seen:
+                    seen.add(normalized)
+                    paths.append(normalized)
+        return paths[:12]
+
+    def update_graph_from_history_entry(
+        self,
+        *,
+        timestamp: str,
+        content: str,
+        session_key: str | None = None,
+    ) -> None:
+        text = content.strip()
+        if not text:
+            return
+        graph = self.read_graph()
+        if not isinstance(graph, dict):
+            graph = self._graph_default()
+        summary = truncate_text(text.replace("\n", " "), 220)
+        evidence_id = f"evidence:{self._graph_slug(timestamp + '-' + summary[:64])}"
+        evidence = graph.setdefault("evidence", [])
+        if not any(isinstance(item, dict) and item.get("id") == evidence_id for item in evidence):
+            evidence.append({
+                "id": evidence_id,
+                "timestamp": timestamp,
+                "summary": summary,
+                "session_key": session_key,
+            })
+
+        session_entity_id: str | None = None
+        if session_key:
+            session_entity_id = self._upsert_graph_entity(
+                graph,
+                entity_type="session",
+                name=session_key,
+            )
+
+        for path_value in self._extract_graph_paths(text):
+            file_entity_id = self._upsert_graph_entity(
+                graph,
+                entity_type="file",
+                name=path_value,
+            )
+            if session_entity_id:
+                self._upsert_graph_relation(
+                    graph,
+                    source=session_entity_id,
+                    relation_type="mentions",
+                    target=file_entity_id,
+                )
+
+        for topic_path in self.referenced_topic_files():
+            topic_name = topic_path.stem
+            if topic_name not in text and topic_path.name not in text:
+                continue
+            topic_entity_id = self._upsert_graph_entity(
+                graph,
+                entity_type="topic",
+                name=topic_name,
+            )
+            if session_entity_id:
+                self._upsert_graph_relation(
+                    graph,
+                    source=session_entity_id,
+                    relation_type="touches_topic",
+                    target=topic_entity_id,
+                )
+        self.write_graph(graph)
+
     def graph_memory_context(self, *, max_items: int = 12) -> str:
         graph = self.read_graph()
         entities = graph.get("entities", []) if isinstance(graph.get("entities"), list) else []
@@ -527,6 +671,11 @@ class MemoryStore:
             with open(self.history_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
             self._cursor_file.write_text(str(cursor), encoding="utf-8")
+            self.update_graph_from_history_entry(
+                timestamp=ts,
+                content=content,
+                session_key=session_key,
+            )
         return cursor
 
     @staticmethod
