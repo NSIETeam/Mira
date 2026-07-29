@@ -414,6 +414,7 @@ export interface BootstrapResponse {
     queued_warm?: number;
     queued_cold?: number;
     queue_limit?: number;
+    session_queue_limit?: number;
     pressure?: "steady" | "busy" | "saturated" | string;
     estimated_subagent_memory_mb?: number;
     host_memory_mb?: number | null;

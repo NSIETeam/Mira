@@ -174,6 +174,12 @@ class SubagentManager:
         return max(concurrency, min(base, memory_budget_tasks))
 
     @classmethod
+    def _recommended_session_queue_limit(cls, concurrency: int) -> int:
+        if concurrency <= 1:
+            return 1
+        return max(1, min(max(2, concurrency), concurrency * 2))
+
+    @classmethod
     def _normalize_memory_policy(cls, memory_policy: str | None) -> str:
         normalized = str(memory_policy or cls._DEFAULT_MEMORY_POLICY).strip().lower()
         if normalized == "auto":
@@ -272,6 +278,9 @@ class SubagentManager:
         )
         self.subagent_memory_mb = self._DEFAULT_SUBAGENT_MEMORY_MB
         self.max_pending_subagents = self._recommended_queue_limit(self.max_concurrent_subagents)
+        self.max_pending_subagents_per_session = self._recommended_session_queue_limit(
+            self.max_concurrent_subagents
+        )
         self.fail_on_tool_error = (
             fail_on_tool_error
             if fail_on_tool_error is not None
@@ -437,6 +446,19 @@ class SubagentManager:
                     )
                     self._task_statuses.pop(pending.task_id, None)
                     return False
+                session_key = pending.origin.get("session_key")
+                if (
+                    session_key
+                    and self._pending_count_for_session(session_key)
+                    >= self.max_pending_subagents_per_session
+                ):
+                    status.phase = "error"
+                    status.error = (
+                        "session queued-subagent limit reached; this session already occupies "
+                        "its fair share of the shared queue"
+                    )
+                    self._task_statuses.pop(pending.task_id, None)
+                    return False
                 status.phase = "queued"
                 self._push_pending(pending)
                 return False
@@ -505,6 +527,15 @@ class SubagentManager:
 
     def _pending_count(self) -> int:
         return len(self._pending_hot) + len(self._pending_warm) + len(self._pending_cold)
+
+    def _pending_count_for_session(self, session_key: str | None) -> int:
+        if not session_key:
+            return 0
+        total = 0
+        for pending in [*self._pending_hot, *self._pending_warm, *self._pending_cold]:
+            if pending.origin.get("session_key") == session_key:
+                total += 1
+        return total
 
     def _push_pending(self, pending: PendingSubagent) -> None:
         if pending.weight >= self._HOT_QUEUE_WEIGHT_THRESHOLD:
@@ -952,6 +983,7 @@ class SubagentManager:
             "queued_warm": len(self._pending_warm),
             "queued_cold": len(self._pending_cold),
             "queue_limit": queue_limit,
+            "session_queue_limit": self.max_pending_subagents_per_session,
             "pressure": pressure,
             "estimated_subagent_memory_mb": self.subagent_memory_mb,
             "host_memory_mb": self._host_memory_mb(),

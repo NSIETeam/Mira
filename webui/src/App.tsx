@@ -611,6 +611,7 @@ function RuntimeSnapshotPanel({
         queuedWarm: scheduler.queued_warm ?? 0,
         queuedCold: scheduler.queued_cold ?? 0,
         queueLimit: scheduler.queue_limit ?? 0,
+        sessionQueueLimit: scheduler.session_queue_limit ?? 0,
         hostMemoryMb: scheduler.host_memory_mb ?? null,
         subagentMemoryMb: scheduler.estimated_subagent_memory_mb ?? null,
         planFirstDefault: scheduler.plan_first_default ?? false,
@@ -732,6 +733,9 @@ function RuntimeSnapshotPanel({
                 <span>recommended {schedulerSummary.recommendedConcurrency}</span>
               ) : null}
               <span>queued {schedulerSummary.queued}/{schedulerSummary.queueLimit}</span>
+              {schedulerSummary.sessionQueueLimit ? (
+                <span>per-session {schedulerSummary.sessionQueueLimit}</span>
+              ) : null}
               <span>hot {schedulerSummary.queuedHot}</span>
               <span>warm {schedulerSummary.queuedWarm}</span>
               <span>cold {schedulerSummary.queuedCold}</span>
