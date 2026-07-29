@@ -54,7 +54,7 @@ async def handle_runtime_control(state: Any, msg: InboundMessage, tools: ToolReg
 class ContextBuilder:
     """Builds the context (system prompt + messages) for the agent."""
 
-    BOOTSTRAP_FILES = ["AGENTS.md", "SOUL.md", "USER.md"]
+    BOOTSTRAP_FILES = ["AGENTS.md", "CLAUDE.md", "CLAUDE.local.md", "SOUL.md", "USER.md"]
     _SKIPPABLE_DEFAULTS = {"AGENTS.md", "USER.md"}
     _RUNTIME_CONTEXT_TAG = RUNTIME_CONTEXT_TAG
     _MAX_RECENT_HISTORY = 50
@@ -90,6 +90,23 @@ class ContextBuilder:
         memory = self.memory.get_memory_context()
         if memory and not self._is_template_content(self.memory.read_memory(), "memory/MEMORY.md"):
             parts.append(f"# Memory\n\n{memory}")
+
+        memory_audit = self.memory.memory_audit(root)
+        loaded_layers = [
+            f"- {layer['id']}: {Path(layer['path']).name} [{layer['source']}]"
+            for layer in memory_audit["layers"]
+            if layer.get("loaded")
+        ]
+        if loaded_layers:
+            parts.append("# Memory Layers\n\n" + "\n".join(loaded_layers))
+        graph_meta = memory_audit["graph"]
+        if any(graph_meta[key] for key in ("entity_count", "relation_count", "evidence_count")):
+            parts.append(
+                "# Knowledge Graph\n\n"
+                f"- entities: {graph_meta['entity_count']}\n"
+                f"- relations: {graph_meta['relation_count']}\n"
+                f"- evidence: {graph_meta['evidence_count']}"
+            )
 
         always_skills = self.skills.get_always_skills()
         if always_skills:
@@ -159,28 +176,23 @@ class ContextBuilder:
         """Load project instructions plus the agent's global profile files."""
         parts = []
         project_root = workspace or self.workspace
-        sources = [
-            ("AGENTS.md", project_root),
-            ("SOUL.md", self.workspace),
-            ("USER.md", self.workspace),
-        ]
+        agents_path = project_root / "AGENTS.md"
+        if agents_path.exists():
+            content = agents_path.read_text(encoding="utf-8")
+            if content.strip():
+                parts.append(f"## AGENTS.md\n\n{content}")
 
-        for filename, root in sources:
-            file_path = root / filename
-            if file_path.exists():
-                content = file_path.read_text(encoding="utf-8")
-                if filename == "SOUL.md" and self._is_template_content(
-                    content,
-                    "legacy/SOUL.md",
-                ):
-                    content = load_bundled_template("SOUL.md") or content
-                if not content.strip():
-                    continue
-                if filename in self._SKIPPABLE_DEFAULTS and self._is_template_content(
-                    content, filename
-                ):
-                    continue
-                parts.append(f"## {filename}\n\n{content}")
+        for layer in self.memory.instruction_layers(project_root):
+            content = str(layer.get("content") or "")
+            if not content.strip():
+                continue
+            filename = Path(layer["path"]).name
+            if filename == "SOUL.md" and self._is_template_content(content, "legacy/SOUL.md"):
+                content = load_bundled_template("SOUL.md") or content
+            if filename in self._SKIPPABLE_DEFAULTS and self._is_template_content(content, filename):
+                continue
+            heading = layer["label"] if layer.get("source") == "primary" else f"{layer['label']} ({layer.get('fallback_label')})"
+            parts.append(f"## {heading}\n\n{content}")
 
         return "\n\n".join(parts) if parts else ""
 

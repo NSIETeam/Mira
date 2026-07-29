@@ -24,6 +24,7 @@ from websockets.http11 import Request as WsRequest
 from websockets.http11 import Response
 
 from mira.command.builtin import builtin_command_palette
+from mira.agent.memory import MemoryStore
 from mira.cron.session_turns import is_bound_cron_job
 from mira.cron.types import CronJob, CronSchedule
 from mira.runtime_context import public_history_messages
@@ -387,6 +388,7 @@ class GatewayHTTPHandler:
             "runtime_capabilities": self._capabilities,
             "shell": shell.to_dict(),
             "kernel": kernel_payload,
+            "memory": MemoryStore(self.skills_workspace_path).memory_audit(self.skills_workspace_path),
         }
         if api_token is not None:
             payload["api_token"] = api_token

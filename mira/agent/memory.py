@@ -82,6 +82,9 @@ class MemoryStore:
     _LEGACY_RAW_MESSAGE_RE = re.compile(
         r"^\[\d{4}-\d{2}-\d{2}[^\]]*\]\s+[A-Z][A-Z0-9_]*(?:\s+\[tools:\s*[^\]]+\])?:"
     )
+    _PROJECT_CLAUDE_FILE = "CLAUDE.md"
+    _LOCAL_CLAUDE_FILE = "CLAUDE.local.md"
+    _GRAPH_FILE = "graph.json"
 
     def __init__(self, workspace: Path, max_history_entries: int = _DEFAULT_MAX_HISTORY):
         self.workspace = workspace
@@ -92,6 +95,10 @@ class MemoryStore:
         self.legacy_history_file = self.memory_dir / "HISTORY.md"
         self.soul_file = workspace / "SOUL.md"
         self.user_file = workspace / "USER.md"
+        self.project_claude_file = workspace / self._PROJECT_CLAUDE_FILE
+        self.local_claude_file = workspace / self._LOCAL_CLAUDE_FILE
+        self.user_claude_file = Path.home() / ".mira" / self._PROJECT_CLAUDE_FILE
+        self.graph_file = self.memory_dir / self._GRAPH_FILE
         self._cursor_file = self.memory_dir / ".cursor"
         self._dream_cursor_file = self.memory_dir / ".dream_cursor"
         self._corruption_logged = False  # rate-limit invalid cursor warning
@@ -261,6 +268,112 @@ class MemoryStore:
 
     def write_user(self, content: str) -> None:
         self.user_file.write_text(content, encoding="utf-8")
+
+    # -- layered instruction memory -----------------------------------------
+
+    def instruction_layers(self, workspace: Path | None = None) -> list[dict[str, Any]]:
+        root = workspace or self.workspace
+        project_file = root / self._PROJECT_CLAUDE_FILE
+        local_file = root / self._LOCAL_CLAUDE_FILE
+        project_legacy = root / "SOUL.md"
+        specs = [
+            {
+                "id": "user",
+                "label": "User CLAUDE.md",
+                "primary": self.user_claude_file,
+                "fallback": self.user_file,
+                "fallback_label": "legacy USER.md",
+            },
+            {
+                "id": "project",
+                "label": "Project CLAUDE.md",
+                "primary": project_file,
+                "fallback": project_legacy,
+                "fallback_label": "legacy SOUL.md",
+            },
+            {
+                "id": "local",
+                "label": "Local CLAUDE.local.md",
+                "primary": local_file,
+                "fallback": None,
+                "fallback_label": None,
+            },
+        ]
+        layers: list[dict[str, Any]] = []
+        for spec in specs:
+            primary = spec["primary"]
+            fallback = spec["fallback"]
+            chosen = primary if primary.exists() else fallback
+            content = self.read_file(chosen) if isinstance(chosen, Path) else ""
+            source = "primary" if chosen == primary else ("legacy" if chosen else "missing")
+            layers.append({
+                "id": spec["id"],
+                "label": spec["label"],
+                "path": str(chosen or primary),
+                "source": source,
+                "fallback_label": spec["fallback_label"],
+                "loaded": bool(content.strip()),
+                "content": content,
+            })
+        return layers
+
+    def read_graph(self) -> dict[str, Any]:
+        if not self.graph_file.exists():
+            return {
+                "version": 1,
+                "entities": [],
+                "relations": [],
+                "evidence": [],
+            }
+        try:
+            data = json.loads(self.graph_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {
+                "version": 1,
+                "entities": [],
+                "relations": [],
+                "evidence": [],
+            }
+        return data if isinstance(data, dict) else {
+            "version": 1,
+            "entities": [],
+            "relations": [],
+            "evidence": [],
+        }
+
+    def write_graph(self, graph: dict[str, Any]) -> None:
+        self.graph_file.write_text(
+            json.dumps(graph, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    def memory_audit(self, workspace: Path | None = None) -> dict[str, Any]:
+        layers = self.instruction_layers(workspace)
+        graph = self.read_graph()
+        return {
+            "layers": [
+                {
+                    "id": layer["id"],
+                    "label": layer["label"],
+                    "path": layer["path"],
+                    "source": layer["source"],
+                    "loaded": layer["loaded"],
+                    "fallback_label": layer["fallback_label"],
+                }
+                for layer in layers
+            ],
+            "auto_memory": {
+                "index_path": str(self.memory_file),
+                "history_path": str(self.history_file),
+                "loaded": bool(self.read_memory().strip()),
+            },
+            "graph": {
+                "path": str(self.graph_file),
+                "entity_count": len(graph.get("entities", [])) if isinstance(graph.get("entities"), list) else 0,
+                "relation_count": len(graph.get("relations", [])) if isinstance(graph.get("relations"), list) else 0,
+                "evidence_count": len(graph.get("evidence", [])) if isinstance(graph.get("evidence"), list) else 0,
+            },
+        }
 
     # -- context injection (used by context.py) ------------------------------
 
