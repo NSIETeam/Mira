@@ -575,6 +575,9 @@ function RuntimeSnapshotPanel({
         queuedHot: scheduler.queued_hot ?? 0,
         queuedWarm: scheduler.queued_warm ?? 0,
         queuedCold: scheduler.queued_cold ?? 0,
+        queueLimit: scheduler.queue_limit ?? 0,
+        hostMemoryMb: scheduler.host_memory_mb ?? null,
+        subagentMemoryMb: scheduler.estimated_subagent_memory_mb ?? null,
       }
     : null;
   const topicCount = memory?.auto_memory?.topic_file_count ?? 0;
@@ -601,10 +604,16 @@ function RuntimeSnapshotPanel({
           {schedulerSummary ? (
             <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
               <span>running {schedulerSummary.running}/{schedulerSummary.runningLimit}</span>
-              <span>queued {schedulerSummary.queued}</span>
+              <span>queued {schedulerSummary.queued}/{schedulerSummary.queueLimit}</span>
               <span>hot {schedulerSummary.queuedHot}</span>
               <span>warm {schedulerSummary.queuedWarm}</span>
               <span>cold {schedulerSummary.queuedCold}</span>
+              {schedulerSummary.hostMemoryMb ? (
+                <span>host {schedulerSummary.hostMemoryMb}MB</span>
+              ) : null}
+              {schedulerSummary.subagentMemoryMb ? (
+                <span>subagent {schedulerSummary.subagentMemoryMb}MB</span>
+              ) : null}
             </div>
           ) : null}
         </div>
