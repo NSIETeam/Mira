@@ -368,6 +368,80 @@ class KernelConfig(Base):
     )
 
 
+class ModuleConfig(Base):
+    """One Linux-style mountable Mira module."""
+
+    kind: Literal["core", "tool", "channel", "memory", "ui", "runtime", "diagnostic"] = "core"
+    enabled: bool = True
+    lazy: bool = True
+    dependencies: list[str] = Field(default_factory=list)
+    memory_cost_mb: int = Field(
+        default=0,
+        validation_alias=AliasChoices("memoryCostMb", "memory_cost_mb"),
+        serialization_alias="memoryCostMb",
+        ge=0,
+    )
+
+
+class ModulesConfig(Base):
+    """Optional module registry controls for a small default kernel."""
+
+    profile: Literal["standard", "lightweight", "server"] = "standard"
+    registry: dict[str, ModuleConfig] = Field(default_factory=dict)
+
+    def is_enabled(self, name: str, *, default: bool = True) -> bool:
+        module = self.registry.get(name)
+        return default if module is None else module.enabled
+
+
+class RuntimeConfig(Base):
+    """Runtime launcher selection."""
+
+    launcher: Literal["python", "rust-launcher"] = "python"
+
+
+class PrincipalPolicyConfig(Base):
+    """Linux-like user/group execution policy."""
+
+    role: Literal["root", "user", "guest", "service"] = "user"
+    allow_tools: list[str] = Field(
+        default_factory=lambda: ["*"],
+        validation_alias=AliasChoices("allowTools", "allow_tools"),
+        serialization_alias="allowTools",
+    )
+    deny_tools: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("denyTools", "deny_tools"),
+        serialization_alias="denyTools",
+    )
+    workspace_root: str = Field(
+        default="",
+        validation_alias=AliasChoices("workspaceRoot", "workspace_root"),
+        serialization_alias="workspaceRoot",
+    )
+    memory_scope: Literal["user", "group", "global"] = Field(
+        default="group",
+        validation_alias=AliasChoices("memoryScope", "memory_scope"),
+        serialization_alias="memoryScope",
+    )
+    exec_posture: Literal["disabled", "restricted", "full"] = Field(
+        default="restricted",
+        validation_alias=AliasChoices("execPosture", "exec_posture"),
+        serialization_alias="execPosture",
+    )
+
+
+class SecurityConfig(Base):
+    """Security policy table keyed by role/user/group selectors."""
+
+    default_role: Literal["root", "user", "guest", "service"] = Field(
+        default="user",
+        validation_alias=AliasChoices("defaultRole", "default_role"),
+        serialization_alias="defaultRole",
+    )
+    policies: dict[str, PrincipalPolicyConfig] = Field(default_factory=dict)
+
+
 class MCPServerConfig(Base):
     """MCP server connection configuration (stdio or HTTP)."""
 
@@ -436,6 +510,9 @@ class Config(BaseSettings):
     api: ApiConfig = Field(default_factory=ApiConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     kernel: KernelConfig = Field(default_factory=KernelConfig)
+    modules: ModulesConfig = Field(default_factory=ModulesConfig)
+    runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
+    security: SecurityConfig = Field(default_factory=SecurityConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     model_presets: dict[str, ModelPresetConfig] = Field(
         default_factory=dict,

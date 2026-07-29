@@ -1,0 +1,15 @@
+[package]
+name = "mira-sandbox"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Small optional workspace-bound command runner for Mira."
+
+[[bin]]
+name = "mira-sandbox"
+path = "src/main.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"

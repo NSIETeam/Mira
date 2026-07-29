@@ -1,0 +1,15 @@
+[package]
+name = "mira-launcher"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Tiny optional launcher for the Mira Python kernel gateway."
+
+[[bin]]
+name = "mira-launcher"
+path = "src/main.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"

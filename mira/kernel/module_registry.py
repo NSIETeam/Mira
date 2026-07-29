@@ -18,6 +18,11 @@ class KernelModuleDescriptor:
     display_name: str
     category: str
     status: str
+    kind: str = "core"
+    lazy: bool = True
+    enabled_by_default: bool = True
+    memory_cost_mb: int = 0
+    dependencies: tuple[str, ...] = ()
     operator_actions: tuple[str, ...] = ()
     summary: str = ""
 
@@ -27,19 +32,38 @@ class KernelModuleDescriptor:
             "display_name": self.display_name,
             "category": self.category,
             "status": self.status,
+            "kind": self.kind,
+            "lazy": self.lazy,
+            "enabled_by_default": self.enabled_by_default,
+            "memory_cost_mb": self.memory_cost_mb,
+            "dependencies": list(self.dependencies),
             "operator_actions": list(self.operator_actions),
             "summary": self.summary,
         }
 
 
-def list_kernel_modules(profile: KernelProfile) -> list[dict[str, object]]:
-    feature_set = set(profile.features)
+def _status(name: str, profile: KernelProfile, configured: object | None = None) -> str:
+    enabled = name in set(profile.features) or name in set(profile.tools) or name in set(profile.channels)
+    registry = getattr(configured, "registry", {}) if configured is not None else {}
+    module_cfg = registry.get(name) if isinstance(registry, dict) else None
+    if module_cfg is not None:
+        enabled = bool(getattr(module_cfg, "enabled", enabled))
+    return "enabled" if enabled else "disabled"
+
+
+def list_kernel_modules(
+    profile: KernelProfile,
+    configured: object | None = None,
+) -> list[dict[str, object]]:
     rows: list[KernelModuleDescriptor] = [
         KernelModuleDescriptor(
             name="session_state",
             display_name="Session State",
             category="core",
-            status="enabled" if "session_state" in feature_set else "disabled",
+            status=_status("session_state", profile, configured),
+            kind="core",
+            lazy=False,
+            memory_cost_mb=4,
             operator_actions=("inspect_modules",),
             summary="Tracks execution sessions, active turns, and persisted thread state.",
         ),
@@ -47,7 +71,10 @@ def list_kernel_modules(profile: KernelProfile) -> list[dict[str, object]]:
             name="approvals",
             display_name="Approvals",
             category="safety",
-            status="enabled" if "approvals" in feature_set else "disabled",
+            status=_status("approvals", profile, configured),
+            kind="core",
+            lazy=False,
+            memory_cost_mb=1,
             operator_actions=("inspect_faults",),
             summary="Operator approval boundary for actions that require confirmation.",
         ),
@@ -55,7 +82,10 @@ def list_kernel_modules(profile: KernelProfile) -> list[dict[str, object]]:
             name="automations",
             display_name="Automations",
             category="workflow",
-            status="enabled" if "automations" in feature_set else "disabled",
+            status=_status("automations", profile, configured),
+            kind="runtime",
+            dependencies=("session_state",),
+            memory_cost_mb=8,
             operator_actions=("open_kernel_settings",),
             summary="Scheduled and long-running execution workflows.",
         ),
@@ -63,7 +93,9 @@ def list_kernel_modules(profile: KernelProfile) -> list[dict[str, object]]:
             name="diagnostics",
             display_name="Diagnostics",
             category="observability",
-            status="enabled" if "diagnostics" in feature_set else "disabled",
+            status=_status("diagnostics", profile, configured),
+            kind="diagnostic",
+            memory_cost_mb=3,
             operator_actions=("inspect_faults", "open_kernel_settings"),
             summary="Runtime health, operator debug signals, and diagnostic surfacing.",
         ),
@@ -71,7 +103,10 @@ def list_kernel_modules(profile: KernelProfile) -> list[dict[str, object]]:
             name="subagents",
             display_name="Subagents",
             category="execution",
-            status="enabled" if "subagents" in feature_set else "disabled",
+            status=_status("subagents", profile, configured),
+            kind="runtime",
+            dependencies=("session_state",),
+            memory_cost_mb=32,
             operator_actions=("inspect_modules", "restart_runtime"),
             summary="Delegated execution workers for parallel or specialized tasks.",
         ),
@@ -79,7 +114,10 @@ def list_kernel_modules(profile: KernelProfile) -> list[dict[str, object]]:
             name="workspace_controls",
             display_name="Workspace Controls",
             category="io",
-            status="enabled" if "workspace_controls" in feature_set else "disabled",
+            status=_status("workspace_controls", profile, configured),
+            kind="core",
+            lazy=False,
+            memory_cost_mb=2,
             operator_actions=("open_kernel_settings",),
             summary="Project scope, access posture, and workspace attachment controls.",
         ),
@@ -87,7 +125,10 @@ def list_kernel_modules(profile: KernelProfile) -> list[dict[str, object]]:
             name="embedded_ops",
             display_name="Embedded Ops",
             category="embedded",
-            status="enabled" if "embedded_ops" in feature_set else "disabled",
+            status=_status("embedded_ops", profile, configured),
+            kind="runtime",
+            dependencies=("diagnostics",),
+            memory_cost_mb=12,
             operator_actions=("attach_board", "inspect_modules"),
             summary="Operator-facing embedded control loops for constrained runtimes.",
         ),
@@ -95,9 +136,46 @@ def list_kernel_modules(profile: KernelProfile) -> list[dict[str, object]]:
             name="firmware_lab",
             display_name="Firmware Lab",
             category="embedded",
-            status="enabled" if "firmware_lab" in feature_set else "disabled",
+            status=_status("firmware_lab", profile, configured),
+            kind="runtime",
+            dependencies=("embedded_ops",),
+            memory_cost_mb=24,
             operator_actions=("attach_board", "inspect_faults"),
             summary="Firmware experiment surface for boards, bridges, and validation loops.",
         ),
     ]
+    for name in sorted(set(profile.channels)):
+        rows.append(KernelModuleDescriptor(
+            name=name,
+            display_name=name.replace("_", " ").title(),
+            category="channel",
+            status=_status(name, profile, configured),
+            kind="channel",
+            memory_cost_mb=6,
+            summary="Lazy-loadable chat or WebUI ingress module.",
+        ))
+    for name in sorted(set(profile.tools)):
+        rows.append(KernelModuleDescriptor(
+            name=name,
+            display_name=name.replace("_", " ").title(),
+            category="tool",
+            status=_status(name, profile, configured),
+            kind="tool",
+            memory_cost_mb=4 if name != "shell" else 10,
+            dependencies=("workspace_controls",) if name in {"filesystem", "shell", "apply_patch"} else (),
+            summary="Lazy-loadable agent tool module.",
+        ))
     return [row.to_dict() for row in rows]
+
+
+def module_summary(profile: KernelProfile, configured: object | None = None) -> dict[str, object]:
+    rows = list_kernel_modules(profile, configured)
+    enabled = [row for row in rows if row["status"] == "enabled"]
+    return {
+        "profile": profile.name,
+        "total": len(rows),
+        "enabled": len(enabled),
+        "lazy": sum(1 for row in enabled if row.get("lazy")),
+        "estimated_memory_cost_mb": sum(int(row.get("memory_cost_mb") or 0) for row in enabled),
+        "modules": rows,
+    }

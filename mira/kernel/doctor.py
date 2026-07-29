@@ -42,11 +42,18 @@ class KernelDoctor:
         self.webui_port = webui_port
         self.gateway_port = gateway_port
 
-    def run(self, *, fix: bool = False, dry_run: bool = False) -> list[DoctorFinding]:
+    def run(
+        self,
+        *,
+        profile: str = "standard",
+        fix: bool = False,
+        dry_run: bool = False,
+    ) -> list[DoctorFinding]:
         findings: list[DoctorFinding] = []
         config = self._check_config(findings, fix=fix, dry_run=dry_run)
         workspace = self.workspace_override or config.workspace_path
         self._check_workspace(findings, workspace, fix=fix, dry_run=dry_run)
+        self._check_lightweight_profile(findings, config, profile=profile)
         self._check_web_assets(findings)
         self._check_ports(findings)
         self._check_runtime(findings)
@@ -109,6 +116,36 @@ class KernelDoctor:
             repaired=repaired,
             detail=str(workspace),
         ))
+
+    def _check_lightweight_profile(
+        self,
+        findings: list[DoctorFinding],
+        config: Config,
+        *,
+        profile: str,
+    ) -> None:
+        if profile != "lightweight":
+            return
+        from mira.kernel.module_registry import module_summary
+        from mira.kernel.profile import get_profile
+
+        summary = module_summary(get_profile(config.kernel.profile_name), config.modules)
+        if int(summary["estimated_memory_cost_mb"]) > 96:
+            findings.append(DoctorFinding(
+                "lightweight.modules.heavy",
+                "warning",
+                "enabled module estimate is above the lightweight profile budget",
+                repairable=False,
+                detail=f"{summary['estimated_memory_cost_mb']} MB estimated module cost",
+            ))
+        if config.runtime.launcher != "rust-launcher":
+            findings.append(DoctorFinding(
+                "lightweight.launcher.python",
+                "warning",
+                "runtime launcher is python; rust-launcher is available as the lightweight target",
+                repairable=False,
+                detail="set runtime.launcher to rust-launcher when the native launcher is packaged",
+            ))
 
     def _check_web_assets(self, findings: list[DoctorFinding]) -> None:
         index = Path(__file__).resolve().parents[1] / "web" / "dist" / "index.html"

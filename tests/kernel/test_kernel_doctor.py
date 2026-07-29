@@ -32,3 +32,15 @@ def test_doctor_fix_creates_config_workspace_and_removes_stale_artifacts(tmp_pat
     assert config_path.exists()
     assert workspace.exists()
     assert not stale.exists()
+
+
+def test_doctor_lightweight_profile_reports_python_launcher(tmp_path):
+    config_path = tmp_path / "config.json"
+    workspace = tmp_path / "workspace"
+
+    findings = KernelDoctor(config_path=config_path, workspace=workspace).run(
+        profile="lightweight",
+        dry_run=True,
+    )
+
+    assert "lightweight.launcher.python" in {finding.id for finding in findings}

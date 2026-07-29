@@ -298,6 +298,32 @@ def test_webui_browser_url_can_target_temporary_user():
     assert "group=growth" in url
 
 
+def test_modules_list_and_policy_show_use_config(tmp_path: Path):
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps({
+            "modules": {"registry": {"subagents": {"enabled": False}}},
+            "security": {
+                "policies": {
+                    "group:growth": {"denyTools": ["spawn"], "execPosture": "disabled"}
+                }
+            },
+        }),
+        encoding="utf-8",
+    )
+
+    modules_result = runner.invoke(app, ["modules", "list", "--config", str(config_path)])
+    policy_result = runner.invoke(
+        app,
+        ["policy", "show", "--user", "alice", "--group", "growth", "--config", str(config_path)],
+    )
+
+    assert modules_result.exit_code == 0
+    assert "subagents" in modules_result.stdout
+    assert policy_result.exit_code == 0
+    assert "\"exec_posture\": \"disabled\"" in policy_result.stdout
+
+
 def test_onboard_existing_config_refresh(mock_paths):
     """Config exists, user declines overwrite — should refresh (load-merge-save)."""
     config_file, workspace_dir, _ = mock_paths

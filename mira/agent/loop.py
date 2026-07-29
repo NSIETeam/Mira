@@ -62,6 +62,7 @@ from mira.runtime_context import (
     resolve_runtime_context,
     runtime_context_blocks_from_metadata,
 )
+from mira.security.policy import effective_principal_policy
 from mira.security.workspace_access import (
     WorkspaceScopeResolver,
     bind_workspace_scope,
@@ -290,6 +291,7 @@ class AgentLoop:
         unified_session: bool = False,
         disabled_skills: list[str] | None = None,
         tools_config: ToolsConfig | None = None,
+        modules_config: Any | None = None,
         image_generation_provider_config: ProviderConfig | None = None,
         image_generation_provider_configs: dict[str, ProviderConfig] | None = None,
         provider_snapshot_loader: Callable[..., ProviderSnapshot] | None = None,
@@ -366,6 +368,7 @@ class AgentLoop:
             else defaults.tool_hint_max_length
         )
         self.tools_config = _tc
+        self.modules_config = modules_config
         self.web_config = _tc.web
         self.exec_config = _tc.exec
         self._image_generation_provider_configs = dict(image_generation_provider_configs or {})
@@ -519,16 +522,12 @@ class AgentLoop:
         user = metadata.get(WEBUI_USER_METADATA_KEY)
         if not isinstance(user, str) or user in ("", "default"):
             return self.tools
-        return self.tools.filtered_copy(
-            exclude={
-                "exec",
-                "write_file",
-                "edit_file",
-                "apply_patch",
-                "my_tool",
-                "create_or_update_tool",
-            }
-        )
+        policy = effective_principal_policy(user_id=user, group_id=metadata.get(WEBUI_GROUP_METADATA_KEY))
+        return self.tools.filtered_copy(exclude=set(policy.deny_tools))
+
+    def _module_enabled(self, name: str, *, default: bool = True) -> bool:
+        is_enabled = getattr(self.modules_config, "is_enabled", None)
+        return bool(is_enabled(name, default=default)) if callable(is_enabled) else default
 
     @classmethod
     def from_config(
@@ -580,6 +579,7 @@ class AgentLoop:
             idle_compact_check_interval_seconds=defaults.idle_compact_check_interval_seconds,
             consolidation_ratio=defaults.consolidation_ratio,
             tools_config=config.tools,
+            modules_config=config.modules,
             model_presets=preset_helpers.configured_model_presets(config),
             model_preset=defaults.model_preset,
             restart_mode=config.gateway.restart_mode,
@@ -705,6 +705,12 @@ class AgentLoop:
                 MyTool(runtime_state=self, modify_allowed=self.tools_config.my.allow_set)
             )
             registered.append("my")
+
+        for name in list(self.tools.tool_names):
+            if not self._module_enabled(name, default=True):
+                self.tools.unregister(name)
+                if name in registered:
+                    registered.remove(name)
 
         logger.info("Registered {} tools: {}", len(registered), registered)
 

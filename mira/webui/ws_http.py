@@ -35,6 +35,7 @@ from mira.kernel import (
     get_profile,
 )
 from mira.runtime_context import public_history_messages
+from mira.security.policy import effective_principal_policy
 from mira.triggers.local_types import LocalTrigger
 from mira.utils.subagent_channel_display import scrub_subagent_messages_for_channel
 from mira.webui.file_preview import (
@@ -149,6 +150,16 @@ def _bootstrap_profile_from_config():
     except Exception as e:
         logger.debug("bootstrap profile resolver failed: {}", e)
         return get_profile(None)
+
+
+def _bootstrap_config_or_none():
+    try:
+        from mira.config.loader import load_config
+
+        return load_config()
+    except Exception as e:
+        logger.debug("bootstrap config resolver failed: {}", e)
+        return None
 
 
 def _resolve_bootstrap_model_name(
@@ -399,6 +410,12 @@ class GatewayHTTPHandler:
         expected_path = _normalize_config_path(self.config.path)
         shell = _bootstrap_shell_from_config()
         profile = _bootstrap_profile_from_config()
+        bootstrap_config = _bootstrap_config_or_none()
+        policy = effective_principal_policy(
+            getattr(bootstrap_config, "security", None),
+            user_id=user.user_id,
+            group_id=user.group_id,
+        )
         kernel = self._get_kernel_app()
         kernel_payload = self._kernel_manifest_payload(profile=profile, shell=shell)
         payload = {
@@ -417,7 +434,16 @@ class GatewayHTTPHandler:
             "memory": MemoryStore(user.memory_workspace).memory_audit(user.memory_workspace),
             "scheduler": kernel.scheduler_snapshot() if kernel is not None else None,
             "user": user.payload(),
+            "policy": policy.to_dict(),
+            "tool_availability": {
+                "denied": sorted(policy.deny_tools),
+                "exec_posture": policy.exec_posture,
+            },
         }
+        if bootstrap_config is not None:
+            from mira.kernel.module_registry import module_summary
+
+            payload["modules"] = module_summary(profile, bootstrap_config.modules)
         if api_token is not None:
             payload["api_token"] = api_token
         return _http_json_response(payload)

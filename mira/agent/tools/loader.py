@@ -100,6 +100,8 @@ class ToolLoader:
                     tool = tool_cls.create(ctx)
                     if is_plugin_source:
                         tool = _LegacyErrorPrefixTool(tool)
+                    if not _tool_module_enabled(ctx, tool.name):
+                        continue
                     if registry.has(tool.name):
                         if is_plugin_source and tool.name in builtin_names:
                             logger.warning(
@@ -118,6 +120,14 @@ class ToolLoader:
                 except Exception:
                     logger.exception("Failed to register tool: %s", cls_label)
         return registered
+
+
+def _tool_module_enabled(ctx: Any, tool_name: str) -> bool:
+    modules = getattr(getattr(ctx, "config", None), "modules", None)
+    if modules is None:
+        return True
+    is_enabled = getattr(modules, "is_enabled", None)
+    return bool(is_enabled(tool_name, default=True)) if callable(is_enabled) else True
 
 
 class _LegacyErrorPrefixTool(Tool):

@@ -348,6 +348,28 @@ export interface BootstrapResponse {
     memory_workspace: string;
     temporary: boolean;
   };
+  policy?: {
+    role: string;
+    user_id: string;
+    group_id: string;
+    allow_tools: string[];
+    deny_tools: string[];
+    workspace_root: string;
+    memory_scope: string;
+    exec_posture: string;
+  };
+  tool_availability?: {
+    denied: string[];
+    exec_posture: string;
+  };
+  modules?: {
+    profile: string;
+    total: number;
+    enabled: number;
+    lazy: number;
+    estimated_memory_cost_mb: number;
+    modules: Array<Record<string, unknown>>;
+  };
   memory?: {
     layers: Array<{
       id: string;
