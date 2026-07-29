@@ -362,8 +362,9 @@ export interface BootstrapResponse {
     running?: number;
     running_limit?: number;
     queued?: number;
-    queued_near?: number;
-    queued_far?: number;
+    queued_hot?: number;
+    queued_warm?: number;
+    queued_cold?: number;
     queue_limit?: number;
     estimated_subagent_memory_mb?: number;
     host_memory_mb?: number | null;

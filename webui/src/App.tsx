@@ -519,8 +519,9 @@ function RuntimeSnapshotPanel({
         running: scheduler.running ?? 0,
         runningLimit: scheduler.running_limit ?? 0,
         queued: scheduler.queued ?? 0,
-        queuedNear: scheduler.queued_near ?? 0,
-        queuedFar: scheduler.queued_far ?? 0,
+        queuedHot: scheduler.queued_hot ?? 0,
+        queuedWarm: scheduler.queued_warm ?? 0,
+        queuedCold: scheduler.queued_cold ?? 0,
       }
     : null;
   const topicCount = memory?.auto_memory?.topic_file_count ?? 0;
@@ -548,8 +549,9 @@ function RuntimeSnapshotPanel({
             <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
               <span>running {schedulerSummary.running}/{schedulerSummary.runningLimit}</span>
               <span>queued {schedulerSummary.queued}</span>
-              <span>near {schedulerSummary.queuedNear}</span>
-              <span>far {schedulerSummary.queuedFar}</span>
+              <span>hot {schedulerSummary.queuedHot}</span>
+              <span>warm {schedulerSummary.queuedWarm}</span>
+              <span>cold {schedulerSummary.queuedCold}</span>
             </div>
           ) : null}
         </div>
