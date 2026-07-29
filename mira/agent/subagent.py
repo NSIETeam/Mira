@@ -438,11 +438,23 @@ class SubagentManager:
                     f"{session_fragment}."
                 )
             queued = self._pending_count()
+            session_key = origin.get("session_key")
+            running_for_session = (
+                self.get_running_count_by_session(session_key)
+                if session_key
+                else 0
+            )
+            session_reason = (
+                f" Session running limit active: {running_for_session}/{self.max_running_subagents_per_session}."
+                if session_key and running_for_session >= self.max_running_subagents_per_session
+                else ""
+            )
             logger.info("Queued subagent [{}]: {}", task_id, display_label)
             return (
                 f"Subagent [{display_label}] queued (id: {task_id}). "
                 f"It will start automatically when a shared execution slot is free. "
                 f"Queue depth: {queued}. Memory policy: {resolved_memory_policy}."
+                f"{session_reason}"
             )
 
         logger.info("Spawned subagent [{}]: {}", task_id, display_label)
