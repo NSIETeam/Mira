@@ -111,6 +111,7 @@ type BootState =
       shell: ShellDescriptorPayload | null;
       memory: BootstrapResponse["memory"] | null;
       scheduler: BootstrapResponse["scheduler"] | null;
+      runtimeSnapshotAt: number | null;
     };
 
 const TOKEN_REFRESH_MARGIN_MS = 30_000;
@@ -260,6 +261,7 @@ export default function App() {
               shell: shellDescriptor ?? current.shell,
               memory: boot.memory ?? current.memory,
               scheduler: boot.scheduler ?? current.scheduler,
+              runtimeSnapshotAt: current.runtimeSnapshotAt,
             }
           : current,
       );
@@ -309,6 +311,7 @@ export default function App() {
             shell: shellDescriptor,
             memory: boot.memory ?? null,
             scheduler: boot.scheduler ?? null,
+            runtimeSnapshotAt: null,
           });
         } catch (e) {
           if (cancelled) return;
@@ -383,6 +386,7 @@ export default function App() {
                 ...current,
                 scheduler: snapshot.scheduler ?? current.scheduler,
                 memory: snapshot.memory ?? current.memory,
+                runtimeSnapshotAt: snapshot.snapshot_at ?? current.runtimeSnapshotAt,
               }
             : current,
         );
@@ -516,6 +520,7 @@ export default function App() {
       <RuntimeSnapshotPanel
         memory={state.memory}
         scheduler={state.scheduler}
+        runtimeSnapshotAt={state.runtimeSnapshotAt}
       />
       <Shell
         runtimeSurface={state.guiSurface}
@@ -583,9 +588,11 @@ export default function App() {
 function RuntimeSnapshotPanel({
   memory,
   scheduler,
+  runtimeSnapshotAt,
 }: {
   memory: BootstrapResponse["memory"] | null;
   scheduler: BootstrapResponse["scheduler"] | null;
+  runtimeSnapshotAt: number | null;
 }) {
   const schedulerSummary = scheduler && "running" in scheduler
     ? {
@@ -617,11 +624,22 @@ function RuntimeSnapshotPanel({
 
   if (!memory && !schedulerSummary) return null;
 
+  const snapshotLabel = runtimeSnapshotAt
+    ? new Date(runtimeSnapshotAt).toLocaleTimeString()
+    : null;
+
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-40">
       <div className="pointer-events-auto rounded-2xl border border-border/60 bg-background/92 px-4 py-3 shadow-xl backdrop-blur">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-          Runtime Snapshot
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+            Runtime Snapshot
+          </div>
+          {snapshotLabel ? (
+            <div className="text-[10px] text-muted-foreground">
+              {snapshotLabel}
+            </div>
+          ) : null}
         </div>
         <div className="mt-3 grid gap-2 text-xs text-foreground">
           {memory ? (

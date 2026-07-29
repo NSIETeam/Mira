@@ -189,6 +189,7 @@ export interface KernelSchedulerPayload {
 }
 
 export interface KernelRuntimeSnapshotPayload {
+  snapshot_at?: number;
   memory: BootstrapResponse["memory"];
   scheduler: BootstrapResponse["scheduler"];
 }

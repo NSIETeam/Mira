@@ -904,6 +904,7 @@ class GatewayHTTPHandler:
         kernel = self._get_kernel_app()
         scheduler = kernel.scheduler_snapshot() if kernel is not None else None
         return _http_json_response({
+            "snapshot_at": int(time.time() * 1000),
             "memory": MemoryStore(self.skills_workspace_path).memory_audit(self.skills_workspace_path),
             "scheduler": scheduler,
         })
