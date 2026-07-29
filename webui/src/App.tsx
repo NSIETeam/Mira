@@ -108,6 +108,8 @@ type BootState =
       guiSurface: KernelGuiSurface;
       kernel: KernelManifestPayload | null;
       shell: ShellDescriptorPayload | null;
+      memory: BootstrapResponse["memory"] | null;
+      scheduler: BootstrapResponse["scheduler"] | null;
     };
 
 const TOKEN_REFRESH_MARGIN_MS = 30_000;
@@ -251,6 +253,8 @@ export default function App() {
               guiSurface,
               kernel: kernelManifest ?? current.kernel,
               shell: shellDescriptor ?? current.shell,
+              memory: boot.memory ?? current.memory,
+              scheduler: boot.scheduler ?? current.scheduler,
             }
           : current,
       );
@@ -298,6 +302,8 @@ export default function App() {
             guiSurface,
             kernel: kernelManifest ?? null,
             shell: shellDescriptor,
+            memory: boot.memory ?? null,
+            scheduler: boot.scheduler ?? null,
           });
         } catch (e) {
           if (cancelled) return;

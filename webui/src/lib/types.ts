@@ -334,6 +334,40 @@ export interface BootstrapResponse {
   runtime_capabilities?: RuntimeCapabilities;
   shell?: ShellDescriptorPayload;
   kernel?: KernelManifestPayload;
+  memory?: {
+    layers: Array<{
+      id: string;
+      label: string;
+      path: string;
+      source: string;
+      loaded: boolean;
+      fallback_label?: string | null;
+    }>;
+    auto_memory: {
+      index_path: string;
+      history_path: string;
+      loaded: boolean;
+      topic_dir?: string;
+      topic_file_count?: number;
+      referenced_topic_count?: number;
+    };
+    graph: {
+      path: string;
+      entity_count: number;
+      relation_count: number;
+      evidence_count: number;
+    };
+  };
+  scheduler?: KernelManifestPayload["scheduler"] | {
+    running?: number;
+    running_limit?: number;
+    queued?: number;
+    queued_near?: number;
+    queued_far?: number;
+    queue_limit?: number;
+    estimated_subagent_memory_mb?: number;
+    host_memory_mb?: number | null;
+  } | null;
 }
 
 export interface WebUITransportLimits {
