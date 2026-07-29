@@ -558,6 +558,14 @@ class SubagentManager:
                 status = self._task_statuses.get(pending.task_id)
                 if status is None:
                     continue
+                session_key = pending.origin.get("session_key")
+                if (
+                    session_key
+                    and self.get_running_count_by_session(session_key)
+                    >= self.max_running_subagents_per_session
+                ):
+                    self._push_pending(pending)
+                    break
                 self._start_pending_locked(pending, status)
 
     def _pick_next_pending_index(self, queue: list[PendingSubagent]) -> int:
