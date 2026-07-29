@@ -612,6 +612,7 @@ function RuntimeSnapshotPanel({
         queuedCold: scheduler.queued_cold ?? 0,
         queueLimit: scheduler.queue_limit ?? 0,
         sessionQueueLimit: scheduler.session_queue_limit ?? 0,
+        sessionRunningLimit: scheduler.session_running_limit ?? 0,
         fairShareBias: typeof scheduler.fair_share_bias === "string"
           ? scheduler.fair_share_bias
           : null,
@@ -743,6 +744,9 @@ function RuntimeSnapshotPanel({
               <span>queued {schedulerSummary.queued}/{schedulerSummary.queueLimit}</span>
               {schedulerSummary.sessionQueueLimit ? (
                 <span>per-session {schedulerSummary.sessionQueueLimit}</span>
+              ) : null}
+              {schedulerSummary.sessionRunningLimit ? (
+                <span>running/session {schedulerSummary.sessionRunningLimit}</span>
               ) : null}
               {schedulerSummary.fairShareBias ? (
                 <span>bias {schedulerSummary.fairShareBias}</span>

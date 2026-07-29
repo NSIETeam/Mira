@@ -181,6 +181,12 @@ class SubagentManager:
         return max(1, min(max(2, concurrency), concurrency * 2))
 
     @classmethod
+    def _recommended_session_running_limit(cls, concurrency: int) -> int:
+        if concurrency <= 1:
+            return 1
+        return max(1, min(concurrency - 1, max(1, concurrency // 2)))
+
+    @classmethod
     def _normalize_memory_policy(cls, memory_policy: str | None) -> str:
         normalized = str(memory_policy or cls._DEFAULT_MEMORY_POLICY).strip().lower()
         if normalized == "auto":
@@ -280,6 +286,9 @@ class SubagentManager:
         self.subagent_memory_mb = self._DEFAULT_SUBAGENT_MEMORY_MB
         self.max_pending_subagents = self._recommended_queue_limit(self.max_concurrent_subagents)
         self.max_pending_subagents_per_session = self._recommended_session_queue_limit(
+            self.max_concurrent_subagents
+        )
+        self.max_running_subagents_per_session = self._recommended_session_running_limit(
             self.max_concurrent_subagents
         )
         self.fail_on_tool_error = (
@@ -448,6 +457,22 @@ class SubagentManager:
         status: SubagentStatus,
     ) -> bool:
         async with self._dispatch_lock:
+            session_key = pending.origin.get("session_key")
+            if (
+                session_key
+                and self.get_running_count_by_session(session_key)
+                >= self.max_running_subagents_per_session
+            ):
+                if self._pending_count() >= self.max_pending_subagents:
+                    status.phase = "error"
+                    status.error = (
+                        "queued-subagent limit reached; host is saturated and the shared queue is full"
+                    )
+                    self._task_statuses.pop(pending.task_id, None)
+                    return False
+                status.phase = "queued"
+                self._push_pending(pending)
+                return False
             if len(self._running_tasks) >= self.max_concurrent_subagents:
                 if self._pending_count() >= self.max_pending_subagents:
                     status.phase = "error"
@@ -1033,6 +1058,7 @@ class SubagentManager:
             "queued_cold": len(self._pending_cold),
             "queue_limit": queue_limit,
             "session_queue_limit": self.max_pending_subagents_per_session,
+            "session_running_limit": self.max_running_subagents_per_session,
             "fair_share_bias": "session_load_penalty",
             "fair_share_penalty": self._SESSION_LOAD_PENALTY,
             "queued_sessions": self._pending_sessions_summary(),
