@@ -866,13 +866,13 @@ class MemoryStore:
         topic_files = self.list_topic_files()
         referenced_topics = self.referenced_topic_files()
         subagent_files = sorted(self.subagent_dir.rglob("*.json"))
-        recent_subagent_entries: list[dict[str, Any]] = []
+        all_subagent_entries: list[dict[str, Any]] = []
         status_counts: dict[str, int] = {}
         memory_policy_counts: dict[str, int] = {}
         label_counts: dict[str, int] = {}
         error_labels: list[str] = []
         session_counts: dict[str, int] = {}
-        for path in subagent_files[-5:]:
+        for path in subagent_files:
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
@@ -887,13 +887,14 @@ class MemoryStore:
             session_counts[session_value] = session_counts.get(session_value, 0) + 1
             if status_value == "error" and label_value not in error_labels:
                 error_labels.append(label_value)
-            recent_subagent_entries.append({
+            all_subagent_entries.append({
                 "path": str(path.relative_to(self.workspace)),
                 "label": label_value,
                 "status": status_value,
                 "memory_policy": memory_policy_value,
                 "session_key": session_value,
             })
+        recent_subagent_entries = all_subagent_entries[-5:]
         top_labels = [
             {"label": label, "count": count}
             for label, count in sorted(label_counts.items(), key=lambda item: (-item[1], item[0]))[:3]
