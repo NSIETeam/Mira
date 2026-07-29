@@ -118,6 +118,7 @@ const TOKEN_REFRESH_MIN_DELAY_MS = 5_000;
 const RUNTIME_SNAPSHOT_REFRESH_ACTIVE_BUSY_MS = 5_000;
 const RUNTIME_SNAPSHOT_REFRESH_ACTIVE_STEADY_MS = 15_000;
 const RUNTIME_SNAPSHOT_REFRESH_IDLE_MS = 60_000;
+const RUNTIME_SNAPSHOT_JITTER_RATIO = 0.15;
 const loadSettingsView = () => import("@/components/settings/SettingsView");
 const SettingsView = lazy(async () => {
   const module = await loadSettingsView();
@@ -347,6 +348,12 @@ export default function App() {
     if (state.status !== "ready") return;
     let cancelled = false;
     let timer: number | null = null;
+    const withJitter = (delay: number) => {
+      const spread = Math.floor(delay * RUNTIME_SNAPSHOT_JITTER_RATIO);
+      if (spread <= 0) return delay;
+      const offset = Math.floor((Math.random() * (spread * 2 + 1)) - spread);
+      return Math.max(1_000, delay + offset);
+    };
     const scheduleNext = () => {
       if (cancelled) return;
       const visible = typeof document !== "undefined" && document.visibilityState === "visible";
@@ -364,7 +371,7 @@ export default function App() {
         : RUNTIME_SNAPSHOT_REFRESH_IDLE_MS;
       timer = window.setTimeout(() => {
         void refreshRuntimeSnapshot();
-      }, delay);
+      }, withJitter(delay));
     };
     const refreshRuntimeSnapshot = async () => {
       try {
