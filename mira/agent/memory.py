@@ -920,6 +920,14 @@ class MemoryStore:
             contention_severity = "contested"
         else:
             contention_severity = "shared"
+        if contention_severity in {"idle", "isolated"}:
+            recommended_action = "no throttling needed"
+        elif contention_severity == "shared":
+            recommended_action = "watch queue growth"
+        elif contention_severity == "contested":
+            recommended_action = "consider lowering fan-out"
+        else:
+            recommended_action = "rate-limit dominant session"
         return {
             "layers": [
                 {
@@ -965,6 +973,7 @@ class MemoryStore:
                 "dominant_session": dominant_session,
                 "dominant_session_share": dominant_session_share,
                 "contention_severity": contention_severity,
+                "recommended_action": recommended_action,
             },
         }
 
