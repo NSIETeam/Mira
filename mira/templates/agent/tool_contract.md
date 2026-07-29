@@ -26,6 +26,7 @@
 - Keep the main agent as coordinator: it should define the plan, delegate bounded subtasks, merge results, and make final decisions.
 - Avoid subagent overuse on simple tasks; use them when the task naturally splits into independent reads, implementations, or validations.
 - In shared-server environments, prefer short-lived subagents, narrow file scope, and concise task statements so many sessions can coexist safely.
+- Match parallelism to host capacity: on weaker hosts, keep fewer subagents active; on stronger hosts, allow modest fan-out, but avoid saturating CPU or memory.
 
 ## Discovery and Reading
 

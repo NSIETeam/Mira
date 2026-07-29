@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 import time
 import uuid
 import warnings
@@ -83,6 +84,17 @@ class _SubagentHook(AgentHook):
 class SubagentManager:
     """Manages background subagent execution."""
 
+    @staticmethod
+    def _recommended_concurrency() -> int:
+        cpu = os.cpu_count() or 2
+        if cpu <= 2:
+            return 1
+        if cpu <= 4:
+            return 2
+        if cpu <= 8:
+            return 3
+        return 4
+
     def __init__(
         self,
         provider: LLMProvider | None = None,
@@ -134,10 +146,15 @@ class SubagentManager:
             if max_iterations is not None
             else defaults.max_tool_iterations
         )
-        self.max_concurrent_subagents = (
+        configured_subagents = (
             max_concurrent_subagents
             if max_concurrent_subagents is not None
             else defaults.max_concurrent_subagents
+        )
+        self.max_concurrent_subagents = (
+            configured_subagents
+            if configured_subagents > 0
+            else self._recommended_concurrency()
         )
         self.fail_on_tool_error = (
             fail_on_tool_error
