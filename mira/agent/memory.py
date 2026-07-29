@@ -893,8 +893,10 @@ class MemoryStore:
                 "status": status_value,
                 "memory_policy": memory_policy_value,
                 "session_key": session_value,
+                "updated_at": str(payload.get("updated_at") or ""),
             })
         recent_subagent_entries = all_subagent_entries[-5:]
+        latest_subagent_activity_at = recent_subagent_entries[-1]["updated_at"] if recent_subagent_entries else ""
         top_labels = [
             {"label": label, "count": count}
             for label, count in sorted(label_counts.items(), key=lambda item: (-item[1], item[0]))[:3]
@@ -976,6 +978,7 @@ class MemoryStore:
                 "dominant_session_share": dominant_session_share,
                 "contention_severity": contention_severity,
                 "recommended_action": recommended_action,
+                "latest_activity_at": latest_subagent_activity_at,
             },
         }
 

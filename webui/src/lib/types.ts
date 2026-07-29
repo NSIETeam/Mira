@@ -368,6 +368,7 @@ export interface BootstrapResponse {
         status?: string;
         memory_policy?: string;
         session_key?: string;
+        updated_at?: string;
       }>;
       status_counts?: Record<string, number>;
       memory_policy_counts?: Record<string, number>;
@@ -387,6 +388,7 @@ export interface BootstrapResponse {
       dominant_session_share?: number;
       contention_severity?: string;
       recommended_action?: string;
+      latest_activity_at?: string;
     };
   };
   planning?: {

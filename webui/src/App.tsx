@@ -657,6 +657,7 @@ function RuntimeSnapshotPanel({
   const dominantSessionShare = memory?.subagent_memory?.dominant_session_share ?? 0;
   const contentionSeverity = memory?.subagent_memory?.contention_severity ?? "idle";
   const recommendedAction = memory?.subagent_memory?.recommended_action ?? null;
+  const latestSubagentActivityAt = memory?.subagent_memory?.latest_activity_at ?? "";
   const loadedLayers = memory?.layers?.filter((layer) => layer.loaded).length ?? 0;
   const loadedLayerLabels = memory?.layers
     ?.filter((layer) => layer.loaded)
@@ -814,6 +815,7 @@ function RuntimeSnapshotPanel({
                 {dominantSession ? <span>dominant {dominantSession}</span> : null}
                 {dominantSession ? <span>share {dominantSessionShare}%</span> : null}
                 {recommendedAction ? <span>action {recommendedAction}</span> : null}
+                {latestSubagentActivityAt ? <span>latest {latestSubagentActivityAt}</span> : null}
                 {subagentErrorLabels.map((label) => (
                   <span key={`error-${label}`}>error:{label}</span>
                 ))}
@@ -824,6 +826,7 @@ function RuntimeSnapshotPanel({
                   {entry.session_key ? <span>{entry.session_key}</span> : null}
                   <span>{entry.status ?? "unknown"}</span>
                   <span>{entry.memory_policy ?? "default"}</span>
+                  {entry.updated_at ? <span>{entry.updated_at}</span> : null}
                 </div>
               ))}
             </div>
