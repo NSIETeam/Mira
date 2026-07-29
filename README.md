@@ -83,6 +83,13 @@ uv tool install mira
 pip install mira
 ```
 
+**Desktop host (native window):**
+
+```bash
+pip install "mira[desktop]"
+mira desktop
+```
+
 **From source:**
 
 ```bash
@@ -102,11 +109,18 @@ mira webui
 Opens `http://127.0.0.1:8765` in your browser. Configure your first model in **Settings -> Models**, then start your first execution.
 
 ```bash
+mira desktop              # Native desktop shell around the local gateway
 mira webui --background   # Keep running after closing terminal
 mira agent                # Terminal-only chat
 mira agent -m "Hello!"    # One-shot query
 mira gateway              # Long-running service
 ```
+
+Packaged desktop builds are published through GitHub Releases on version tags. The release workflow emits:
+
+- `Mira-macos.zip`
+- `Mira-windows.zip`
+- `Mira-linux.tar.gz`
 
 ### Architecture
 

@@ -1627,6 +1627,84 @@ def webui(
     )
 
 
+@app.command()
+def desktop(
+    port: int | None = typer.Option(None, "--port", "-p", help="WebUI port"),
+    gateway_port: int | None = typer.Option(
+        None,
+        "--gateway-port",
+        help="Gateway health port",
+    ),
+    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
+    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Apply safe local desktop defaults without prompting",
+    ),
+    debug: bool = typer.Option(False, "--debug", help="Open the native shell with WebView debug mode"),
+    stop_on_close: bool = typer.Option(
+        True,
+        "--stop-on-close/--keep-running",
+        help="Stop the gateway started by this window when the native shell closes",
+    ),
+) -> None:
+    """Launch the Mira workbench inside a native desktop window."""
+    from mira.desktop.app import NativeWindowOptions, launch_native_window
+    from mira.gateway import GatewayRuntime, GatewayRuntimePaths
+
+    config_path = _resolve_webui_config_path(config)
+    pre_runtime_config = _load_runtime_config(str(config_path), workspace)
+    pre_gateway_port = gateway_port if gateway_port is not None else pre_runtime_config.gateway.port
+    pre_webui_url = _webui_browser_url(pre_runtime_config)
+    already_running = _gateway_health_ready(pre_runtime_config.gateway.host, pre_gateway_port) and (
+        _webui_endpoint_reachable(pre_webui_url)
+    )
+
+    webui(
+        port=port,
+        gateway_port=gateway_port,
+        workspace=workspace,
+        config=config,
+        background=True,
+        no_open=True,
+        yes=yes,
+    )
+
+    runtime_config = _load_runtime_config(str(config_path), workspace)
+    webui_url = _webui_browser_url(runtime_config)
+    config_arg = str(config_path)
+    workspace_arg = str(Path(workspace).expanduser().resolve(strict=False)) if workspace else None
+    runtime = GatewayRuntime(
+        paths=GatewayRuntimePaths.for_instance(
+            data_dir=config_path.parent,
+            workspace=workspace_arg,
+            config_path=config_arg,
+        )
+    )
+
+    def _stop_runtime() -> None:
+        if not stop_on_close or already_running:
+            return
+        result = runtime.stop(timeout_s=20)
+        if not result.ok and result.message != "gateway_not_running":
+            logger.warning("Desktop shell failed to stop background gateway: {}", result.message)
+
+    try:
+        launch_native_window(
+            NativeWindowOptions(
+                url=webui_url,
+                title=__app_name__,
+                debug=debug,
+            ),
+            on_closed=_stop_runtime,
+        )
+    except RuntimeError as exc:
+        console.print(f"[red]Error: {exc}[/red]")
+        raise typer.Exit(1) from exc
+
+
 # ============================================================================
 # Gateway / Server
 # ============================================================================
