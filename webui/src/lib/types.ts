@@ -389,6 +389,7 @@ export interface BootstrapResponse {
       contention_severity?: string;
       recommended_action?: string;
       latest_activity_at?: string;
+      latest_activity_freshness?: string;
     };
   };
   planning?: {

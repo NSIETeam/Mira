@@ -897,6 +897,19 @@ class MemoryStore:
             })
         recent_subagent_entries = all_subagent_entries[-5:]
         latest_subagent_activity_at = recent_subagent_entries[-1]["updated_at"] if recent_subagent_entries else ""
+        latest_activity_freshness = "idle"
+        if latest_subagent_activity_at:
+            try:
+                latest_dt = datetime.fromisoformat(latest_subagent_activity_at)
+                age_seconds = max((datetime.now() - latest_dt).total_seconds(), 0.0)
+                if age_seconds <= 300:
+                    latest_activity_freshness = "hot"
+                elif age_seconds <= 1800:
+                    latest_activity_freshness = "warm"
+                else:
+                    latest_activity_freshness = "cold"
+            except ValueError:
+                latest_activity_freshness = "unknown"
         top_labels = [
             {"label": label, "count": count}
             for label, count in sorted(label_counts.items(), key=lambda item: (-item[1], item[0]))[:3]
@@ -979,6 +992,7 @@ class MemoryStore:
                 "contention_severity": contention_severity,
                 "recommended_action": recommended_action,
                 "latest_activity_at": latest_subagent_activity_at,
+                "latest_activity_freshness": latest_activity_freshness,
             },
         }
 
