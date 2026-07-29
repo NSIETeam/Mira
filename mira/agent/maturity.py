@@ -130,6 +130,22 @@ class VirtualContextManager:
         }
         return VirtualContextPage([summary, *kept], paged_count, budget_tokens, summary)
 
+    def explain(self, messages: list[dict[str, Any]], *, budget_tokens: int) -> dict[str, Any]:
+        page = self.page(messages, budget_tokens=budget_tokens)
+        return {
+            "strategy": "deterministic_tail_window",
+            "budget_tokens": budget_tokens,
+            "input_messages": len(messages),
+            "kept_messages": len(page.kept_messages) - (1 if page.summary_message else 0),
+            "paged_messages": page.paged_count,
+            "summary_injected": page.summary_message is not None,
+            "reason": (
+                "Older turns were replaced with a compact breadcrumb to keep the live context small."
+                if page.paged_count
+                else "All turns fit within the configured virtual context budget."
+            ),
+        }
+
     def _breadcrumb(self, messages: list[dict[str, Any]]) -> str:
         chunks: list[str] = []
         for message in messages[-12:]:

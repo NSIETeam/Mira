@@ -13,6 +13,7 @@ import {
   Pin,
   PinOff,
   Plus,
+  Stethoscope,
   Trash2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -54,6 +55,7 @@ interface ExecutionListProps {
   onTogglePin: (key: string) => void;
   onRequestRename: (key: string, label: string) => void;
   onToggleArchive: (key: string) => void;
+  onRequestDiagnostics?: (key: string, label: string) => void;
   onToggleGroup?: (groupId: string) => void;
   onRequestRenameProject?: (projectKey: string, label: string) => void;
   onNewExecutionInProject?: (projectPath: string, projectName: string) => void;
@@ -86,6 +88,7 @@ export const ExecutionList = memo(function ExecutionList({
   onTogglePin,
   onRequestRename,
   onToggleArchive,
+  onRequestDiagnostics,
   onToggleGroup,
   onRequestRenameProject,
   onNewExecutionInProject,
@@ -111,6 +114,11 @@ export const ExecutionList = memo(function ExecutionList({
   const resolvedActiveKey = activeExecutionKey ?? activeKey;
   const handleRequestDeleteExecution = onRequestDeleteExecution ?? onRequestDelete;
   const handleNewExecutionInProject = onNewExecutionInProject;
+  const handleRequestDiagnostics = onRequestDiagnostics ?? ((key: string, label: string) => {
+    window.dispatchEvent(new CustomEvent("mira:request-diagnostics", {
+      detail: { sessionKey: key, label },
+    }));
+  });
   const activeExecutionIds = runningExecutionIds;
   const refreshedExecutionIds = updatedExecutionIds;
   const [visibleLimit, setVisibleLimit] = useState(INITIAL_VISIBLE_SESSIONS);
@@ -359,6 +367,13 @@ export const ExecutionList = memo(function ExecutionList({
                                   <Archive className="h-4 w-4 shrink-0" />
                                 )}
                                 {isArchived ? t("chat.unarchive") : t("chat.archive")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => handleRequestDiagnostics(s.key, title)}
+                                className={ACTION_MENU_ITEM_CLASS}
+                              >
+                                <Stethoscope className="h-4 w-4 shrink-0" />
+                                {t("chat.diagnose", { defaultValue: "Diagnose" })}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onSelect={() => {

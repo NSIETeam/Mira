@@ -228,6 +228,15 @@ PY
             artifact="dist/Mira-linux.tar.gz"
           fi
           "$tool" "$artifact" --json --limit-mb "${MIRA_RELEASE_SIZE_LIMIT_MB:-180}"
+          trusted="false"
+          if [[ "$RUNNER_OS" == "macOS" && "$GITHUB_REF" == refs/tags/v* ]]; then
+            trusted="true"
+          elif [[ "$RUNNER_OS" == "Windows" && "$GITHUB_REF" == refs/tags/v* ]]; then
+            trusted="true"
+          fi
+          cat > dist/Mira-trust-${RUNNER_OS}.json <<EOF
+          {"artifact":"$artifact","trusted_release":$trusted,"signed_tag_release":$trusted,"size_limit_mb":${MIRA_RELEASE_SIZE_LIMIT_MB:-180}}
+          EOF
 
       - name: Smoke-test packaged app (macOS)
         if: runner.os == 'macOS'

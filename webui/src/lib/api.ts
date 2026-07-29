@@ -11,6 +11,7 @@ import type {
   FilePreviewPayload,
   ImageGenerationSettingsUpdate,
   KernelManifestPayload,
+  KernelDiagnosticsApiPayload,
   McpPresetsPayload,
   miraFeaturesPayload,
   ModelConfigurationCreate,
@@ -202,7 +203,7 @@ export interface KernelWorkersPayload {
 }
 
 export interface KernelDiagnosticsPayload {
-  diagnostics: KernelManifestPayload["diagnostics"];
+  diagnostics: KernelManifestPayload["diagnostics"] | KernelDiagnosticsApiPayload["diagnostics"];
 }
 
 export interface KernelLanesPayload {

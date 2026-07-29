@@ -1087,6 +1087,23 @@ export interface KernelManifestPayload {
   }>;
 }
 
+export interface KernelRecoveryAction {
+  id: string;
+  label: string;
+  command?: string;
+  path?: string;
+}
+
+export interface KernelDiagnosticsApiPayload {
+  diagnostics: {
+    status: "ok" | "missing_launcher_log" | string;
+    launcher_log_path: string;
+    launcher_log_exists: boolean;
+    launcher_log_tail: string;
+    recovery_actions: KernelRecoveryAction[];
+  };
+}
+
 /**
  * Stable kernel-facing event envelope for GUI consumers.
  *

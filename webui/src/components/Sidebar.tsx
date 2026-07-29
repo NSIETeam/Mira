@@ -39,6 +39,7 @@ interface SidebarProps {
   onTogglePin: (key: string) => void;
   onRequestRename: (key: string, label: string) => void;
   onToggleArchive: (key: string) => void;
+  onRequestDiagnostics?: (key: string, label: string) => void;
   onToggleGroup: (groupId: string) => void;
   onRequestRenameProject: (projectKey: string, label: string) => void;
   onNewExecutionInProject: (projectPath: string, projectName: string) => void;
@@ -237,6 +238,7 @@ export function Sidebar(props: SidebarProps) {
             onTogglePin={props.onTogglePin}
             onRequestRename={props.onRequestRename}
             onToggleArchive={props.onToggleArchive}
+            onRequestDiagnostics={props.onRequestDiagnostics}
             onToggleGroup={props.onToggleGroup}
             onRequestRenameProject={props.onRequestRenameProject}
             onNewExecutionInProject={props.onNewExecutionInProject}

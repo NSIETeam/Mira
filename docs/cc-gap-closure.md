@@ -37,16 +37,21 @@ Claude Code-like product experience.
 - Current closure: virtual context manager provides deterministic old-turn
   breadcrumbs; group memory and principal policy are explicit in runtime
   surfaces.
-- Remaining product polish: automatic recall scoring and UI explanation of why
-  a memory was injected.
+- Current explainability: `VirtualContextManager.explain(...)` reports strategy,
+  budget, kept messages, paged messages, and whether a breadcrumb was injected.
+- Remaining product polish: automatic recall scoring and WebUI explanation of
+  why a specific memory was injected.
 
 ### WebUI execution visibility
 
 - Issue: #96
 - Current closure: session status dots, runtime/admin surfaces, and issue #90
-  module contracts exist.
-- Remaining product polish: failed turns should offer one-click doctor/log view
-  and retry/fork actions from the same session row.
+  module contracts exist. Backend diagnostics are exposed through
+  `/api/kernel/diagnostics` so the GUI can show launcher logs and recovery
+  actions. Session rows now expose a `Diagnose` action hook that can be handled
+  by the active shell or by the `mira:request-diagnostics` browser event.
+- Remaining product polish: failed turns should render a full one-click
+  doctor/log panel and retry/fork actions from the same session row.
 
 ### Signed and notarized release installers
 

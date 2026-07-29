@@ -35,6 +35,16 @@ def test_virtual_context_pages_old_messages_into_breadcrumb():
     assert "older message" in page.kept_messages[0]["content"]
 
 
+def test_virtual_context_explain_is_user_visible():
+    messages = [{"role": "user", "content": f"message {index} " * 40} for index in range(12)]
+
+    explanation = VirtualContextManager().explain(messages, budget_tokens=80)
+
+    assert explanation["strategy"] == "deterministic_tail_window"
+    assert explanation["paged_messages"] > 0
+    assert "breadcrumb" in explanation["reason"]
+
+
 def test_multimodal_contract_normalizes_files_and_images():
     parts = normalize_media_contract("look", ["/tmp/a.png", {"kind": "audio", "source": "clip.wav"}])
 

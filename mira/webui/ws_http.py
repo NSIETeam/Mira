@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import mimetypes
+import os
 import re
 import time
 from collections.abc import Callable
@@ -176,6 +177,52 @@ def _resolve_bootstrap_model_name(
                 if stripped:
                     return stripped
     return _default_model_name_from_config() or ""
+
+
+def _launcher_log_path() -> Path:
+    configured = os.environ.get("MIRA_LOG_DIR")
+    if configured:
+        return Path(configured).expanduser() / "launcher.log"
+    return Path.home() / "Library" / "Logs" / "Mira" / "launcher.log"
+
+
+def _tail_text(path: Path, *, max_bytes: int = 16_000) -> str:
+    try:
+        with path.open("rb") as handle:
+            handle.seek(0, 2)
+            size = handle.tell()
+            handle.seek(max(0, size - max_bytes))
+            return handle.read().decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def _kernel_diagnostics_payload() -> dict[str, Any]:
+    launcher_log = _launcher_log_path()
+    exists = launcher_log.exists()
+    return {
+        "status": "ok" if exists else "missing_launcher_log",
+        "launcher_log_path": str(launcher_log),
+        "launcher_log_exists": exists,
+        "launcher_log_tail": _tail_text(launcher_log) if exists else "",
+        "recovery_actions": [
+            {
+                "id": "doctor",
+                "label": "Run doctor",
+                "command": "mira doctor --profile lightweight",
+            },
+            {
+                "id": "launcher_dry_run",
+                "label": "Check native launcher",
+                "command": "mira-launcher --dry-run",
+            },
+            {
+                "id": "open_logs",
+                "label": "Inspect launcher log",
+                "path": str(launcher_log),
+            },
+        ],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -890,6 +937,8 @@ class GatewayHTTPHandler:
             return self._handle_kernel_state(request)
         if got == "/api/kernel/topology":
             return self._handle_kernel_topology(request)
+        if got == "/api/kernel/diagnostics":
+            return _http_json_response({"diagnostics": _kernel_diagnostics_payload()})
         if got == "/api/kernel/embedded":
             return self._handle_kernel_embedded(request)
         if got == "/api/kernel/memory":
