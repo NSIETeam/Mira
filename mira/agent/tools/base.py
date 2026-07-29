@@ -189,6 +189,21 @@ class Tool(ABC):
         """Whether this tool should run alone even if concurrency is enabled."""
         return False
 
+    @property
+    def reliability_tier(self) -> str:
+        """Operator-facing reliability class."""
+        return "variable"
+
+    @property
+    def fallback_policy(self) -> str:
+        """How the runtime should describe fallback behavior for this tool."""
+        return "retry_or_fail"
+
+    @property
+    def failure_mode(self) -> str:
+        """How failures should usually be interpreted in the runtime/UI."""
+        return "recoverable"
+
     # --- Plugin metadata ---
 
     config_key: str = ""
@@ -297,6 +312,14 @@ class Tool(ABC):
                 "name": self.name,
                 "description": self.description,
                 "parameters": self.parameters,
+            },
+            "x_mira_runtime": {
+                "read_only": self.read_only,
+                "concurrency_safe": self.concurrency_safe,
+                "exclusive": self.exclusive,
+                "reliability_tier": self.reliability_tier,
+                "fallback_policy": self.fallback_policy,
+                "failure_mode": self.failure_mode,
             },
         }
 

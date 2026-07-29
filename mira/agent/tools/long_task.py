@@ -19,6 +19,7 @@ from mira.session.goal_state import (
     GOAL_STATE_KEY,
     MAX_GOAL_OBJECTIVE_CHARS,
     explicit_goal_requested,
+    finalize_goal_state,
     goal_state_raw,
     goal_state_runtime_lines,
     parse_goal_state,
@@ -122,6 +123,11 @@ class _GoalToolsMixin:
             max_length=120,
             nullable=True,
         ),
+        acceptance=StringSchema(
+            "Optional concise acceptance criteria for what counts as done.",
+            max_length=800,
+            nullable=True,
+        ),
         required=["objective"],
     )
 )
@@ -190,6 +196,7 @@ class CreateGoalTool(Tool, _GoalToolsMixin):
         self,
         objective: str,
         ui_summary: str | None = None,
+        acceptance: str | None = None,
         **kwargs: Any,
     ) -> str:
         sess = self._session()
@@ -219,6 +226,7 @@ class CreateGoalTool(Tool, _GoalToolsMixin):
             "objective": objective_text,
             "ui_summary": summary,
             "started_at": _iso_now(),
+            "acceptance": (acceptance or "").strip(),
         }
         self._save_goal_state(sess, blob, reset_continuation=True)
         await self._publish_goal_state_changed(sess.metadata)
@@ -250,6 +258,21 @@ class CreateGoalTool(Tool, _GoalToolsMixin):
         ui_summary=StringSchema(
             "Optional one-line display label for a replacement goal.",
             max_length=120,
+            nullable=True,
+        ),
+        outcome=StringSchema(
+            "Operator-facing outcome label such as completed, partial, or blocked.",
+            max_length=120,
+            nullable=True,
+        ),
+        acceptance=StringSchema(
+            "What evidence or exit condition was used to judge the goal.",
+            max_length=800,
+            nullable=True,
+        ),
+        evidence=StringSchema(
+            "Short factual evidence for completion or blockage.",
+            max_length=2000,
             nullable=True,
         ),
         required=["action"],
@@ -297,6 +320,9 @@ class UpdateGoalTool(Tool, _GoalToolsMixin):
         recap: str | None = None,
         objective: str | None = None,
         ui_summary: str | None = None,
+        outcome: str | None = None,
+        acceptance: str | None = None,
+        evidence: str | None = None,
         **kwargs: Any,
     ) -> str:
         sess = self._session()
@@ -333,26 +359,28 @@ class UpdateGoalTool(Tool, _GoalToolsMixin):
                 "replaced_at": _iso_now(),
                 "previous_objective": str(prior.get("objective") or ""),
                 "recap": (recap or "").strip(),
+                "acceptance": (acceptance or "").strip() or str(prior.get("acceptance") or "").strip(),
             }
             self._save_goal_state(sess, blob, reset_continuation=True)
             await self._publish_goal_state_changed(sess.metadata)
             extra = f"\nSummary line: {summary}" if summary else ""
             return "Goal replaced. Continue toward the new objective using ordinary tools." + extra
 
-        ended = _iso_now()
         status = {
             "complete": "completed",
             "cancel": "cancelled",
             "block": "blocked",
         }[normalized]
-        blob = {
-            **prior,
-            "status": status,
-            "ended_at": ended,
-            "recap": (recap or "").strip(),
-        }
-        if normalized == "complete":
-            blob["completed_at"] = ended
+        next_metadata = dict(sess.metadata)
+        finalize_goal_state(
+            next_metadata,
+            status=status,
+            recap=(recap or "").strip(),
+            outcome=(outcome or "").strip() or ("completed" if normalized == "complete" else normalized),
+            acceptance=(acceptance or "").strip() or str(prior.get("acceptance") or "").strip(),
+            evidence=(evidence or "").strip(),
+        )
+        blob = next_metadata[GOAL_STATE_KEY]
         self._save_goal_state(sess, blob)
         revoke_goal_mutation_permission()
         await self._publish_goal_state_changed(sess.metadata)
@@ -364,5 +392,5 @@ class UpdateGoalTool(Tool, _GoalToolsMixin):
             "block": "blocked",
         }[normalized]
         if tail:
-            return f"Goal marked {label} ({ended}). Recap:\n{tail}"
-        return f"Goal marked {label} ({ended})."
+            return f"Goal marked {label} ({blob.get('ended_at')}). Recap:\n{tail}"
+        return f"Goal marked {label} ({blob.get('ended_at')})."

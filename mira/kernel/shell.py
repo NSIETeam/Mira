@@ -208,6 +208,48 @@ def single_execution_shell() -> ShellDescriptor:
     )
 
 
+def desktop_customer_shell() -> ShellDescriptor:
+    """Default native shell for non-technical desktop use."""
+    (
+        privilege_role,
+        privilege_can_elevate,
+        privilege_elevation_mode,
+        privilege_elevate_hint,
+        privilege_drop_hint,
+        privilege_session_policy,
+    ) = _runtime_privilege()
+    return ShellDescriptor(
+        name="desktop-customer",
+        display_name="Mira Desktop",
+        description="Guided desktop shell focused on one task at a time with minimal operator overhead.",
+        theme="workbench",
+        supports_threads=False,
+        supports_file_activity=True,
+        supports_approvals=True,
+        supports_runtime_controls=True,
+        host_contract=_host_contract(
+            mode="single-execution",
+            show_sidebar_chrome=False,
+            show_search_dialog=False,
+            allow_utility_surface=False,
+            allow_execution_fork=False,
+            allow_workspace_controls=False,
+            allow_runtime_model_controls=False,
+            allow_kernel_console=False,
+            allow_privileged_runtime_controls=False,
+            allow_composer=True,
+            read_only_execution=False,
+            privilege_role=privilege_role,
+            privilege_can_elevate=privilege_can_elevate,
+            privilege_elevation_mode=privilege_elevation_mode,
+            privilege_elevate_hint=privilege_elevate_hint,
+            privilege_drop_hint=privilege_drop_hint,
+            privilege_session_policy=privilege_session_policy,
+        ),
+        metadata=_shell_metadata(posture="desktop-customer"),
+    )
+
+
 def review_shell() -> ShellDescriptor:
     """Read-heavy review shell that suppresses runtime tuning during analysis."""
     (
@@ -253,6 +295,7 @@ def review_shell() -> ShellDescriptor:
 ShellFactory = Callable[[], ShellDescriptor]
 
 _SHELL_FACTORIES: dict[str, ShellFactory] = {
+    "desktop-customer": desktop_customer_shell,
     "engineering": default_engineering_shell,
     "single-execution": single_execution_shell,
     "review": review_shell,

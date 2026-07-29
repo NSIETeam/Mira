@@ -1651,10 +1651,15 @@ def desktop(
     ),
 ) -> None:
     """Launch the Mira workbench inside a native desktop window."""
+    from mira.config.loader import load_config as _load_config_file, save_config
     from mira.desktop.app import NativeWindowOptions, launch_native_window
     from mira.gateway import GatewayRuntime, GatewayRuntimePaths
 
     config_path = _resolve_webui_config_path(config)
+    desktop_config = _load_config_file(config_path)
+    if (desktop_config.kernel.shell_name or "").strip() in {"", "engineering"}:
+        desktop_config.kernel.shell_name = "desktop-customer"
+        save_config(desktop_config, config_path)
     pre_runtime_config = _load_runtime_config(str(config_path), workspace)
     pre_gateway_port = gateway_port if gateway_port is not None else pre_runtime_config.gateway.port
     pre_webui_url = _webui_browser_url(pre_runtime_config)

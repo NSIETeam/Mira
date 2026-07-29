@@ -212,6 +212,12 @@ export interface GoalStateWsPayload {
   objective?: string;
   continuation_rounds?: number;
   last_progress_at?: string;
+  acceptance?: string;
+  status?: string;
+  recap?: string;
+  outcome?: string;
+  evidence?: string;
+  verification_status?: string;
 }
 
 export interface ToolProgressEvent {

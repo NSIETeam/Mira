@@ -83,14 +83,69 @@ def annotate_goal_progress(
     return True
 
 
+def finalize_goal_state(
+    metadata: MutableMapping[str, Any],
+    *,
+    status: str,
+    recap: str = "",
+    outcome: str | None = None,
+    acceptance: str | None = None,
+    evidence: str | None = None,
+) -> bool:
+    goal = parse_goal_state(_session_goal_raw(metadata))
+    if not isinstance(goal, dict):
+        return False
+    ended = _iso_now()
+    next_goal = dict(goal)
+    next_goal["status"] = status
+    next_goal["ended_at"] = ended
+    next_goal["last_progress_at"] = ended
+    if recap.strip():
+        next_goal["recap"] = recap.strip()
+    if outcome and outcome.strip():
+        next_goal["outcome"] = outcome.strip()
+    if acceptance and acceptance.strip():
+        next_goal["acceptance"] = acceptance.strip()
+    if evidence and evidence.strip():
+        next_goal["evidence"] = evidence.strip()
+    if status == "completed":
+        next_goal["completed_at"] = ended
+        next_goal["verification_status"] = "verified" if (evidence or "").strip() else "claimed"
+    elif status == "blocked":
+        next_goal["verification_status"] = "blocked"
+    elif status == "cancelled":
+        next_goal["verification_status"] = "cancelled"
+    metadata[GOAL_STATE_KEY] = next_goal
+    return True
+
+
 def goal_state_runtime_lines(metadata: Mapping[str, Any] | None) -> list[str]:
     """Lines appended inside the Runtime Context block when a goal is active."""
     if not metadata:
         return []
     goal = parse_goal_state(_session_goal_raw(metadata))
-    if not isinstance(goal, dict) or goal.get("status") != "active":
+    if not isinstance(goal, dict):
         return []
+    status = str(goal.get("status") or "").strip()
     objective = str(goal.get("objective") or "").strip()
+    if status != "active":
+        out = [f"Goal ({status or 'inactive'}):"]
+        if objective:
+            out.append(objective)
+        for key, label in (
+            ("recap", "Recap"),
+            ("outcome", "Outcome"),
+            ("acceptance", "Acceptance"),
+            ("evidence", "Evidence"),
+            ("verification_status", "Verification"),
+        ):
+            value = str(goal.get(key) or "").strip()
+            if value:
+                out.append(f"{label}: {value}")
+        ended_at = str(goal.get("ended_at") or goal.get("completed_at") or "").strip()
+        if ended_at:
+            out.append(f"Ended: {ended_at}")
+        return out
     if not objective:
         return ["Goal: active (no objective text stored)."]
     if len(objective) > MAX_GOAL_OBJECTIVE_CHARS:
@@ -105,6 +160,9 @@ def goal_state_runtime_lines(metadata: Mapping[str, Any] | None) -> list[str]:
     progress_at = str(goal.get("last_progress_at") or "").strip()
     if progress_at:
         out.append(f"Last progress: {progress_at}")
+    acceptance = str(goal.get("acceptance") or "").strip()
+    if acceptance:
+        out.append(f"Acceptance: {acceptance}")
     return out
 
 
@@ -127,6 +185,16 @@ def goal_state_ws_blob(metadata: Mapping[str, Any] | None) -> dict[str, Any]:
         progress_at = str(goal.get("last_progress_at") or "").strip()
         if progress_at:
             blob["last_progress_at"] = progress_at
+        acceptance = str(goal.get("acceptance") or "").strip()
+        if acceptance:
+            blob["acceptance"] = acceptance[:240]
+        return blob
+    if isinstance(goal, dict):
+        blob: dict[str, Any] = {"active": False}
+        for key in ("status", "recap", "outcome", "evidence", "verification_status"):
+            value = str(goal.get(key) or "").strip()
+            if value:
+                blob[key] = value[:240] if key in {"recap", "outcome", "evidence"} else value
         return blob
     return {"active": False}
 

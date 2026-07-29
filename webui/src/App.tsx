@@ -652,6 +652,7 @@ function RuntimeSnapshotPanel({
   const topicCount = memory?.auto_memory?.topic_file_count ?? 0;
   const referencedTopicCount = memory?.auto_memory?.referenced_topic_count ?? 0;
   const autoMemoryLoaded = memory?.auto_memory?.loaded ?? false;
+  const memoryGovernance = memory?.auto_memory?.governance ?? null;
   const graphEntities = memory?.graph?.entity_count ?? 0;
   const graphRelations = memory?.graph?.relation_count ?? 0;
   const subagentMemoryCount = memory?.subagent_memory?.entry_count ?? 0;
@@ -723,6 +724,8 @@ function RuntimeSnapshotPanel({
               <span>referenced {referencedTopicCount}</span>
               <span>graph {graphEntities}/{graphRelations}</span>
               <span>subagents {subagentMemoryLoaded ? subagentMemoryCount : 0}</span>
+              {memoryGovernance ? <span>conflicts {memoryGovernance.conflict_count ?? 0}</span> : null}
+              {memoryGovernance ? <span>rollback hints {memoryGovernance.rollback_hint_count ?? 0}</span> : null}
             </div>
           ) : null}
           {schedulerSummary ? (
@@ -829,6 +832,15 @@ function RuntimeSnapshotPanel({
                   ))}
                 </div>
               ) : null}
+            </div>
+          ) : null}
+          {memoryGovernance ? (
+            <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+              <span>confidence high {memoryGovernance.confidence_counts?.high ?? 0}</span>
+              <span>medium {memoryGovernance.confidence_counts?.medium ?? 0}</span>
+              <span>low {memoryGovernance.confidence_counts?.low ?? 0}</span>
+              <span>sources {memoryGovernance.source_hint_count ?? 0}</span>
+              {memoryGovernance.review_required ? <span>memory review suggested</span> : <span>memory stable</span>}
             </div>
           ) : null}
           {recentSubagentEntries.length ? (

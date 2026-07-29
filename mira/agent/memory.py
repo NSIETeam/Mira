@@ -865,6 +865,22 @@ class MemoryStore:
         graph = self.read_graph()
         topic_files = self.list_topic_files()
         referenced_topics = self.referenced_topic_files()
+        memory_text = self.read_memory()
+        governance_text_parts = [memory_text]
+        for path in topic_files[:50]:
+            try:
+                governance_text_parts.append(path.read_text(encoding="utf-8"))
+            except OSError:
+                continue
+        governance_text = "\n".join(governance_text_parts).lower()
+        confidence_counts = {
+            "high": governance_text.count("[confidence:high]"),
+            "medium": governance_text.count("[confidence:medium]"),
+            "low": governance_text.count("[confidence:low]"),
+        }
+        source_hint_count = governance_text.count("source:")
+        conflict_count = governance_text.count("[conflict]")
+        rollback_hint_count = governance_text.count("[retracted]") + governance_text.count("[rollback]")
         subagent_files = sorted(self.subagent_dir.rglob("*.json"))
         all_subagent_entries: list[dict[str, Any]] = []
         status_counts: dict[str, int] = {}
@@ -968,6 +984,13 @@ class MemoryStore:
                 "topic_dir": str(self.topic_dir),
                 "topic_file_count": len(topic_files),
                 "referenced_topic_count": len(referenced_topics),
+                "governance": {
+                    "confidence_counts": confidence_counts,
+                    "source_hint_count": source_hint_count,
+                    "conflict_count": conflict_count,
+                    "rollback_hint_count": rollback_hint_count,
+                    "review_required": conflict_count > 0 or confidence_counts["low"] > 0,
+                },
             },
             "graph": {
                 "path": str(self.graph_file),
