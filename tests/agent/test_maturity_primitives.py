@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from mira.agent.loop import AgentLoop
+from mira.agent.loop import AgentLoop, AgentLoopConfig
 from mira.agent.maturity import (
     ToolMiddlewareStack,
     VirtualContextManager,
@@ -98,6 +98,26 @@ def test_optional_maturity_tools_are_disabled_by_default(tmp_path):
 
     assert "computer_use" not in loop.tools.tool_names
     assert "workflow_dsl" not in loop.tools.tool_names
+
+
+def test_agent_loop_accepts_parameter_object(tmp_path):
+    bus = MessageBus()
+    provider = make_provider(spec=False)
+
+    loop = AgentLoop.from_loop_config(
+        AgentLoopConfig(
+            bus=bus,
+            provider=provider,
+            workspace=tmp_path,
+            model="test-model",
+            restrict_to_workspace=True,
+        )
+    )
+
+    assert loop.bus is bus
+    assert loop.provider is provider
+    assert loop.model == "test-model"
+    assert loop.loop_config.restrict_to_workspace is True
 
 
 def test_optional_workflow_dsl_tool_mounts_when_enabled(tmp_path):
