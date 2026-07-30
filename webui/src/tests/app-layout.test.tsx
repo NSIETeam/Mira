@@ -16,7 +16,7 @@ const runStatusHandlers = new Set<(chatId: string, startedAt: number | null) => 
 const sessionUpdateHandlers = new Set<(chatId: string, scope?: string) => void>();
 let mockSessions: ChatSummary[] = [];
 const HERO_GREETING_PATTERN =
-  /What should we work on\?|Where should we start\?|What are we building today\?|What should we tackle together\?/;
+  /What do you want to do\?|Start with a message\.|Ask Mira to build it\.|What should Mira handle\?/;
 
 function setNavigatorPlatform(platform: string): void {
   Object.defineProperty(window.navigator, "platform", {
@@ -1997,7 +1997,7 @@ describe("App layout", () => {
 
     await waitFor(() => expect(connectSpy).toHaveBeenCalled());
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
-    fireEvent.click(within(sidebar).getByRole("button", { name: "New execution" }));
+    fireEvent.click(within(sidebar).getByRole("button", { name: "New chat" }));
     await waitFor(() => expect(document.title).toBe("Mira"));
 
     fireEvent.click(within(sidebar).getByRole("button", { name: "Settings" }));
@@ -2037,7 +2037,7 @@ describe("App layout", () => {
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
     expect(within(sidebar).getByText("Q2 roadmap")).toBeInTheDocument();
     expect(within(sidebar).getByText("Travel ideas")).toBeInTheDocument();
-    const newChatButton = within(sidebar).getByRole("button", { name: "New execution" });
+    const newChatButton = within(sidebar).getByRole("button", { name: "New chat" });
     const searchButton = within(sidebar).getByRole("button", { name: "Search" });
     expect(
       newChatButton.compareDocumentPosition(searchButton) &
@@ -2167,10 +2167,10 @@ describe("App layout", () => {
     await waitFor(() => expect(connectSpy).toHaveBeenCalled());
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
 
-    const newChatButton = within(sidebar).getByRole("button", { name: "New execution" });
+    const newChatButton = within(sidebar).getByRole("button", { name: "New chat" });
     expect(newChatButton).toHaveAttribute(
       "title",
-      "New execution (Ctrl+Shift+O)",
+      "New chat (Ctrl+Shift+O)",
     );
     expect(newChatButton).toHaveAttribute(
       "aria-keyshortcuts",
@@ -2185,9 +2185,9 @@ describe("App layout", () => {
     await waitFor(() => expect(connectSpy).toHaveBeenCalled());
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
 
-    expect(within(sidebar).getByRole("button", { name: "New execution" })).toHaveAttribute(
+    expect(within(sidebar).getByRole("button", { name: "New chat" })).toHaveAttribute(
       "title",
-      "New execution (⌘⇧O)",
+      "New chat (⌘⇧O)",
     );
   });
 
@@ -2260,7 +2260,7 @@ describe("App layout", () => {
 
     expect(screen.queryByRole("button", { name: "Start a new execution" })).not.toBeInTheDocument();
     const rail = screen.getByRole("navigation", { name: "Sidebar navigation" });
-    expect(within(rail).getByRole("button", { name: "New execution" })).toBeInTheDocument();
+    expect(within(rail).getByRole("button", { name: "New chat" })).toBeInTheDocument();
     expect(within(rail).getByRole("button", { name: "Search" })).toBeInTheDocument();
     expect(within(rail).queryByRole("button", { name: "View" })).not.toBeInTheDocument();
     expect(within(rail).queryByText("Existing chat")).not.toBeInTheDocument();
@@ -2269,7 +2269,7 @@ describe("App layout", () => {
     await waitFor(() => expect(sidebarAside.style.width).toBe("272px"));
 
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
-    fireEvent.click(within(sidebar).getByRole("button", { name: "New execution" }));
+    fireEvent.click(within(sidebar).getByRole("button", { name: "New chat" }));
     expect(createChatSpy).not.toHaveBeenCalled();
     expect(screen.getByText(HERO_GREETING_PATTERN)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Start a new execution" })).not.toBeInTheDocument();

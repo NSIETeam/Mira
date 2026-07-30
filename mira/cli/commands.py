@@ -2893,6 +2893,68 @@ def policy_show(
 
 
 @app.command()
+def boot(
+    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
+    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
+    profile: str = typer.Option(
+        "engineering",
+        "--profile",
+        help="Boot runlevel: lite, engineering, desktop, or embedded",
+    ),
+    check_only: bool = typer.Option(
+        False,
+        "--check-only",
+        help="Run POST checks and exit without starting a long-running process",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable POST JSON"),
+) -> None:
+    """Run Mira boot POST checks, then start the selected runlevel."""
+    from mira.kernel.boot import BootProtocol
+
+    config_path, loaded = _load_inspection_config(config=config, workspace=workspace)
+    try:
+        report = BootProtocol(loaded, workspace=loaded.workspace_path).run_post(profile=profile)
+    except ValueError as exc:
+        console.print(f"[red]Error: {exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        typer.echo(json.dumps(report.to_dict(), ensure_ascii=False))
+    else:
+        status = "OK" if report.ok else "FAIL"
+        color = "green" if report.ok else "red"
+        console.print(f"[{color}][{status}][/{color}] Mira Kernel v{report.version} boot POST")
+        console.print(f"[dim]Profile: {report.profile}[/dim]")
+        for check in report.checks:
+            check_color = {
+                "ok": "green",
+                "warning": "yellow",
+                "error": "red",
+            }[check.status]
+            console.print(f"[{check_color}][{check.status.upper()}][/{check_color}] {check.message}")
+            if check.detail:
+                console.print(f"[dim]  {check.detail}[/dim]")
+        console.print(f"[dim]Gateway target: {report.gateway_url}[/dim]")
+
+    if not report.ok:
+        raise typer.Exit(1)
+    if check_only:
+        return
+
+    if report.profile in {"lite", "embedded"}:
+        console.print(
+            "[yellow]Boot POST passed; this runlevel has no foreground gateway target yet.[/yellow]"
+        )
+        return
+
+    _run_gateway(
+        loaded,
+        port=loaded.gateway.port,
+        webui_runtime_surface="desktop" if report.profile == "desktop" else "browser",
+    )
+
+
+@app.command()
 def doctor(
     config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
     workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),

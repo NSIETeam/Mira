@@ -44,12 +44,12 @@
     "navigation": "Sidebar navigation",
     "collapse": "Collapse sidebar",
     "workbench": "Work",
-    "newChat": "New execution",
+    "newChat": "New chat",
     "searchAria": "Search",
     "searchPlaceholder": "Search",
     "searchResults": "Results",
-    "noSearchResults": "No matching executions.",
-    "recent": "Recent executions",
+    "noSearchResults": "No matching chats.",
+    "recent": "Recent",
     "settings": "Settings",
     "language": {
       "label": "Language",
@@ -892,14 +892,15 @@
     "error": "Connection error"
   },
   "thread": {
-    "loadingConversation": "Loading conversation…",
+    "loadingConversation": "Loading chat…",
     "empty": {
       "greetings": {
-        "workOn": "What should we work on?",
-        "start": "Where should we start?",
-        "build": "What are we building today?",
-        "tackle": "What should we tackle together?"
+        "workOn": "What do you want to do?",
+        "start": "Start with a message.",
+        "build": "Ask Mira to build it.",
+        "tackle": "What should Mira handle?"
       },
+      "hint": "Ask, plan, code, summarize, or attach a file.",
       "quickActions": {
         "plan": {
           "title": "Create a project plan",
@@ -955,10 +956,21 @@
     },
     "header": {
       "toggleSidebar": "Toggle sidebar",
-      "newChat": "Start a new execution",
+      "newChat": "New chat",
       "toggleTheme": "Toggle theme from header",
       "settings": "Open system settings",
-      "sessionInfo": "Execution details"
+      "sessionInfo": "Chat details"
+    },
+    "posture": {
+      "readOnly": "read-only",
+      "interactive": "chat",
+      "runtime": "tools",
+      "fixed": "fixed",
+      "composer": "ready",
+      "observer": "view only"
+    },
+    "statusButton": {
+      "label": "Status"
     },
     "sessionInfo": {
       "title": "Execution",
@@ -985,7 +997,7 @@
         "none": "No next run"
       }
     },
-    "heroSubtitle": "Operate a reusable execution kernel with visible runtime posture, operator controls, and room for native or embedded hosts.",
+    "heroSubtitle": "Ask Mira to work with your local workspace.",
     "composer": {
       "placeholderThread": "Type your message…",
       "placeholderHero": "Ask anything...",

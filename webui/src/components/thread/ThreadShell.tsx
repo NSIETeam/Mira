@@ -442,8 +442,7 @@ export function ThreadShell({
   const activeExecution = execution ?? session;
   const handleCreateExecution = onCreateExecution ?? onCreateChat;
   const handleForkExecution = onForkExecution ?? onForkChat;
-  const { t, i18n } = useTranslation();
-  const isChineseLocale = (i18n.resolvedLanguage ?? i18n.language ?? "").toLowerCase().startsWith("zh");
+  const { t } = useTranslation();
   const chatId = activeExecution?.chatId ?? null;
   const historyKey = activeExecution?.key ?? null;
   const {
@@ -1088,11 +1087,11 @@ export function ThreadShell({
   ) : null;
 
   const capabilityBadges = [
-    readOnlyExecution ? (isChineseLocale ? "只读" : "read-only") : (isChineseLocale ? "可交互" : "interactive"),
-    supportsRuntimeControls ? (isChineseLocale ? "运行控制" : "runtime-control") : (isChineseLocale ? "固定运行" : "fixed-runtime"),
+    readOnlyExecution ? t("thread.posture.readOnly") : t("thread.posture.interactive"),
+    supportsRuntimeControls ? t("thread.posture.runtime") : t("thread.posture.fixed"),
   ];
   const shellPosture = [
-    allowComposer ? (isChineseLocale ? "可输入" : "operator ready") : (isChineseLocale ? "仅观察" : "observer only"),
+    allowComposer ? t("thread.posture.composer") : t("thread.posture.observer"),
     shellDescription,
   ].filter(Boolean).join(" · ");
   const emptyState = loading ? (
@@ -1102,8 +1101,8 @@ export function ThreadShell({
   ) : (
     <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
       <HeroGreeting text={t(heroGreetingKey)} />
-      <p className="mt-2 max-w-md text-[13px] text-muted-foreground">
-        {isChineseLocale ? "输入问题、任务或文件需求，按 Enter 发送。" : "Type a question, task, or file request, then press Enter."}
+      <p className="mt-2 max-w-md text-[13px] leading-6 text-muted-foreground">
+        {t("thread.empty.hint")}
       </p>
     </div>
   );

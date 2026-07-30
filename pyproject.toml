@@ -240,6 +240,7 @@ files = [
     "mira/agent/runner.py",
     "mira/agent/subagent.py",
     "mira/kernel/app.py",
+    "mira/kernel/boot.py",
     "mira/kernel/shell.py",
 ]
 

@@ -1620,10 +1620,10 @@ function Shell({
               <button
                 type="button"
                 onClick={() => setKernelConsoleOpen(true)}
-                className="fixed bottom-4 right-32 z-40 hidden rounded-full border border-slate-200/80 bg-white/90 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-lg backdrop-blur transition hover:border-slate-300 hover:text-slate-950 lg:inline-flex"
+                className="fixed bottom-4 right-32 z-40 hidden max-w-[13rem] items-center gap-2 rounded-full border border-slate-200/80 bg-white/90 px-3 py-2 text-[11px] font-semibold text-slate-600 shadow-lg backdrop-blur transition hover:border-slate-300 hover:text-slate-950 lg:inline-flex"
               >
-                Kernel
-                <span className="ml-2 rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[10px] tracking-normal text-emerald-700">
+                <span className="truncate">{t("thread.statusButton.label")}</span>
+                <span className="rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[10px] text-emerald-700">
                   {connectionStatus}
                 </span>
               </button>

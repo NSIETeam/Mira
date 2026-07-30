@@ -16,7 +16,7 @@ import type {
 } from "@/lib/types";
 
 const HERO_GREETING_PATTERN =
-  /What should we work on\?|Where should we start\?|What are we building today\?|What should we tackle together\?/;
+  /What do you want to do\?|Start with a message\.|Ask Mira to build it\.|What should Mira handle\?/;
 
 function makeClient() {
   const errorHandlers = new Set<(err: { kind: string }) => void>();
@@ -2097,7 +2097,7 @@ describe("ThreadShell", () => {
     });
 
     expect(screen.queryByText("from chat a")).not.toBeInTheDocument();
-    expect(screen.getByText("Loading conversation…")).toBeInTheDocument();
+    expect(screen.getByText("Loading chat…")).toBeInTheDocument();
 
     await act(async () => {
       resolveChatB?.(

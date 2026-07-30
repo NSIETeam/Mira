@@ -54,7 +54,7 @@ describe("SessionInfoPopover", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Execution details" }));
+    await user.click(screen.getByRole("button", { name: "Chat details" }));
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
@@ -80,7 +80,7 @@ describe("SessionInfoPopover", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "执行详情" }));
+    await user.click(screen.getByRole("button", { name: "对话详情" }));
 
     expect(await screen.findByText("执行")).toBeInTheDocument();
     expect(screen.getByText("自动任务")).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe("SessionInfoPopover", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Execution details" }));
+    await user.click(screen.getByRole("button", { name: "Chat details" }));
 
     expect(await screen.findByText("Runs shortly")).toBeInTheDocument();
     expect(screen.queryByText(/ago/i)).not.toBeInTheDocument();
@@ -130,7 +130,7 @@ describe("SessionInfoPopover", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Execution details" }));
+    await user.click(screen.getByRole("button", { name: "Chat details" }));
     expect(await screen.findByText("Morning check")).toBeInTheDocument();
 
     await waitFor(
