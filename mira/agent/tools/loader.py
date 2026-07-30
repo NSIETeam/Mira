@@ -64,22 +64,29 @@ class ToolLoader:
         if self._plugins is not None:
             return self._plugins
         plugins: dict[str, type[Tool]] = {}
-        try:
-            eps = entry_points(group="mira.tools")
-        except Exception:
-            return plugins
-        for ep in eps:
+        for group, prefix in (("mira.tools", ""), ("mira.plugins", "tool-")):
             try:
-                cls = ep.load()
-                if (
-                    isinstance(cls, type)
-                    and issubclass(cls, Tool)
-                    and not getattr(cls, "__abstractmethods__", None)
-                    and getattr(cls, "_plugin_discoverable", True)
-                ):
-                    plugins[ep.name] = cls
+                eps = entry_points(group=group)
             except Exception:
-                logger.exception("Failed to load tool plugin: %s", ep.name)
+                continue
+            for ep in eps:
+                if prefix and not ep.name.startswith(prefix):
+                    continue
+                name = ep.name.removeprefix(prefix).replace("-", "_")
+                if name in plugins:
+                    logger.warning("Tool plugin entry point skipped: duplicate name %s", name)
+                    continue
+                try:
+                    cls = ep.load()
+                    if (
+                        isinstance(cls, type)
+                        and issubclass(cls, Tool)
+                        and not getattr(cls, "__abstractmethods__", None)
+                        and getattr(cls, "_plugin_discoverable", True)
+                    ):
+                        plugins[name] = cls
+                except Exception:
+                    logger.exception("Failed to load tool plugin: %s", ep.name)
         self._plugins = plugins
         return plugins
 

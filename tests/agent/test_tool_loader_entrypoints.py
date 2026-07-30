@@ -51,6 +51,57 @@ def test_loader_discovers_entry_point_tools():
     assert discovered["my_plugin"] is _FakeTool
 
 
+def test_loader_discovers_unified_tool_plugin_entry_points():
+    """Unified plugin bundles can expose tool-* entries through mira.plugins."""
+    mock_ep = MagicMock()
+    mock_ep.name = "tool-my-plugin"
+    ignored_ep = MagicMock()
+    ignored_ep.name = "provider_ignored"
+
+    class _FakeTool(Tool):
+        __name__ = "FakeTool"
+        _plugin_discoverable = True
+        _scopes = {"core"}
+
+        @property
+        def name(self) -> str:
+            return "fake_tool"
+
+        @property
+        def description(self) -> str:
+            return "A fake tool for testing."
+
+        @property
+        def parameters(self) -> dict:
+            return {"type": "object"}
+
+        @classmethod
+        def enabled(cls, ctx):
+            return True
+
+        @classmethod
+        def create(cls, ctx):
+            return MagicMock()
+
+        async def execute(self, **_):
+            return "ok"
+
+    mock_ep.load.return_value = _FakeTool
+
+    def fake_entry_points(*, group: str):
+        if group == "mira.plugins":
+            return [mock_ep, ignored_ep]
+        return []
+
+    with patch("mira.agent.tools.loader.entry_points", fake_entry_points):
+        loader = ToolLoader()
+        discovered = loader._discover_plugins()
+
+    assert discovered["my_plugin"] is _FakeTool
+    assert "provider_ignored" not in discovered
+    ignored_ep.load.assert_not_called()
+
+
 def test_loader_skips_abstract_entry_point_tools():
     """Verify abstract tool classes registered via entry_points are skipped."""
     mock_ep = MagicMock()
