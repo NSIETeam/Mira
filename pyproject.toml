@@ -115,8 +115,19 @@ mira = "mira.cli.commands:app"
 # - published package name stays `mira` for now
 # - primary user-facing runtime entrypoint is `mira`
 
-# Third-party tool plugins register here.  Built-in tools are discovered
-# automatically via pkgutil scanning in ToolLoader.discover().
+# Third-party plugin packages should prefer the unified `mira.plugins` group
+# with typed prefixes.  Dedicated legacy groups remain supported where noted:
+# - channel-* entries resolve to dependency-free ChannelPlugin descriptors
+# - provider-* entries resolve to ProviderSpec objects or factories
+# - tool-* entries resolve to Tool subclasses
+# Built-in tools are discovered automatically via pkgutil scanning in
+# ToolLoader.discover().
+# [project.entry-points."mira.plugins"]
+# "channel-example" = "mira_channel_example:plugin"
+# "provider-acme" = "mira_provider_acme:provider_specs"
+# "tool-example" = "mira_tool_example:ExampleTool"
+#
+# Legacy dedicated tool group:
 # [project.entry-points."mira.tools"]
 # my_plugin = "my_package.plugins:MyTool"
 
