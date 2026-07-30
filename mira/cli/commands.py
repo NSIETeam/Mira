@@ -2955,6 +2955,46 @@ def boot(
 
 
 @app.command()
+def shutdown(
+    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
+    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
+    timeout: int = typer.Option(20, "--timeout", help="Graceful shutdown timeout in seconds"),
+    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable shutdown JSON"),
+) -> None:
+    """Gracefully stop the managed Mira gateway and report lifecycle state."""
+    from mira.gateway import GatewayRuntime, GatewayRuntimePaths
+    from mira.kernel.boot import ShutdownProtocol
+
+    _config_path, loaded = _load_inspection_config(config=config, workspace=workspace)
+    runtime = GatewayRuntime(
+        paths=GatewayRuntimePaths.for_instance(
+            workspace=str(loaded.workspace_path),
+            config_path=str(_config_path),
+        )
+    )
+    report = ShutdownProtocol(runtime, workspace=loaded.workspace_path).run(timeout_s=timeout)
+
+    if json_output:
+        typer.echo(json.dumps(report.to_dict(), ensure_ascii=False))
+    else:
+        status = "OK" if report.ok else "FAIL"
+        color = "green" if report.ok else "red"
+        console.print(f"[{color}][{status}][/{color}] Mira Kernel v{report.version} shutdown")
+        for step in report.steps:
+            step_color = {
+                "ok": "green",
+                "warning": "yellow",
+                "error": "red",
+            }[step.status]
+            console.print(f"[{step_color}][{step.status.upper()}][/{step_color}] {step.message}")
+            if step.detail:
+                console.print(f"[dim]  {step.detail}[/dim]")
+
+    if not report.ok:
+        raise typer.Exit(1)
+
+
+@app.command()
 def doctor(
     config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
     workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),

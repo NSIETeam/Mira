@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from typer.testing import CliRunner
@@ -56,3 +57,69 @@ def test_boot_starts_gateway_after_successful_post(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert calls
     assert calls[0][1]["webui_runtime_surface"] == "desktop"
+
+
+def test_shutdown_outputs_json_and_stops_gateway(tmp_path: Path) -> None:
+    config_path = _config_file(tmp_path)
+    stops = []
+
+    class _Runtime:
+        def __init__(self, **_kwargs: object) -> None:
+            self.state_path = tmp_path / "gateway.json"
+            self.log_path = tmp_path / "gateway.log"
+
+        def status(self) -> SimpleNamespace:
+            return SimpleNamespace(
+                running=True,
+                pid=12345,
+                state_path=self.state_path,
+                log_path=self.log_path,
+            )
+
+        def stop(self, *, timeout_s: int) -> SimpleNamespace:
+            stops.append(timeout_s)
+            return SimpleNamespace(ok=True, message="gateway_stopped")
+
+    with patch("mira.gateway.GatewayRuntime", _Runtime):
+        result = runner.invoke(
+            app,
+            ["shutdown", "--config", str(config_path), "--timeout", "7", "--json"],
+        )
+
+    assert result.exit_code == 0
+    assert stops == [7]
+    payload = json.loads(result.stdout.strip().splitlines()[-1])
+    assert payload["ok"] is True
+    assert {step["id"] for step in payload["steps"]} == {
+        "gateway.inspect",
+        "gateway.drain",
+        "storage.snapshot",
+    }
+
+
+def test_shutdown_treats_not_running_as_clean(tmp_path: Path) -> None:
+    config_path = _config_file(tmp_path)
+
+    class _Runtime:
+        def __init__(self, **_kwargs: object) -> None:
+            self.state_path = tmp_path / "gateway.json"
+            self.log_path = tmp_path / "gateway.log"
+
+        def status(self) -> SimpleNamespace:
+            return SimpleNamespace(
+                running=False,
+                pid=None,
+                state_path=self.state_path,
+                log_path=self.log_path,
+            )
+
+    with patch("mira.gateway.GatewayRuntime", _Runtime):
+        result = runner.invoke(app, ["shutdown", "--config", str(config_path), "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout.strip().splitlines()[-1])
+    assert payload["ok"] is True
+    assert [step["id"] for step in payload["steps"]] == [
+        "gateway.inspect",
+        "storage.snapshot",
+    ]

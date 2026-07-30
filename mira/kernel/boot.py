@@ -48,6 +48,36 @@ class BootReport:
         return payload
 
 
+@dataclass(slots=True)
+class ShutdownStep:
+    """One lifecycle shutdown step result."""
+
+    id: str
+    status: BootStatus
+    message: str
+    detail: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class ShutdownReport:
+    """Graceful shutdown report for CLI and smoke tests."""
+
+    version: str
+    steps: list[ShutdownStep] = field(default_factory=list)
+
+    @property
+    def ok(self) -> bool:
+        return all(step.status != "error" for step in self.steps)
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = asdict(self)
+        payload["ok"] = self.ok
+        return payload
+
+
 class BootProtocol:
     """POST sequence for Mira runlevels without owning the long-running process."""
 
@@ -175,6 +205,79 @@ class BootProtocol:
         else:
             target = "embedded host contract"
         return BootCheck("runlevel.profile", "ok", f"{profile} runlevel selected", detail=target)
+
+
+class ShutdownProtocol:
+    """Coordinate a best-effort graceful stop of the managed Mira runtime."""
+
+    def __init__(self, runtime: Any, *, workspace: Path) -> None:
+        self.runtime = runtime
+        self.workspace = workspace
+
+    def run(self, *, timeout_s: int = 20) -> ShutdownReport:
+        steps: list[ShutdownStep] = []
+        status = self.runtime.status()
+        if not status.running:
+            steps.append(
+                ShutdownStep(
+                    "gateway.inspect",
+                    "ok",
+                    "gateway is not running",
+                    detail=str(status.state_path),
+                )
+            )
+            steps.append(self._storage_snapshot_step())
+            return ShutdownReport(version=__version__, steps=steps)
+
+        steps.append(
+            ShutdownStep(
+                "gateway.inspect",
+                "ok",
+                "gateway process found",
+                detail=f"pid={status.pid}, state={status.state_path}",
+            )
+        )
+        result = self.runtime.stop(timeout_s=timeout_s)
+        if result.ok or result.message == "gateway_not_running":
+            steps.append(
+                ShutdownStep(
+                    "gateway.drain",
+                    "ok",
+                    "gateway accepted shutdown and drained managed process",
+                    detail=result.message,
+                )
+            )
+        else:
+            steps.append(
+                ShutdownStep(
+                    "gateway.drain",
+                    "error",
+                    "gateway did not stop before timeout",
+                    detail=result.message,
+                )
+            )
+        steps.append(self._storage_snapshot_step())
+        return ShutdownReport(version=__version__, steps=steps)
+
+    def _storage_snapshot_step(self) -> ShutdownStep:
+        existing = [
+            path.name
+            for path in (self.workspace / "memory", self.workspace / "sessions")
+            if path.exists()
+        ]
+        if existing:
+            return ShutdownStep(
+                "storage.snapshot",
+                "ok",
+                "memory/context stores remain available on disk",
+                detail=", ".join(existing),
+            )
+        return ShutdownStep(
+            "storage.snapshot",
+            "warning",
+            "memory/context stores are not initialized yet",
+            detail=str(self.workspace),
+        )
 
 
 def _is_writable(path: Path) -> bool:
