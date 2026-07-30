@@ -313,6 +313,10 @@ def test_modules_list_and_policy_show_use_config(tmp_path: Path):
     )
 
     modules_result = runner.invoke(app, ["modules", "list", "--config", str(config_path)])
+    modules_json_result = runner.invoke(
+        app,
+        ["modules", "list", "--json", "--config", str(config_path)],
+    )
     policy_result = runner.invoke(
         app,
         ["policy", "show", "--user", "alice", "--group", "growth", "--config", str(config_path)],
@@ -320,6 +324,8 @@ def test_modules_list_and_policy_show_use_config(tmp_path: Path):
 
     assert modules_result.exit_code == 0
     assert "subagents" in modules_result.stdout
+    assert modules_json_result.exit_code == 0
+    assert json.loads(modules_json_result.stdout)["total"] > 0
     assert policy_result.exit_code == 0
     assert "\"exec_posture\": \"disabled\"" in policy_result.stdout
 
