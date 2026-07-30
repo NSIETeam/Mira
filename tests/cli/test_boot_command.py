@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 from mira.cli.commands import app
 from mira.config.loader import save_config
 from mira.config.schema import Config
+from mira.session.manager import Session, SessionManager
 
 runner = CliRunner()
 
@@ -123,3 +124,73 @@ def test_shutdown_treats_not_running_as_clean(tmp_path: Path) -> None:
         "gateway.inspect",
         "storage.snapshot",
     ]
+
+
+def test_fs_cli_writes_reads_and_lists_mem(tmp_path: Path) -> None:
+    config_path = _config_file(tmp_path)
+
+    write = runner.invoke(
+        app,
+        ["fs", "write", "/mem/notes/a.md", "hello", "--config", str(config_path), "--json"],
+    )
+    assert write.exit_code == 0
+    written = json.loads(write.stdout.strip().splitlines()[-1])
+    assert written["path"] == "/mem/notes/a.md"
+
+    read = runner.invoke(app, ["fs", "read", "/mem/notes/a.md", "--config", str(config_path), "--json"])
+    assert read.exit_code == 0
+    payload = json.loads(read.stdout.strip().splitlines()[-1])
+    assert payload["content"] == "hello"
+
+    listed = runner.invoke(app, ["fs", "ls", "/mem/notes", "--config", str(config_path), "--json"])
+    assert listed.exit_code == 0
+    assert json.loads(listed.stdout.strip().splitlines()[-1])["entries"] == ["a.md"]
+
+
+def test_ps_cli_lists_persisted_agent_process_snapshots(tmp_path: Path) -> None:
+    config_path = _config_file(tmp_path)
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    workspace = Path(config["agents"]["defaults"]["workspace"])
+    manager = SessionManager(workspace)
+    session = Session(
+        key="cli:process",
+        metadata={
+            "agent_process": {
+                "pid": "agent-0001",
+                "status": "terminated",
+                "user": "king",
+                "model_hint": "test-model",
+                "goal": "run task",
+            }
+        },
+    )
+    manager.save(session, fsync=True)
+
+    result = runner.invoke(app, ["ps", "--config", str(config_path), "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout.strip().splitlines()[-1])
+    assert payload["processes"][0]["pid"] == "agent-0001"
+    assert payload["processes"][0]["session_key"] == "cli:process"
+
+
+def test_think_plan_cli_outputs_bin_think_plan() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "think-plan",
+            "hello",
+            "--provider",
+            "openai",
+            "--model",
+            "gpt-test",
+            "--cap",
+            "reasoning",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout.strip().splitlines()[-1])
+    assert payload["command"] == "/bin/think"
+    assert payload["runtime"]["id"] == "openai:gpt-test"
