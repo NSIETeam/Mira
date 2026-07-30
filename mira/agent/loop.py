@@ -19,6 +19,7 @@ from loguru import logger
 from mira.agent import context as agent_context
 from mira.agent import model_presets as preset_helpers
 from mira.agent.automation_turns import publish_next_deferred_turn
+from mira.agent.build_turn import BuildTurnHandler
 from mira.agent.command_turn import CommandTurnHandler
 from mira.agent.context import ContextBuilder
 from mira.agent.cron_turns import CronTurnCoordinator
@@ -545,6 +546,7 @@ class AgentLoop:
             save_session=self.sessions.save,
             clear_pending_user_turn=self._clear_pending_user_turn,
         )
+        self.build_turns = BuildTurnHandler(self)
         try:
             from mira.kernel.app import register_kernel_loop
 
@@ -1926,69 +1928,7 @@ class AgentLoop:
         return result.event
 
     async def _state_build(self, ctx: TurnContext) -> str:
-        runtime = ctx.runtime
-        session = _ctx_session(ctx)
-        if runtime is None:
-            runtime = self.runtime_for_session(session)
-            ctx.runtime = runtime
-        if ctx.on_runtime_admitted is not None:
-            await ctx.on_runtime_admitted(runtime)
-        replay_max_messages = replay_max_messages_for_context(
-            runtime.context_window_tokens
-        )
-        if not ctx.ephemeral:
-            await self._consolidator_for_metadata(session.metadata).maybe_consolidate_by_tokens(
-                session,
-                runtime=runtime,
-                replay_max_messages=replay_max_messages,
-            )
-        is_subagent = ctx.kind is TurnKind.SYSTEM and ctx.msg.sender_id == "subagent"
-
-        if ctx.kind is TurnKind.USER and (message_tool := self.tools.get("message")):
-            if isinstance(message_tool, MessageTool):
-                message_tool.start_turn()
-
-        _hist_kwargs: dict[str, Any] = {
-            "max_messages": replay_max_messages,
-            "max_tokens": self._replay_token_budget(runtime),
-            "extend_to_user": is_subagent,
-        }
-        ctx.history = session.get_history(**_hist_kwargs)
-        ctx.history = self._page_virtual_context_history(
-            ctx.history,
-            budget_tokens=_hist_kwargs["max_tokens"],
-            session_key=ctx.session_key,
-        )
-        if is_subagent:
-            # Keep the durable internal delivery as an assistant record, but
-            # present this completion to the model as fresh follow-up input.
-            # Providers without assistant-prefill support drop trailing
-            # assistant messages, so using the persisted record as the current
-            # prompt would hide an independently dispatched subagent result.
-            if self._persist_subagent_followup(session, ctx.msg):
-                _ctx_logger(ctx).debug("Subagent result persisted for session {}", ctx.session_key)
-                self.sessions.save(session)
-            ctx.input_persisted_early = True
-        ctx.delivery.record_runtime(ctx.runtime)
-
-        ctx.tools = self._tools_for_metadata(session.metadata)
-        ctx.request_context = self._request_context_for_turn(ctx)
-        if ctx.kind is TurnKind.USER:
-            ctx.runtime_context_blocks = await self._resolve_runtime_context_for_turn(ctx)
-        ctx.initial_messages = self._build_initial_messages(ctx)
-        if ctx.kind is TurnKind.USER:
-            ctx.input_persisted_early = self._persist_user_message_early(
-                ctx.msg,
-                session,
-                runtime_context_blocks=ctx.runtime_context_blocks,
-            )
-
-        if ctx.on_progress is None:
-            ctx.on_progress = ctx.delivery.progress_callback()
-        if ctx.on_retry_wait is None:
-            ctx.on_retry_wait = ctx.delivery.retry_wait_callback()
-
-        return "ok"
+        return await self.build_turns.handle(ctx, _ctx_session(ctx))
 
     async def _state_run(self, ctx: TurnContext) -> str:
         runtime = _ctx_runtime(ctx)
