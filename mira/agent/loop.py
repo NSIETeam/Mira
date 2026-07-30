@@ -27,6 +27,7 @@ from mira.agent.hook import AgentHook, AgentTurnHookFactory
 from mira.agent.memory import Consolidator, MemoryStore
 from mira.agent.model_runtime import ModelRuntimeResolver
 from mira.agent.process_lifecycle import TurnProcessLifecycle
+from mira.agent.respond_turn import RespondTurnHandler
 from mira.agent.run_turn import RunTurnHandler
 from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunSpec
 from mira.agent.save_turn import SaveTurnHandler
@@ -547,6 +548,7 @@ class AgentLoop:
         self.build_turns = BuildTurnHandler(self)
         self.run_turns = RunTurnHandler(self)
         self.save_turns = SaveTurnHandler(self)
+        self.respond_turns = RespondTurnHandler(self._assemble_outbound_for_context)
         try:
             from mira.kernel.app import register_kernel_loop
 
@@ -1866,6 +1868,17 @@ class AgentLoop:
             metadata=meta,
         )
 
+    def _assemble_outbound_for_context(self, ctx: TurnContext) -> OutboundMessage | None:
+        return self._assemble_outbound(
+            ctx.msg,
+            ctx.final_content or "",
+            ctx.all_messages,
+            ctx.stop_reason,
+            ctx.had_injections,
+            ctx.streamed_content,
+            turn_latency_ms=ctx.turn_latency_ms,
+        )
+
     async def _state_restore(self, ctx: TurnContext) -> str:
         """Restore checkpoint / pending user turn; extract documents."""
         msg = ctx.msg
@@ -1945,29 +1958,7 @@ class AgentLoop:
         )
 
     async def _state_respond(self, ctx: TurnContext) -> str:
-        if ctx.suppress_response:
-            ctx.outbound = None
-            return "ok"
-        if ctx.kind is TurnKind.SYSTEM:
-            ctx.outbound = ctx.delivery.background_response(
-                ctx.final_content,
-                stop_reason=ctx.stop_reason,
-                streamed=ctx.streamed_content,
-                latency_ms=ctx.turn_latency_ms,
-            )
-            return "ok"
-        ctx.outbound = self._assemble_outbound(
-            ctx.msg,
-            ctx.final_content or "",
-            ctx.all_messages,
-            ctx.stop_reason,
-            ctx.had_injections,
-            ctx.streamed_content,
-            turn_latency_ms=ctx.turn_latency_ms,
-        )
-        if ctx.ephemeral and ctx.outbound is not None:
-            ctx.outbound.metadata["_stop_reason"] = ctx.stop_reason
-        return "ok"
+        return await self.respond_turns.handle(ctx)
 
     def _sanitize_persisted_blocks(
         self,
