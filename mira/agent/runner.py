@@ -10,8 +10,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-from loguru import logger
-
 from mira.agent.context_governance import (
     ContextGovernanceConfig,
     ContextGovernor,
@@ -37,6 +35,7 @@ from mira.utils.helpers import (
     strip_think,
 )
 from mira.utils.llm_runtime import LLMRuntime
+from mira.utils.logging import session_logger, tool_logger
 from mira.utils.prompt_templates import render_template
 from mira.utils.runtime import (
     EMPTY_FINAL_RESPONSE_MESSAGE,
@@ -256,12 +255,12 @@ class AgentRunner:
                 )
         self._append_injected_messages(messages, injections)
         if real_injection:
-            logger.info(
+            session_logger(spec.session_key).info(
                 "Injected {} follow-up message(s) {} ({}/{})",
                 len(injections), phase, injection_cycles, _MAX_INJECTION_CYCLES,
             )
         else:
-            logger.info("Injected sustained-goal continuation {}", phase)
+            session_logger(spec.session_key).info("Injected sustained-goal continuation {}", phase)
         return True, injection_cycles
 
     def _build_goal_continue_message(self, spec: AgentRunSpec) -> dict[str, str]:
@@ -270,7 +269,7 @@ class AgentRunner:
             try:
                 custom = custom()
             except Exception:
-                logger.exception("goal_continue_message callback failed")
+                session_logger(spec.session_key).exception("goal_continue_message callback failed")
                 custom = None
         return build_goal_continue_message(custom)
 
@@ -298,7 +297,7 @@ class AgentRunner:
             else:
                 items = await spec.injection_callback()
         except Exception:
-            logger.exception("injection_callback failed")
+            session_logger(spec.session_key).exception("injection_callback failed")
             return []
         if not items:
             return []
@@ -317,7 +316,7 @@ class AgentRunner:
                 injected_messages.append({"role": "user", "content": content})
         if len(injected_messages) > _MAX_INJECTIONS_PER_TURN:
             dropped = len(injected_messages) - _MAX_INJECTIONS_PER_TURN
-            logger.warning(
+            session_logger(spec.session_key).warning(
                 "Injection callback returned {} messages, capping to {} ({} dropped)",
                 len(injected_messages), _MAX_INJECTIONS_PER_TURN, dropped,
             )
@@ -377,7 +376,7 @@ class AgentRunner:
                 try:
                     await hook.on_finally(context)
                 except Exception:
-                    logger.exception(
+                    session_logger(spec.session_key).exception(
                         "AgentHook.on_finally error after {}",
                         context.stop_reason or "run exception",
                     )
@@ -553,7 +552,7 @@ class AgentRunner:
                 continue
 
             if response.has_tool_calls:
-                logger.warning(
+                session_logger(spec.session_key).warning(
                     "Ignoring tool calls under finish_reason='{}' for {}",
                     response.finish_reason,
                     spec.session_key or "default",
@@ -563,7 +562,7 @@ class AgentRunner:
             if response.finish_reason != "error" and is_blank_text(clean):
                 empty_content_retries += 1
                 if empty_content_retries < _MAX_EMPTY_RETRIES:
-                    logger.warning(
+                    session_logger(spec.session_key).warning(
                         "Empty response on turn {} for {} ({}/{}); retrying",
                         iteration,
                         spec.session_key or "default",
@@ -574,7 +573,7 @@ class AgentRunner:
                         await hook.on_stream_end(context, resuming=False)
                     await hook.after_iteration(context)
                     continue
-                logger.warning(
+                session_logger(spec.session_key).warning(
                     "Empty response on turn {} for {} after {} retries; attempting finalization",
                     iteration,
                     spec.session_key or "default",
@@ -598,7 +597,7 @@ class AgentRunner:
                     length_recovery_parts.append(
                         _restore_outer_whitespace(clean, original_content)
                     )
-                    logger.info(
+                    session_logger(spec.session_key).info(
                         "Output truncated on turn {} for {} ({}/{}); continuing",
                         iteration,
                         spec.session_key or "default",
@@ -958,7 +957,7 @@ class AgentRunner:
             and original_finish_reason in ("tool_calls", "function_call")
             and not malformed_retry
         ):
-            logger.warning(
+            session_logger(spec.session_key).warning(
                 "Retrying LLM request after all {} malformed tool call(s) were dropped",
                 dropped,
             )
@@ -974,7 +973,7 @@ class AgentRunner:
             and original_finish_reason in ("tool_calls", "function_call")
             and malformed_retry
         ):
-            logger.warning(
+            session_logger(spec.session_key).warning(
                 "Malformed tool calls persisted after retry; falling back to no-tools request",
             )
             fallback_messages = self._malformed_tool_call_retry_messages(
@@ -1006,7 +1005,7 @@ class AgentRunner:
             return (0, False, getattr(response, "finish_reason", None))
         dropped = len(calls) - len(valid)
         original_finish_reason = getattr(response, "finish_reason", None)
-        logger.warning(
+        session_logger(None).warning(
             "Dropped {} malformed tool call(s) with missing/non-string name "
             "from LLM response (finish_reason={!r})",
             dropped,
@@ -1063,7 +1062,7 @@ class AgentRunner:
         try:
             response = await self._request_no_tools(spec, retry_messages)
         except Exception:
-            logger.exception(
+            session_logger(spec.session_key).exception(
                 "Budget-exhausted finalization failed for {}; using fallback",
                 spec.session_key or "default",
             )
@@ -1072,7 +1071,7 @@ class AgentRunner:
         raw_usage = self._usage_or_estimate(spec, retry_messages, response)
         self._accumulate_usage(usage, raw_usage)
         if response.finish_reason == "error" or response.has_tool_calls:
-            logger.warning(
+            session_logger(spec.session_key).warning(
                 "Budget-exhausted finalization returned finish_reason='{}' "
                 "with {} tool call(s) for {}; using fallback",
                 response.finish_reason,
@@ -1262,11 +1261,13 @@ class AgentRunner:
     ) -> tuple[Any, dict[str, str], BaseException | None]:
         hook = hook or AgentHook()
         context = context or AgentHookContext(iteration=0, messages=[])
+        log = tool_logger(spec.session_key, tool_call.id, tool_call.name)
         hint = "\n\n[Analyze the error above and try a different approach.]"
         if spec.execution_gate is not None:
             try:
                 spec.execution_gate.assert_tools_allowed()
             except ExecutionGateClosedError as exc:
+                log.warning("Tool execution blocked by closed execution gate")
                 event = {
                     "name": tool_call.name,
                     "status": "error",
@@ -1279,6 +1280,7 @@ class AgentRunner:
             external_lookup_counts,
         )
         if lookup_error:
+            log.warning("Tool execution blocked after repeated external lookup")
             event = {
                 "name": tool_call.name,
                 "status": "error",
@@ -1294,6 +1296,10 @@ class AgentRunner:
             if isinstance(prepared, tuple) and len(prepared) == 3:
                 tool, params, prep_error = prepared
         if prep_error:
+            log.warning(
+                "Tool preparation failed: {}",
+                prep_error.replace("\n", " ").strip()[:200],
+            )
             event = {
                 "name": tool_call.name,
                 "status": "error",
@@ -1315,6 +1321,10 @@ class AgentRunner:
         middleware_stack = ToolMiddlewareStack(list(spec.tool_middlewares))
         middleware_result = await middleware_stack.before_execute(tool_call, tool, params)
         if middleware_result is not None:
+            log.warning(
+                "Tool execution blocked by middleware: {}",
+                str(middleware_result).replace("\n", " ").strip()[:200],
+            )
             event = {
                 "name": tool_call.name,
                 "status": "error",
@@ -1333,6 +1343,10 @@ class AgentRunner:
         except Exception as exc:
             await middleware_stack.on_error(tool_call, tool, params, exc)
             await hook.on_execute_tool_error(context, tool_call, tool, params, exc)
+            log.bind(error_type=type(exc).__name__).error(
+                "Tool execution failed: {}",
+                str(exc).replace("\n", " ").strip()[:200],
+            )
             event = {
                 "name": tool_call.name,
                 "status": "error",
@@ -1356,6 +1370,10 @@ class AgentRunner:
         if is_tool_error_result(tool_call.name, result):
             await middleware_stack.on_error(tool_call, tool, params, result)
             await hook.on_execute_tool_error(context, tool_call, tool, params, result)
+            log.warning(
+                "Tool returned error result: {}",
+                result.replace("\n", " ").strip()[:200],
+            )
             event = {
                 "name": tool_call.name,
                 "status": "error",
@@ -1438,8 +1456,9 @@ class AgentRunner:
         workspace_violation_counts: dict[str, int],
     ) -> tuple[Any, dict[str, str], BaseException | None] | None:
         """Classify safety-boundary failures, or return ``None`` to pass through."""
+        log = tool_logger(None, tool_call.id, tool_call.name)
         if self._is_ssrf_violation(raw_text):
-            logger.warning(
+            log.warning(
                 "Tool {} blocked by SSRF guard; returning non-retryable tool error: {}",
                 tool_call.name,
                 raw_text.replace("\n", " ").strip()[:200],
@@ -1455,7 +1474,7 @@ class AgentRunner:
             )
             event["detail"] = self._event_detail("workspace_violation: ", raw_text)
             if escalation is not None:
-                logger.warning(
+                log.warning(
                     "Tool {} hit workspace boundary repeatedly; escalating hint",
                     tool_call.name,
                 )

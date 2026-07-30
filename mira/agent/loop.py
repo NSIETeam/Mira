@@ -93,6 +93,7 @@ from mira.utils.document import extract_documents, reference_non_image_attachmen
 from mira.utils.helpers import image_placeholder_text
 from mira.utils.helpers import truncate_text as truncate_text_fn
 from mira.utils.llm_runtime import LLMRuntime
+from mira.utils.logging import session_logger, turn_logger
 from mira.utils.runtime import (
     EMPTY_FINAL_RESPONSE_MESSAGE,
 )
@@ -187,6 +188,10 @@ class TurnContext:
     turn_latency_ms: int | None = None
 
     trace: list[StateTraceEntry] = field(default_factory=list)
+
+
+def _ctx_logger(ctx: TurnContext):
+    return turn_logger(ctx.session_key, ctx.turn_id)
 
 
 class AgentLoop:
@@ -648,7 +653,7 @@ class AgentLoop:
         except KeyError:
             if not recover_removed or name in self.runtime_resolver.model_presets:
                 raise
-            logger.warning(
+            session_logger(session.key).warning(
                 "Session '{}' references removed model preset '{}'; falling back to default",
                 session.key,
                 name,
@@ -694,7 +699,7 @@ class AgentLoop:
         old_model = self.model
         runtime = self.runtime_resolver.select_preset(name)
         self._publish_runtime_selection(runtime, publish_update=publish_update)
-        logger.info(
+        session_logger(None).info(
             "Runtime model switched for next turn: {} -> {}",
             old_model,
             runtime.model,
@@ -749,7 +754,7 @@ class AgentLoop:
                 if name in registered:
                     registered.remove(name)
 
-        logger.info("Registered {} tools: {}", len(registered), registered)
+        session_logger(None).info("Registered {} tools: {}", len(registered), registered)
 
     async def _connect_mcp(self) -> None:
         """Connect configured MCP servers."""
@@ -901,7 +906,7 @@ class AgentLoop:
         if result:
             await self.bus.publish_outbound(result)
         else:
-            logger.warning("Command '{}' matched but dispatch returned None", raw)
+            session_logger(key).warning("Command '{}' matched but dispatch returned None", raw)
 
     async def _cancel_active_tasks(self, key: str) -> int:
         """Cancel and await all active tasks and subagents for *key*.
@@ -1074,7 +1079,7 @@ class AgentLoop:
                 try:
                     msg = await asyncio.wait_for(pending_queue.get(), timeout=300)
                 except asyncio.TimeoutError:
-                    logger.warning(
+                    session_logger(session.key).warning(
                         "Timeout waiting for sub-agent completion in session {}",
                         session.key,
                     )
@@ -1217,7 +1222,10 @@ class AgentLoop:
             reset_file_states(file_state_token)
         self._last_usage = result.usage
         if result.stop_reason == "max_iterations":
-            logger.warning("Max iterations ({}) reached", self.max_iterations)
+            session_logger(active_session_key).warning(
+                "Max iterations ({}) reached",
+                self.max_iterations,
+            )
             should_stream = turn_continuation.should_stream_budget_response(
                 stop_reason=result.stop_reason,
                 pending_queue_available=pending_queue is not None and session is not None,
@@ -1235,7 +1243,10 @@ class AgentLoop:
                 await on_stream(stream_content)
                 await on_stream_end(resuming=False)
         elif result.stop_reason == "error":
-            logger.error("LLM returned error: {}", (result.final_content or "")[:200])
+            session_logger(active_session_key).error(
+                "LLM returned error: {}",
+                (result.final_content or "")[:200],
+            )
         return result.final_content, result.tools_used, result.messages, result.stop_reason, result.had_injections
 
     def _check_expired_sessions_if_due(self) -> None:
@@ -1255,7 +1266,7 @@ class AgentLoop:
         self._running = True
         try:
             await self._connect_mcp()
-            logger.info("Agent loop started")
+            session_logger(None).info("Agent loop started")
 
             while self._running:
                 try:
@@ -1268,12 +1279,15 @@ class AgentLoop:
                     # Only ignore non-task CancelledError signals that may leak from integrations.
                     if not self._running or task_is_cancelling():
                         raise
-                    logger.warning(
+                    session_logger(None).warning(
                         "Ignoring leaked CancelledError while consuming inbound messages"
                     )
                     continue
                 except Exception as e:
-                    logger.warning("Error consuming inbound message: {}, continuing...", e)
+                    session_logger(None).warning(
+                        "Error consuming inbound message: {}, continuing...",
+                        e,
+                    )
                     continue
 
                 raw = msg.content.strip()
@@ -1293,7 +1307,7 @@ class AgentLoop:
                         session_key=effective_key,
                         active_session_keys=self._pending_queues.keys(),
                     ):
-                        logger.info(
+                        session_logger(effective_key).info(
                             "Deferred {} turn for active session {}",
                             label,
                             effective_key,
@@ -1323,12 +1337,12 @@ class AgentLoop:
                     try:
                         self._pending_queues[effective_key].put_nowait(pending_msg)
                     except asyncio.QueueFull:
-                        logger.warning(
+                        session_logger(effective_key).warning(
                             "Pending queue full for session {}, falling back to queued task",
                             effective_key,
                         )
                     else:
-                        logger.info(
+                        session_logger(effective_key).info(
                             "Routed follow-up message to pending queue for session {}",
                             effective_key,
                         )
@@ -1387,11 +1401,11 @@ class AgentLoop:
                 except asyncio.CancelledError:
                     for _, coordinator in self._automation_turn_coordinators:
                         coordinator.complete(msg, error=asyncio.CancelledError())
-                    logger.info("Task cancelled for session {}", session_key)
+                    session_logger(session_key).info("Task cancelled for session {}", session_key)
                     try:
                         await delivery.abort_stream()
                     except Exception:
-                        logger.debug(
+                        session_logger(session_key).debug(
                             "Could not close stream for cancelled session {}",
                             session_key,
                             exc_info=True,
@@ -1409,19 +1423,22 @@ class AgentLoop:
                         if self._restore_runtime_checkpoint(session):
                             self._clear_pending_user_turn(session)
                             self.sessions.save(session)
-                            logger.info(
+                            session_logger(key).info(
                                 "Restored partial context for cancelled session {}",
                                 key,
                             )
                     except Exception:
-                        logger.debug(
+                        session_logger(session_key).debug(
                             "Could not restore checkpoint for cancelled session {}",
                             session_key,
                             exc_info=True,
                         )
                     raise
                 except Exception as exc:
-                    logger.exception("Error processing message for session {}", session_key)
+                    session_logger(session_key).exception(
+                        "Error processing message for session {}",
+                        session_key,
+                    )
                     await delivery.fail(
                         publish_completion=not turn_continuation.internal_continuation_pending(
                             msg.metadata
@@ -1450,7 +1467,7 @@ class AgentLoop:
                             await self.bus.publish_inbound(item)
                             leftover += 1
                         if leftover:
-                            logger.info(
+                            session_logger(session_key).info(
                                 "Re-published {} leftover message(s) to bus for session {}",
                                 leftover, session_key,
                             )
@@ -1492,7 +1509,7 @@ class AgentLoop:
     def stop(self) -> None:
         """Stop the agent loop."""
         self._running = False
-        logger.info("Agent loop stopping")
+        session_logger(None).info("Agent loop stopping")
 
     async def _process_message(
         self,
@@ -1634,7 +1651,7 @@ class AgentLoop:
                     event=event,
                 )
             )
-            logger.debug(
+            _ctx_logger(ctx).debug(
                 "[turn {}] State {} took {:.1f}ms -> event {}",
                 ctx.turn_id,
                 ctx.state.name,
@@ -1650,7 +1667,7 @@ class AgentLoop:
                 )
             ctx.state = next_state
 
-        logger.debug(
+        _ctx_logger(ctx).debug(
             "[turn {}] Turn completed after {} states",
             ctx.turn_id,
             len(ctx.trace),
@@ -1675,10 +1692,15 @@ class AgentLoop:
                 return None
 
         preview = final_content[:120] + "..." if len(final_content) > 120 else final_content
-        logger.info("Response to {}:{}: {}", msg.channel, msg.sender_id, preview)
+        meta = dict(msg.metadata or {})
+        session_logger(msg.session_key).info(
+            "Response to {}:{}: {}",
+            msg.channel,
+            msg.sender_id,
+            preview,
+        )
 
         event = None
-        meta = dict(msg.metadata or {})
         if streamed_content and stop_reason not in {"error", "tool_error"}:
             event = StreamedResponseEvent()
         if turn_latency_ms is not None:
@@ -1703,9 +1725,14 @@ class AgentLoop:
 
         preview = msg.content[:80] + "..." if len(msg.content) > 80 else msg.content
         if ctx.kind is TurnKind.SYSTEM:
-            logger.info("Processing system message from {}", msg.sender_id)
+            _ctx_logger(ctx).info("Processing system message from {}", msg.sender_id)
         else:
-            logger.info("Processing message from {}:{}: {}", msg.channel, msg.sender_id, preview)
+            _ctx_logger(ctx).info(
+                "Processing message from {}:{}: {}",
+                msg.channel,
+                msg.sender_id,
+                preview,
+            )
 
         # Session is already fetched by the caller (_process_message) but
         # ensure it exists in case this handler is invoked independently.
@@ -1824,7 +1851,7 @@ class AgentLoop:
             # assistant messages, so using the persisted record as the current
             # prompt would hide an independently dispatched subagent result.
             if self._persist_subagent_followup(ctx.session, ctx.msg):
-                logger.debug("Subagent result persisted for session {}", ctx.session_key)
+                _ctx_logger(ctx).debug("Subagent result persisted for session {}", ctx.session_key)
                 self.sessions.save(ctx.session)
             ctx.input_persisted_early = True
         ctx.delivery.record_runtime(ctx.runtime)
@@ -2031,7 +2058,7 @@ class AgentLoop:
                     or tool_call_id_str in fulfilled_tool_call_ids
                 ):
                     # Undeclared tool results corrupt future provider requests.
-                    logger.warning(
+                    session_logger(session.key).warning(
                         "Dropping invalid tool result {} from session {} during persistence",
                         tool_call_id_str or "(missing id)",
                         session.key,

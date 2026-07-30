@@ -35,6 +35,7 @@ from mira.session.turn_continuation import (
     reset_goal_continuation_rounds,
 )
 from mira.tool_contracts import tool_contract_family
+from mira.utils.logging import session_logger
 
 from .authorization import KernelAuthorizer
 from .embedded_plane import build_board_snapshot, build_embedded_topology
@@ -1340,7 +1341,16 @@ class KernelApp:
         return self.describe()
 
     def execute_operator_command(self, command_line: str) -> dict[str, Any]:
-        return _execute_operator_command(self, command_line)
+        log = session_logger(
+            self._active_session_key,
+            kernel_command=command_line.split(maxsplit=1)[0] if command_line.strip() else "",
+        )
+        result = _execute_operator_command(self, command_line)
+        if result.get("ok") is False:
+            log.warning("Kernel operator command failed: {}", command_line)
+        else:
+            log.debug("Kernel operator command completed: {}", command_line)
+        return result
 
     def dispatch_control_action(self, action: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         normalized = str(action or "").strip()
