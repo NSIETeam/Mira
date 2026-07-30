@@ -21,7 +21,7 @@ from mira.tool_contracts import (
     tool_contract_family_groups,
 )
 
-from .scheduler import prioritize_lane
+from .app import _prioritize_lane as prioritize_lane
 
 
 def _copy_rows(rows: list[dict[str, Any]], *, limit: int | None = None) -> list[dict[str, Any]]:

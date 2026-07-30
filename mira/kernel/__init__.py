@@ -11,8 +11,35 @@ This package is that contract. It does not replace the current runtime; it
 stabilizes the boundary around it.
 """
 
-from .app import KernelApp, active_kernel_app, build_kernel_manifest, register_kernel_loop
-from .embedded_plane import build_board_snapshot, build_embedded_topology
+from .app import (
+    KernelApp,
+    _build_board_snapshot,
+    _build_embedded_topology,
+    _build_execution_lanes,
+    _build_runtime_topology,
+    _build_scheduler_state,
+    _build_worker_registry,
+    _clone_scheduler_state,
+    _prioritize_lane,
+    _request_background_drain,
+    active_kernel_app,
+    build_kernel_manifest,
+    register_kernel_loop,
+)
+
+# Re-exported under their original public names for backward compatibility.
+# New code should import from mira.kernel.app directly.
+build_board_snapshot = _build_board_snapshot
+build_embedded_topology = _build_embedded_topology
+build_execution_lanes = _build_execution_lanes
+build_runtime_topology = _build_runtime_topology
+build_scheduler_state = _build_scheduler_state
+clone_scheduler_state = _clone_scheduler_state
+prioritize_lane = _prioritize_lane
+request_background_drain = _request_background_drain
+build_worker_registry = _build_worker_registry
+project_worker_registry = _build_worker_registry  # alias kept for compat
+
 from .events import (
     EXECUTION_LIFECYCLE_STATES,
     EXECUTION_SNAPSHOT_STATUSES,
@@ -30,7 +57,6 @@ from .events import (
     normalize_stream_event,
     snapshot_from_run_result,
 )
-from .execution_plane import build_execution_lanes
 from .module_registry import KernelModuleDescriptor, list_kernel_modules
 from .native_bridge import (
     NativeBridgeSnapshot,
@@ -70,13 +96,6 @@ from .runtime_control import (
     set_maintenance_mode,
     set_module_focus,
 )
-from .runtime_topology import build_runtime_topology
-from .scheduler import (
-    build_scheduler_state,
-    clone_scheduler_state,
-    prioritize_lane,
-    request_background_drain,
-)
 from .shell import (
     ShellDescriptor,
     default_engineering_shell,
@@ -86,7 +105,8 @@ from .shell import (
     review_shell,
     single_execution_shell,
 )
-from .worker_plane import build_worker_registry, project_worker_registry
+
+
 
 ExecutionKernel = KernelApp
 

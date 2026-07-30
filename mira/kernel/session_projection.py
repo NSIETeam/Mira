@@ -44,7 +44,7 @@ class KernelSessionProjector:
         app._active_session_key = session_key
         app._session_status[session_key] = event.status
         if event.status == "running":
-            from mira.kernel.scheduler import prioritize_lane
+            from mira.kernel.app import _prioritize_lane as prioritize_lane
 
             app._scheduler_state = prioritize_lane(app._scheduler_state, lane="interactive")
         app._record_kernel_event(

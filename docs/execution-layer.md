@@ -31,9 +31,9 @@ The kernel package now exposes two explicit concepts:
 
 - `ExecutionKernel` / `KernelApp`: reusable runtime surface, available from `mira.kernel.app`
 - runtime contracts also surface directly from `mira.kernel.runtime_adapter`, `mira.kernel.runtime_bridge`, `mira.kernel.runtime_control`, and `mira.kernel.module_registry`
-- execution/worker contracts also surface directly from `mira.kernel.execution_plane`, `mira.kernel.scheduler`, `mira.kernel.observability`, and `mira.kernel.worker_plane`
-- embedded board contracts also surface directly from `mira.kernel.embedded_plane`
-- topology aggregation also surfaces directly from `mira.kernel.runtime_topology`
+- execution/worker contracts surface through `mira.kernel.app` (inlined helpers; previously `mira.kernel.execution_plane`, `mira.kernel.scheduler`, `mira.kernel.worker_plane`)
+- embedded board contracts surface through `mira.kernel.app`
+- topology aggregation surfaces through `mira.kernel.app`
 - `ShellDescriptor`: shell metadata and capability contract
 - `ExecutionSnapshot` / `KernelEvent`: stable state and event contracts for shells
 

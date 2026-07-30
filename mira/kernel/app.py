@@ -37,7 +37,6 @@ from mira.session.turn_continuation import (
 from mira.tool_contracts import tool_contract_family
 
 from .authorization import KernelAuthorizer
-from .embedded_plane import build_board_snapshot, build_embedded_topology
 from .events import (
     EXECUTION_LIFECYCLE_STATES,
     EXECUTION_SNAPSHOT_STATUSES,
@@ -48,7 +47,6 @@ from .events import (
     merge_snapshot_with_session_metadata,
     snapshot_from_run_result,
 )
-from .execution_plane import build_execution_lanes
 from .module_registry import list_kernel_modules
 from .native_bridge import dispatch_native_bridge_command, snapshot_native_bridge
 from .observability import append_kernel_event, build_diagnostics_snapshot
@@ -66,8 +64,6 @@ from .runtime_bridge import (
 )
 from .runtime_control import (
     attach_board as attach_runtime_board,
-)
-from .runtime_control import (
     build_runtime_control_state,
     clone_runtime_control_state,
     set_active_adapter,
@@ -75,28 +71,184 @@ from .runtime_control import (
     set_fault_level,
     set_maintenance_mode,
     set_module_focus,
+    detach_board as detach_runtime_board,
 )
-from .runtime_control import detach_board as detach_runtime_board
 from .runtime_probe import (
     attach_runtime_board_probe,
     board_status_runtime_probe,
     discover_serial_ports,
 )
-from .runtime_topology import build_runtime_topology
-from .scheduler import (
-    build_scheduler_state,
-    clone_scheduler_state,
-    prioritize_lane,
-    request_background_drain,
-)
 from .session_projection import KernelSessionProjector
 from .shell import ShellDescriptor, default_engineering_shell, get_shell, list_shells
-from .worker_plane import build_worker_registry
 
 KERNEL_MANIFEST_VERSION = 1
 KERNEL_EVENT_CONTRACT_VERSION = 1
 KERNEL_SNAPSHOT_CONTRACT_VERSION = 1
 _SHARED_KERNEL_APP: KernelApp | None = None
+
+# ---------------------------------------------------------------------------
+# Inline helpers previously spread across single-use stub modules.
+# Keeping them collocated in app.py until they either grow real logic or
+# the kernel surface stabilises enough for a dedicated topology package.
+# ---------------------------------------------------------------------------
+
+def __build_board_snapshot(
+    *,
+    attached: bool,
+    health: str | None,
+    transport: str | None,
+    port: str | None,
+    target: str | None,
+    preferred_transport: str | None,
+    runtime_mode: str | None = None,
+    bridge_artifact: str | None = None,
+    last_error: str | None = None,
+    available_ports: list[str] | None = None,
+) -> dict[str, Any]:
+    return {
+        "attached": attached,
+        "health": health,
+        "transport": transport,
+        "port": port,
+        "target": target,
+        "preferred_transport": preferred_transport,
+        "runtime_mode": runtime_mode,
+        "bridge_artifact": bridge_artifact,
+        "last_error": last_error,
+        "available_ports": list(available_ports or []),
+    }
+
+
+def __build_embedded_topology(
+    *,
+    board: dict[str, Any],
+    transports: list[str],
+    active_adapter: str | None,
+) -> dict[str, Any]:
+    return {
+        "board": dict(board),
+        "transports": list(transports),
+        "active_adapter": active_adapter,
+    }
+
+
+def __build_execution_lanes(
+    *,
+    preferred_lane: str,
+    goal_active: bool,
+    goal_continuing: bool,
+    goal_summary: str | None = None,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "interactive",
+            "label": "Interactive Lane",
+            "mode": "foreground",
+            "state": "preferred" if preferred_lane == "interactive" else "ready",
+            "summary": "Direct operator-driven execution in the active shell.",
+        },
+        {
+            "id": "sustained_goal",
+            "label": "Sustained Goal Lane",
+            "mode": "background",
+            "state": (
+                "preferred"
+                if preferred_lane == "sustained_goal" else "idle"
+            ),
+            "summary": goal_summary or "Long-running objective slices.",
+        },
+        {
+            "id": "subagent",
+            "label": "Subagent Lane",
+            "mode": "background",
+            "state": "preferred" if preferred_lane == "subagent" else "available",
+            "summary": "Delegated execution workers for parallel tasks.",
+        },
+    ]
+
+
+def __build_scheduler_state() -> dict[str, Any]:
+    return {
+        "policy": "priority-foreground-with-background-drain",
+        "preferred_lane": "interactive",
+        "background_drain_requested": False,
+    }
+
+
+def __clone_scheduler_state(state: dict[str, Any]) -> dict[str, Any]:
+    from copy import deepcopy
+    return deepcopy(state)
+
+
+def __request_background_drain(state: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **dict(state),
+        "background_drain_requested": True,
+        "policy": "background-drain-priority",
+    }
+
+
+def __prioritize_lane(state: dict[str, Any], *, lane: str) -> dict[str, Any]:
+    if lane not in {"interactive", "sustained_goal", "subagent"}:
+        raise ValueError(f"Unknown scheduler lane: {lane}")
+    return {
+        **dict(state),
+        "preferred_lane": lane,
+        "policy": (
+            "goal-lane-priority" if lane == "sustained_goal" else f"{lane}-lane-priority"
+        ),
+    }
+
+
+def __build_runtime_topology(
+    *,
+    adapters: list[dict[str, Any]],
+    modules: list[dict[str, Any]],
+    bridges: list[dict[str, Any]],
+    execution_lanes: list[dict[str, Any]],
+    scheduler: dict[str, Any],
+    workers: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "adapters": [dict(row) for row in adapters],
+        "modules": [dict(row) for row in modules],
+        "bridges": [dict(row) for row in bridges],
+        "execution_lanes": [dict(row) for row in execution_lanes],
+        "scheduler": {
+            **dict(scheduler),
+            "queues": [dict(row) for row in list(scheduler.get("queues", []))],
+        },
+        "workers": [dict(row) for row in workers],
+    }
+
+
+def __build_worker_registry() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "interactive_worker",
+            "label": "Interactive Worker",
+            "lane": "interactive",
+            "kind": "foreground",
+            "state": "ready",
+            "summary": "Primary worker bound to the active operator session.",
+        },
+        {
+            "id": "goal_worker",
+            "label": "Goal Worker",
+            "lane": "sustained_goal",
+            "kind": "background",
+            "state": "idle",
+            "summary": "Continuation-capable worker for sustained goals.",
+        },
+        {
+            "id": "subagent_worker",
+            "label": "Subagent Worker",
+            "lane": "subagent",
+            "kind": "background",
+            "state": "available",
+            "summary": "Delegated worker pool for parallel or specialized execution.",
+        },
+    ]
 
 
 def _session_control_actions() -> list[dict[str, str]]:
@@ -701,10 +853,10 @@ def build_kernel_manifest(
                 **worker,
                 "state": "preferred" if str(worker.get("lane") or "") == "interactive" else worker.get("state"),
             }
-            for worker in build_worker_registry()
+            for worker in _build_worker_registry()
         ],
-        "embedded_topology": build_embedded_topology(
-            board=build_board_snapshot(
+        "embedded_topology": _build_embedded_topology(
+            board=_build_board_snapshot(
                 attached=False,
                 health="detached",
                 transport=None,
@@ -715,7 +867,7 @@ def build_kernel_manifest(
             transports=["serial", "usb", "can"],
             active_adapter=default_adapter,
         ),
-        "runtime_topology": build_runtime_topology(
+        "runtime_topology": _build_runtime_topology(
             adapters=runtime_adapters,
             modules=runtime_modules,
             bridges=runtime_bridges,
@@ -762,7 +914,7 @@ class KernelApp:
             default_adapter=default_adapter,
             module_names=[module["name"] for module in self._runtime_modules],
         )
-        self._scheduler_state = build_scheduler_state()
+        self._scheduler_state = _build_scheduler_state()
         self._event_log: list[dict[str, Any]] = []
         self._native_module_states: dict[str, dict[str, Any]] = {}
         self._native_bridge_artifact: str | None = None
@@ -1460,7 +1612,7 @@ class KernelApp:
         *,
         session_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        topology = build_runtime_topology(
+        topology = _build_runtime_topology(
             adapters=self.runtime_adapters_snapshot(),
             modules=self.runtime_modules_snapshot(),
             bridges=self.runtime_bridges_snapshot(),
@@ -1486,8 +1638,8 @@ class KernelApp:
 
     def embedded_topology_snapshot(self) -> dict[str, Any]:
         board = dict(self._runtime_control.get("board", {}))
-        topology = build_embedded_topology(
-            board=build_board_snapshot(
+        topology = _build_embedded_topology(
+            board=_build_board_snapshot(
                 attached=bool(board.get("attached", False)),
                 transport=board.get("transport"),
                 port=board.get("port"),
@@ -1532,7 +1684,7 @@ class KernelApp:
         board = dict(self._runtime_control.get("board", {}))
         dispatch_depth = len(self._dispatch_queue)
         native_depth = self._native_queue_depth
-        scheduler_state = clone_scheduler_state(self._scheduler_state)
+        scheduler_state = _clone_scheduler_state(self._scheduler_state)
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "") or None
         dispatch_queue_state = (
             "delegated"
@@ -1601,7 +1753,7 @@ class KernelApp:
     ) -> list[dict[str, Any]]:
         goal_blob = goal_state_ws_blob(session_metadata) if session_metadata else {"active": False}
         continuation = internal_continuation_pending(session_metadata) if session_metadata else False
-        scheduler_state = clone_scheduler_state(self._scheduler_state)
+        scheduler_state = _clone_scheduler_state(self._scheduler_state)
         session_key = self._active_session_key
         subagent_count = len(self._subagent_snapshot(session_key))
         dispatch_depth = len(self._dispatch_queue)
@@ -1617,7 +1769,7 @@ class KernelApp:
             if goal_blob.get("active")
             else "Long-running objective slices with internal continuation support."
         )
-        lanes = build_execution_lanes(
+        lanes = _build_execution_lanes(
             preferred_lane=preferred_lane,
             goal_active=bool(goal_blob.get("active")),
             goal_continuing=continuation,
@@ -1667,7 +1819,7 @@ class KernelApp:
         goal_lane = lanes.get("sustained_goal", {})
         goal_state = str(goal_lane.get("state") or "idle")
         goal_depth = 1 if goal_state in {"active", "continuing"} else 0
-        scheduler_state = clone_scheduler_state(self._scheduler_state)
+        scheduler_state = _clone_scheduler_state(self._scheduler_state)
         background_drain_requested = bool(scheduler_state.get("background_drain_requested"))
         dispatch_priority = bool(scheduler_state.get("dispatch_priority"))
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "")
@@ -1888,7 +2040,7 @@ class KernelApp:
     ) -> list[dict[str, Any]]:
         goal_blob = goal_state_ws_blob(session_metadata) if session_metadata else {"active": False}
         continuation = internal_continuation_pending(session_metadata) if session_metadata else False
-        scheduler_state = clone_scheduler_state(self._scheduler_state)
+        scheduler_state = _clone_scheduler_state(self._scheduler_state)
         preferred_lane = str(scheduler_state.get("preferred_lane") or "interactive")
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "")
         queue_snapshot = self._dispatch_queue_snapshot(limit=3)
@@ -1896,7 +2048,7 @@ class KernelApp:
         dispatch_items = [dict(item) for item in list(queue_snapshot.get("queue_items") or [])]
         if any(status == "running" for status in self._session_status.values()):
             preferred_lane = "interactive"
-        workers = build_worker_registry()
+        workers = _build_worker_registry()
         for worker in workers:
             lane = str(worker.get("lane") or "")
             if lane == "interactive":
@@ -2049,7 +2201,7 @@ class KernelApp:
         return workers
 
     def drain_background(self) -> dict[str, Any]:
-        self._scheduler_state = request_background_drain(self._scheduler_state)
+        self._scheduler_state = _request_background_drain(self._scheduler_state)
         self._record_kernel_event(
             "drain_background",
             state="ok",
@@ -2058,7 +2210,7 @@ class KernelApp:
         return self.runtime_control
 
     def prioritize_goal_lane(self) -> dict[str, Any]:
-        self._scheduler_state = prioritize_lane(
+        self._scheduler_state = _prioritize_lane(
             self._scheduler_state,
             lane="sustained_goal",
         )
@@ -2291,7 +2443,7 @@ class KernelApp:
         return state, output, details, target_pane
 
     def _dispatch_queue_snapshot(self, *, limit: int = 6) -> dict[str, Any]:
-        scheduler_state = clone_scheduler_state(self._scheduler_state)
+        scheduler_state = _clone_scheduler_state(self._scheduler_state)
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "none")
         dispatch_priority = bool(scheduler_state.get("dispatch_priority"))
         lifecycle_counts: dict[str, int] = {}
