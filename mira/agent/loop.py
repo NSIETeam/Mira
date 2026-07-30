@@ -20,11 +20,13 @@ from loguru import logger
 from mira.agent import context as agent_context
 from mira.agent import model_presets as preset_helpers
 from mira.agent.automation_turns import publish_next_deferred_turn
+from mira.agent.context import ContextBuilder
 from mira.agent.cron_turns import CronTurnCoordinator
 from mira.agent.hook import AgentHook, AgentTurnHookFactory
 from mira.agent.memory import Consolidator, MemoryStore
 from mira.agent.model_runtime import ModelRuntimeResolver
 from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunSpec
+from mira.agent.subagent import SubagentManager
 from mira.agent.subsystems import create_agent_loop_subsystems
 from mira.agent.tools.context import RequestContext, bind_request_context, reset_request_context
 from mira.agent.tools.file_state import bind_file_states, reset_file_states
@@ -105,6 +107,8 @@ from mira.webui.users import (
     WEBUI_USER_METADATA_KEY,
 )
 
+_LEGACY_PATCH_TARGETS = (ContextBuilder, SubagentManager)
+
 if TYPE_CHECKING:
     from mira.agent.tools.mcp import MCPConnection
     from mira.config.schema import (
@@ -113,6 +117,7 @@ if TYPE_CHECKING:
         ToolsConfig,
     )
     from mira.cron.service import CronService
+    from mira.kernel.process import AgentProcess
 
 class TurnState(Enum):
     RESTORE = auto()
@@ -527,6 +532,9 @@ class AgentLoop:
             consolidation_ratio=consolidation_ratio,
             unified_session=unified_session,
             session_ttl_minutes=session_ttl_minutes,
+            context_builder_cls=ContextBuilder,
+            session_manager_cls=SessionManager,
+            subagent_manager_cls=SubagentManager,
         )
         self.context = subsystems.context
         self.sessions = subsystems.sessions
@@ -538,6 +546,7 @@ class AgentLoop:
         self.runner = subsystems.runner
         self.subagents = subsystems.subagents
         self._virtual_context_manager = subsystems.virtual_context_manager
+        self.process_table = subsystems.process_table
         self._unified_session = unified_session
         self._running = False
         self._mcp_servers = mcp_servers or {}
@@ -1480,9 +1489,11 @@ class AgentLoop:
 
         delivery = self.turn_delivery_factory.unrouted(msg, session_key)
         pending: asyncio.Queue[InboundMessage] | None = None
+        process: AgentProcess | None = None
         try:
             async with lock, gate:
                 await self.execution_gate.wait_for_turn_admission()
+                process = self._spawn_turn_process(msg)
                 # Only the task that owns the session lock may publish the
                 # active mid-turn injection queue for this session.
                 pending = asyncio.Queue(maxsize=20)
@@ -1505,6 +1516,7 @@ class AgentLoop:
                         response,
                         publish_completion=not continuing,
                     )
+                    self._complete_turn_process(process, session_key, reason="completed")
                     for _, coordinator in self._automation_turn_coordinators:
                         coordinator.complete(msg, response=response)
                 except asyncio.CancelledError:
@@ -1542,6 +1554,7 @@ class AgentLoop:
                             session_key,
                             exc_info=True,
                         )
+                    self._stop_turn_process_for_swap(process, session_key, reason="cancelled")
                     raise
                 except BaseException as exc:
                     if isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)):
@@ -1557,6 +1570,11 @@ class AgentLoop:
                     )
                     for _, coordinator in self._automation_turn_coordinators:
                         coordinator.complete(msg, error=exc)
+                    self._complete_turn_process(
+                        process,
+                        session_key,
+                        reason=f"error: {type(exc).__name__}",
+                    )
                 finally:
                     # Drain any messages still in the pending queue and re-publish
                     # them to the bus so they are processed as fresh inbound messages
@@ -1589,6 +1607,61 @@ class AgentLoop:
             if pending is None:
                 await delivery.idle()
                 await self._publish_next_deferred_automation_turn(session_key)
+
+    def _spawn_turn_process(self, msg: InboundMessage) -> AgentProcess:
+        """Register one admitted turn as an agent process."""
+        from mira.kernel.process import AgentContextSpace
+
+        context = AgentContextSpace(tool_caps=frozenset(self.tools.tool_names))
+        return self.process_table.spawn(
+            user=msg.sender_id or "unknown",
+            goal=msg.content[:200],
+            context=context,
+            priority="interactive",
+            model_hint=self.model_preset or self.model,
+        )
+
+    def _refresh_turn_process_context(self, process: AgentProcess, session_key: str) -> None:
+        session = self.sessions.get_or_create(session_key)
+        get_history = getattr(session, "get_history", None)
+        if callable(get_history):
+            history = get_history(max_messages=32)
+        else:
+            history = list(getattr(session, "messages", []))[-32:]
+        process.context.history_window = history
+        process.context.tool_caps = frozenset(self.tools.tool_names)
+        process.tokens_consumed = sum(self._last_usage.values())
+
+    def _persist_turn_process_snapshot(self, process: AgentProcess, session_key: str) -> None:
+        session = self.sessions.get_or_create(session_key)
+        session.metadata["agent_process"] = process.snapshot()
+        self.sessions.save(session)
+
+    def _complete_turn_process(
+        self,
+        process: AgentProcess | None,
+        session_key: str,
+        *,
+        reason: str,
+    ) -> None:
+        if process is None:
+            return
+        self._refresh_turn_process_context(process, session_key)
+        self.process_table.kill(process.pid, reason=reason)
+        self._persist_turn_process_snapshot(process, session_key)
+
+    def _stop_turn_process_for_swap(
+        self,
+        process: AgentProcess | None,
+        session_key: str,
+        *,
+        reason: str,
+    ) -> None:
+        if process is None:
+            return
+        self._refresh_turn_process_context(process, session_key)
+        self.process_table.stop_for_swap(process.pid, reason=reason)
+        self._persist_turn_process_snapshot(process, session_key)
 
     async def close_mcp(self) -> None:
         """Drain background work, stop exec sessions, then close MCP connections."""

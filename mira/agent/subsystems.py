@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mira.agent.autocompact import AutoCompact
 from mira.agent.context import ContextBuilder
@@ -20,6 +20,9 @@ from mira.execution_gate import ExecutionGate
 from mira.session.goal_state import runner_wall_llm_timeout_s
 from mira.session.manager import SessionManager
 
+if TYPE_CHECKING:
+    from mira.kernel.process import ProcessTable
+
 
 @dataclass(slots=True)
 class AgentLoopSubsystems:
@@ -33,6 +36,7 @@ class AgentLoopSubsystems:
     runner: AgentRunner
     subagents: SubagentManager
     virtual_context_manager: VirtualContextManager
+    process_table: ProcessTable
     consolidator: Consolidator
     auto_compact: AutoCompact
 
@@ -54,16 +58,25 @@ def create_agent_loop_subsystems(
     consolidation_ratio: float,
     unified_session: bool,
     session_ttl_minutes: int,
+    context_builder_cls: Any | None = None,
+    session_manager_cls: Any | None = None,
+    subagent_manager_cls: Any | None = None,
 ) -> AgentLoopSubsystems:
     """Build the concrete subsystems that AgentLoop composes."""
-    context = ContextBuilder(workspace, timezone=timezone, disabled_skills=disabled_skills)
-    sessions = session_manager or SessionManager(workspace)
+    from mira.kernel.process import ProcessTable
+
+    context_builder_cls = context_builder_cls or ContextBuilder
+    session_manager_cls = session_manager_cls or SessionManager
+    subagent_manager_cls = subagent_manager_cls or SubagentManager
+    context = context_builder_cls(workspace, timezone=timezone, disabled_skills=disabled_skills)
+    sessions = session_manager or session_manager_cls(workspace)
     sessions.set_file_cap_archiver(context.memory.raw_archive)
     tools = ToolRegistry()
     file_state_store = FileStateStore()
     exec_session_manager = ExecSessionManager()
     runner = AgentRunner()
-    subagents = SubagentManager(
+    process_table = ProcessTable()
+    subagents = subagent_manager_cls(
         workspace=workspace,
         bus=bus,
         tools_config=tools_config,
@@ -98,6 +111,7 @@ def create_agent_loop_subsystems(
         runner=runner,
         subagents=subagents,
         virtual_context_manager=VirtualContextManager(),
+        process_table=process_table,
         consolidator=consolidator,
         auto_compact=auto_compact,
     )

@@ -15,6 +15,7 @@ from mira.agent.maturity import (
 )
 from mira.agent.subsystems import create_agent_loop_subsystems
 from mira.agent.tools.base import ToolResult
+from mira.bus.events import InboundMessage, OutboundMessage
 from mira.bus.queue import MessageBus
 from mira.config.schema import ModuleConfig, ModulesConfig
 from mira.execution_gate import ExecutionGate
@@ -148,6 +149,62 @@ def test_agent_loop_subsystem_factory_uses_supplied_session_manager(tmp_path):
     assert subsystems.consolidator.sessions is sessions
     assert subsystems.auto_compact.sessions is sessions
     assert subsystems.tools.tool_names == []
+    assert subsystems.process_table.list() == []
+
+
+@pytest.mark.asyncio
+async def test_dispatch_records_completed_agent_process(tmp_path, monkeypatch):
+    loop = AgentLoop(
+        bus=MessageBus(),
+        provider=make_provider(spec=False),
+        workspace=tmp_path,
+    )
+
+    async def fake_process_message(*args, **kwargs):
+        session = loop.sessions.get_or_create("cli:process")
+        session.add_message("user", "run task")
+        session.add_message("assistant", "done")
+        loop.sessions.save(session)
+        return OutboundMessage(channel="cli", chat_id="process", content="done")
+
+    monkeypatch.setattr(loop, "_process_message", fake_process_message)
+
+    await loop._dispatch(InboundMessage(channel="cli", chat_id="process", sender_id="king", content="run task"))
+
+    session = loop.sessions.get_or_create("cli:process")
+    snapshot = session.metadata["agent_process"]
+    assert snapshot["status"] == "terminated"
+    assert snapshot["stopped_reason"] == "completed"
+    assert snapshot["user"] == "king"
+    assert snapshot["context"]["history_window"][-1]["content"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_records_cancelled_agent_process_for_context_swap(tmp_path, monkeypatch):
+    loop = AgentLoop(
+        bus=MessageBus(),
+        provider=make_provider(spec=False),
+        workspace=tmp_path,
+    )
+
+    async def fake_process_message(*args, **kwargs):
+        session = loop.sessions.get_or_create("cli:cancel")
+        session.add_message("user", "long task")
+        loop.sessions.save(session)
+        raise asyncio.CancelledError()
+
+    monkeypatch.setattr(loop, "_process_message", fake_process_message)
+
+    with pytest.raises(asyncio.CancelledError):
+        await loop._dispatch(
+            InboundMessage(channel="cli", chat_id="cancel", sender_id="king", content="long task")
+        )
+
+    session = loop.sessions.get_or_create("cli:cancel")
+    snapshot = session.metadata["agent_process"]
+    assert snapshot["status"] == "stopped"
+    assert snapshot["stopped_reason"] == "cancelled"
+    assert snapshot["context"]["history_window"][-1]["content"] == "long task"
 
 
 def test_optional_workflow_dsl_tool_mounts_when_enabled(tmp_path):
