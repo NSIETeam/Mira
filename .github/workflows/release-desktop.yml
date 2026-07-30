@@ -90,12 +90,18 @@ PY
       - name: Build native desktop app
         shell: bash
         run: |
+          data_sep=":"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            data_sep=";"
+          fi
           python -m PyInstaller \
             --noconfirm \
             --clean \
             --name Mira \
             --windowed \
             --collect-all webview \
+            --add-data "mira/web/dist${data_sep}mira/web/dist" \
+            --add-data "dist/native${data_sep}native" \
             scripts/mira_desktop.py
 
       - name: Install macOS packaging tools
@@ -145,6 +151,7 @@ PY
           security import "$RUNNER_TEMP/mira-cert.p12" -k "$RUNNER_TEMP/mira.keychain-db" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$RUNNER_TEMP/mira.keychain.pass" "$RUNNER_TEMP/mira.keychain-db"
           find dist/native -type f -perm -111 -print0 | xargs -0 -I{} codesign --force --options runtime --timestamp --sign "$MACOS_CODESIGN_IDENTITY" "{}"
+          find dist/dmg-root/Mira.app -type f \( -name 'mira-launcher' -o -name 'mira-sandbox' -o -name 'mira-pack' \) -print0 | xargs -0 -I{} codesign --force --options runtime --timestamp --sign "$MACOS_CODESIGN_IDENTITY" "{}"
           codesign --force --deep --options runtime --timestamp --sign "$MACOS_CODESIGN_IDENTITY" dist/dmg-root/Mira.app
           codesign --verify --deep --strict --verbose=2 dist/dmg-root/Mira.app
           cd dist
@@ -227,6 +234,9 @@ PY
           Get-ChildItem dist\native\*.exe | ForEach-Object {
             & $signtool sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $_.FullName
           }
+          Get-ChildItem dist\Mira\native\*.exe | ForEach-Object {
+            & $signtool sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $_.FullName
+          }
           & $signtool sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist\Mira\Mira.exe
           & $signtool sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist\Mira-Setup.exe
           & $signtool verify /pa /v dist\Mira-Setup.exe
@@ -253,6 +263,12 @@ PY
           artifact_limit="${MIRA_RELEASE_ARTIFACT_LIMIT_MB:-${MIRA_RELEASE_SIZE_LIMIT_MB:-180}}"
           "$tool" "$artifact" --json --limit-mb "$artifact_limit" > "dist/Mira-pack-${RUNNER_OS}.json"
           cat "dist/Mira-pack-${RUNNER_OS}.json"
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            "$tool" "dist/dmg-root/Mira.app" --json --limit-mb "${MIRA_RELEASE_BUNDLE_LIMIT_MB:-119}" > "dist/Mira-bundle-pack-${RUNNER_OS}.json"
+          elif [[ -d dist/Mira ]]; then
+            "$tool" "dist/Mira" --json --limit-mb "${MIRA_RELEASE_BUNDLE_LIMIT_MB:-119}" > "dist/Mira-bundle-pack-${RUNNER_OS}.json"
+          fi
+          test -f "dist/Mira-bundle-pack-${RUNNER_OS}.json" && cat "dist/Mira-bundle-pack-${RUNNER_OS}.json"
           trusted="false"
           if [[ "$GITHUB_REF" == refs/tags/v* && -f dist/signing-verified.txt ]]; then
             trusted="true"
@@ -321,6 +337,7 @@ PY
             dist/Mira-Setup.exe
             dist/Mira-linux.tar.gz
             dist/Mira-pack-*.json
+            dist/Mira-bundle-pack-*.json
             dist/Mira-trust-*.json
             dist/SHA256SUMS
             dist/native/*

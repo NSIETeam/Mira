@@ -45,6 +45,27 @@ def test_native_launcher_helper_delegates_when_available(monkeypatch, tmp_path) 
     assert calls == [[str(launcher), "desktop", "--yes"]]
 
 
+def test_native_launcher_lookup_checks_macos_frameworks_native_dir(monkeypatch, tmp_path) -> None:
+    macos_dir = tmp_path / "Mira.app" / "Contents" / "MacOS"
+    native_dir = tmp_path / "Mira.app" / "Contents" / "Frameworks" / "native"
+    macos_dir.mkdir(parents=True)
+    native_dir.mkdir(parents=True)
+    launcher = native_dir / "mira-launcher"
+    launcher.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    launcher.chmod(0o755)
+
+    monkeypatch.delenv("MIRA_NATIVE_LAUNCHER", raising=False)
+    monkeypatch.setenv("PATH", "")
+    source_file = tmp_path / "src" / "mira" / "desktop" / "bootstrap.py"
+    source_file.parent.mkdir(parents=True)
+    source_file.write_text("", encoding="utf-8")
+    monkeypatch.setattr(desktop_bootstrap, "__file__", str(source_file))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(desktop_bootstrap.sys, "executable", str(macos_dir / "Mira"))
+
+    assert desktop_bootstrap.find_native_launcher() == launcher
+
+
 def test_desktop_entrypoint_shows_failure_page_for_native_launcher_error(
     monkeypatch,
     tmp_path,

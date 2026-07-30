@@ -269,6 +269,27 @@ export function MiraKernelConsole({
   const runtimeTopologyLanes = runtimeTopology?.execution_lanes?.slice(0, 4) ?? [];
   const embeddedPorts = boardSnapshot?.available_ports?.slice(0, 6) ?? [];
   const eventLog = kernelManifest?.event_log.slice(0, 8) ?? [];
+  const selectedAdapter = useMemo(
+    () =>
+      runtimeAdapters.find((adapter) => adapter.name === selectedAdapterName)
+      ?? runtimeAdapters[0]
+      ?? null,
+    [runtimeAdapters, selectedAdapterName],
+  );
+  const selectedBridge = useMemo(
+    () =>
+      runtimeBridges.find((bridge) => bridge.adapter === selectedAdapterName)
+      ?? runtimeBridges[0]
+      ?? null,
+    [runtimeBridges, selectedAdapterName],
+  );
+  const selectedModule = useMemo(
+    () =>
+      runtimeModules.find((module) => module.name === selectedModuleName)
+      ?? runtimeModules[0]
+      ?? null,
+    [runtimeModules, selectedModuleName],
+  );
   const nativeAction = (id: string) => nativeLastCommand?.actions?.find((action) => action.id === id) ?? null;
   const selectedModuleAction = (id: string) => selectedModule?.actions?.find((action) => action.id === id) ?? null;
   const dispatchQueueAction = (id: string) => dispatchQueue?.actions?.find((action) => action.id === id) ?? null;
@@ -351,27 +372,6 @@ export function MiraKernelConsole({
   const diagIteration = diagnostics?.snapshot.iteration ?? null;
   const diagPendingToolCalls = diagnostics?.snapshot.pending_tool_calls ?? 0;
   const diagSubagentWorkers = diagnostics?.snapshot.subagent_workers ?? 0;
-  const selectedAdapter = useMemo(
-    () =>
-      runtimeAdapters.find((adapter) => adapter.name === selectedAdapterName)
-      ?? runtimeAdapters[0]
-      ?? null,
-    [runtimeAdapters, selectedAdapterName],
-  );
-  const selectedBridge = useMemo(
-    () =>
-      runtimeBridges.find((bridge) => bridge.adapter === selectedAdapterName)
-      ?? runtimeBridges[0]
-      ?? null,
-    [runtimeBridges, selectedAdapterName],
-  );
-  const selectedModule = useMemo(
-    () =>
-      runtimeModules.find((module) => module.name === selectedModuleName)
-      ?? runtimeModules[0]
-      ?? null,
-    [runtimeModules, selectedModuleName],
-  );
   const actionRegistryById = useMemo(
     () => Object.fromEntries(operatorActionRegistry.map((action) => [action.id, action])),
     [operatorActionRegistry],

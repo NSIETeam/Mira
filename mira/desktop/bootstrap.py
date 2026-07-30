@@ -18,16 +18,22 @@ def _launcher_candidate_roots() -> list[Path]:
     roots: list[Path] = []
     script_path = Path(__file__).resolve()
     executable_path = Path(sys.executable).resolve()
+    bundle_resource_path = executable_path.parent.parent / "Resources"
+    bundle_frameworks_path = executable_path.parent.parent / "Frameworks"
+    pyinstaller_path = Path(getattr(sys, "_MEIPASS", "")) if getattr(sys, "_MEIPASS", "") else None
 
     for path in (
+        pyinstaller_path,
         script_path.parent,
         script_path.parent.parent,
         script_path.parent.parent.parent,
         executable_path.parent,
         executable_path.parent.parent,
+        bundle_resource_path,
+        bundle_frameworks_path,
         Path.cwd(),
     ):
-        if path not in roots:
+        if path is not None and path not in roots:
             roots.append(path)
     return roots
 
