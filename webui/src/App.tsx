@@ -660,6 +660,7 @@ function RuntimeSnapshotPanel({
   planning: BootstrapResponse["planning"] | null;
   runtimeSnapshotAt: number | null;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const schedulerSummary = scheduler && "running" in scheduler
     ? {
         running: scheduler.running ?? 0,
@@ -762,18 +763,37 @@ function RuntimeSnapshotPanel({
 
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-40">
-      <div className="pointer-events-auto rounded-2xl border border-border/60 bg-background/92 px-4 py-3 shadow-xl backdrop-blur">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-            Runtime Snapshot
-          </div>
-          {snapshotLabel ? (
-            <div className="text-[10px] text-muted-foreground">
-              {snapshotLabel}
+      {!expanded ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="pointer-events-auto rounded-full border border-border/60 bg-background/90 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground shadow-lg backdrop-blur transition hover:border-foreground/20 hover:text-foreground"
+        >
+          Runtime
+          {snapshotLabel ? <span className="ml-2 font-normal tracking-normal">{snapshotLabel}</span> : null}
+        </button>
+      ) : (
+        <div className="pointer-events-auto max-w-[min(72rem,calc(100vw-2rem))] rounded-2xl border border-border/60 bg-background/92 px-4 py-3 shadow-xl backdrop-blur">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+              Runtime Snapshot
             </div>
-          ) : null}
-        </div>
-        <div className="mt-3 grid gap-2 text-xs text-foreground">
+            <div className="flex items-center gap-2">
+              {snapshotLabel ? (
+                <div className="text-[10px] text-muted-foreground">
+                  {snapshotLabel}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setExpanded(false)}
+                className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:border-foreground/20 hover:text-foreground"
+              >
+                Hide
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2 text-xs text-foreground">
           {memory ? (
             <div className="flex flex-wrap items-center gap-3">
               <span>memory layers {loadedLayers}</span>
@@ -942,8 +962,9 @@ function RuntimeSnapshotPanel({
               ))}
             </div>
           ) : null}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

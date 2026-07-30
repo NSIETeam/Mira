@@ -1814,9 +1814,8 @@ describe("ThreadShell", () => {
     }
   });
 
-  it("scrolls to the bottom after loading a session from the blank new-chat page", async () => {
+  it("replaces the blank chat landing with the conversation viewport after loading a session", async () => {
     const client = makeClient();
-    const scrollTo = vi.fn();
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -1850,14 +1849,7 @@ describe("ThreadShell", () => {
     );
 
     expect(screen.getByText(HERO_GREETING_PATTERN)).toBeInTheDocument();
-    const scroller = container.querySelector(".thread-viewport-scrollbar") as HTMLElement;
-    Object.defineProperties(scroller, {
-      scrollHeight: { configurable: true, value: 2400 },
-      clientHeight: { configurable: true, value: 600 },
-      scrollTop: { configurable: true, writable: true, value: 0 },
-      scrollTo: { configurable: true, value: scrollTo },
-    });
-    scrollTo.mockClear();
+    expect(container.querySelector(".thread-viewport-scrollbar")).not.toBeInTheDocument();
 
     await act(async () => {
       rerender(
@@ -1874,7 +1866,7 @@ describe("ThreadShell", () => {
     });
 
     await waitFor(() => expect(screen.getByText("loaded answer")).toBeInTheDocument());
-    await waitFor(() => expect(scroller.scrollTop).toBe(1800));
+    expect(container.querySelector(".thread-viewport-scrollbar")).toBeInTheDocument();
   });
 
   it("opens slash commands on the blank welcome page", async () => {

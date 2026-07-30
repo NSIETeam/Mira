@@ -1102,9 +1102,10 @@ export function ThreadShell({
     </div>
   ) : (
     <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
-      <div className="rounded-[22px] border border-slate-200/80 bg-white/90 px-7 py-6 shadow-[0_20px_55px_rgba(15,23,42,0.07)]">
-        <HeroGreeting text={t(heroGreetingKey)} />
-      </div>
+      <HeroGreeting text={t(heroGreetingKey)} />
+      <p className="mt-2 max-w-md text-sm text-muted-foreground">
+        {isChineseLocale ? "输入问题、任务或文件需求，按 Enter 发送。" : "Type a question, task, or file request, then press Enter."}
+      </p>
     </div>
   );
   const sessionInfoAction = supportsThreads && historyKey ? (
@@ -1142,11 +1143,23 @@ export function ThreadShell({
         <FilePreviewAvailabilityProvider
           resolve={historyKey ? resolveFilePreviewAvailability : undefined}
         >
+          {!session && !loading ? (
+            <div className="relative flex min-h-0 flex-1 items-center justify-center px-4 py-8">
+              <div className="w-full max-w-3xl rounded-[30px] border border-slate-200/90 bg-white/95 p-5 shadow-[0_28px_90px_rgba(15,23,42,0.12)] sm:p-7">
+                <div className="mb-5 text-center">
+                  {emptyState}
+                </div>
+                <div className="rounded-[26px] border border-slate-950/10 bg-slate-50/80 p-2 shadow-inner">
+                  {composer}
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/88 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
             <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-[linear-gradient(180deg,rgba(248,250,252,0.96)_0%,rgba(248,250,252,0)_100%)]" />
             <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b border-slate-200/70 px-4 py-2">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Execution stream
+                {isChineseLocale ? "对话" : "Conversation"}
               </div>
               <div className="flex items-center gap-2">
                 <span
@@ -1157,10 +1170,10 @@ export function ThreadShell({
                       : "border-slate-300/80 bg-slate-50 text-slate-700",
                   )}
                 >
-                  {turnActive ? "streaming" : "idle"}
+                  {turnActive ? (isChineseLocale ? "回复中" : "streaming") : (isChineseLocale ? "空闲" : "idle")}
                 </span>
                 <span className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700">
-                  {historyKey ? "attached" : "standby"}
+                  {historyKey ? (isChineseLocale ? "已连接" : "attached") : (isChineseLocale ? "待开始" : "standby")}
                 </span>
               </div>
             </div>
@@ -1195,6 +1208,7 @@ export function ThreadShell({
               />
             </div>
           </div>
+          )}
         </FilePreviewAvailabilityProvider>
       </div>
       {supportsFileActivity && filePreviewPath && historyKey ? (
