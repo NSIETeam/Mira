@@ -11,6 +11,8 @@ from mira import __version__
 from mira.agent.skills import SkillsLoader
 from mira.config.schema import Config, ProviderConfig
 from mira.security.network import configure_ssrf_whitelist, validate_url_target
+from mira.session.manager import SessionManager
+from mira.session.recovery import recover_interrupted_sessions
 
 BootProfile = Literal["lite", "engineering", "desktop", "embedded"]
 BootStatus = Literal["ok", "warning", "error"]
@@ -92,6 +94,7 @@ class BootProtocol:
         checks: list[BootCheck] = [
             self._check_runtime(),
             self._check_storage(),
+            self._check_crash_recovery(),
             self._check_providers(),
             self._check_skills(),
             self._check_scheduler(),
@@ -148,6 +151,31 @@ class BootProtocol:
                 detail=str(self.workspace),
             )
         return BootCheck("storage.mounts", "ok", "/mem and /ctx storage are writable")
+
+    def _check_crash_recovery(self) -> BootCheck:
+        try:
+            sessions = SessionManager(self.workspace)
+            recovered = recover_interrupted_sessions(sessions, fsync=True)
+        except Exception as exc:
+            return BootCheck(
+                "sessions.crash_recovery",
+                "error",
+                "failed to recover interrupted sessions",
+                detail=str(exc),
+            )
+        if not recovered:
+            return BootCheck(
+                "sessions.crash_recovery",
+                "ok",
+                "no interrupted sessions found",
+            )
+        keys = [result.session_key for result in recovered]
+        return BootCheck(
+            "sessions.crash_recovery",
+            "ok",
+            f"recovered {len(recovered)} interrupted session(s)",
+            detail=", ".join(keys[:8]),
+        )
 
     def _check_providers(self) -> BootCheck:
         configured = _configured_provider_names(self.config.providers)
