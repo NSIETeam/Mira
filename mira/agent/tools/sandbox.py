@@ -101,7 +101,43 @@ def _bwrap(
     return shlex.join(args)
 
 
-_BACKENDS = {"bwrap": _bwrap}
+def _mira_sandbox(
+    command: str,
+    workspace: str,
+    cwd: str,
+    *,
+    sandbox_ro_binds: Iterable[str] | None = None,
+    sandbox_rw_binds: Iterable[str] | None = None,
+) -> str:
+    """Wrap command with the optional native workspace gate.
+
+    The helper is an application-layer guard, not a full OS sandbox. It checks
+    workspace escapes before spawn, enforces a timeout, and caps captured output.
+    """
+    ws = Path(workspace).resolve()
+    try:
+        resolved_cwd = Path(cwd).resolve()
+        relative_cwd = resolved_cwd.relative_to(ws)
+        shell_command = f"cd {shlex.quote(str(ws / relative_cwd))} && {command}"
+    except ValueError:
+        shell_command = command
+    args = [
+        "mira-sandbox",
+        "--workspace",
+        str(ws),
+        "--timeout-ms",
+        os.environ.get("MIRA_SANDBOX_TIMEOUT_MS", "30000"),
+        "--max-output-bytes",
+        os.environ.get("MIRA_SANDBOX_MAX_OUTPUT_BYTES", "131072"),
+        "--",
+        "sh",
+        "-c",
+        shell_command,
+    ]
+    return shlex.join(args)
+
+
+_BACKENDS = {"bwrap": _bwrap, "mira-sandbox": _mira_sandbox}
 
 
 def wrap_command(

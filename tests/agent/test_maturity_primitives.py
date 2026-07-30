@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from mira.agent.loop import AgentLoop
@@ -77,12 +79,11 @@ class _BlockingMiddleware:
         raise AssertionError("error should not run")
 
 
-@pytest.mark.asyncio
-async def test_tool_middleware_stack_can_fail_closed_before_execution():
+def test_tool_middleware_stack_can_fail_closed_before_execution():
     stack = ToolMiddlewareStack([_BlockingMiddleware()])
     tool_call = ToolCallRequest(id="1", name="exec", arguments={})
 
-    result = await stack.before_execute(tool_call, None, {})
+    result = asyncio.run(stack.before_execute(tool_call, None, {}))
 
     assert "blocked exec" in str(result)
 
@@ -108,3 +109,17 @@ def test_optional_workflow_dsl_tool_mounts_when_enabled(tmp_path):
     )
 
     assert "workflow_dsl" in loop.tools.tool_names
+
+
+def test_virtual_context_pages_real_agent_loop_history(tmp_path):
+    loop = AgentLoop(
+        bus=MessageBus(),
+        provider=make_provider(spec=False),
+        workspace=tmp_path,
+    )
+    history = [{"role": "user", "content": f"message {index} " * 40} for index in range(12)]
+
+    paged = loop._page_virtual_context_history(history, budget_tokens=80, session_key="cli:direct")
+
+    assert paged[0]["metadata"]["virtual_context"] is True
+    assert "older message" in paged[0]["content"]

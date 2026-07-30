@@ -123,7 +123,9 @@ class ToolLoader:
 
 
 def _tool_module_enabled(ctx: Any, tool_name: str) -> bool:
-    modules = getattr(getattr(ctx, "config", None), "modules", None)
+    modules = getattr(ctx, "modules", None)
+    if modules is None:
+        modules = getattr(getattr(ctx, "config", None), "modules", None)
     if modules is None:
         return True
     is_enabled = getattr(modules, "is_enabled", None)

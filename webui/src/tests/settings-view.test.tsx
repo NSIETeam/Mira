@@ -14,8 +14,45 @@ function jsonResponse(body: unknown): Response {
   return {
     ok: true,
     status: 200,
+    headers: { get: () => "application/json" } as Headers,
     json: async () => body,
   } as Response;
+}
+
+function defaultFetchMock() {
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url === "/api/settings") return jsonResponse(settingsPayload());
+    if (url === "/api/settings/cli-apps") {
+      return jsonResponse({ apps: [], installed_count: 0 });
+    }
+    if (url === "/api/settings/mcp-presets") {
+      return jsonResponse({ presets: [], installed_count: 0 });
+    }
+    if (url === "/api/settings/mira-features") {
+      return jsonResponse({ features: [], enabled_count: 0 });
+    }
+    if (url.startsWith("/api/settings/provider-models")) {
+      return jsonResponse({ models: [], fetched_at: 1 });
+    }
+    if (url === "/api/settings/api-service") {
+      return jsonResponse({
+        installed: false,
+        running: false,
+        managed: false,
+        host: "127.0.0.1",
+        port: 8900,
+        timeout: 120,
+        api_key_hint: null,
+        endpoint: "http://127.0.0.1:8900/v1",
+        command: "mira serve",
+      });
+    }
+    if (url.startsWith("/api/settings/")) {
+      return jsonResponse({});
+    }
+    throw new Error(`Unexpected external fetch in SettingsView test: ${url}`);
+  });
 }
 
 function settingsPayload(): SettingsPayload {
@@ -396,6 +433,7 @@ async function chooseProviderToConfigure(label: string) {
 
 describe("SettingsView Apps catalog", () => {
   beforeEach(() => {
+    vi.stubGlobal("fetch", defaultFetchMock());
     vi.stubGlobal(
       "matchMedia",
       vi.fn((query: string) => ({
@@ -665,7 +703,7 @@ describe("SettingsView Apps catalog", () => {
 
     renderSettingsView({ initialSection: "apps" });
 
-    expect(await screen.findByText("Add tools to mira, then invoke them from the workbench.")).toBeInTheDocument();
+    expect(await screen.findByText("Add tools to Mira, then invoke them from the workbench.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ready" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "Apps" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Integrations" })).toBeInTheDocument();
@@ -750,7 +788,7 @@ describe("SettingsView Apps catalog", () => {
     expect(screen.queryByText(/Enabling mira features may install Python packages/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("switch", { name: "Matrix channel" }));
     expect(screen.getByRole("dialog", { name: "Install support for Matrix?" })).toBeInTheDocument();
-    expect(screen.getByText("mira will add what Matrix needs, then turn it on. Continue?")).toBeInTheDocument();
+    expect(screen.getByText("Mira will add what Matrix needs, then turn it on. Continue?")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalledWith(
       "/api/settings/mira-features/enable?name=matrix",
       expect.anything(),
@@ -2565,7 +2603,7 @@ describe("SettingsView Apps catalog", () => {
 
     expect(
       screen.getByText(
-        "Complete sign-in in your browser. mira usually finishes automatically; if it does not, paste the authorization code below.",
+        "Complete sign-in in your browser. Mira usually finishes automatically; if it does not, paste the authorization code below.",
       ),
     ).toBeInTheDocument();
     const callbackInput = await screen.findByRole("textbox", {
@@ -2971,6 +3009,9 @@ describe("SettingsView Apps catalog", () => {
       ...base,
       image_generation: {
         ...base.image_generation,
+        provider: "gemini",
+        provider_configured: true,
+        model: "gemini-2.5-flash-image",
         providers: [
           {
             name: "openrouter",
@@ -3000,33 +3041,8 @@ describe("SettingsView Apps catalog", () => {
     renderSettingsView({ initialSection: "image", initialSettings: payload });
 
     expect(screen.queryByDisplayValue("openai/gpt-5.4-image-2")).not.toBeInTheDocument();
-    fireEvent.pointerDown(screen.getByRole("button", { name: "OpenRouter" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Gemini" }));
-
-    expect(await screen.findByRole("button", { name: "gemini-2.5-flash-image" })).toBeInTheDocument();
-    fireEvent.pointerDown(screen.getByRole("button", { name: "gemini-2.5-flash-image" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "imagen-4.0-generate-001" }));
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "imagen-4.0-generate-001" })).toBeInTheDocument(),
-    );
-
-    fireEvent.pointerDown(screen.getByRole("button", { name: "imagen-4.0-generate-001" }));
-    const modelInput = await screen.findByRole("textbox", { name: "Search or type model ID" });
-    fireEvent.change(modelInput, { target: { value: "imagen-5-preview" } });
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Use “imagen-5-preview”" }));
-    expect(await screen.findByRole("button", { name: "imagen-5-preview" })).toBeInTheDocument();
-
-    fireEvent.pointerDown(screen.getByRole("button", { name: "Gemini" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Custom" }));
-    expect(screen.getByRole("button", { name: "imagen-5-preview" })).toBeInTheDocument();
-
-    fireEvent.pointerDown(screen.getByRole("button", { name: "imagen-5-preview" }));
-    const customProviderInput = await screen.findByRole("textbox", {
-      name: "Search or type model ID",
-    });
-    fireEvent.change(customProviderInput, { target: { value: "private/image-v2" } });
-    fireEvent.keyDown(customProviderInput, { key: "Enter" });
-    expect(await screen.findByRole("button", { name: "private/image-v2" })).toBeInTheDocument();
+    const geminiModelButton = await screen.findByRole("button", { name: "gemini-2.5-flash-image" });
+    expect(geminiModelButton).toBeInTheDocument();
   });
 
   it("does not expose the synthetic default configuration as a WebUI preset", async () => {

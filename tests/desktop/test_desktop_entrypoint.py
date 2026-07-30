@@ -3,9 +3,12 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import types
 
 from mira.cli import commands
+from mira.desktop import bootstrap as desktop_bootstrap
 from mira.config.loader import load_config
+import scripts.mira_desktop as mira_desktop
 
 
 def test_packaged_desktop_entrypoint_smoke_mode() -> None:
@@ -21,6 +24,51 @@ def test_packaged_desktop_entrypoint_smoke_mode() -> None:
 
     assert result.returncode == 0
     assert "mira desktop smoke ok" in result.stdout
+
+
+def test_native_launcher_helper_delegates_when_available(monkeypatch, tmp_path) -> None:
+    launcher = tmp_path / "mira-launcher"
+    launcher.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    launcher.chmod(0o755)
+    calls: list[list[str]] = []
+
+    monkeypatch.setattr(desktop_bootstrap, "find_native_launcher", lambda: launcher)
+    monkeypatch.setattr(
+        desktop_bootstrap.subprocess,
+        "run",
+        lambda argv, check=False: calls.append(list(argv)) or subprocess.CompletedProcess(argv, 0),
+    )
+
+    exit_code = desktop_bootstrap.launch_via_native_launcher(("desktop", "--yes"))
+
+    assert exit_code == 0
+    assert calls == [[str(launcher), "desktop", "--yes"]]
+
+
+def test_desktop_entrypoint_shows_failure_page_for_native_launcher_error(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    windows: list[dict[str, object]] = []
+
+    class FakeWebview(types.SimpleNamespace):
+        def create_window(self, title: str, **kwargs):
+            windows.append({"title": title, **kwargs})
+
+        def start(self):
+            return None
+
+    monkeypatch.setenv("MIRA_DIAGNOSTICS_DIR", str(tmp_path))
+    monkeypatch.setattr(mira_desktop, "launch_via_native_launcher", lambda _args: 2)
+    monkeypatch.setitem(sys.modules, "webview", FakeWebview())
+
+    assert mira_desktop.main() == 2
+    log_path = tmp_path / "desktop-startup.log"
+    assert log_path.exists()
+    assert "native launcher exited with status 2" in log_path.read_text(encoding="utf-8")
+    assert windows
+    assert windows[0]["title"] == "Mira could not start"
+    assert "mira doctor --profile lightweight" in str(windows[0]["html"])
 
 
 def test_desktop_command_defaults_to_customer_shell(tmp_path, monkeypatch) -> None:

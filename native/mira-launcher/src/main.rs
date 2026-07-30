@@ -75,15 +75,32 @@ fn parse_port(args: &[String]) -> u16 {
     18790
 }
 
+fn normalize_forwarded_args(mut args: Vec<String>) -> Vec<String> {
+    if args.first().map(|arg| arg == "--").unwrap_or(false) {
+        args.remove(0);
+    }
+    if args
+        .first()
+        .map(|arg| arg == "mira" || arg == "mira.exe")
+        .unwrap_or(false)
+    {
+        args.remove(0);
+    }
+    args
+}
+
 fn parse_config() -> LaunchConfig {
     let mut raw_args: Vec<String> = env::args().skip(1).collect();
-    let dry_run = raw_args.iter().any(|arg| arg == "--dry-run" || arg == "doctor");
+    let dry_run = raw_args
+        .iter()
+        .any(|arg| arg == "--dry-run" || arg == "doctor");
     raw_args.retain(|arg| arg != "--dry-run" && arg != "doctor");
+    let forwarded_args = normalize_forwarded_args(raw_args);
     let python = env::var("MIRA_PYTHON").unwrap_or_else(|_| "python3".to_string());
-    let port = parse_port(&raw_args);
+    let port = parse_port(&forwarded_args);
     LaunchConfig {
         python,
-        args: raw_args,
+        args: forwarded_args,
         log_dir: default_log_dir(),
         port,
         dry_run,
@@ -98,13 +115,42 @@ fn append_log(config: &LaunchConfig, line: &str) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::normalize_forwarded_args;
+
+    #[test]
+    fn strips_delimiter_and_cli_name_from_forwarded_args() {
+        let args = vec![
+            "--".to_string(),
+            "mira".to_string(),
+            "gateway".to_string(),
+            "--config".to_string(),
+            "/tmp/config.json".to_string(),
+        ];
+        assert_eq!(
+            normalize_forwarded_args(args),
+            vec!["gateway", "--config", "/tmp/config.json"]
+        );
+    }
+
+    #[test]
+    fn preserves_direct_subcommands() {
+        let args = vec!["desktop".to_string(), "--yes".to_string()];
+        assert_eq!(normalize_forwarded_args(args), vec!["desktop", "--yes"]);
+    }
+}
+
 fn python_available(python: &str) -> Result<String, String> {
     let output = Command::new(python)
         .arg("--version")
         .output()
         .map_err(|error| format!("failed to execute `{python} --version`: {error}"))?;
     if !output.status.success() {
-        return Err(format!("`{python} --version` exited with {}", output.status));
+        return Err(format!(
+            "`{python} --version` exited with {}",
+            output.status
+        ));
     }
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();

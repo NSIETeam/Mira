@@ -233,3 +233,28 @@ class TestUnknownBackend:
         ws = str(tmp_path / "project")
         with pytest.raises(ValueError):
             wrap_command("", "ls", ws, ws)
+
+
+class TestMiraSandboxBackend:
+    def test_wraps_command_with_native_gate(self, tmp_path):
+        ws = tmp_path / "project"
+        ws.mkdir()
+        result = wrap_command("mira-sandbox", "echo hi", str(ws), str(ws))
+        tokens = _parse(result)
+
+        assert tokens[:3] == ["mira-sandbox", "--workspace", str(ws.resolve())]
+        assert "--timeout-ms" in tokens
+        assert "--max-output-bytes" in tokens
+        sep = tokens.index("--")
+        assert tokens[sep + 1:] == ["sh", "-c", "cd " + str(ws.resolve()) + " && echo hi"]
+
+    def test_cwd_outside_workspace_does_not_cd_outside(self, tmp_path):
+        ws = tmp_path / "project"
+        outside = tmp_path / "outside"
+        ws.mkdir()
+        outside.mkdir()
+        result = wrap_command("mira-sandbox", "pwd", str(ws), str(outside))
+        tokens = _parse(result)
+
+        sep = tokens.index("--")
+        assert tokens[sep + 1:] == ["sh", "-c", "pwd"]

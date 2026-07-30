@@ -69,6 +69,7 @@ def current_request_session_key() -> str | None:
 class ToolContext:
     config: Any
     workspace: str
+    modules: Any = None
     bus: Any | None = None
     subagent_manager: Any | None = None
     cron_service: Any | None = None

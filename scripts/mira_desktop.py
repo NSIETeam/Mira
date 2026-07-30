@@ -10,6 +10,11 @@ from datetime import datetime
 from pathlib import Path
 
 from mira.cli.commands import desktop
+from mira.desktop.bootstrap import launch_via_native_launcher
+
+
+class NativeLauncherError(RuntimeError):
+    """Raised when the native launcher handled startup but failed."""
 
 
 def _diagnostics_dir() -> Path:
@@ -44,6 +49,7 @@ def _show_startup_failure(exc: BaseException, log_path: Path) -> None:
 
     message = html.escape(f"{type(exc).__name__}: {exc}")
     log = html.escape(str(log_path))
+    repair = html.escape("mira doctor --profile lightweight")
     webview.create_window(
         "Mira could not start",
         html=(
@@ -52,6 +58,8 @@ def _show_startup_failure(exc: BaseException, log_path: Path) -> None:
             "<h2>Mira could not start</h2>"
             f"<p>{message}</p>"
             f"<p>Startup diagnostics were written to:<br><code>{log}</code></p>"
+            f"<p>Repair action:<br><code>{repair}</code></p>"
+            "<p>If this was launched from the app icon, reopen Mira after running the repair command.</p>"
             "</body></html>"
         ),
         width=720,
@@ -64,6 +72,13 @@ def main() -> int:
     if os.environ.get("MIRA_DESKTOP_SMOKE") == "1":
         print("mira desktop smoke ok")
         return 0
+    native_exit = launch_via_native_launcher(("desktop", "--yes", "--stop-on-close"))
+    if native_exit is not None:
+        if native_exit != 0:
+            exc = NativeLauncherError(f"native launcher exited with status {native_exit}")
+            log_path = _write_startup_diagnostics(exc)
+            _show_startup_failure(exc, log_path)
+        return native_exit
     try:
         desktop(
             port=None,

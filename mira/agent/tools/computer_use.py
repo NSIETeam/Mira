@@ -31,7 +31,9 @@ class ComputerUseTool(Tool):
 
     @classmethod
     def enabled(cls, ctx: Any) -> bool:
-        modules = getattr(getattr(ctx, "config", None), "modules", None)
+        modules = getattr(ctx, "modules", None)
+        if modules is None:
+            modules = getattr(getattr(ctx, "config", None), "modules", None)
         return bool(modules and modules.is_enabled("computer_use", default=False))
 
     @property

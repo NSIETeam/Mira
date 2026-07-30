@@ -26,6 +26,7 @@ from mira.agent.cron_turns import CronTurnCoordinator
 from mira.agent.hook import AgentHook, AgentTurnHookFactory
 from mira.agent.memory import Consolidator, MemoryStore
 from mira.agent.model_runtime import ModelRuntimeResolver
+from mira.agent.maturity import VirtualContextManager
 from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunner, AgentRunSpec
 from mira.agent.subagent import SubagentManager
 from mira.agent.tools.context import RequestContext, bind_request_context, reset_request_context
@@ -413,6 +414,7 @@ class AgentLoop:
             execution_gate=self.execution_gate,
             llm_wall_timeout_for_session=lambda sk: runner_wall_llm_timeout_s(self.sessions, sk),
         )
+        self._virtual_context_manager = VirtualContextManager()
         self._unified_session = unified_session
         self._running = False
         self._mcp_servers = mcp_servers or {}
@@ -506,6 +508,24 @@ class AgentLoop:
             )
             self._memory_consolidators[key] = cached
         return cached
+
+    def _page_virtual_context_history(
+        self,
+        history: list[dict[str, Any]],
+        *,
+        budget_tokens: int,
+        session_key: str,
+    ) -> list[dict[str, Any]]:
+        if not history or not self._module_enabled("virtual_context", default=True):
+            return history
+        page = self._virtual_context_manager.page(history, budget_tokens=budget_tokens)
+        if page.paged_count:
+            logger.debug(
+                "Virtual context paged {} message(s) for session {}",
+                page.paged_count,
+                session_key,
+            )
+        return page.kept_messages
 
     def _persist_webui_identity_metadata(self, session: Session, msg: InboundMessage) -> None:
         metadata = msg.metadata if isinstance(msg.metadata, dict) else {}
@@ -700,6 +720,7 @@ class AgentLoop:
 
         ctx = ToolContext(
             config=self.tools_config,
+            modules=self.modules_config,
             workspace=str(self.workspace),
             bus=self.bus,
             subagent_manager=self.subagents,
@@ -1791,6 +1812,11 @@ class AgentLoop:
             "extend_to_user": is_subagent,
         }
         ctx.history = ctx.session.get_history(**_hist_kwargs)
+        ctx.history = self._page_virtual_context_history(
+            ctx.history,
+            budget_tokens=_hist_kwargs["max_tokens"],
+            session_key=ctx.session_key,
+        )
         if is_subagent:
             # Keep the durable internal delivery as an assistant record, but
             # present this completion to the model as fresh follow-up input.

@@ -1,0 +1,68 @@
+"""Bootstrap helpers for the native Mira desktop entrypoint."""
+
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+import shutil
+from pathlib import Path
+from typing import Sequence
+
+
+def _launcher_filename() -> str:
+    return "mira-launcher.exe" if sys.platform == "win32" else "mira-launcher"
+
+
+def _launcher_candidate_roots() -> list[Path]:
+    roots: list[Path] = []
+    script_path = Path(__file__).resolve()
+    executable_path = Path(sys.executable).resolve()
+
+    for path in (
+        script_path.parent,
+        script_path.parent.parent,
+        script_path.parent.parent.parent,
+        executable_path.parent,
+        executable_path.parent.parent,
+        Path.cwd(),
+    ):
+        if path not in roots:
+            roots.append(path)
+    return roots
+
+
+def find_native_launcher() -> Path | None:
+    """Return the first native launcher candidate that exists on disk."""
+    override = os.environ.get("MIRA_NATIVE_LAUNCHER")
+    if override:
+        candidate = Path(override).expanduser()
+        if candidate.is_file():
+            return candidate
+
+    launcher_name = _launcher_filename()
+    for root in _launcher_candidate_roots():
+        for relative in (
+            Path(launcher_name),
+            Path("native") / launcher_name,
+            Path("dist") / "native" / launcher_name,
+        ):
+            candidate = root / relative
+            if candidate.is_file():
+                return candidate
+
+    which = shutil.which(launcher_name)
+    if which:
+        candidate = Path(which)
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def launch_via_native_launcher(args: Sequence[str]) -> int | None:
+    """Run the packaged native launcher when it is available."""
+    launcher = find_native_launcher()
+    if launcher is None:
+        return None
+    result = subprocess.run([str(launcher), *args], check=False)
+    return result.returncode

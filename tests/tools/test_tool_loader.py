@@ -201,7 +201,7 @@ def test_fs_tool_create_respects_sandbox():
 # --- Task 5: MessageTool, SpawnTool, CronTool ---
 
 
-async def test_message_tool_create():
+def test_message_tool_create():
     from mira.agent.tools.message import MessageTool
     mock_bus = MagicMock()
     mock_config = MagicMock()
