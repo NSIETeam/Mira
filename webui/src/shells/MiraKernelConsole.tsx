@@ -391,6 +391,8 @@ export function MiraKernelConsole({
     };
   };
   const [operatorCommand, setOperatorCommand] = useState("");
+  const [showCommandCatalog, setShowCommandCatalog] = useState(false);
+  const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
   const [operatorOutput, setOperatorOutput] = useState<Array<{
     line: string;
     details?: Record<string, string | number | boolean | null>;
@@ -1062,23 +1064,22 @@ export function MiraKernelConsole({
   }, [moduleFocusCommand, moduleInspectFillCommand, moduleShowCommand, nativeFaultModules]);
 
   return (
-    <aside className="hidden w-[332px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[356px]">
-      <div className="border-b border-border/70 px-4 py-3">
+    <aside className="hidden w-[300px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[324px]">
+      <div className="border-b border-border/70 px-3 py-3">
         <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           {appIdentity} Kernel Console
         </div>
-        <div className="mt-1 text-sm font-semibold text-foreground">
-          Inspect runtime, modules, workspace, and shell posture
+        <div className="mt-1 text-sm font-semibold leading-tight text-foreground">
+          Runtime, faults, and quick actions
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-col gap-1.5">
           <ConsoleBadge label="profile" value={profile?.name ?? "unknown"} tone="slate" />
-          <ConsoleBadge label="shell" value={shellMode} tone="slate" />
           <ConsoleBadge label="status" value={connectionStatus} tone={connectionStatus === "connected" ? "emerald" : "amber"} />
           <ConsoleBadge label="runs" value={`${runningExecutionCount}`} tone="slate" />
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 py-4 text-sm">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 py-3 text-sm">
         <section className="space-y-3">
           <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
             <div className="flex items-start justify-between gap-3">
@@ -1086,27 +1087,27 @@ export function MiraKernelConsole({
                 <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   Kernel cockpit
                 </div>
-                <div className="mt-1 text-base font-semibold text-foreground">
-                  Universal execution frontplane
+                <div className="mt-1 text-base font-semibold leading-tight text-foreground">
+                  Execution cockpit
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  One surface for runtime command, module routing, fault recovery, and embedded attachment.
+                <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  The default view stays small: health, faults, modules, and board attachment.
                 </div>
               </div>
-              <div className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700">
+              <div className="max-w-[8rem] truncate rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700">
                 {privilegePosture.summary}
               </div>
             </div>
             <div className="mt-3 grid gap-2 xl:grid-cols-2">
               {cockpitOverviewCards.map((card) => (
-                <div key={card.label} className={cn("rounded-xl border p-3", card.tone)}>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                <div key={card.label} className={cn("min-w-0 rounded-xl border p-3", card.tone)}>
+                  <div className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                     {card.label}
                   </div>
-                  <div className="mt-1.5 text-sm font-semibold text-slate-900">
+                  <div className="mt-1.5 truncate text-sm font-semibold text-slate-900">
                     {card.value}
                   </div>
-                  <div className="mt-1 text-xs text-slate-600">
+                  <div className="mt-1 line-clamp-2 text-xs leading-snug text-slate-600">
                     {card.detail}
                   </div>
                 </div>
@@ -1132,23 +1133,37 @@ export function MiraKernelConsole({
                 </button>
               ))}
             </div>
-            <div className="mt-3 grid gap-2 xl:grid-cols-2">
-              {cockpitPrimitiveSurface.map((item) => (
-                <div key={item.label} className={cn("rounded-xl border p-3", item.tone)}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      {item.label}
-                    </div>
-                    <div className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700">
-                      {item.value}
-                    </div>
-                  </div>
-                  <div className="mt-1 text-xs text-slate-600">
-                    {item.detail}
-                  </div>
-                </div>
-              ))}
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedDetails((value) => !value)}
+                className="rounded-full border border-slate-300/80 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                {showAdvancedDetails ? "Hide details" : "Show details"}
+              </button>
+              <span className="truncate text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                {operatorActionRegistry.length} actions · {executionLanes.length} lanes
+              </span>
             </div>
+            {showAdvancedDetails ? (
+              <div className="mt-3 grid gap-2 xl:grid-cols-2">
+                {cockpitPrimitiveSurface.map((item) => (
+                  <div key={item.label} className={cn("min-w-0 rounded-xl border p-3", item.tone)}>
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <div className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        {item.label}
+                      </div>
+                      <div className="shrink-0 rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700">
+                        {item.value}
+                      </div>
+                    </div>
+                    <div className="mt-1 line-clamp-2 text-xs leading-snug text-slate-600">
+                      {item.detail}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -1156,14 +1171,14 @@ export function MiraKernelConsole({
           <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Pane routing
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             {(operatorConsole?.panes ?? []).map((pane) => (
               <button
                 key={pane}
                 type="button"
                 onClick={() => onSelectPane(pane)}
                 className={cn(
-                  "rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] transition-colors",
+                  "min-w-0 truncate rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] transition-colors",
                   selectedPane === pane
                     ? "border-slate-900 bg-slate-900 text-white"
                     : "border-slate-300/80 bg-white text-slate-700 hover:bg-slate-50",
@@ -1204,75 +1219,55 @@ export function MiraKernelConsole({
                 <ConsoleBadge label="native" value={nativeHealthLabel} tone={nativeSnapshot?.health === "ready" ? "emerald" : "amber"} />
               </div>
             </div>
-            <div className="grid gap-3 md:grid-cols-4">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Privilege</div>
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex min-w-0 items-center gap-2">
                   <span className={cn(
-                    "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em]",
+                    "shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em]",
                     privilegeRole === "root"
                       ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
                       : "border-amber-400/40 bg-amber-500/15 text-amber-100",
                   )}>
                     {privilegePosture.roleLabel}
                   </span>
-                  <span className="text-xs text-slate-300">
-                    {privilegePosture.capabilityLabel}
-                  </span>
                 </div>
-                <div className="mt-2 text-xs text-slate-300">
+                <div className="mt-2 line-clamp-2 text-xs leading-snug text-slate-300">
                   {privilegePosture.summary}
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Runtime</div>
-                <div className="mt-2 text-lg font-semibold text-white">{runtimeModel ?? "unresolved"}</div>
-                <div className="text-xs text-slate-300">
+                <div className="mt-2 truncate text-sm font-semibold text-white">{runtimeModel ?? "unresolved"}</div>
+                <div className="line-clamp-2 text-xs leading-snug text-slate-300">
                   {runtimeControl?.execution_gate?.reason ?? operatorReadyLabel}
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Kernel maturity</div>
-                <div className="mt-2 text-lg font-semibold text-white">
+                <div className="mt-2 truncate text-sm font-semibold text-white">
                   {profile?.name ?? "unknown"}
                 </div>
-                <div className="text-xs text-slate-300">
+                <div className="line-clamp-2 text-xs leading-snug text-slate-300">
                   {maturitySummary}
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Fault posture</div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <div className="text-lg font-semibold text-white">
+                <div className="mt-2 flex min-w-0 items-center gap-2">
+                  <div className="min-w-0 truncate text-sm font-semibold text-white">
                     {nativeFaultModules.length || faultedBridges.length || eventLaneCounts.fault ? "attention" : "stable"}
                   </div>
-                  <ConsoleBadge
-                    label="recovery"
-                    value={
-                      goalState?.active
-                      || (diagnostics?.snapshot.dispatch_queue_depth ?? 0) > 0
-                      || diagSubagentWorkers > 0
-                        ? "warm"
-                        : "idle"
-                    }
-                    tone={
-                      goalState?.active
-                      || (diagnostics?.snapshot.dispatch_queue_depth ?? 0) > 0
-                      || diagSubagentWorkers > 0
-                        ? "amber"
-                        : "slate"
-                    }
-                  />
                 </div>
-                <div className="text-xs text-slate-300">
+                <div className="line-clamp-2 text-xs leading-snug text-slate-300">
                   {faultSummary}
                 </div>
-                <div className="mt-1 text-xs text-slate-400">
+                <div className="mt-1 truncate text-xs text-slate-400">
                   {runtimeControl?.maintenance_mode?.enabled ? "maintenance gate is active" : "maintenance gate is clear"}
                 </div>
-                <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.14em] text-slate-300">
+                <div className="mt-2 grid grid-cols-3 gap-1 text-[10px] uppercase tracking-[0.14em] text-slate-300">
                   <span className={cn(
-                    "rounded-full border px-2 py-1",
+                    "min-w-0 truncate rounded-full border px-1.5 py-1 text-center",
                     nativeFaultModules.length > 0
                       ? "border-amber-300/50 bg-amber-500/10 text-amber-100"
                       : "border-white/10 bg-white/5",
@@ -1280,7 +1275,7 @@ export function MiraKernelConsole({
                     modules {nativeFaultModules.length}
                   </span>
                   <span className={cn(
-                    "rounded-full border px-2 py-1",
+                    "min-w-0 truncate rounded-full border px-1.5 py-1 text-center",
                     faultedBridges.length > 0
                       ? "border-amber-300/50 bg-amber-500/10 text-amber-100"
                       : "border-white/10 bg-white/5",
@@ -1288,7 +1283,7 @@ export function MiraKernelConsole({
                     bridges {faultedBridges.length}
                   </span>
                   <span className={cn(
-                    "rounded-full border px-2 py-1",
+                    "min-w-0 truncate rounded-full border px-1.5 py-1 text-center",
                     eventLaneCounts.fault > 0
                       ? "border-amber-300/50 bg-amber-500/10 text-amber-100"
                       : "border-white/10 bg-white/5",
@@ -1297,10 +1292,10 @@ export function MiraKernelConsole({
                   </span>
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="col-span-2 min-w-0 rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Mission control</div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <div className="text-lg font-semibold text-white">
+                <div className="mt-2 flex min-w-0 items-center gap-2">
+                  <div className="min-w-0 truncate text-sm font-semibold text-white">
                     {goalState?.active ? "active" : "idle"}
                   </div>
                   <ConsoleBadge
@@ -1309,10 +1304,10 @@ export function MiraKernelConsole({
                     tone={goalState?.active ? "amber" : "slate"}
                   />
                 </div>
-                <div className="text-xs text-slate-300">
+                <div className="line-clamp-2 text-xs leading-snug text-slate-300">
                   {goalState?.ui_summary ?? goalState?.objective ?? "no sustained objective recorded"}
                 </div>
-                <div className="mt-1 text-xs text-slate-400">
+                <div className="mt-1 truncate text-xs text-slate-400">
                   {goalState?.active
                     ? `continuations ${goalState?.continuation_rounds ?? 0} · progress ${goalState?.last_progress_at ?? "pending"}`
                     : "goal runtime is cold"}
@@ -1327,6 +1322,8 @@ export function MiraKernelConsole({
               <AdapterActionButton binding={resolveActionBinding("exit_maintenance")} />
             </div>
           </div>
+          {showAdvancedDetails ? (
+            <>
           <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Kernel identity
@@ -1467,14 +1464,14 @@ export function MiraKernelConsole({
                 </button>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
-                <span>try native injection:</span>
+                <span>common:</span>
                 <button
                   type="button"
                   onClick={() => setOperatorCommand("native replay runtime pause operator-ping")}
                   disabled={operatorPending}
-                  className="rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
+                  className="max-w-full truncate rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
                 >
-                  native replay runtime pause operator-ping
+                  native replay
                 </button>
                 {selectedModule?.name ? (
                   <>
@@ -1486,9 +1483,9 @@ export function MiraKernelConsole({
                         setOperatorCommand(command);
                       }}
                       disabled={operatorPending || !selectedModuleInspectNativeAction?.command}
-                      className="rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
+                      className="max-w-full truncate rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
                     >
-                      native inspect {selectedModule.name}
+                      inspect module
                     </button>
                     <button
                       type="button"
@@ -1498,9 +1495,9 @@ export function MiraKernelConsole({
                         setOperatorCommand(command);
                       }}
                       disabled={operatorPending || !selectedModuleFillNativeReplayAction?.command}
-                      className="rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
+                      className="max-w-full truncate rounded-full border border-fuchsia-700/60 bg-fuchsia-950 px-2 py-0.5 uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900"
                     >
-                      native replay {selectedModule.name} inspect status
+                      fill replay
                     </button>
                   </>
                 ) : dispatchPrioritizeAction ? (
@@ -1596,79 +1593,95 @@ export function MiraKernelConsole({
                     </div>
                   ))}
                 </div>
-                {quickCommandGroups.map((group) => (
-                  <div key={group.label} className="space-y-1">
-                    <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
-                      {group.label}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {group.commands.map((command) => (
-                        <button
-                          key={command}
-                          type="button"
-                          onClick={() => runQuickCommand(command)}
-                          disabled={operatorPending}
-                          className={cn(
-                            "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] transition-colors",
-                            group.tone,
-                            operatorPending ? "opacity-60" : "",
-                          )}
-                        >
-                          {command}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => runQuickCommand("runtime health")}
-                  disabled={operatorPending}
-                  className="rounded-full border border-cyan-700 bg-cyan-950 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-100 transition-colors hover:bg-cyan-900"
-                >
-                  run probe
-                </button>
-                <div className="space-y-1">
-                  <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
-                    native replay
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {nativeReplayCommands.map((command) => (
-                      <button
-                        key={command}
-                        type="button"
-                        onClick={() => runQuickCommand(command)}
-                        disabled={operatorPending}
-                        className={cn(
-                          "rounded-full border border-fuchsia-700 bg-fuchsia-950 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900",
-                          operatorPending ? "opacity-60" : "",
-                        )}
-                      >
-                        {command}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCommandCatalog((value) => !value)}
+                    disabled={operatorPending}
+                    className="rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-100 transition-colors hover:bg-slate-800"
+                  >
+                    {showCommandCatalog ? "hide command catalog" : "show command catalog"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runQuickCommand("runtime health")}
+                    disabled={operatorPending}
+                    className="rounded-full border border-cyan-700 bg-cyan-950 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-100 transition-colors hover:bg-cyan-900"
+                  >
+                    run probe
+                  </button>
                 </div>
-                <div className="space-y-1">
-                  <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
-                    tool families
-                  </div>
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {toolFamilySurface.map((item) => (
-                      <div
-                        key={item.family}
-                        className="rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1.5"
-                      >
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-slate-400">
-                          {item.family}
+                {showCommandCatalog ? (
+                  <>
+                    {quickCommandGroups.map((group) => (
+                      <div key={group.label} className="space-y-1">
+                        <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                          {group.label}
                         </div>
-                        <div className="mt-1 text-[10px] text-slate-300">
-                          {item.examples}
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {group.commands.map((command) => (
+                            <button
+                              key={command}
+                              type="button"
+                              onClick={() => runQuickCommand(command)}
+                              disabled={operatorPending}
+                              className={cn(
+                                "min-w-0 truncate rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] transition-colors",
+                                group.tone,
+                                operatorPending ? "opacity-60" : "",
+                              )}
+                              title={command}
+                            >
+                              {command}
+                            </button>
+                          ))}
                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
+                    <div className="space-y-1">
+                      <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                        native replay
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {nativeReplayCommands.map((command) => (
+                          <button
+                            key={command}
+                            type="button"
+                            onClick={() => runQuickCommand(command)}
+                            disabled={operatorPending}
+                            className={cn(
+                              "min-w-0 truncate rounded-full border border-fuchsia-700 bg-fuchsia-950 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-fuchsia-100 transition-colors hover:bg-fuchsia-900",
+                              operatorPending ? "opacity-60" : "",
+                            )}
+                            title={command}
+                          >
+                            {command}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                        tool families
+                      </div>
+                      <div className="grid gap-2">
+                        {toolFamilySurface.map((item) => (
+                          <div
+                            key={item.family}
+                            className="min-w-0 rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1.5"
+                          >
+                            <div className="truncate text-[10px] uppercase tracking-[0.12em] text-slate-400">
+                              {item.family}
+                            </div>
+                            <div className="mt-1 line-clamp-2 text-[10px] leading-snug text-slate-300">
+                              {item.examples}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
               </div>
             </div>
             <div className="space-y-2 rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2 font-mono text-[11px] text-slate-700">
@@ -1887,6 +1900,8 @@ export function MiraKernelConsole({
               ))}
             </div>
           </div>
+            </>
+          ) : null}
         </section>
 
         <section className={paneClass("runtime")}>
@@ -4351,11 +4366,13 @@ export function MiraKernelConsole({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+    <div className="flex min-w-0 items-center justify-between gap-3">
+      <span className="min-w-0 shrink truncate text-xs uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </span>
-      <span className="truncate font-medium text-foreground">{value}</span>
+      <span className="min-w-0 max-w-[55%] truncate text-right font-medium text-foreground" title={value}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -4376,8 +4393,15 @@ function ConsoleBadge({
         ? "border-amber-300/80 bg-amber-50 text-amber-700"
         : "border-slate-300/80 bg-slate-100 text-slate-700";
   return (
-    <span className={cn("rounded-md border px-2 py-1 text-[10px] uppercase tracking-[0.14em]", toneClass)}>
-      {label}: <span className="font-semibold">{value}</span>
+    <span
+      className={cn(
+        "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border px-2 py-1 text-[10px] uppercase tracking-[0.14em]",
+        toneClass,
+      )}
+      title={`${label}: ${value}`}
+    >
+      <span className="shrink-0">{label}:</span>
+      <span className="min-w-0 truncate font-semibold">{value}</span>
     </span>
   );
 }
@@ -4400,11 +4424,11 @@ function ConsoleInfoCard({
   detailClassName?: string;
 }) {
   return (
-    <div className={className}>
-      <div className={labelClassName}>{label}</div>
-      <div className={valueClassName}>{value}</div>
+    <div className={cn("min-w-0", className)}>
+      <div className={cn("truncate", labelClassName)}>{label}</div>
+      <div className={cn("truncate", valueClassName)} title={value}>{value}</div>
       {detail ? (
-        <div className={detailClassName ?? "mt-1 text-xs text-slate-500"}>
+        <div className={cn("line-clamp-2 break-words", detailClassName ?? "mt-1 text-xs text-slate-500")}>
           {detail}
         </div>
       ) : null}
@@ -4448,7 +4472,8 @@ function ConsoleActionButton({
       type="button"
       onClick={() => onRun(action, pane)}
       disabled={disabled || !action?.command}
-      className={className}
+      className={cn("max-w-full truncate", className)}
+      title={label}
     >
       {label}
     </button>
@@ -4467,7 +4492,7 @@ function AdapterActionButton({
       onClick={resolved.onTrigger}
       disabled={!resolved.enabled}
       className={cn(
-        "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+        "max-w-full truncate rounded-full border px-2.5 py-1 text-[11px] transition-colors",
         resolved.enabled
           ? "border-slate-300/80 bg-slate-900 text-white hover:bg-slate-800"
           : "border-slate-300/80 bg-slate-100 text-slate-500",
