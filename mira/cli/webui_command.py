@@ -22,6 +22,7 @@ console = Console()
 class WebUICommandDeps:
     ensure_interactive_tty_mode: Callable[[], None]
     resolve_webui_config_path: Callable[[str | None], Path]
+    sync_workspace_templates: Callable[..., None]
     confirm_webui_action: Callable[..., None]
     load_webui_setup_config: Callable[[Path], Config]
     provider_setup_error: Callable[[Config], str | None]
@@ -85,7 +86,7 @@ def run_webui_command(
     settings_setup_error = provider_error if provider_error and created_config else None
     if settings_setup_error:
         console.print(f"[yellow]Model setup is incomplete: {provider_error}[/yellow]")
-        console.print("Configure a provider and model in WebUI Settings -> Models.")
+        console.print("Configure a provider and model in WebUI Settings → Models.")
         if background:
             console.print(
                 "[red]First-time WebUI setup must run in the foreground. "
@@ -116,9 +117,7 @@ def run_webui_command(
 
     workspace_path = get_workspace_path(setup_config.workspace_path)
     workspace_path.mkdir(parents=True, exist_ok=True)
-    from mira.utils.helpers import sync_workspace_templates
-
-    sync_workspace_templates(workspace_path)
+    deps.sync_workspace_templates(workspace_path)
 
     runtime_config = deps.load_runtime_config(str(config_path), workspace)
     effective_gateway_port = gateway_port if gateway_port is not None else runtime_config.gateway.port

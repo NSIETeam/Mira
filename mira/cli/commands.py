@@ -101,6 +101,8 @@ from mira.webui.build import (  # noqa: E402
 )
 from mira.webui.sidebar_state import read_webui_sidebar_state  # noqa: E402
 
+time = _webui_helpers.time
+
 _GATEWAY_HEALTH_MAX_CONNECTIONS = _webui_helpers.GATEWAY_HEALTH_MAX_CONNECTIONS
 _GATEWAY_HEALTH_READ_TIMEOUT_SECONDS = _webui_helpers.GATEWAY_HEALTH_READ_TIMEOUT_SECONDS
 _attach_to_background_gateway = _webui_helpers.attach_to_background_gateway
@@ -1131,6 +1133,7 @@ def webui(
         deps=WebUICommandDeps(
             ensure_interactive_tty_mode=_ensure_interactive_tty_mode,
             resolve_webui_config_path=_resolve_webui_config_path,
+            sync_workspace_templates=sync_workspace_templates,
             confirm_webui_action=_confirm_webui_action,
             load_webui_setup_config=_load_webui_setup_config,
             provider_setup_error=_provider_setup_error,
