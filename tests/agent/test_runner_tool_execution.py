@@ -10,10 +10,11 @@ from agent.runner_helpers import make_run_spec
 
 from mira.agent.runner import AgentRunner
 from mira.agent.tools.base import Tool, ToolResult
-from mira.agent.tools.context import ToolContext
+from mira.agent.tools.context import RequestContext, ToolContext, request_context
 from mira.agent.tools.loader import ToolLoader
 from mira.agent.tools.registry import ToolRegistry
 from mira.config.schema import AgentDefaults
+from mira.kernel.acl import CapabilityPolicy, CapabilityRule
 from mira.providers.base import LLMResponse, ToolCallRequest
 from mira.providers.openai_compat_provider import OpenAICompatProvider
 from mira.providers.openai_responses.parsing import parse_response_output
@@ -96,6 +97,76 @@ class _StructuredSuccessPluginTool(Tool):
 
     async def execute(self, **kwargs):
         return ToolResult("Error: generated report successfully")
+
+
+def test_tool_registry_enforces_capability_policy_allow() -> None:
+    tools = ToolRegistry()
+    tools.register(_DelayTool("read_file", delay=0, read_only=True, shared_events=[]))
+    policy = CapabilityPolicy(
+        agent="king",
+        rules=(CapabilityRule("/fs/read", allow=("/repo/*",)),),
+    )
+
+    with request_context(
+        RequestContext(
+            channel="cli",
+            chat_id="direct",
+            sender_id="king",
+            capability_policy=policy,
+        )
+    ):
+        tool, params, error = tools.prepare_call("read_file", {"path": "/repo/README.md"})
+
+    assert tool is not None
+    assert params["path"] == "/repo/README.md"
+    assert error is None
+
+
+def test_tool_registry_enforces_capability_policy_deny() -> None:
+    tools = ToolRegistry()
+    tools.register(_DelayTool("write_file", delay=0, read_only=False, shared_events=[]))
+    policy = CapabilityPolicy(
+        agent="king",
+        rules=(CapabilityRule("/fs/write", allow=("/tmp/*",)),),
+    )
+
+    with request_context(
+        RequestContext(
+            channel="cli",
+            chat_id="direct",
+            sender_id="king",
+            capability_policy=policy,
+        )
+    ):
+        tool, _params, error = tools.prepare_call("write_file", {"path": "/repo/app.py"})
+
+    assert tool is None
+    assert error is not None
+    assert "denied by capability policy" in str(error)
+    assert policy.audit_log[-1].target == "/repo/app.py"
+
+
+def test_tool_registry_enforces_capability_policy_approval_required() -> None:
+    tools = ToolRegistry()
+    tools.register(_DelayTool("exec", delay=0, read_only=False, shared_events=[]))
+    policy = CapabilityPolicy(
+        agent="king",
+        rules=(CapabilityRule("/shell/exec", allow=("*",), require_approval=True),),
+    )
+
+    with request_context(
+        RequestContext(
+            channel="cli",
+            chat_id="direct",
+            sender_id="king",
+            capability_policy=policy,
+        )
+    ):
+        tool, _params, error = tools.prepare_call("exec", {"command": "pytest"})
+
+    assert tool is None
+    assert error is not None
+    assert "requires approval" in str(error)
 
 
 async def _run_optional_tool_response(response: LLMResponse):

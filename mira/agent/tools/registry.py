@@ -162,6 +162,9 @@ class ToolRegistry:
                     'tool_name(param1="value1", param2="value2") matching the tool schema.'
                 )
             )
+        acl_error = self._capability_error(ctx, name, params)
+        if acl_error is not None:
+            return None, params, acl_error
 
         cast_params = tool.cast_params(params)
         errors = tool.validate_params(cast_params)
@@ -170,6 +173,67 @@ class ToolRegistry:
                 ToolResult.error(f"Error: Invalid parameters for tool '{name}': " + "; ".join(errors))
             )
         return tool, cast_params, None
+
+    def _capability_error(
+        self,
+        ctx: Any,
+        name: str,
+        params: dict[str, Any],
+    ) -> ToolResult | None:
+        capability_policy = getattr(ctx, "capability_policy", None) if ctx is not None else None
+        if capability_policy is None:
+            return None
+        from mira.kernel.acl import CapabilityRequest
+
+        capability, target = self._capability_request_for_tool(name, params)
+        result = capability_policy.evaluate(
+            CapabilityRequest(
+                agent=getattr(ctx, "sender_id", None) or "unknown",
+                capability=capability,
+                target=target,
+            )
+        )
+        if result.allowed:
+            return None
+        if result.decision == "approval_required":
+            return ToolResult.error(
+                f"Error: Tool '{name}' requires approval for capability {capability} on {target}."
+            )
+        return ToolResult.error(
+            f"Error: Tool '{name}' denied by capability policy for {capability} on {target}: "
+            f"{result.reason}"
+        )
+
+    @classmethod
+    def _capability_request_for_tool(
+        cls,
+        name: str,
+        params: dict[str, Any],
+    ) -> tuple[str, str]:
+        normalized = name.replace("_", "-")
+        family = tool_contract_family(normalized)
+        if family == "filesystem":
+            capability = "/fs/write" if cls._looks_like_write_tool(normalized) else "/fs/read"
+            return capability, cls._first_param(params, ("path", "file_path", "target", "pattern"))
+        if family == "shell":
+            return "/shell/exec", cls._first_param(params, ("command", "cmd", "input", "script"))
+        if family == "web":
+            return "/net/outbound", cls._first_param(params, ("url", "query", "q", "target"))
+        if family == "subagent":
+            return "/agent/spawn", cls._first_param(params, ("task", "prompt", "goal"))
+        return f"/tool/{family}", name
+
+    @staticmethod
+    def _looks_like_write_tool(name: str) -> bool:
+        return any(part in name for part in ("write", "edit", "patch", "delete", "move", "rename"))
+
+    @staticmethod
+    def _first_param(params: dict[str, Any], keys: tuple[str, ...]) -> str:
+        for key in keys:
+            value = params.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+        return "*"
 
     @classmethod
     def _coerce_argument_value(cls, value: Any) -> Any:

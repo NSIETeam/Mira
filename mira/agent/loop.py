@@ -264,6 +264,14 @@ def _ctx_runtime(ctx: TurnContext) -> LLMRuntime:
     return ctx.runtime
 
 
+def _string_tuple(value: Any) -> tuple[str, ...]:
+    if isinstance(value, str):
+        return (value,)
+    if isinstance(value, list | tuple | set):
+        return tuple(item for item in value if isinstance(item, str))
+    return ()
+
+
 class AgentLoop:
     """
     The agent loop is the core processing engine.
@@ -686,6 +694,35 @@ class AgentLoop:
             return None
         return effective_principal_policy(self.security_config, user_id=user, group_id=group)
 
+    def _capability_policy_for_metadata(
+        self,
+        metadata: Mapping[str, Any] | None,
+        *,
+        sender_id: str | None,
+    ) -> Any | None:
+        if not isinstance(metadata, Mapping):
+            return None
+        raw = metadata.get("capability_policy") or metadata.get("agent_capabilities")
+        if not isinstance(raw, Mapping):
+            return None
+        from mira.kernel.acl import CapabilityPolicy, CapabilityRule
+
+        rules: list[CapabilityRule] = []
+        for capability, spec in raw.items():
+            if not isinstance(capability, str) or not isinstance(spec, Mapping):
+                continue
+            rules.append(
+                CapabilityRule(
+                    capability=capability,
+                    allow=_string_tuple(spec.get("allow")),
+                    deny=_string_tuple(spec.get("deny")),
+                    require_approval=bool(spec.get("require_approval")),
+                )
+            )
+        if not rules:
+            return None
+        return CapabilityPolicy(agent=sender_id or "unknown", rules=tuple(rules))
+
     def _module_enabled(self, name: str, *, default: bool = True) -> bool:
         is_enabled = getattr(self.modules_config, "is_enabled", None)
         return bool(is_enabled(name, default=default)) if callable(is_enabled) else default
@@ -989,6 +1026,10 @@ class AgentLoop:
             turn_id=ctx.turn_id,
             workspace=scope.project_path,
             policy=self._policy_for_metadata(ctx.msg.metadata),
+            capability_policy=self._capability_policy_for_metadata(
+                ctx.msg.metadata,
+                sender_id=ctx.msg.sender_id,
+            ),
         )
 
     async def _resolve_runtime_context_for_turn(
@@ -1261,6 +1302,10 @@ class AgentLoop:
             metadata=dict(metadata or {}),
             workspace=effective_scope.project_path,
             policy=self._policy_for_metadata(metadata),
+            capability_policy=self._capability_policy_for_metadata(
+                metadata,
+                sender_id=metadata.get("sender_id") if isinstance(metadata, dict) else None,
+            ),
         )
         file_state_token = bind_file_states(self._file_state_store.for_session(active_session_key))
         request_token = bind_request_context(request_ctx)

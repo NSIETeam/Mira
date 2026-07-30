@@ -152,6 +152,27 @@ def test_agent_loop_subsystem_factory_uses_supplied_session_manager(tmp_path):
     assert subsystems.process_table.list() == []
 
 
+def test_agent_loop_builds_capability_policy_from_metadata(tmp_path):
+    loop = AgentLoop(
+        bus=MessageBus(),
+        provider=make_provider(spec=False),
+        workspace=tmp_path,
+    )
+
+    policy = loop._capability_policy_for_metadata(
+        {
+            "agent_capabilities": {
+                "/fs/read": {"allow": ["/repo/*"], "deny": ["/repo/private/*"]},
+                "/shell/exec": {"deny": ["*"]},
+            }
+        },
+        sender_id="king",
+    )
+
+    assert policy is not None
+    assert set(policy.rules) == {"/fs/read", "/shell/exec"}
+
+
 @pytest.mark.asyncio
 async def test_dispatch_records_completed_agent_process(tmp_path, monkeypatch):
     loop = AgentLoop(
