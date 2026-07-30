@@ -53,6 +53,7 @@ class ProviderSpec:
     # "openai_compat" | "anthropic" | "azure_openai" | "openai_codex" | "xai_grok"
     # | "github_copilot" | "bedrock"
     backend: str = "openai_compat"
+    provider_factory: str = ""  # Optional "module:function" factory for split provider packages.
 
     # extra env vars / request headers supplied by the provider integration.
     env_extras: tuple[tuple[str, str], ...] = ()
