@@ -27,6 +27,7 @@ from mira.agent.hook import AgentHook, AgentTurnHookFactory
 from mira.agent.memory import Consolidator, MemoryStore
 from mira.agent.model_runtime import ModelRuntimeResolver
 from mira.agent.process_lifecycle import TurnProcessLifecycle
+from mira.agent.run_turn import RunTurnHandler
 from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunSpec
 from mira.agent.subagent import SubagentManager
 from mira.agent.subsystems import create_agent_loop_subsystems
@@ -547,6 +548,7 @@ class AgentLoop:
             clear_pending_user_turn=self._clear_pending_user_turn,
         )
         self.build_turns = BuildTurnHandler(self)
+        self.run_turns = RunTurnHandler(self)
         try:
             from mira.kernel.app import register_kernel_loop
 
@@ -1931,43 +1933,11 @@ class AgentLoop:
         return await self.build_turns.handle(ctx, _ctx_session(ctx))
 
     async def _state_run(self, ctx: TurnContext) -> str:
-        runtime = _ctx_runtime(ctx)
-        session = _ctx_session(ctx)
-        if ctx.visible_run_started_at is None:
-            ctx.visible_run_started_at = time.time()
-        await ctx.delivery.running(started_at=ctx.visible_run_started_at)
-        result = await self._run_agent_loop(
-            ctx.initial_messages,
-            runtime=runtime,
-            on_progress=ctx.on_progress,
-            on_stream=ctx.on_stream,
-            on_stream_end=ctx.on_stream_end,
-            on_retry_wait=ctx.on_retry_wait,
-            session=session,
-            channel=ctx.delivery.route.channel,
-            chat_id=ctx.delivery.route.chat_id,
-            message_id=ctx.msg.metadata.get("message_id"),
-            metadata=ctx.msg.metadata,
-            session_key=ctx.session_key,
-            original_user_text=ctx.original_user_text,
-            pending_queue=ctx.pending_queue,
-            ephemeral=ctx.ephemeral,
-            run_extra_hooks_for_ephemeral=ctx.run_extra_hooks_for_ephemeral,
-            hooks=ctx.hooks,
-            hook_factories=ctx.hook_factories,
-            turn_scopes=ctx.turn_scopes,
-            tools=ctx.tools,
-            request_context=ctx.request_context,
+        return await self.run_turns.handle(
+            ctx,
+            runtime=_ctx_runtime(ctx),
+            session=_ctx_session(ctx),
         )
-        final_content, tools_used, all_msgs, stop_reason, had_injections = result
-        ctx.final_content = final_content
-        ctx.tools_used = tools_used
-        ctx.all_messages = all_msgs
-        ctx.stop_reason = stop_reason
-        ctx.had_injections = had_injections
-        if ctx.kind is TurnKind.USER:
-            await turn_continuation.maybe_continue_turn(ctx)
-        return "ok"
 
     async def _state_save(self, ctx: TurnContext) -> str:
         turn_continuation.prepare_save_boundary(ctx)
