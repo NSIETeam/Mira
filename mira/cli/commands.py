@@ -80,6 +80,7 @@ from mira.cli.desktop_command import DesktopCommandDeps, run_desktop_command  # 
 from mira.cli.gateway import create_gateway_app  # noqa: E402
 from mira.cli.kernel_commands import register_kernel_commands  # noqa: E402
 from mira.cli.kernel_lifecycle_commands import register_kernel_lifecycle_commands  # noqa: E402
+from mira.cli.onboard_command import run_onboard_command  # noqa: E402
 from mira.cli.stream import StreamRenderer, ThinkingSpinner  # noqa: E402
 from mira.cli.system_commands import register_system_commands  # noqa: E402
 from mira.cli.webui_command import WebUICommandDeps, run_webui_command  # noqa: E402
@@ -721,89 +722,14 @@ def onboard(
     non_interactive_refresh: bool = typer.Option(False, "--refresh", help="Refresh config, preserving existing settings without prompting"),
 ):
     """Initialize Mira configuration and workspace."""
-    from mira.config.loader import get_config_path, load_config, save_config, set_config_path
-    from mira.config.schema import Config
-
-    explicit_config = config is not None
-    if config:
-        config_path = Path(config).expanduser().resolve()
-        set_config_path(config_path)
-        console.print(f"[dim]Using config: {config_path}[/dim]")
-    else:
-        config_path = get_config_path()
-
-    def _apply_workspace_override(loaded: Config) -> Config:
-        if workspace:
-            loaded.agents.defaults.workspace = workspace
-        return loaded
-
-    # Create or update config
-    if config_path.exists():
-        if wizard:
-            config = _apply_workspace_override(load_config(config_path))
-        else:
-            should_refresh = non_interactive_refresh
-            if not non_interactive_refresh:
-                console.print(f"[yellow]Config already exists at {config_path}[/yellow]")
-                console.print(
-                    "  [bold]y[/bold] = overwrite with defaults (existing values will be lost)"
-                )
-                console.print(
-                    "  [bold]N[/bold] = refresh config, keeping existing values and adding new fields"
-                )
-                if typer.confirm("Overwrite?"):
-                    config = _apply_workspace_override(Config())
-                    save_config(config, config_path)
-                    console.print(f"[green][/green] Config reset to defaults at {config_path}")
-                else:
-                    should_refresh = True
-
-            if should_refresh:
-                config = _apply_workspace_override(load_config(config_path))
-                save_config(config, config_path)
-                console.print(
-                    f"[green][/green] Config refreshed at {config_path} (existing values preserved)"
-                )
-    else:
-        config = _apply_workspace_override(Config())
-        # In wizard mode, don't save yet - the wizard will handle saving if should_save=True
-        if not wizard:
-            save_config(config, config_path)
-            console.print(f"[green][/green] Created config at {config_path}")
-
-    # Run interactive wizard if enabled
-    if wizard:
-        from mira.cli.onboard import run_onboard
-
-        try:
-            result = run_onboard(initial_config=config)
-            if not result.should_save:
-                console.print("[yellow]Configuration discarded. No changes were saved.[/yellow]")
-                return
-
-            config = result.config
-            save_config(config, config_path)
-            console.print(f"[green][/green] Config saved at {config_path}")
-        except Exception as e:
-            console.print(f"[red][/red] Error during configuration: {e}")
-            console.print("[yellow]Please run 'mira onboard' again to complete setup.[/yellow]")
-            raise typer.Exit(1)
-    _onboard_plugins(config_path)
-
-    # Create workspace, preferring the configured workspace path.
-    workspace_path = get_workspace_path(config.workspace_path)
-    if not workspace_path.exists():
-        workspace_path.mkdir(parents=True, exist_ok=True)
-        console.print(f"[green][/green] Created workspace at {workspace_path}")
-
-    sync_workspace_templates(workspace_path)
-
-    webui_cmd = f"{__cli_name__} webui"
-    if explicit_config:
-        webui_cmd += f' -c "{config_path}"'
-
-    typer.echo(
-        f"\n mira is ready. Run: {webui_cmd}  (or: {__cli_name__} webui)"
+    run_onboard_command(
+        workspace=workspace,
+        config=config,
+        wizard=wizard,
+        non_interactive_refresh=non_interactive_refresh,
+        onboard_plugins=_onboard_plugins,
+        sync_workspace_templates=sync_workspace_templates,
+        get_workspace_path=get_workspace_path,
     )
 
 
