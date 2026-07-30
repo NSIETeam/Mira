@@ -7,16 +7,17 @@ import tempfile
 import time
 import uuid
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from loguru import logger
 
 from mira.agent.hook import AgentHook, AgentHookContext
 from mira.agent.maturity import apply_agent_role_to_task, resolve_agent_role_profile
 from mira.agent.memory import MemoryStore
-from mira.agent.runner import AgentRunner, AgentRunSpec
+from mira.agent.runner import AgentRunner, AgentRunResult, AgentRunSpec
 from mira.agent.tools.base import ToolResult
 from mira.agent.tools.context import (
     RequestContext,
@@ -73,8 +74,8 @@ class SubagentStatus:
     started_at: float          # time.monotonic()
     phase: str = "initializing"  # initializing | awaiting_tools | tools_completed | final_response | done | error
     iteration: int = 0
-    tool_events: list = field(default_factory=list)   # [{name, status, detail}, ...]
-    usage: dict = field(default_factory=dict)          # token usage
+    tool_events: list[dict[str, str]] = field(default_factory=list)
+    usage: dict[str, int] = field(default_factory=dict)
     stop_reason: str | None = None
     error: str | None = None
     memory_policy: str = "default"
@@ -442,7 +443,9 @@ class SubagentManager:
             runtime = runtime.with_generation_overrides(temperature=temperature)
         task_id = str(uuid.uuid4())[:8]
         display_label = label or task[:30] + ("..." if len(task) > 30 else "")
-        origin = {"channel": origin_channel, "chat_id": origin_chat_id, "session_key": session_key}
+        origin = {"channel": origin_channel, "chat_id": origin_chat_id}
+        if session_key is not None:
+            origin["session_key"] = session_key
         resolved_memory_policy = self._normalize_memory_policy(memory_policy)
         role_profile = resolve_agent_role_profile(role)
         if role_profile is not None and memory_policy in {None, "auto"}:
@@ -596,7 +599,7 @@ class SubagentManager:
             self._session_tasks.setdefault(session_key, set()).add(pending.task_id)
 
         task_id = pending.task_id
-        def _cleanup(_: asyncio.Task) -> None:
+        def _cleanup(_: asyncio.Task[str]) -> None:
             self._running_tasks.pop(task_id, None)
             if session_key and (ids := self._session_tasks.get(session_key)):
                 ids.discard(task_id)
@@ -777,8 +780,9 @@ class SubagentManager:
         origin = {
             "channel": origin_channel,
             "chat_id": origin_chat_id,
-            "session_key": session_key,
         }
+        if session_key is not None:
+            origin["session_key"] = session_key
         resolved_memory_policy = self._normalize_memory_policy(memory_policy)
         role_profile = resolve_agent_role_profile(role)
         if role_profile is not None and memory_policy in {None, "auto"}:
@@ -860,7 +864,7 @@ class SubagentManager:
         """Execute the subagent task and announce the result."""
         logger.info("Subagent [{}] starting task: {}", task_id, label)
 
-        async def _on_checkpoint(payload: dict) -> None:
+        async def _on_checkpoint(payload: dict[str, Any]) -> None:
             status.phase = payload.get("phase", status.phase)
             status.iteration = payload.get("iteration", status.iteration)
 
@@ -1033,7 +1037,7 @@ class SubagentManager:
         logger.debug("Subagent [{}] announced result to {}:{}", task_id, origin['channel'], origin['chat_id'])
 
     @staticmethod
-    def _format_partial_progress(result) -> str:
+    def _format_partial_progress(result: AgentRunResult) -> str:
         completed = [e for e in result.tool_events if e["status"] == "ok"]
         failure = next((e for e in reversed(result.tool_events) if e["status"] == "error"), None)
         lines: list[str] = []

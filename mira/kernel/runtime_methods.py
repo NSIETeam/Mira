@@ -85,6 +85,9 @@ _SHARED_KERNEL_APP: Any | None = None
 
 
 class KernelAppRuntimeMixin:
+        _loop: AgentLoop | None
+        _native_last_command: dict[str, Any] | None
+
         def bot(self) -> mira:
             """Expose the underlying bot for advanced integrations."""
             return self._bot

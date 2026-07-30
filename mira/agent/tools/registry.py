@@ -25,7 +25,7 @@ class ToolRegistry:
     Allows dynamic registration and execution of tools.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._tools: dict[str, Tool] = {}
         self._cached_definitions: list[dict[str, Any]] | None = None
 
@@ -39,7 +39,7 @@ class ToolRegistry:
         self._tools.pop(name, None)
         self._cached_definitions = None
 
-    def filtered_copy(self, *, exclude: set[str]) -> "ToolRegistry":
+    def filtered_copy(self, *, exclude: set[str]) -> ToolRegistry:
         """Return a registry view excluding selected tools."""
         registry = ToolRegistry()
         for name, tool in self._tools.items():
@@ -221,7 +221,7 @@ class ToolRegistry:
             return result
         except Exception as e:
             return ToolResult.error(
-                self._format_tool_failure(tool, f"Error executing {name}: {str(e)}") + hint
+                self._format_tool_failure(tool, f"Error executing {name}: {e!s}") + hint
             )
 
     @staticmethod

@@ -93,6 +93,10 @@ jobs:
 
       # Channel requirements live in manifests rather than uv.lock. Avoid a
       # later uv run sync pruning the packages installed by the previous step.
+      - name: Type check core modules
+        if: matrix.coverage
+        run: uv run --no-sync mypy
+
       - name: Lint with ruff
         if: matrix.coverage
         run: uv run --no-sync ruff check mira tests conftest.py

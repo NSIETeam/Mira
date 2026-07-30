@@ -106,7 +106,7 @@ class KernelApp(KernelAppRuntimeMixin):
         self._config = config
         self._profile = profile or lite_customer_profile()
         self._shell = shell or default_engineering_shell()
-        self._loop = getattr(bot, "_loop", None)
+        self._loop: AgentLoop | None = getattr(bot, "_loop", None)
         self._execution_gate: ExecutionGate = getattr(self._loop, "execution_gate", None) or ExecutionGate()
         self._authorizer = KernelAuthorizer()
         self._runtime_adapters = list_runtime_adapters()
@@ -119,7 +119,7 @@ class KernelApp(KernelAppRuntimeMixin):
         self._runtime_control = build_runtime_control_state(
             self._profile,
             default_adapter=default_adapter,
-            module_names=[module["name"] for module in self._runtime_modules],
+            module_names=[str(module["name"]) for module in self._runtime_modules],
         )
         self._scheduler_state = _build_scheduler_state()
         self._event_log: list[dict[str, Any]] = []

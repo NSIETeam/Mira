@@ -7,13 +7,13 @@ import dataclasses
 import inspect
 import os
 import time
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Coroutine, Mapping
 from contextlib import AbstractContextManager, ExitStack, nullcontext, suppress
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -173,7 +173,7 @@ class TurnContext:
     on_runtime_admitted: Callable[[LLMRuntime], Awaitable[None]] | None = None
     on_retry_wait: Callable[[str], Awaitable[None]] | None = None
 
-    pending_queue: asyncio.Queue | None = None
+    pending_queue: asyncio.Queue[InboundMessage] | None = None
     pending_summary: str | None = None
 
     ephemeral: bool = False
@@ -190,8 +190,20 @@ class TurnContext:
     trace: list[StateTraceEntry] = field(default_factory=list)
 
 
-def _ctx_logger(ctx: TurnContext):
+def _ctx_logger(ctx: TurnContext) -> Any:
     return turn_logger(ctx.session_key, ctx.turn_id)
+
+
+def _ctx_session(ctx: TurnContext) -> Session:
+    if ctx.session is None:
+        raise RuntimeError("Turn session is not available")
+    return ctx.session
+
+
+def _ctx_runtime(ctx: TurnContext) -> LLMRuntime:
+    if ctx.runtime is None:
+        raise RuntimeError("Turn runtime is not available")
+    return ctx.runtime
 
 
 class AgentLoop:
@@ -228,6 +240,11 @@ class AgentLoop:
     def context_window_tokens(self) -> int:
         """Context limit selected for future turn admissions."""
         return self.runtime_resolver.runtime.context_window_tokens
+
+    @property
+    def workspace_sandbox(self) -> Any:
+        """Current workspace sandbox status exposed to the runtime state tool."""
+        return self.workspace_scopes.sandbox_status
 
     @property
     def model_presets(self) -> Mapping[str, ModelPresetConfig]:
@@ -287,7 +304,7 @@ class AgentLoop:
         cron_service: CronService | None = None,
         restrict_to_workspace: bool = False,
         session_manager: SessionManager | None = None,
-        mcp_servers: dict | None = None,
+        mcp_servers: dict[str, Any] | None = None,
         channels_config: ChannelsConfig | None = None,
         timezone: str | None = None,
         session_ttl_minutes: int = 0,
@@ -426,13 +443,13 @@ class AgentLoop:
         self._mcp_stacks: dict[str, MCPConnection] = {}
         self._mcp_connecting = False
         self._runtime_context_providers: list[RuntimeContextProvider] = []
-        self._active_tasks: dict[str, list[asyncio.Task]] = {}  # session_key -> tasks
-        self._background_tasks: list[asyncio.Task] = []
+        self._active_tasks: dict[str, list[asyncio.Task[None]]] = {}  # session_key -> tasks
+        self._background_tasks: list[asyncio.Task[None]] = []
         self._session_locks: dict[str, asyncio.Lock] = {}
         # Per-session pending queues for mid-turn message injection.
         # When a session has an active task, new messages for that session
         # are routed here instead of creating a new task.
-        self._pending_queues: dict[str, asyncio.Queue] = {}
+        self._pending_queues: dict[str, asyncio.Queue[InboundMessage]] = {}
         self._deferred_automation_turns: dict[str, list[InboundMessage]] = {}
         self._cron_turns = CronTurnCoordinator(
             publish_inbound=self.bus.publish_inbound,
@@ -482,7 +499,7 @@ class AgentLoop:
             from mira.kernel.app import register_kernel_loop
 
             register_kernel_loop(self)
-        except Exception:
+        except (ImportError, TypeError, ValueError, RuntimeError):
             logger.debug("kernel loop registration skipped", exc_info=True)
 
     def _memory_workspace_from_metadata(self, metadata: Mapping[str, Any] | None) -> Path | None:
@@ -963,7 +980,7 @@ class AgentLoop:
 
     async def _run_agent_loop(
         self,
-        initial_messages: list[dict],
+        initial_messages: list[dict[str, Any]],
         on_progress: Callable[..., Awaitable[None]] | None = None,
         on_stream: Callable[[str], Awaitable[None]] | None = None,
         on_stream_end: Callable[..., Awaitable[None]] | None = None,
@@ -977,7 +994,7 @@ class AgentLoop:
         metadata: dict[str, Any] | None = None,
         session_key: str | None = None,
         original_user_text: str | None = None,
-        pending_queue: asyncio.Queue | None = None,
+        pending_queue: asyncio.Queue[InboundMessage] | None = None,
         ephemeral: bool = False,
         run_extra_hooks_for_ephemeral: bool = False,
         hooks: list[AgentHook] | None = None,
@@ -985,7 +1002,7 @@ class AgentLoop:
         turn_scopes: list[AbstractContextManager[Any]] | None = None,
         tools: ToolRegistry | None = None,
         request_context: RequestContext | None = None,
-    ) -> tuple[str | None, list[str], list[dict], str, bool]:
+    ) -> tuple[str | None, list[str], list[dict[str, Any]], str, bool]:
         """Run the agent iteration loop.
 
         *on_stream*: called with each content delta during streaming.
@@ -1047,19 +1064,19 @@ class AgentLoop:
                         pending_request,
                         effective_tools,
                     )
-                    row["content"], marker = append_runtime_context(user_content, blocks)
-                    if marker is not None:
-                        row["_meta"] = {RUNTIME_CONTEXT_MESSAGE_META: marker}
+                    row["content"], runtime_marker = append_runtime_context(user_content, blocks)
+                    if runtime_marker is not None:
+                        row["_meta"] = {RUNTIME_CONTEXT_MESSAGE_META: runtime_marker}
                 if (
                     pending_msg.sender_id == "subagent"
                     and metadata.get("injected_event") == "subagent_result"
                 ):
-                    marker: dict[str, Any] = {"kind": "subagent_result"}
+                    hidden_marker: dict[str, Any] = {"kind": "subagent_result"}
                     task_id = metadata.get("subagent_task_id")
                     if isinstance(task_id, str) and task_id:
-                        marker["subagent_task_id"] = task_id
+                        hidden_marker["subagent_task_id"] = task_id
                         row["subagent_task_id"] = task_id
-                    row[HIDDEN_HISTORY_META] = marker
+                    row[HIDDEN_HISTORY_META] = hidden_marker
                     row["injected_event"] = "subagent_result"
                 return row
 
@@ -1078,7 +1095,7 @@ class AgentLoop:
                     and self.subagents.get_running_count_by_session(session.key) > 0):
                 try:
                     msg = await asyncio.wait_for(pending_queue.get(), timeout=300)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     session_logger(session.key).warning(
                         "Timeout waiting for sub-agent completion in session {}",
                         session.key,
@@ -1271,7 +1288,7 @@ class AgentLoop:
             while self._running:
                 try:
                     msg = await asyncio.wait_for(self.bus.consume_inbound(), timeout=1.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     self._check_expired_sessions_if_due()
                     continue
                 except asyncio.CancelledError:
@@ -1279,11 +1296,13 @@ class AgentLoop:
                     # Only ignore non-task CancelledError signals that may leak from integrations.
                     if not self._running or task_is_cancelling():
                         raise
-                    session_logger(None).warning(
+                    logger.warning(
                         "Ignoring leaked CancelledError while consuming inbound messages"
                     )
                     continue
-                except Exception as e:
+                except BaseException as e:
+                    if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                        raise
                     session_logger(None).warning(
                         "Error consuming inbound message: {}, continuing...",
                         e,
@@ -1351,12 +1370,7 @@ class AgentLoop:
                 # This ensures /stop command can find tasks correctly when unified session is enabled
                 task = asyncio.create_task(self._dispatch(msg))
                 self._active_tasks.setdefault(effective_key, []).append(task)
-                task.add_done_callback(
-                    lambda t, k=effective_key: self._active_tasks.get(k, [])
-                    and self._active_tasks[k].remove(t)
-                    if t in self._active_tasks.get(k, [])
-                    else None
-                )
+                task.add_done_callback(partial(self._forget_active_task, session_key=effective_key))
         finally:
             # MCP stdio transports use AnyIO cancel scopes; close them from the task that opened them.
             await self.close_mcp()
@@ -1370,7 +1384,7 @@ class AgentLoop:
         gate = self._concurrency_gate or nullcontext()
 
         delivery = self.turn_delivery_factory.unrouted(msg, session_key)
-        pending: asyncio.Queue | None = None
+        pending: asyncio.Queue[InboundMessage] | None = None
         try:
             async with lock, gate:
                 await self.execution_gate.wait_for_turn_admission()
@@ -1404,7 +1418,7 @@ class AgentLoop:
                     session_logger(session_key).info("Task cancelled for session {}", session_key)
                     try:
                         await delivery.abort_stream()
-                    except Exception:
+                    except (OSError, RuntimeError, ValueError):
                         session_logger(session_key).debug(
                             "Could not close stream for cancelled session {}",
                             session_key,
@@ -1427,14 +1441,16 @@ class AgentLoop:
                                 "Restored partial context for cancelled session {}",
                                 key,
                             )
-                    except Exception:
+                    except (OSError, RuntimeError, ValueError):
                         session_logger(session_key).debug(
                             "Could not restore checkpoint for cancelled session {}",
                             session_key,
                             exc_info=True,
                         )
                     raise
-                except Exception as exc:
+                except BaseException as exc:
+                    if isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)):
+                        raise
                     session_logger(session_key).exception(
                         "Error processing message for session {}",
                         session_key,
@@ -1500,7 +1516,12 @@ class AgentLoop:
         if errors:
             raise BaseExceptionGroup("failed to close agent resources", errors)
 
-    def _schedule_background(self, coro) -> None:
+    def _forget_active_task(self, task: asyncio.Task[None], *, session_key: str) -> None:
+        tasks = self._active_tasks.get(session_key, [])
+        if task in tasks:
+            tasks.remove(task)
+
+    def _schedule_background(self, coro: Coroutine[Any, Any, None]) -> None:
         """Schedule a coroutine as a tracked background task (drained on shutdown)."""
         task = asyncio.create_task(coro)
         self._background_tasks.append(task)
@@ -1518,7 +1539,7 @@ class AgentLoop:
         on_progress: Callable[..., Awaitable[None]] | None = None,
         on_stream: Callable[[str], Awaitable[None]] | None = None,
         on_stream_end: Callable[..., Awaitable[None]] | None = None,
-        pending_queue: asyncio.Queue | None = None,
+        pending_queue: asyncio.Queue[InboundMessage] | None = None,
         ephemeral: bool = False,
         run_extra_hooks_for_ephemeral: bool = False,
         hooks: list[AgentHook] | None = None,
@@ -1629,7 +1650,7 @@ class AgentLoop:
             t0 = time.perf_counter()
             try:
                 event = await handler(ctx)
-            except Exception:
+            except BaseException:
                 duration = (time.perf_counter() - t0) * 1000
                 ctx.trace.append(
                     StateTraceEntry(
@@ -1714,7 +1735,7 @@ class AgentLoop:
             metadata=meta,
         )
 
-    async def _state_restore(self, ctx: TurnContext) -> TurnState:
+    async def _state_restore(self, ctx: TurnContext) -> str:
         """Restore checkpoint / pending user turn; extract documents."""
         msg = ctx.msg
 
@@ -1766,7 +1787,7 @@ class AgentLoop:
         return self.channels_config.extract_document_text
 
     async def _state_compact(self, ctx: TurnContext) -> str:
-        ctx.session, pending = self.auto_compact.prepare_session(ctx.session, ctx.session_key)
+        ctx.session, pending = self.auto_compact.prepare_session(_ctx_session(ctx), ctx.session_key)
         ctx.pending_summary = pending
         return "ok"
 
@@ -1791,6 +1812,7 @@ class AgentLoop:
             is_user_turn=is_user_turn,
             turn_scopes=ctx.turn_scopes,
         )
+        session = _ctx_session(ctx)
         result = await self.commands.dispatch(cmd_ctx)
         if result is not None:
             ctx.outbound = result
@@ -1801,20 +1823,21 @@ class AgentLoop:
             # intentionally clears the session.
             if cmd_ctx.raw.lower() != "/new":
                 ctx.input_persisted_early = self._persist_user_message_early(
-                    ctx.msg, ctx.session, _command=True
+                    ctx.msg, session, _command=True
                 )
-                ctx.session.add_message(
+                session.add_message(
                     "assistant", result.content, _command=True
                 )
-                self.sessions.save(ctx.session)
-                self._clear_pending_user_turn(ctx.session)
+                self.sessions.save(session)
+                self._clear_pending_user_turn(session)
             return "shortcut"
         return "dispatch"
 
     async def _state_build(self, ctx: TurnContext) -> str:
         runtime = ctx.runtime
+        session = _ctx_session(ctx)
         if runtime is None:
-            runtime = self.runtime_for_session(ctx.session)
+            runtime = self.runtime_for_session(session)
             ctx.runtime = runtime
         if ctx.on_runtime_admitted is not None:
             await ctx.on_runtime_admitted(runtime)
@@ -1822,8 +1845,8 @@ class AgentLoop:
             runtime.context_window_tokens
         )
         if not ctx.ephemeral:
-            await self._consolidator_for_metadata(ctx.session.metadata).maybe_consolidate_by_tokens(
-                ctx.session,
+            await self._consolidator_for_metadata(session.metadata).maybe_consolidate_by_tokens(
+                session,
                 runtime=runtime,
                 replay_max_messages=replay_max_messages,
             )
@@ -1838,7 +1861,7 @@ class AgentLoop:
             "max_tokens": self._replay_token_budget(runtime),
             "extend_to_user": is_subagent,
         }
-        ctx.history = ctx.session.get_history(**_hist_kwargs)
+        ctx.history = session.get_history(**_hist_kwargs)
         ctx.history = self._page_virtual_context_history(
             ctx.history,
             budget_tokens=_hist_kwargs["max_tokens"],
@@ -1850,13 +1873,13 @@ class AgentLoop:
             # Providers without assistant-prefill support drop trailing
             # assistant messages, so using the persisted record as the current
             # prompt would hide an independently dispatched subagent result.
-            if self._persist_subagent_followup(ctx.session, ctx.msg):
+            if self._persist_subagent_followup(session, ctx.msg):
                 _ctx_logger(ctx).debug("Subagent result persisted for session {}", ctx.session_key)
-                self.sessions.save(ctx.session)
+                self.sessions.save(session)
             ctx.input_persisted_early = True
         ctx.delivery.record_runtime(ctx.runtime)
 
-        ctx.tools = self._tools_for_metadata(ctx.session.metadata)
+        ctx.tools = self._tools_for_metadata(session.metadata)
         ctx.request_context = self._request_context_for_turn(ctx)
         if ctx.kind is TurnKind.USER:
             ctx.runtime_context_blocks = await self._resolve_runtime_context_for_turn(ctx)
@@ -1864,7 +1887,7 @@ class AgentLoop:
         if ctx.kind is TurnKind.USER:
             ctx.input_persisted_early = self._persist_user_message_early(
                 ctx.msg,
-                ctx.session,
+                session,
                 runtime_context_blocks=ctx.runtime_context_blocks,
             )
 
@@ -1876,17 +1899,19 @@ class AgentLoop:
         return "ok"
 
     async def _state_run(self, ctx: TurnContext) -> str:
+        runtime = _ctx_runtime(ctx)
+        session = _ctx_session(ctx)
         if ctx.visible_run_started_at is None:
             ctx.visible_run_started_at = time.time()
         await ctx.delivery.running(started_at=ctx.visible_run_started_at)
         result = await self._run_agent_loop(
             ctx.initial_messages,
-            runtime=ctx.runtime,
+            runtime=runtime,
             on_progress=ctx.on_progress,
             on_stream=ctx.on_stream,
             on_stream_end=ctx.on_stream_end,
             on_retry_wait=ctx.on_retry_wait,
-            session=ctx.session,
+            session=session,
             channel=ctx.delivery.route.channel,
             chat_id=ctx.delivery.route.chat_id,
             message_id=ctx.msg.metadata.get("message_id"),
@@ -1932,30 +1957,32 @@ class AgentLoop:
             else ctx.turn_wall_started_at
         )
         ctx.turn_latency_ms = max(0, int((time.time() - latency_started_at) * 1000))
+        session = _ctx_session(ctx)
+        runtime = _ctx_runtime(ctx)
         self._save_turn(
-            ctx.session, ctx.all_messages, ctx.save_skip,
+            session, ctx.all_messages, ctx.save_skip,
             turn_latency_ms=ctx.turn_latency_ms,
         )
         ctx.delivery.record_latency(ctx.turn_latency_ms)
         if not ctx.ephemeral:
-            ctx.session.enforce_file_cap(
+            session.enforce_file_cap(
                 on_archive=partial(
-                    self._memory_store_for_metadata(ctx.session.metadata).raw_archive,
+                    self._memory_store_for_metadata(session.metadata).raw_archive,
                     session_key=ctx.session_key,
                 )
             )
             self._schedule_background(
-                self._consolidator_for_metadata(ctx.session.metadata).maybe_consolidate_by_tokens(
-                    ctx.session,
-                    runtime=ctx.runtime,
+                self._consolidator_for_metadata(session.metadata).maybe_consolidate_by_tokens(
+                    session,
+                    runtime=runtime,
                     replay_max_messages=replay_max_messages_for_context(
-                        ctx.runtime.context_window_tokens
+                        runtime.context_window_tokens
                     ),
                 )
             )
-        self._clear_pending_user_turn(ctx.session)
-        self._clear_runtime_checkpoint(ctx.session)
-        self.sessions.save(ctx.session)
+        self._clear_pending_user_turn(session)
+        self._clear_runtime_checkpoint(session)
+        self.sessions.save(session)
         return "ok"
 
     async def _state_respond(self, ctx: TurnContext) -> str:
@@ -1972,7 +1999,7 @@ class AgentLoop:
             return "ok"
         ctx.outbound = self._assemble_outbound(
             ctx.msg,
-            ctx.final_content,
+            ctx.final_content or "",
             ctx.all_messages,
             ctx.stop_reason,
             ctx.had_injections,
@@ -2017,7 +2044,7 @@ class AgentLoop:
     def _save_turn(
         self,
         session: Session,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         skip: int,
         *,
         turn_latency_ms: int | None = None,
@@ -2188,10 +2215,10 @@ class AgentLoop:
         max_overlap = min(len(session.messages), len(restored_messages))
         for size in range(max_overlap, 0, -1):
             existing = session.messages[-size:]
-            restored = restored_messages[:size]
+            restored_slice = restored_messages[:size]
             if all(
                 self._checkpoint_message_key(left) == self._checkpoint_message_key(right)
-                for left, right in zip(existing, restored)
+                for left, right in zip(existing, restored_slice)
             ):
                 overlap = size
                 break
