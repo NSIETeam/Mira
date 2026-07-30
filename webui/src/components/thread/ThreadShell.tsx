@@ -339,19 +339,10 @@ function HeroGreeting({ text }: { text: string }) {
   );
 }
 
-function EmptyThreadPrompt({
-  greeting,
-  hint,
-}: {
-  greeting: string;
-  hint: string;
-}) {
+function EmptyThreadPrompt({ greeting }: { greeting: string }) {
   return (
     <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
       <HeroGreeting text={greeting} />
-      <p className="mt-1.5 hidden max-w-[24rem] text-[12px] leading-5 text-muted-foreground sm:block">
-        {hint}
-      </p>
     </div>
   );
 }
@@ -453,7 +444,6 @@ export function ThreadShell({
   supportsFileActivity = true,
   allowComposer = true,
   readOnlyExecution = false,
-  shellDescription = null,
   skills = [],
 }: ThreadShellProps) {
   const activeExecution = execution ?? session;
@@ -1103,14 +1093,8 @@ export function ThreadShell({
     </>
   ) : null;
 
-  const capabilityBadges = [
-    readOnlyExecution ? t("thread.posture.readOnly") : t("thread.posture.interactive"),
-    supportsRuntimeControls ? t("thread.posture.runtime") : t("thread.posture.fixed"),
-  ];
-  const shellPosture = [
-    allowComposer ? t("thread.posture.composer") : t("thread.posture.observer"),
-    shellDescription,
-  ].filter(Boolean).join(" · ");
+  const capabilityBadges: string[] = [];
+  const shellPosture = null;
   const emptyState = loading ? (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
       {t("thread.loadingConversation")}
@@ -1118,7 +1102,6 @@ export function ThreadShell({
   ) : (
     <EmptyThreadPrompt
       greeting={t(heroGreetingKey)}
-      hint={t("thread.empty.hint")}
     />
   );
   const sessionInfoAction = supportsThreads && historyKey ? (
@@ -1134,7 +1117,7 @@ export function ThreadShell({
   return (
     <section
       ref={shellRef}
-      className="relative flex min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_22%_0%,rgba(56,189,248,0.10),transparent_33%),radial-gradient(circle_at_78%_0%,rgba(15,23,42,0.08),transparent_30%),linear-gradient(180deg,rgba(248,250,252,0.97)_0%,rgba(241,245,249,0.99)_100%)]"
+      className="relative flex min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_50%_-12%,rgba(148,163,184,0.16),transparent_38%),linear-gradient(180deg,rgba(248,250,252,0.99)_0%,rgba(248,250,252,0.96)_100%)]"
     >
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden px-2 pb-2 pt-1">
         {!hideHeader ? (
@@ -1156,8 +1139,8 @@ export function ThreadShell({
         <FilePreviewAvailabilityProvider
           resolve={historyKey ? resolveFilePreviewAvailability : undefined}
         >
-          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[20px] border border-slate-200/75 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-[linear-gradient(180deg,rgba(248,250,252,0.92)_0%,rgba(248,250,252,0)_100%)]" />
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[24px] bg-white/58 shadow-[inset_0_1px_0_rgba(255,255,255,0.86)]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 bg-[linear-gradient(180deg,rgba(248,250,252,0.72)_0%,rgba(248,250,252,0)_100%)]" />
             <div className="flex h-full min-h-0 flex-col">
               <ThreadViewport
                 ref={viewportRef}

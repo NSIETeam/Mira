@@ -946,6 +946,9 @@
       "settings": "Buka pengaturan",
       "sessionInfo": "Detail sesi"
     },
+    "statusButton": {
+      "label": "Status"
+    },
     "sessionInfo": {
       "title": "Sesi",
       "untitled": "Topik tanpa judul",

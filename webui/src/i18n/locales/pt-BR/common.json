@@ -960,6 +960,9 @@
       "settings": "Abrir configurações",
       "sessionInfo": "Detalhes da sessão"
     },
+    "statusButton": {
+      "label": "Status"
+    },
     "sessionInfo": {
       "title": "Sessão",
       "untitled": "Tópico sem título",

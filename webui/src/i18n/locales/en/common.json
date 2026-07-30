@@ -900,7 +900,6 @@
         "build": "Ask Mira to build it.",
         "tackle": "What should Mira handle?"
       },
-      "hint": "Ask, plan, code, summarize, or attach a file.",
       "quickActions": {
         "plan": {
           "title": "Create a project plan",
@@ -961,14 +960,6 @@
       "settings": "Open system settings",
       "sessionInfo": "Chat details"
     },
-    "posture": {
-      "readOnly": "read-only",
-      "interactive": "chat",
-      "runtime": "tools",
-      "fixed": "fixed",
-      "composer": "ready",
-      "observer": "view only"
-    },
     "statusButton": {
       "label": "Status"
     },
@@ -997,7 +988,7 @@
         "none": "No next run"
       }
     },
-    "heroSubtitle": "Ask Mira to work with your local workspace.",
+    "heroSubtitle": "Chat with Mira.",
     "composer": {
       "placeholderThread": "Type your message…",
       "placeholderHero": "Ask anything...",

@@ -946,6 +946,9 @@
       "settings": "설정 열기",
       "sessionInfo": "세션 세부 정보"
     },
+    "statusButton": {
+      "label": "상태"
+    },
     "sessionInfo": {
       "title": "세션",
       "untitled": "제목 없는 주제",

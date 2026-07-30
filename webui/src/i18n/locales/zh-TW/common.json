@@ -941,10 +941,13 @@
     },
     "header": {
       "toggleSidebar": "切換側邊欄",
-      "newChat": "開始新執行",
+      "newChat": "新對話",
       "toggleTheme": "切換佈景主題",
       "settings": "開啟設定",
-      "sessionInfo": "執行詳細資料"
+      "sessionInfo": "對話詳細資料"
+    },
+    "statusButton": {
+      "label": "狀態"
     },
     "sessionInfo": {
       "title": "執行",
@@ -971,7 +974,7 @@
         "none": "沒有下次執行"
       }
     },
-    "heroSubtitle": "直接操作可重用的執行內核，保持運行狀態、操作入口，以及未來原生或嵌入式宿主路徑可見。",
+    "heroSubtitle": "和 Mira 對話。",
     "composer": {
       "placeholderThread": "輸入訊息…",
       "placeholderHero": "任何問題都可以問…",

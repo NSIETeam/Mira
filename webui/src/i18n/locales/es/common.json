@@ -947,6 +947,9 @@
       "settings": "Abrir configuración",
       "sessionInfo": "Detalles de la sesión"
     },
+    "statusButton": {
+      "label": "Estado"
+    },
     "sessionInfo": {
       "title": "Sesión",
       "untitled": "Tema sin título",

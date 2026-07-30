@@ -900,7 +900,6 @@
         "build": "让 Mira 帮你做。",
         "tackle": "要处理什么任务？"
       },
-      "hint": "提问、规划、写代码、总结，或附加文件。",
       "quickActions": {
         "plan": {
           "title": "创建项目计划",
@@ -961,14 +960,6 @@
       "settings": "打开设置",
       "sessionInfo": "对话详情"
     },
-    "posture": {
-      "readOnly": "只读",
-      "interactive": "对话",
-      "runtime": "工具",
-      "fixed": "固定",
-      "composer": "可输入",
-      "observer": "仅查看"
-    },
     "statusButton": {
       "label": "状态"
     },
@@ -997,7 +988,7 @@
         "none": "没有下次运行"
       }
     },
-    "heroSubtitle": "让 Mira 直接处理你的本地工作区。",
+    "heroSubtitle": "和 Mira 对话。",
     "composer": {
       "placeholderThread": "输入消息…",
       "placeholderHero": "问 Mira 任何问题…",

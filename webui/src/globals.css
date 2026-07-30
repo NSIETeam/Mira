@@ -366,7 +366,7 @@
   }
   @media (min-width: 640px) {
     .thread-layout[data-layout="hero"] {
-      grid-template-rows: minmax(min-content, 0.72fr) auto 1fr;
+      grid-template-rows: minmax(min-content, 0.58fr) auto 1fr;
     }
   }
 

@@ -946,6 +946,9 @@
       "settings": "Ouvrir les paramètres",
       "sessionInfo": "Détails de la session"
     },
+    "statusButton": {
+      "label": "Statut"
+    },
     "sessionInfo": {
       "title": "Session",
       "untitled": "Sujet sans titre",

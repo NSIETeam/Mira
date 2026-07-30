@@ -946,6 +946,9 @@
       "settings": "Mở cài đặt",
       "sessionInfo": "Chi tiết phiên"
     },
+    "statusButton": {
+      "label": "Trạng thái"
+    },
     "sessionInfo": {
       "title": "Phiên",
       "untitled": "Chủ đề chưa đặt tên",

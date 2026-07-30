@@ -403,7 +403,7 @@ describe("ThreadComposer", () => {
     expect(input.className).toContain("pt-[15px]");
     fireEvent.change(input, { target: { value: "1" } });
     expect(input.className).toContain("pt-[15px]");
-    expect(input.parentElement?.parentElement?.className).toContain("max-w-[48rem]");
+    expect(input.parentElement?.parentElement?.className).toContain("max-w-[54rem]");
   });
 
   it("lets long model preset labels use their intrinsic width", () => {

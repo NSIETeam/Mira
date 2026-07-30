@@ -946,6 +946,9 @@
       "settings": "設定を開く",
       "sessionInfo": "セッション詳細"
     },
+    "statusButton": {
+      "label": "ステータス"
+    },
     "sessionInfo": {
       "title": "セッション",
       "untitled": "無題のトピック",
