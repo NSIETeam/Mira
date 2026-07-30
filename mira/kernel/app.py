@@ -1013,7 +1013,8 @@ class KernelApp:
             return []
         try:
             return subagents.status_snapshot(session_key)
-        except Exception:
+        except (TypeError, ValueError, RuntimeError) as exc:
+            logger.warning("subagent status snapshot failed: {}", exc)
             return []
 
     @staticmethod
@@ -2395,7 +2396,9 @@ class KernelApp:
             row["lifecycle"] = "completed"
             row["result"] = "" if result is None else str(result)
             return dict(row, ok=True)
-        except Exception as exc:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException as exc:
             row["status"] = "error"
             row["lifecycle"] = "failed"
             row["error"] = str(exc)

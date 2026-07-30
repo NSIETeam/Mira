@@ -477,8 +477,8 @@ class AgentLoop:
             from mira.kernel.app import register_kernel_loop
 
             register_kernel_loop(self)
-        except Exception:
-            logger.debug("kernel loop registration skipped", exc_info=True)
+        except (ImportError, TypeError, ValueError, RuntimeError) as exc:
+            logger.debug("kernel loop registration skipped: {}", exc)
 
     def _memory_workspace_from_metadata(self, metadata: Mapping[str, Any] | None) -> Path | None:
         if not isinstance(metadata, Mapping):
@@ -1272,7 +1272,9 @@ class AgentLoop:
                         "Ignoring leaked CancelledError while consuming inbound messages"
                     )
                     continue
-                except Exception as e:
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+                except BaseException as e:
                     logger.warning("Error consuming inbound message: {}, continuing...", e)
                     continue
 
@@ -1390,11 +1392,11 @@ class AgentLoop:
                     logger.info("Task cancelled for session {}", session_key)
                     try:
                         await delivery.abort_stream()
-                    except Exception:
+                    except (OSError, RuntimeError) as exc:
                         logger.debug(
-                            "Could not close stream for cancelled session {}",
+                            "Could not close stream for cancelled session {}: {}",
                             session_key,
-                            exc_info=True,
+                            exc,
                         )
                     # Preserve partial context from the interrupted turn so
                     # the user does not lose tool results and assistant
@@ -1413,14 +1415,16 @@ class AgentLoop:
                                 "Restored partial context for cancelled session {}",
                                 key,
                             )
-                    except Exception:
+                    except (OSError, RuntimeError, ValueError) as exc:
                         logger.debug(
-                            "Could not restore checkpoint for cancelled session {}",
+                            "Could not restore checkpoint for cancelled session {}: {}",
                             session_key,
-                            exc_info=True,
+                            exc,
                         )
                     raise
-                except Exception as exc:
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+                except BaseException as exc:
                     logger.exception("Error processing message for session {}", session_key)
                     await delivery.fail(
                         publish_completion=not turn_continuation.internal_continuation_pending(
@@ -1612,7 +1616,7 @@ class AgentLoop:
             t0 = time.perf_counter()
             try:
                 event = await handler(ctx)
-            except Exception:
+            except BaseException:
                 duration = (time.perf_counter() - t0) * 1000
                 ctx.trace.append(
                     StateTraceEntry(

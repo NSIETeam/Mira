@@ -264,12 +264,19 @@ class AgentRunner:
             logger.info("Injected sustained-goal continuation {}", phase)
         return True, injection_cycles
 
+    @staticmethod
+    def _is_callback_exception(exc: BaseException) -> bool:
+        """Callback errors we can safely recover from; everything else re-raises."""
+        if isinstance(exc, (TypeError, ValueError, RuntimeError, asyncio.CancelledError)):
+            return True
+        return False
+
     def _build_goal_continue_message(self, spec: AgentRunSpec) -> dict[str, str]:
         custom = spec.goal_continue_message
         if callable(custom):
             try:
                 custom = custom()
-            except Exception:
+            except (TypeError, ValueError, RuntimeError) as exc:
                 logger.exception("goal_continue_message callback failed")
                 custom = None
         return build_goal_continue_message(custom)
@@ -297,7 +304,7 @@ class AgentRunner:
                 items = await spec.injection_callback(limit=_MAX_INJECTIONS_PER_TURN)
             else:
                 items = await spec.injection_callback()
-        except Exception:
+        except (TypeError, ValueError, RuntimeError) as exc:
             logger.exception("injection_callback failed")
             return []
         if not items:
@@ -348,7 +355,9 @@ class AgentRunner:
             context.error = None
             context.exception = exc
             raise
-        except Exception as exc:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException as exc:
             context.messages = deepcopy(messages)
             context.stop_reason = "error"
             context.error = f"Error: {type(exc).__name__}: {exc}"
@@ -376,7 +385,7 @@ class AgentRunner:
             else:
                 try:
                     await hook.on_finally(context)
-                except Exception:
+                except (TypeError, ValueError, RuntimeError, asyncio.CancelledError) as exc:
                     logger.exception(
                         "AgentHook.on_finally error after {}",
                         context.stop_reason or "run exception",
@@ -1062,7 +1071,7 @@ class AgentRunner:
         retry_messages = self._budget_exhausted_finalization_messages(messages)
         try:
             response = await self._request_no_tools(spec, retry_messages)
-        except Exception:
+        except (OSError, TimeoutError, asyncio.TimeoutError, ValueError, RuntimeError) as exc:
             logger.exception(
                 "Budget-exhausted finalization failed for {}; using fallback",
                 spec.session_key or "default",
@@ -1145,7 +1154,8 @@ class AgentRunner:
     ) -> dict[str, int]:
         try:
             tools = spec.tools.get_definitions()
-        except Exception:
+        except (TypeError, ValueError, RuntimeError) as exc:
+            logger.warning("Failed to get tool definitions for usage estimation: {}", exc)
             tools = None
         prompt_tokens, _ = estimate_prompt_tokens_chain(
             spec.runtime.provider,
@@ -1330,7 +1340,9 @@ class AgentRunner:
                 result = await spec.tools.execute(tool_call.name, params)
         except asyncio.CancelledError:
             raise
-        except Exception as exc:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException as exc:
             await middleware_stack.on_error(tool_call, tool, params, exc)
             await hook.on_execute_tool_error(context, tool_call, tool, params, exc)
             event = {
