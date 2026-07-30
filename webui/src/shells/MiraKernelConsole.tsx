@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -153,6 +154,7 @@ export function MiraKernelConsole({
   onSelectBoardPort,
   onAttachBoard,
   onRunOperatorCommand,
+  onClose,
 }: {
   kernelManifest: KernelManifestPayload | null;
   shellDescriptor: ShellDescriptorPayload | null;
@@ -182,6 +184,7 @@ export function MiraKernelConsole({
     details?: Record<string, string | number | boolean | null>;
     action_result?: KernelOperatorActionResult;
   } | void>;
+  onClose?: () => void;
 }) {
   const { i18n } = useTranslation();
   const isChineseLocale = (i18n.resolvedLanguage ?? i18n.language ?? "").toLowerCase().startsWith("zh");
@@ -205,6 +208,7 @@ export function MiraKernelConsole({
     focusFaults: isChineseLocale ? "查看故障" : "Focus faults",
     moduleGraph: isChineseLocale ? "模块图" : "Open module graph",
     boardStatus: isChineseLocale ? "板卡状态" : "Board status",
+    close: isChineseLocale ? "收起控制台" : "Collapse console",
   };
   const appIdentity = kernelManifest?.identity?.app_name ?? "Mira";
   const hostContract = resolveShellRegistration(shellDescriptor).hostContract;
@@ -1081,8 +1085,20 @@ export function MiraKernelConsole({
   return (
     <aside className="hidden w-[300px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[324px]">
       <div className="border-b border-border/70 px-3 py-3">
-        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          {appIdentity} {text.console}
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 truncate text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            {appIdentity} {text.console}
+          </div>
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={text.close}
+              className="rounded-full border border-slate-200/80 bg-white/80 p-1 text-slate-500 transition hover:border-slate-300 hover:text-slate-950"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
         </div>
         <div className="mt-2 flex flex-col gap-1.5">
           <ConsoleBadge label={text.profile} value={profile?.name ?? "unknown"} tone="slate" />

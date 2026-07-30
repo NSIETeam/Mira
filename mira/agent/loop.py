@@ -24,9 +24,9 @@ from mira.agent.automation_turns import publish_next_deferred_turn
 from mira.agent.context import ContextBuilder
 from mira.agent.cron_turns import CronTurnCoordinator
 from mira.agent.hook import AgentHook, AgentTurnHookFactory
+from mira.agent.maturity import VirtualContextManager
 from mira.agent.memory import Consolidator, MemoryStore
 from mira.agent.model_runtime import ModelRuntimeResolver
-from mira.agent.maturity import VirtualContextManager
 from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunner, AgentRunSpec
 from mira.agent.subagent import SubagentManager
 from mira.agent.tools.context import RequestContext, bind_request_context, reset_request_context

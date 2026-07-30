@@ -26,7 +26,6 @@ import {
   installedCliAppsFromPayload,
   isCliAppsPayload,
 } from "@/lib/cli-app-events";
-import { cn } from "@/lib/utils";
 import {
   MCP_PRESETS_CHANGED_EVENT,
   installedMcpPresetsFromPayload,
@@ -1103,7 +1102,7 @@ export function ThreadShell({
   ) : (
     <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
       <HeroGreeting text={t(heroGreetingKey)} />
-      <p className="mt-2 max-w-md text-sm text-muted-foreground">
+      <p className="mt-2 max-w-md text-[13px] text-muted-foreground">
         {isChineseLocale ? "输入问题、任务或文件需求，按 Enter 发送。" : "Type a question, task, or file request, then press Enter."}
       </p>
     </div>
@@ -1121,9 +1120,9 @@ export function ThreadShell({
   return (
     <section
       ref={shellRef}
-      className="relative flex min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.08),transparent_28%),linear-gradient(180deg,rgba(248,250,252,0.95)_0%,rgba(241,245,249,0.98)_100%)]"
+      className="relative flex min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(148,163,184,0.16),transparent_34%),linear-gradient(180deg,rgba(248,250,252,0.94)_0%,rgba(248,250,252,0.99)_100%)]"
     >
-      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden px-3 pb-3 pt-2">
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden px-2 pb-2 pt-1">
         {!hideHeader ? (
           <ThreadHeader
             title={title}
@@ -1145,39 +1144,15 @@ export function ThreadShell({
         >
           {!session && !loading ? (
             <div className="relative flex min-h-0 flex-1 items-center justify-center px-4 py-8">
-              <div className="w-full max-w-3xl rounded-[30px] border border-slate-200/90 bg-white/95 p-5 shadow-[0_28px_90px_rgba(15,23,42,0.12)] sm:p-7">
-                <div className="mb-5 text-center">
-                  {emptyState}
-                </div>
-                <div className="rounded-[26px] border border-slate-950/10 bg-slate-50/80 p-2 shadow-inner">
-                  {composer}
-                </div>
+              <div className="w-full max-w-[50rem]">
+                <div className="mb-4 text-center">{emptyState}</div>
+                {composer}
               </div>
             </div>
           ) : (
-          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/88 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-[linear-gradient(180deg,rgba(248,250,252,0.96)_0%,rgba(248,250,252,0)_100%)]" />
-            <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b border-slate-200/70 px-4 py-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {isChineseLocale ? "对话" : "Conversation"}
-              </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]",
-                    turnActive
-                      ? "border-cyan-300/80 bg-cyan-50 text-cyan-700"
-                      : "border-slate-300/80 bg-slate-50 text-slate-700",
-                  )}
-                >
-                  {turnActive ? (isChineseLocale ? "回复中" : "streaming") : (isChineseLocale ? "空闲" : "idle")}
-                </span>
-                <span className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700">
-                  {historyKey ? (isChineseLocale ? "已连接" : "attached") : (isChineseLocale ? "待开始" : "standby")}
-                </span>
-              </div>
-            </div>
-            <div className="h-full pt-11">
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[22px] bg-white/58 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-[linear-gradient(180deg,rgba(248,250,252,0.92)_0%,rgba(248,250,252,0)_100%)]" />
+            <div className="h-full">
               <ThreadViewport
                 ref={viewportRef}
                 messages={displayMessages}

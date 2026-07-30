@@ -5,10 +5,10 @@ import subprocess
 import sys
 import types
 
-from mira.cli import commands
-from mira.desktop import bootstrap as desktop_bootstrap
-from mira.config.loader import load_config
 import scripts.mira_desktop as mira_desktop
+from mira.cli import commands
+from mira.config.loader import load_config
+from mira.desktop import bootstrap as desktop_bootstrap
 
 
 def test_packaged_desktop_entrypoint_smoke_mode() -> None:

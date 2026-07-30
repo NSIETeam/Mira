@@ -669,7 +669,9 @@ export const ThreadViewport = forwardRef<ThreadViewportHandle, ThreadViewportPro
             data-testid="thread-composer-dock"
             className={cn(
               "row-start-2 z-10 w-full",
-              hasMessages ? "sticky bottom-0 bg-background" : "relative self-center",
+              hasMessages
+                ? "sticky bottom-0 bg-[linear-gradient(180deg,rgba(248,250,252,0)_0%,rgba(248,250,252,0.94)_26%,rgba(248,250,252,0.98)_100%)]"
+                : "relative self-center",
             )}
           >
             <div

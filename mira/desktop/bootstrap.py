@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
-import shutil
 from pathlib import Path
 from typing import Sequence
 

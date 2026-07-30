@@ -7,11 +7,11 @@ import pytest
 from mira.agent.loop import AgentLoop
 from mira.agent.maturity import (
     ToolMiddlewareStack,
+    VirtualContextManager,
     apply_agent_role_to_task,
     list_agent_role_profiles,
     normalize_media_contract,
     parse_workflow_dsl,
-    VirtualContextManager,
 )
 from mira.agent.tools.base import ToolResult
 from mira.bus.queue import MessageBus

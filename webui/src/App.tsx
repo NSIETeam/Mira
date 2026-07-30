@@ -1180,6 +1180,7 @@ function Shell({
       t("app.restart.completed", { seconds }),
   });
   const { connectionStatus, runtimeModel, recentErrors } = useKernelConsoleState(client);
+  const [kernelConsoleOpen, setKernelConsoleOpen] = useState(false);
   const shellPrivilegeRole = shellDescriptor?.host_contract?.privilege?.role ?? "user";
   const kernelHealthLabel = connectionStatus !== "connected"
     ? "offline"
@@ -1586,47 +1587,63 @@ function Shell({
           </Suspense>
         ) : null}
         kernelConsole={executionSurfaceActive && shellKernelConsoleEnabled ? (
-          <MiraKernelConsole
-            kernelManifest={kernelManifest}
-            shellDescriptor={shellDescriptor}
-            activeExecution={activeExecution}
-            activeWorkspaceScope={activeWorkspaceScope}
-            workspaceError={workspaceError}
-            runningExecutionCount={runningExecutionIdList.length}
-            connectionStatus={connectionStatus}
-            runtimeModel={runtimeModel}
-            recentErrors={recentErrors}
-            embeddedTargetHint={
-              kernelManifest?.profile.name === "mira-embedded-lab"
-                ? "Embedded lab kernel profile enabled for constrained targets"
-                : null
-            }
-            operatorActions={operatorActionMap}
-            selectedPane={kernelControl.selectedPane}
-            onSelectPane={kernelControl.setSelectedPane}
-            selectedAdapterName={kernelControl.selectedAdapterName}
-            onSelectAdapter={kernelControl.setSelectedAdapterName}
-            selectedModuleName={kernelControl.selectedModuleName}
-            onSelectModule={(name) => {
-              void kernelControl.focusModule(name);
-            }}
-            selectedBoardTransport={kernelControl.selectedBoardTransport}
-            onSelectBoardTransport={kernelControl.setSelectedBoardTransport}
-            selectedBoardPort={kernelControl.selectedBoardPort}
-            onSelectBoardPort={kernelControl.setSelectedBoardPort}
-            onAttachBoard={(options) => {
-              void kernelControl.attachBoard(options);
-            }}
-            onRunOperatorCommand={async (command) => {
-              const payload = await executeKernelOperatorCommand(token, command);
-              onKernelChange(payload.kernel);
-              return {
-                output: payload.output,
-                targetPane: payload.target_pane ?? null,
-                details: payload.details,
-              };
-            }}
-          />
+          <>
+            {kernelConsoleOpen ? (
+              <MiraKernelConsole
+                kernelManifest={kernelManifest}
+                shellDescriptor={shellDescriptor}
+                activeExecution={activeExecution}
+                activeWorkspaceScope={activeWorkspaceScope}
+                workspaceError={workspaceError}
+                runningExecutionCount={runningExecutionIdList.length}
+                connectionStatus={connectionStatus}
+                runtimeModel={runtimeModel}
+                recentErrors={recentErrors}
+                embeddedTargetHint={
+                  kernelManifest?.profile.name === "mira-embedded-lab"
+                    ? "Embedded lab kernel profile enabled for constrained targets"
+                    : null
+                }
+                operatorActions={operatorActionMap}
+                selectedPane={kernelControl.selectedPane}
+                onSelectPane={kernelControl.setSelectedPane}
+                selectedAdapterName={kernelControl.selectedAdapterName}
+                onSelectAdapter={kernelControl.setSelectedAdapterName}
+                selectedModuleName={kernelControl.selectedModuleName}
+                onSelectModule={(name) => {
+                  void kernelControl.focusModule(name);
+                }}
+                selectedBoardTransport={kernelControl.selectedBoardTransport}
+                onSelectBoardTransport={kernelControl.setSelectedBoardTransport}
+                selectedBoardPort={kernelControl.selectedBoardPort}
+                onSelectBoardPort={kernelControl.setSelectedBoardPort}
+                onAttachBoard={(options) => {
+                  void kernelControl.attachBoard(options);
+                }}
+                onRunOperatorCommand={async (command) => {
+                  const payload = await executeKernelOperatorCommand(token, command);
+                  onKernelChange(payload.kernel);
+                  return {
+                    output: payload.output,
+                    targetPane: payload.target_pane ?? null,
+                    details: payload.details,
+                  };
+                }}
+                onClose={() => setKernelConsoleOpen(false)}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setKernelConsoleOpen(true)}
+                className="fixed bottom-4 right-32 z-40 hidden rounded-full border border-slate-200/80 bg-white/90 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-lg backdrop-blur transition hover:border-slate-300 hover:text-slate-950 lg:inline-flex"
+              >
+                Kernel
+                <span className="ml-2 rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[10px] tracking-normal text-emerald-700">
+                  {connectionStatus}
+                </span>
+              </button>
+            )}
+          </>
         ) : null}
         executionView={(
           <div

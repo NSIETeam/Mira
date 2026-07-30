@@ -43,6 +43,7 @@
   "sidebar": {
     "navigation": "侧边栏导航",
     "collapse": "收起侧边栏",
+    "workbench": "工作",
     "newChat": "新建执行",
     "searchAria": "搜索",
     "searchPlaceholder": "搜索",
