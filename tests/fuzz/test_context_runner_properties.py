@@ -11,6 +11,7 @@ from mira.agent.context_governance import ContextGovernanceConfig, ContextGovern
 from mira.agent.runner import AgentRunner
 
 _ROLE = st.sampled_from(["user", "assistant", "tool", "system", "", "invalid"])
+_MODEL_ROLES = {"user", "assistant", "tool", "system"}
 _TEXT = st.text(max_size=2_000)
 _CONTENT = st.one_of(_TEXT, st.none(), st.lists(st.dictionaries(st.text(max_size=20), _TEXT, max_size=4), max_size=8))
 _MESSAGE = st.fixed_dictionaries(
@@ -53,6 +54,7 @@ def test_context_governor_prepare_for_model_never_crashes(tmp_path: Path, messag
 
     assert isinstance(result, list)
     assert all(isinstance(message, dict) for message in result)
+    assert all(message.get("role") in _MODEL_ROLES for message in result)
 
 
 @settings(max_examples=100, deadline=None)

@@ -39,6 +39,7 @@ BACKFILL_CONTENT = "[Tool result unavailable — call was interrupted or lost]"
 PLACEHOLDER_TEXTS = frozenset({
     "[Previous assistant message omitted.]",
 })
+MODEL_MESSAGE_ROLES = frozenset({"system", "user", "assistant", "tool"})
 
 
 def _tool_call_name_is_valid(tool_call: Any) -> bool:
@@ -79,6 +80,7 @@ class ContextGovernor:
         compacted_tool_call_ids: set[str],
     ) -> list[dict[str, Any]]:
         updated = self.strip_placeholder_assistant_messages(messages)
+        updated = self.drop_invalid_roles(updated)
         updated = self.strip_malformed_tool_calls(updated)
         updated = self.drop_orphan_tool_results(updated)
         updated = self.backfill_missing_tool_results(updated)
@@ -87,6 +89,28 @@ class ContextGovernor:
         updated = self.snip_history(config, updated)
         updated = self.drop_orphan_tool_results(updated)
         return self.backfill_missing_tool_results(updated)
+
+    @staticmethod
+    def drop_invalid_roles(
+        messages: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Remove corrupted history entries that providers cannot accept."""
+        updated: list[dict[str, Any]] | None = None
+        for idx, msg in enumerate(messages):
+            if msg.get("role") not in MODEL_MESSAGE_ROLES:
+                if updated is None:
+                    updated = [dict(m) for m in messages[:idx]]
+                logger.warning(
+                    "Dropping model-facing message with invalid role: {!r}",
+                    msg.get("role"),
+                )
+                continue
+            if updated is not None:
+                updated.append(dict(msg))
+
+        if updated is None:
+            return messages
+        return updated
 
     @staticmethod
     def input_budget(config: ContextGovernanceConfig) -> int:

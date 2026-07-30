@@ -11,7 +11,7 @@ on:
       - .github/workflows/benchmarks.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   benchmarks:
@@ -35,7 +35,7 @@ jobs:
       - name: Run lightweight benchmark guards
         run: |
           set -o pipefail
-          uv run --no-sync python -m pytest tests/benchmarks -q --durations=0 | tee benchmark-output.txt
+          uv run --no-sync python -m pytest tests/benchmarks -q --durations=0 --benchmark-json=benchmark.json | tee benchmark-output.txt
           {
             echo "## Benchmark Guards"
             echo
@@ -46,9 +46,22 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Track benchmark trends
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: pytest
+          output-file-path: benchmark.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: "120%"
+          comment-on-alert: true
+          fail-on-alert: false
+
       - name: Upload benchmark output
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-output
-          path: benchmark-output.txt
+          path: |
+            benchmark-output.txt
+            benchmark.json
           if-no-files-found: error
