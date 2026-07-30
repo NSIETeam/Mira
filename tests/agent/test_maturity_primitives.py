@@ -19,6 +19,7 @@ from mira.bus.events import InboundMessage, OutboundMessage
 from mira.bus.queue import MessageBus
 from mira.config.schema import ModuleConfig, ModulesConfig
 from mira.execution_gate import ExecutionGate
+from mira.kernel.acl import CapabilityAuditEvent
 from mira.providers.base import ToolCallRequest
 from mira.session.manager import SessionManager
 from tests.agent.conftest import make_provider
@@ -171,6 +172,34 @@ def test_agent_loop_builds_capability_policy_from_metadata(tmp_path):
 
     assert policy is not None
     assert set(policy.rules) == {"/fs/read", "/shell/exec"}
+
+
+def test_agent_loop_persists_capability_audit_event_to_session(tmp_path):
+    loop = AgentLoop(
+        bus=MessageBus(),
+        provider=make_provider(spec=False),
+        workspace=tmp_path,
+    )
+    session = loop.sessions.get_or_create("cli:audit")
+
+    loop._record_capability_audit_event(
+        session,
+        CapabilityAuditEvent(
+            agent="king",
+            capability="/fs/write",
+            target="/repo/app.py",
+            decision="deny",
+            reason="target is outside allow list",
+        ),
+    )
+
+    audit_log = loop.sessions.get_or_create("cli:audit").metadata["capability_audit_log"]
+    assert audit_log[-1]["agent"] == "king"
+    assert audit_log[-1]["capability"] == "/fs/write"
+    assert audit_log[-1]["target"] == "/repo/app.py"
+    assert audit_log[-1]["decision"] == "deny"
+    assert audit_log[-1]["reason"] == "target is outside allow list"
+    assert audit_log[-1]["timestamp"]
 
 
 @pytest.mark.asyncio

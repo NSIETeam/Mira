@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from typing import TYPE_CHECKING, Any
 
@@ -195,6 +196,11 @@ class ToolRegistry:
         )
         if result.allowed:
             return None
+        audit_sink = getattr(ctx, "capability_audit_sink", None)
+        audit_log = getattr(capability_policy, "audit_log", None)
+        if callable(audit_sink) and isinstance(audit_log, list) and audit_log:
+            with contextlib.suppress(Exception):
+                audit_sink(audit_log[-1])
         if result.decision == "approval_required":
             return ToolResult.error(
                 f"Error: Tool '{name}' requires approval for capability {capability} on {target}."

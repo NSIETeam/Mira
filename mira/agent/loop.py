@@ -731,6 +731,24 @@ class AgentLoop:
             return None
         return CapabilityPolicy(agent=sender_id or "unknown", rules=tuple(rules))
 
+    def _record_capability_audit_event(self, session: Session, event: Any) -> None:
+        timestamp = getattr(event, "timestamp", None)
+        isoformat = getattr(timestamp, "isoformat", None)
+        timestamp_value = isoformat() if callable(isoformat) else str(timestamp or "")
+        item = {
+            "agent": str(getattr(event, "agent", "")),
+            "capability": str(getattr(event, "capability", "")),
+            "target": str(getattr(event, "target", "")),
+            "decision": str(getattr(event, "decision", "")),
+            "reason": str(getattr(event, "reason", "")),
+            "timestamp": timestamp_value,
+        }
+        current = session.metadata.get("capability_audit_log")
+        audit_log = list(current) if isinstance(current, list) else []
+        audit_log.append(item)
+        session.metadata["capability_audit_log"] = audit_log[-200:]
+        self.sessions.save(session)
+
     def _module_enabled(self, name: str, *, default: bool = True) -> bool:
         is_enabled = getattr(self.modules_config, "is_enabled", None)
         return bool(is_enabled(name, default=default)) if callable(is_enabled) else default
@@ -1017,10 +1035,11 @@ class AgentLoop:
 
     def _request_context_for_turn(self, ctx: TurnContext) -> RequestContext:
         assert ctx.session is not None
+        session = ctx.session
         scope = self.workspace_scopes.for_turn(
             channel=ctx.delivery.route.channel,
             message_metadata=ctx.msg.metadata,
-            session_metadata=ctx.session.metadata,
+            session_metadata=session.metadata,
         )
         return RequestContext(
             channel=ctx.delivery.route.channel,
@@ -1037,6 +1056,10 @@ class AgentLoop:
             capability_policy=self._capability_policy_for_metadata(
                 ctx.msg.metadata,
                 sender_id=ctx.msg.sender_id,
+            ),
+            capability_audit_sink=lambda event: self._record_capability_audit_event(
+                session,
+                event,
             ),
         )
 
@@ -1313,6 +1336,11 @@ class AgentLoop:
             capability_policy=self._capability_policy_for_metadata(
                 metadata,
                 sender_id=metadata.get("sender_id") if isinstance(metadata, dict) else None,
+            ),
+            capability_audit_sink=(
+                (lambda event: self._record_capability_audit_event(session, event))
+                if session is not None
+                else None
             ),
         )
         file_state_token = bind_file_states(self._file_state_store.for_session(active_session_key))

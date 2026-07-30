@@ -129,6 +129,7 @@ def test_tool_registry_enforces_capability_policy_deny() -> None:
         agent="king",
         rules=(CapabilityRule("/fs/write", allow=("/tmp/*",)),),
     )
+    audit_events = []
 
     with request_context(
         RequestContext(
@@ -136,6 +137,7 @@ def test_tool_registry_enforces_capability_policy_deny() -> None:
             chat_id="direct",
             sender_id="king",
             capability_policy=policy,
+            capability_audit_sink=audit_events.append,
         )
     ):
         tool, _params, error = tools.prepare_call("write_file", {"path": "/repo/app.py"})
@@ -144,6 +146,7 @@ def test_tool_registry_enforces_capability_policy_deny() -> None:
     assert error is not None
     assert "denied by capability policy" in str(error)
     assert policy.audit_log[-1].target == "/repo/app.py"
+    assert audit_events == [policy.audit_log[-1]]
 
 
 def test_tool_registry_enforces_capability_policy_approval_required() -> None:
