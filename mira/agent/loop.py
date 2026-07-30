@@ -19,19 +19,15 @@ from loguru import logger
 
 from mira.agent import context as agent_context
 from mira.agent import model_presets as preset_helpers
-from mira.agent.autocompact import AutoCompact
 from mira.agent.automation_turns import publish_next_deferred_turn
-from mira.agent.context import ContextBuilder
 from mira.agent.cron_turns import CronTurnCoordinator
 from mira.agent.hook import AgentHook, AgentTurnHookFactory
-from mira.agent.maturity import VirtualContextManager
 from mira.agent.memory import Consolidator, MemoryStore
 from mira.agent.model_runtime import ModelRuntimeResolver
-from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunner, AgentRunSpec
-from mira.agent.subagent import SubagentManager
+from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunSpec
+from mira.agent.subsystems import create_agent_loop_subsystems
 from mira.agent.tools.context import RequestContext, bind_request_context, reset_request_context
-from mira.agent.tools.exec_session import ExecSessionManager
-from mira.agent.tools.file_state import FileStateStore, bind_file_states, reset_file_states
+from mira.agent.tools.file_state import bind_file_states, reset_file_states
 from mira.agent.tools.message import MessageTool
 from mira.agent.tools.registry import ToolRegistry
 from mira.agent.tools.self import MyTool
@@ -515,16 +511,7 @@ class AgentLoop:
         self._extra_hooks: list[AgentHook] = hooks or []
         self._hook_factories: list[AgentTurnHookFactory] = hook_factories or []
 
-        self.context = ContextBuilder(workspace, timezone=timezone, disabled_skills=disabled_skills)
-        self.sessions = session_manager or SessionManager(workspace)
-        self.sessions.set_file_cap_archiver(self.context.memory.raw_archive)
-        self.tools = ToolRegistry()
-        # One file-read/write tracker per logical session. The tool registry is
-        # shared by this loop, so tools resolve the active state via contextvars.
-        self._file_state_store = FileStateStore()
-        self._exec_session_manager = ExecSessionManager()
-        self.runner = AgentRunner()
-        self.subagents = SubagentManager(
+        subsystems = create_agent_loop_subsystems(
             workspace=workspace,
             bus=bus,
             tools_config=_tc,
@@ -535,9 +522,22 @@ class AgentLoop:
             max_concurrent_subagents=max_concurrent_subagents,
             fail_on_tool_error=fail_on_tool_error,
             execution_gate=self.execution_gate,
-            llm_wall_timeout_for_session=lambda sk: runner_wall_llm_timeout_s(self.sessions, sk),
+            session_manager=session_manager,
+            timezone=timezone,
+            consolidation_ratio=consolidation_ratio,
+            unified_session=unified_session,
+            session_ttl_minutes=session_ttl_minutes,
         )
-        self._virtual_context_manager = VirtualContextManager()
+        self.context = subsystems.context
+        self.sessions = subsystems.sessions
+        self.tools = subsystems.tools
+        # One file-read/write tracker per logical session. The tool registry is
+        # shared by this loop, so tools resolve the active state via contextvars.
+        self._file_state_store = subsystems.file_state_store
+        self._exec_session_manager = subsystems.exec_session_manager
+        self.runner = subsystems.runner
+        self.subagents = subsystems.subagents
+        self._virtual_context_manager = subsystems.virtual_context_manager
         self._unified_session = unified_session
         self._running = False
         self._mcp_servers = mcp_servers or {}
@@ -573,20 +573,9 @@ class AgentLoop:
         self._concurrency_gate: asyncio.Semaphore | None = (
             asyncio.Semaphore(_max) if _max > 0 else None
         )
-        self.consolidator = Consolidator(
-            store=self.context.memory,
-            sessions=self.sessions,
-            build_messages=self.context.build_messages,
-            get_tool_definitions=self.tools.get_definitions,
-            consolidation_ratio=consolidation_ratio,
-            unified_session=unified_session,
-        )
+        self.consolidator = subsystems.consolidator
         self._memory_consolidators: dict[str, Consolidator] = {}
-        self.auto_compact = AutoCompact(
-            sessions=self.sessions,
-            consolidator=self.consolidator,
-            session_ttl_minutes=session_ttl_minutes,
-        )
+        self.auto_compact = subsystems.auto_compact
         self._idle_compact_check_interval_s = idle_compact_check_interval_seconds
         self._next_idle_compact_check_at = time.monotonic()
         if model_preset:

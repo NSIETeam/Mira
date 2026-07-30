@@ -13,10 +13,13 @@ from mira.agent.maturity import (
     normalize_media_contract,
     parse_workflow_dsl,
 )
+from mira.agent.subsystems import create_agent_loop_subsystems
 from mira.agent.tools.base import ToolResult
 from mira.bus.queue import MessageBus
 from mira.config.schema import ModuleConfig, ModulesConfig
+from mira.execution_gate import ExecutionGate
 from mira.providers.base import ToolCallRequest
+from mira.session.manager import SessionManager
 from tests.agent.conftest import make_provider
 
 
@@ -118,6 +121,33 @@ def test_agent_loop_accepts_parameter_object(tmp_path):
     assert loop.provider is provider
     assert loop.model == "test-model"
     assert loop.loop_config.restrict_to_workspace is True
+
+
+def test_agent_loop_subsystem_factory_uses_supplied_session_manager(tmp_path):
+    sessions = SessionManager(tmp_path)
+
+    subsystems = create_agent_loop_subsystems(
+        workspace=tmp_path,
+        bus=MessageBus(),
+        tools_config=None,
+        max_tool_result_chars=4096,
+        restrict_to_workspace=True,
+        disabled_skills=None,
+        max_iterations=4,
+        max_concurrent_subagents=1,
+        fail_on_tool_error=None,
+        execution_gate=ExecutionGate(),
+        session_manager=sessions,
+        timezone=None,
+        consolidation_ratio=0.5,
+        unified_session=False,
+        session_ttl_minutes=0,
+    )
+
+    assert subsystems.sessions is sessions
+    assert subsystems.consolidator.sessions is sessions
+    assert subsystems.auto_compact.sessions is sessions
+    assert subsystems.tools.tool_names == []
 
 
 def test_optional_workflow_dsl_tool_mounts_when_enabled(tmp_path):
