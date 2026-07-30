@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cache
 from importlib.metadata import entry_points
-from typing import Any
+from typing import Any, Literal
 
 from loguru import logger
 from pydantic.alias_generators import to_snake
@@ -54,6 +54,9 @@ class ProviderSpec:
     # | "github_copilot" | "bedrock"
     backend: str = "openai_compat"
     provider_factory: str = ""  # Optional "module:function" factory for split provider packages.
+    implementation_status: Literal["core", "openai_compat_migration", "split_package"] = "core"
+    migration_target: str = ""
+    split_package: str = ""
 
     # extra env vars / request headers supplied by the provider integration.
     env_extras: tuple[tuple[str, str], ...] = ()
@@ -154,6 +157,8 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         env_key="",
         display_name="Azure OpenAI",
         backend="azure_openai",
+        implementation_status="openai_compat_migration",
+        migration_target="openai_compat",
         is_direct=True,
     ),
     # === AWS Bedrock (native Converse API via bedrock-runtime) =============
@@ -177,6 +182,8 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         env_key="AWS_BEARER_TOKEN_BEDROCK",
         display_name="AWS Bedrock",
         backend="bedrock",
+        implementation_status="split_package",
+        split_package="mira-provider-bedrock",
         is_direct=True,
     ),
     # === Gateways (detected by api_key / api_base, not model name) =========
@@ -421,6 +428,8 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
             ),
         ),
         backend="openai_codex",
+        implementation_status="openai_compat_migration",
+        migration_target="openai_compat",
         detect_by_base_keyword="codex",
         default_api_base="https://chatgpt.com/backend-api",
         is_oauth=True,
@@ -441,6 +450,8 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
             ),
         ),
         backend="xai_grok",
+        implementation_status="openai_compat_migration",
+        migration_target="openai_compat",
         default_api_base="https://cli-chat-proxy.grok.com/v1",
         is_oauth=True,
     ),
@@ -451,6 +462,8 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         env_key="",
         display_name="Github Copilot",
         backend="github_copilot",
+        implementation_status="split_package",
+        split_package="mira-provider-copilot",
         default_api_base="https://api.githubcopilot.com",
         strip_model_prefix=True,
         is_oauth=True,
@@ -717,6 +730,59 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         default_api_base="https://qianfan.baidubce.com/v2"
     ),
 )
+
+
+# ---------------------------------------------------------------------------
+# Implementation split audit
+# ---------------------------------------------------------------------------
+
+CORE_PROVIDER_BACKENDS: tuple[str, ...] = ("openai_compat", "anthropic")
+
+
+def provider_implementation_violations(
+    specs: tuple[ProviderSpec, ...] | None = None,
+) -> list[str]:
+    """Return registry rows that block the provider split roadmap."""
+    rows = specs if specs is not None else provider_specs()
+    violations: list[str] = []
+    for spec in rows:
+        if spec.implementation_status == "core":
+            if spec.backend not in CORE_PROVIDER_BACKENDS and not spec.provider_factory:
+                violations.append(
+                    f"{spec.name}: backend {spec.backend!r} is not allowed in core"
+                )
+            continue
+        if spec.implementation_status == "openai_compat_migration":
+            if spec.migration_target != "openai_compat":
+                violations.append(f"{spec.name}: missing openai_compat migration target")
+            continue
+        if spec.implementation_status == "split_package" and not spec.split_package:
+            violations.append(f"{spec.name}: missing split package name")
+    return violations
+
+
+def provider_implementation_summary(
+    specs: tuple[ProviderSpec, ...] | None = None,
+) -> dict[str, object]:
+    """Summarise core vs migration provider implementation boundaries."""
+    rows = specs if specs is not None else provider_specs()
+    return {
+        "core_backends": list(CORE_PROVIDER_BACKENDS),
+        "core_provider_specs": [
+            spec.name for spec in rows if spec.implementation_status == "core"
+        ],
+        "openai_compat_migrations": [
+            spec.name
+            for spec in rows
+            if spec.implementation_status == "openai_compat_migration"
+        ],
+        "split_packages": [
+            {"name": spec.name, "package": spec.split_package}
+            for spec in rows
+            if spec.implementation_status == "split_package"
+        ],
+        "violations": provider_implementation_violations(rows),
+    }
 
 
 # ---------------------------------------------------------------------------
