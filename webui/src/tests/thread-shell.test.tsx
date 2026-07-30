@@ -1229,7 +1229,7 @@ describe("ThreadShell", () => {
       expect(screen.getByPlaceholderText("Ask anything...")).toBeInTheDocument(),
     );
     const input = screen.getByPlaceholderText("Ask anything...");
-    expect(input.className).toContain("min-h-[78px]");
+    expect(input.className).toContain("min-h-[52px]");
     expect(screen.queryByText("old answer")).not.toBeInTheDocument();
   });
 
@@ -1849,7 +1849,8 @@ describe("ThreadShell", () => {
     );
 
     expect(screen.getByText(HERO_GREETING_PATTERN)).toBeInTheDocument();
-    expect(container.querySelector(".thread-viewport-scrollbar")).not.toBeInTheDocument();
+    expect(container.querySelector(".thread-viewport-scrollbar")).toBeInTheDocument();
+    expect(screen.getByTestId("thread-welcome-layout")).toHaveAttribute("data-layout", "hero");
 
     await act(async () => {
       rerender(
@@ -1867,6 +1868,7 @@ describe("ThreadShell", () => {
 
     await waitFor(() => expect(screen.getByText("loaded answer")).toBeInTheDocument());
     expect(container.querySelector(".thread-viewport-scrollbar")).toBeInTheDocument();
+    expect(screen.queryByTestId("thread-welcome-layout")).not.toBeInTheDocument();
   });
 
   it("opens slash commands on the blank welcome page", async () => {

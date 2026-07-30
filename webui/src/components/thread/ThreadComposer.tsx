@@ -1844,8 +1844,8 @@ export function ThreadComposer({
     "w-full resize-none bg-transparent",
     isHero
       ? cn(
-          "min-h-[64px] px-4 text-[16px] leading-6 sm:px-5",
-          relaxedHeroInput ? "pb-2 pt-[20px]" : "pb-1.5 pt-4",
+          "min-h-[52px] px-4 text-[16px] leading-6 sm:px-5",
+          relaxedHeroInput ? "pb-1.5 pt-[15px]" : "pb-1.5 pt-3",
         )
       : "min-h-[50px] px-3.5 pb-1.5 pt-3 text-[16px] leading-5 sm:px-4",
   );
@@ -1888,7 +1888,7 @@ export function ThreadComposer({
         className={cn(
           "thread-composer-surface group/composer relative mx-auto flex w-full min-w-0 flex-col overflow-visible border border-slate-300/80 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.12)] transition-all duration-200 focus-within:border-slate-900 focus-within:shadow-[0_22px_60px_rgba(15,23,42,0.16)] dark:border-white/15 dark:bg-card",
           isHero
-            ? "max-w-[52rem] rounded-[24px]"
+            ? "max-w-[48rem] rounded-[22px]"
             : "max-w-[49.5rem] rounded-[22px]",
           disabled && "opacity-60",
           isDragging && "ring-2 ring-primary/40 motion-reduce:ring-0 motion-reduce:border-primary",

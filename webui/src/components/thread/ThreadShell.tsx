@@ -348,11 +348,8 @@ function EmptyThreadPrompt({
 }) {
   return (
     <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-      <div className="mb-3 rounded-full border border-slate-200/80 bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-sm">
-        Mira chat
-      </div>
       <HeroGreeting text={greeting} />
-      <p className="mt-2 max-w-[26rem] text-[13px] leading-5 text-muted-foreground">
+      <p className="mt-1.5 hidden max-w-[24rem] text-[12px] leading-5 text-muted-foreground sm:block">
         {hint}
       </p>
     </div>
@@ -1159,17 +1156,9 @@ export function ThreadShell({
         <FilePreviewAvailabilityProvider
           resolve={historyKey ? resolveFilePreviewAvailability : undefined}
         >
-          {!session && !loading ? (
-            <div className="relative flex min-h-0 flex-1 items-center justify-center px-3 py-5 sm:px-4">
-              <div className="w-full max-w-[46rem]">
-                <div className="mb-3 text-center">{emptyState}</div>
-                {composer}
-              </div>
-            </div>
-          ) : (
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-[20px] border border-slate-200/75 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
             <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-[linear-gradient(180deg,rgba(248,250,252,0.92)_0%,rgba(248,250,252,0)_100%)]" />
-            <div className="h-full">
+            <div className="flex h-full min-h-0 flex-col">
               <ThreadViewport
                 ref={viewportRef}
                 messages={displayMessages}
@@ -1200,7 +1189,6 @@ export function ThreadShell({
               />
             </div>
           </div>
-          )}
         </FilePreviewAvailabilityProvider>
       </div>
       {supportsFileActivity && filePreviewPath && historyKey ? (

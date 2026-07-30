@@ -633,7 +633,7 @@ export const ThreadViewport = forwardRef<ThreadViewportHandle, ThreadViewportPro
             "thread-layout mx-auto grid min-h-full w-full min-w-0",
             hasMessages
               ? "max-w-[64rem]"
-              : "max-w-[54rem] px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-5 sm:px-4 sm:py-8",
+              : "max-w-[48rem] px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:px-4 sm:py-6",
           )}
         >
           {hasMessages ? (
@@ -659,7 +659,7 @@ export const ThreadViewport = forwardRef<ThreadViewportHandle, ThreadViewportPro
               </div>
             </div>
           ) : (
-            <div className="row-start-1 flex min-h-0 w-full min-w-0 items-end justify-center pb-4 sm:pb-6">
+            <div className="row-start-1 flex min-h-0 w-full min-w-0 items-end justify-center pb-2 sm:pb-3">
               {emptyState}
             </div>
           )}
@@ -678,12 +678,15 @@ export const ThreadViewport = forwardRef<ThreadViewportHandle, ThreadViewportPro
               className={cn(
                 hasMessages
                   ? "px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-4"
-                  : "",
+                  : "px-0",
               )}
             >
               <div
                 data-testid="thread-composer-motion"
-                className="mx-auto w-full max-w-[52rem]"
+                className={cn(
+                  "mx-auto w-full",
+                  hasMessages ? "max-w-[52rem]" : "max-w-[48rem]",
+                )}
               >
                 {composer}
               </div>
