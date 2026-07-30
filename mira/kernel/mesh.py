@@ -38,6 +38,15 @@ class MigrationPlan:
     context_bytes: int
 
 
+@dataclass(frozen=True, slots=True)
+class MeshGossipEnvelope:
+    """One directory snapshot exchanged between mesh peers."""
+
+    source_node: str
+    observed_at: datetime
+    nodes: tuple[MeshNode, ...]
+
+
 class MeshDirectory:
     """In-memory mesh node directory and scheduler."""
 
@@ -52,6 +61,25 @@ class MeshDirectory:
 
     def list(self) -> list[MeshNode]:
         return sorted(self._nodes.values(), key=lambda node: node.id)
+
+    def export_gossip(self, *, source_node: str) -> MeshGossipEnvelope:
+        """Create a deterministic snapshot that can be sent to a peer."""
+        return MeshGossipEnvelope(
+            source_node=source_node,
+            observed_at=datetime.now(),
+            nodes=tuple(self.list()),
+        )
+
+    def apply_gossip(self, envelope: MeshGossipEnvelope) -> int:
+        """Merge a peer snapshot, ignoring stale node records."""
+        updated = 0
+        for node in envelope.nodes:
+            current = self._nodes.get(node.id)
+            if current is not None and current.updated_at > node.updated_at:
+                continue
+            self._nodes[node.id] = node
+            updated += 1
+        return updated
 
     def choose_node(
         self,
