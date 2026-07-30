@@ -1884,11 +1884,12 @@ export function ThreadComposer({
         />
       ) : null}
       <div
+        data-testid="thread-composer-surface"
         className={cn(
-          "thread-composer-surface group/composer relative mx-auto flex w-full flex-col overflow-visible transition-all duration-200",
+          "thread-composer-surface group/composer relative mx-auto flex w-full flex-col overflow-visible border border-slate-300/80 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.12)] transition-all duration-200 focus-within:border-slate-900 focus-within:shadow-[0_22px_60px_rgba(15,23,42,0.16)] dark:border-white/15 dark:bg-card",
           isHero
-            ? "max-w-[58rem] rounded-[28px] bg-muted/30 focus-within:bg-muted/50 dark:bg-card dark:focus-within:bg-white/[0.06]"
-            : "max-w-[49.5rem] rounded-[22px] bg-muted/30 focus-within:bg-muted/50 dark:bg-card dark:focus-within:bg-white/[0.06]",
+            ? "max-w-[58rem] rounded-[28px]"
+            : "max-w-[49.5rem] rounded-[22px]",
           disabled && "opacity-60",
           isDragging && "ring-2 ring-primary/40 motion-reduce:ring-0 motion-reduce:border-primary",
           goalState?.active &&
@@ -2004,7 +2005,7 @@ export function ThreadComposer({
             aria-label={t("thread.composer.inputAria")}
             className={cn(
               inputTextClasses,
-              "relative z-10 caret-foreground placeholder:text-muted-foreground/70",
+              "relative z-10 caret-foreground placeholder:text-slate-500/90 dark:placeholder:text-muted-foreground/80",
               "focus:outline-none focus-visible:outline-none",
               "disabled:cursor-not-allowed",
               hasMentionDecorations && "text-transparent selection:bg-primary/20",

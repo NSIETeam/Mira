@@ -1123,33 +1123,6 @@ export function ThreadShell({
       className="relative flex min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.08),transparent_28%),linear-gradient(180deg,rgba(248,250,252,0.95)_0%,rgba(241,245,249,0.98)_100%)]"
     >
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden px-3 pb-3 pt-2">
-        <div className="mb-3 shrink-0">
-          <div className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {isChineseLocale ? "执行" : "Execution"}
-                </div>
-                <div className="mt-1 truncate text-sm font-semibold text-foreground">
-                  {title}
-                </div>
-                <div className="mt-1 truncate text-xs text-muted-foreground">
-                  {shellPosture || (isChineseLocale ? "通用执行 Shell" : "universal execution shell")}
-                </div>
-              </div>
-              <div className="flex max-w-full flex-wrap gap-1.5">
-                {capabilityBadges.map((badge) => (
-                  <span
-                    key={badge}
-                    className="rounded-full border border-slate-300/80 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700"
-                  >
-                    {badge}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
         {!hideHeader ? (
           <ThreadHeader
             title={title}

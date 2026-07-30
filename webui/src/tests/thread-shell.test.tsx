@@ -864,6 +864,29 @@ describe("ThreadShell", () => {
     expect(onNewChat).not.toHaveBeenCalled();
   });
 
+  it("renders the blank landing composer as an obvious chat input", () => {
+    const client = makeClient();
+
+    render(
+      wrap(
+        client,
+        <ThreadShell
+          session={null}
+          title="mira"
+          onToggleSidebar={() => {}}
+          onCreateChat={vi.fn()}
+        />,
+      ),
+    );
+
+    const composerSurface = screen.getByTestId("thread-composer-surface");
+    expect(composerSurface).toHaveClass("border");
+    expect(composerSurface).toHaveClass("bg-white");
+    expect(composerSurface.className).toContain("shadow-");
+    expect(screen.getByLabelText("Message input")).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
+  });
+
   it("applies the selected landing preset before sending the first prompt", async () => {
     const client = makeClient();
     const settings = settingsWithFastPreset();
@@ -1141,7 +1164,8 @@ describe("ThreadShell", () => {
 
     const greeting = screen.getByRole("heading", { level: 1, name: HERO_GREETING_PATTERN });
     expect(greeting).toHaveAttribute("data-testid", "hero-greeting");
-    expect(greeting).toHaveClass("whitespace-nowrap");
+    expect(greeting).toHaveClass("break-words");
+    expect(greeting).not.toHaveClass("whitespace-nowrap");
     expect(screen.getByPlaceholderText("Ask anything...")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Write code" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create a project plan" })).not.toBeInTheDocument();
