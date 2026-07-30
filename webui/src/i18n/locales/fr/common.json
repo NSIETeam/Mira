@@ -43,6 +43,7 @@
   "sidebar": {
     "navigation": "Navigation de la barre latérale",
     "collapse": "Réduire la barre latérale",
+    "workbench": "Travail",
     "newChat": "Nouveau sujet",
     "searchAria": "Rechercher",
     "searchPlaceholder": "Rechercher",

@@ -43,6 +43,7 @@
   "sidebar": {
     "navigation": "사이드바 탐색",
     "collapse": "사이드바 접기",
+    "workbench": "작업",
     "newChat": "새 주제",
     "searchAria": "검색",
     "searchPlaceholder": "검색",

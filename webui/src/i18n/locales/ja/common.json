@@ -43,6 +43,7 @@
   "sidebar": {
     "navigation": "サイドバーのナビゲーション",
     "collapse": "サイドバーを閉じる",
+    "workbench": "作業",
     "newChat": "新しいトピック",
     "searchAria": "検索",
     "searchPlaceholder": "検索",
