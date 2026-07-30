@@ -13,8 +13,11 @@ Every entry writes out all fields so you can copy-paste as a template.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cache
+from importlib.metadata import entry_points
 from typing import Any
 
+from loguru import logger
 from pydantic.alias_generators import to_snake
 
 
@@ -723,10 +726,56 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
 def find_by_name(name: str) -> ProviderSpec | None:
     """Find a provider spec by config field name, e.g. "dashscope"."""
     normalized = to_snake(name.replace("-", "_"))
-    for spec in PROVIDERS:
+    for spec in provider_specs():
         if spec.name == normalized:
             return spec
     return None
+
+
+@cache
+def provider_specs() -> tuple[ProviderSpec, ...]:
+    """Return built-in providers plus installed provider plugin specs."""
+    external = _discover_external_provider_specs()
+    if not external:
+        return PROVIDERS
+    builtins = {spec.name for spec in PROVIDERS}
+    merged = list(PROVIDERS)
+    for spec in external:
+        if spec.name in builtins:
+            logger.warning("External provider plugin '{}' skipped: name already exists", spec.name)
+            continue
+        merged.append(spec)
+        builtins.add(spec.name)
+    return tuple(merged)
+
+
+def _discover_external_provider_specs() -> tuple[ProviderSpec, ...]:
+    specs: list[ProviderSpec] = []
+    for group, prefix in (("mira.providers", ""), ("mira.plugins", "provider-")):
+        try:
+            eps = entry_points(group=group)
+        except Exception as exc:
+            logger.debug("Failed to inspect {} entry points: {}", group, exc)
+            continue
+        for ep in eps:
+            if prefix and not ep.name.startswith(prefix):
+                continue
+            try:
+                loaded = ep.load()
+                value = loaded() if callable(loaded) and not isinstance(loaded, ProviderSpec) else loaded
+                if isinstance(value, ProviderSpec):
+                    candidates = (value,)
+                elif isinstance(value, (list, tuple)):
+                    candidates = tuple(value)
+                else:
+                    raise TypeError("entry point did not resolve to ProviderSpec or a sequence")
+                for spec in candidates:
+                    if not isinstance(spec, ProviderSpec):
+                        raise TypeError("provider plugin sequence contains a non-ProviderSpec item")
+                    specs.append(spec)
+            except Exception as exc:
+                logger.warning("Failed to load provider plugin '{}': {}", ep.name, exc)
+    return tuple(specs)
 
 
 def create_dynamic_spec(

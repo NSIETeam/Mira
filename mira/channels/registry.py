@@ -60,6 +60,44 @@ def discover_plugins(
                 plugins[name] = plugin
         except Exception as exc:
             logger.warning("Failed to load channel package descriptor '{}': {}", name, exc)
+    plugins.update(_discover_external_plugins(enabled_names, existing=set(plugins)))
+    return plugins
+
+
+def _discover_external_plugins(
+    enabled_names: set[str] | None,
+    *,
+    existing: set[str],
+) -> dict[str, ChannelPlugin]:
+    """Load external channel descriptors registered by plugin packages."""
+    plugins: dict[str, ChannelPlugin] = {}
+    for group, prefix in (("mira.channel_plugins", ""), ("mira.plugins", "channel-")):
+        try:
+            eps = entry_points(group=group)
+        except Exception as exc:
+            logger.debug("Failed to inspect {} entry points: {}", group, exc)
+            continue
+        for ep in eps:
+            if prefix and not ep.name.startswith(prefix):
+                continue
+            declared_name = ep.name.removeprefix(prefix).replace("-", "_")
+            if enabled_names is not None and declared_name not in enabled_names:
+                continue
+            if declared_name in existing or declared_name in plugins:
+                logger.warning("External channel plugin '{}' skipped: name already exists", declared_name)
+                continue
+            try:
+                loaded = ep.load()
+                plugin = loaded() if callable(loaded) and not isinstance(loaded, ChannelPlugin) else loaded
+                if not isinstance(plugin, ChannelPlugin):
+                    raise TypeError("entry point did not resolve to a ChannelPlugin")
+                if plugin.name != declared_name:
+                    raise TypeError(
+                        f"entry point name declares '{declared_name}' but plugin name is '{plugin.name}'"
+                    )
+                plugins[plugin.name] = plugin
+            except Exception as exc:
+                logger.warning("Failed to load external channel plugin '{}': {}", ep.name, exc)
     return plugins
 
 
