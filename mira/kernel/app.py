@@ -1335,6 +1335,10 @@ class KernelApp:
         manifest["targets"] = targets
         return manifest
 
+    def manifest_snapshot(self) -> dict[str, Any]:
+        """Return the current manifest through the operator command surface."""
+        return self.describe()
+
     def execute_operator_command(self, command_line: str) -> dict[str, Any]:
         return _execute_operator_command(self, command_line)
 

@@ -58,7 +58,28 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
     parts = shlex.split(raw)
     command = (parts[0] if parts else "").strip().lower()
     args = parts[1:]
-    if command in {"adapter", "board", "bridge", "runtime", "fault", "goal", "lane", "maintenance", "module", "scheduler", "worker", "event", "session", "workspace", "repo", "tool"}:
+    if command in {
+        "adapter",
+        "board",
+        "bridge",
+        "runtime",
+        "fault",
+        "goal",
+        "lane",
+        "maintenance",
+        "module",
+        "scheduler",
+        "worker",
+        "event",
+        "session",
+        "privilege",
+        "kernel",
+        "topology",
+        "workspace",
+        "native",
+        "repo",
+        "tool",
+    }:
         subject = command
         verb = (args[0] if args else "").strip().lower()
         tail = args[1:]

@@ -1,0 +1,46 @@
+{
+  "description": "Guided desktop shell focused on one task at a time with minimal operator overhead.",
+  "display_name": "Mira Desktop",
+  "host_contract": {
+    "actions": {
+      "allowExecutionFork": false
+    },
+    "chrome": {
+      "showSearchDialog": false,
+      "showSidebarChrome": false
+    },
+    "composer": {
+      "allowComposer": true,
+      "readOnlyExecution": false
+    },
+    "mode": "single-execution",
+    "privilege": {
+      "canElevate": "<runtime>",
+      "dropHint": "<runtime>",
+      "elevateHint": "<runtime>",
+      "elevationMode": "<runtime>",
+      "role": "<runtime>",
+      "sessionPolicy": "<runtime>"
+    },
+    "schema": "mira.host/v1",
+    "surfaces": {
+      "allowKernelConsole": false,
+      "allowPrivilegedRuntimeControls": false,
+      "allowRuntimeModelControls": false,
+      "allowUtilitySurface": false,
+      "allowWorkspaceControls": false
+    },
+    "version": 1
+  },
+  "metadata": {
+    "host_contract_schema": "mira.host/v1",
+    "host_contract_version": "1",
+    "posture": "desktop-customer"
+  },
+  "name": "desktop-customer",
+  "supports_approvals": true,
+  "supports_file_activity": true,
+  "supports_runtime_controls": true,
+  "supports_threads": false,
+  "theme": "workbench"
+}

@@ -14,6 +14,11 @@ def _launcher_filename() -> str:
     return "mira-launcher.exe" if sys.platform == "win32" else "mira-launcher"
 
 
+def _launcher_filenames() -> tuple[str, ...]:
+    names = (_launcher_filename(), "mira-launcher", "mira-launcher.exe")
+    return tuple(dict.fromkeys(names))
+
+
 def _launcher_candidate_roots() -> list[Path]:
     roots: list[Path] = []
     script_path = Path(__file__).resolve()
@@ -46,22 +51,23 @@ def find_native_launcher() -> Path | None:
         if candidate.is_file():
             return candidate
 
-    launcher_name = _launcher_filename()
     for root in _launcher_candidate_roots():
-        for relative in (
-            Path(launcher_name),
-            Path("native") / launcher_name,
-            Path("dist") / "native" / launcher_name,
-        ):
-            candidate = root / relative
+        for launcher_name in _launcher_filenames():
+            for relative in (
+                Path(launcher_name),
+                Path("native") / launcher_name,
+                Path("dist") / "native" / launcher_name,
+            ):
+                candidate = root / relative
+                if candidate.is_file():
+                    return candidate
+
+    for launcher_name in _launcher_filenames():
+        which = shutil.which(launcher_name)
+        if which:
+            candidate = Path(which)
             if candidate.is_file():
                 return candidate
-
-    which = shutil.which(launcher_name)
-    if which:
-        candidate = Path(which)
-        if candidate.is_file():
-            return candidate
     return None
 
 

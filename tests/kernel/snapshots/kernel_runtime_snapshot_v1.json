@@ -1,0 +1,53 @@
+{
+  "contracts": {
+    "event_version": 1,
+    "manifest_version": 1,
+    "snapshot_version": 1
+  },
+  "diagnostics": {
+    "active_adapter": "python-inprocess",
+    "dispatch_queue_state": "ready",
+    "execution_gate": "open",
+    "module_count": 20
+  },
+  "event_actions": [
+    "kernel_boot"
+  ],
+  "runtime_adapters": [
+    "python-inprocess",
+    "rust-ffi",
+    "c-serial-bridge"
+  ],
+  "runtime_bridges": [
+    "python-inprocess",
+    "rust-ffi",
+    "c-serial-bridge"
+  ],
+  "runtime_control": {
+    "active_adapter": "python-inprocess",
+    "execution_gate": "open",
+    "module_focus": "session_state"
+  },
+  "runtime_modules": [
+    "session_state",
+    "approvals",
+    "automations",
+    "diagnostics",
+    "subagents",
+    "virtual_context",
+    "agent_roles",
+    "tool_middleware",
+    "multimodal_contract",
+    "workflow_dsl",
+    "computer_use",
+    "workspace_controls",
+    "embedded_ops",
+    "firmware_lab",
+    "cli",
+    "webui",
+    "apply_patch",
+    "filesystem",
+    "search",
+    "shell"
+  ]
+}

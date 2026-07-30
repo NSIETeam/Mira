@@ -1,0 +1,88 @@
+{
+  "capabilities": {
+    "api": false,
+    "approvals": true,
+    "automations": false,
+    "file_activity": true,
+    "gui": true,
+    "memory": true,
+    "restart_engine": true,
+    "runtime_controls": true,
+    "threads": false
+  },
+  "contracts": {
+    "event_version": 1,
+    "manifest_version": 1,
+    "snapshot_version": 1
+  },
+  "identity": {
+    "app_name": "Mira",
+    "cli_name": "mira"
+  },
+  "operator_action_ids": [
+    "open_kernel_settings",
+    "restart_runtime",
+    "restart_engine",
+    "drain_background",
+    "prioritize_goal_lane",
+    "inspect_faults",
+    "record_fault",
+    "clear_fault",
+    "restart_bridge",
+    "pause_runtime",
+    "resume_runtime",
+    "degrade_runtime",
+    "enter_maintenance",
+    "exit_maintenance",
+    "inspect_modules",
+    "switch_adapter",
+    "attach_board"
+  ],
+  "session_action_ids": [
+    "inspect_session",
+    "inspect_goal",
+    "inspect_continuation",
+    "resume_goal",
+    "complete_goal",
+    "cancel_goal"
+  ],
+  "targets": {
+    "adapter": {
+      "api_version": 1,
+      "control_plane": [
+        "fault_stream",
+        "module_state",
+        "task_exec",
+        "workspace_sync",
+        "diagnostics",
+        "adapter_select",
+        "module_control"
+      ],
+      "default_adapter": "python-inprocess",
+      "deployment_targets": [
+        "desktop"
+      ],
+      "preferred_languages": [
+        "python"
+      ],
+      "supports_hot_swap": false,
+      "transport_modes": [
+        "in_process",
+        "ffi",
+        "stdio",
+        "serial",
+        "usb",
+        "can"
+      ]
+    },
+    "languages": [
+      "python"
+    ],
+    "runtime": [
+      "desktop"
+    ]
+  },
+  "worker_action_ids": [
+    "inspect_workers"
+  ]
+}

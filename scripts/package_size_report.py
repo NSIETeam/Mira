@@ -70,9 +70,10 @@ def build_report(root: Path, budget_mb: float, top: int) -> dict:
             continue
         seen_inodes.add(inode_key)
         size = stat.st_size
-        rel = path.relative_to(root) if path != root else path.name
+        rel = path.relative_to(root) if path != root else Path(path.name)
+        rel_name = rel.as_posix()
         category_bytes[_category(rel)] = category_bytes.get(_category(rel), 0) + size
-        file_rows.append(SizeRow(str(rel), size, _mb(size)))
+        file_rows.append(SizeRow(rel_name, size, _mb(size)))
 
     total = sum(row.bytes for row in file_rows)
     categories = [

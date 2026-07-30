@@ -27,7 +27,7 @@ def check_for_update() -> dict[str, Any] | None:
     global _cache
     now = time.monotonic()
     cached_at, cached_payload = _cache
-    if now - cached_at < _CACHE_TTL_S:
+    if cached_at > 0 and now - cached_at < _CACHE_TTL_S:
         return cached_payload
 
     payload = _check_github_release() or _check_pypi_release()
