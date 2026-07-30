@@ -78,6 +78,7 @@ from mira.bus.outbound_events import (  # noqa: E402
     outbound_event_from_message,
 )
 from mira.cli import webui_helpers as _webui_helpers  # noqa: E402
+from mira.cli.desktop_command import DesktopCommandDeps, run_desktop_command  # noqa: E402
 from mira.cli.gateway import create_gateway_app  # noqa: E402
 from mira.cli.kernel_commands import register_kernel_commands  # noqa: E402
 from mira.cli.stream import StreamRenderer, ThinkingSpinner  # noqa: E402
@@ -1144,64 +1145,23 @@ def desktop(
     ),
 ) -> None:
     """Launch the Mira workbench inside a native desktop window."""
-    from mira.config.loader import load_config as _load_config_file
-    from mira.config.loader import save_config
-    from mira.desktop.app import NativeWindowOptions, launch_native_window
-    from mira.gateway import GatewayRuntime, GatewayRuntimePaths
-
-    config_path = _resolve_webui_config_path(config)
-    desktop_config = _load_config_file(config_path)
-    if (desktop_config.kernel.shell_name or "").strip() in {"", "engineering"}:
-        desktop_config.kernel.shell_name = "desktop-customer"
-        save_config(desktop_config, config_path)
-    pre_runtime_config = _load_runtime_config(str(config_path), workspace)
-    pre_gateway_port = gateway_port if gateway_port is not None else pre_runtime_config.gateway.port
-    pre_webui_url = _webui_browser_url(pre_runtime_config)
-    already_running = _gateway_health_ready(pre_runtime_config.gateway.host, pre_gateway_port) and (
-        _webui_endpoint_reachable(pre_webui_url)
-    )
-
-    webui(
+    run_desktop_command(
         port=port,
         gateway_port=gateway_port,
         workspace=workspace,
         config=config,
-        background=True,
-        no_open=True,
         yes=yes,
+        debug=debug,
+        stop_on_close=stop_on_close,
+        deps=DesktopCommandDeps(
+            resolve_webui_config_path=_resolve_webui_config_path,
+            load_runtime_config=_load_runtime_config,
+            webui_browser_url=_webui_browser_url,
+            gateway_health_ready=_gateway_health_ready,
+            webui_endpoint_reachable=_webui_endpoint_reachable,
+            start_webui=webui,
+        ),
     )
-
-    runtime_config = _load_runtime_config(str(config_path), workspace)
-    webui_url = _webui_browser_url(runtime_config)
-    config_arg = str(config_path)
-    workspace_arg = str(Path(workspace).expanduser().resolve(strict=False)) if workspace else None
-    runtime = GatewayRuntime(
-        paths=GatewayRuntimePaths.for_instance(
-            data_dir=config_path.parent,
-            workspace=workspace_arg,
-            config_path=config_arg,
-        )
-    )
-
-    def _stop_runtime() -> None:
-        if not stop_on_close or already_running:
-            return
-        result = runtime.stop(timeout_s=20)
-        if not result.ok and result.message != "gateway_not_running":
-            logger.warning("Desktop shell failed to stop background gateway: {}", result.message)
-
-    try:
-        launch_native_window(
-            NativeWindowOptions(
-                url=webui_url,
-                title=__app_name__,
-                debug=debug,
-            ),
-            on_closed=_stop_runtime,
-        )
-    except RuntimeError as exc:
-        console.print(f"[red]Error: {exc}[/red]")
-        raise typer.Exit(1) from exc
 
 
 # ============================================================================
