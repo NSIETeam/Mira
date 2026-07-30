@@ -6,7 +6,9 @@ from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol, runtime_checkable
+
+from mira.bus.events import InboundMessage, OutboundMessage
 
 if TYPE_CHECKING:
     from mira.channels.plugin import ChannelPlugin
@@ -32,6 +34,7 @@ LocalStatePresent = Callable[[Any], bool]
 
 __all__ = [
     "ChannelActivation",
+    "ChannelAdapter",
     "ChannelFieldSpec",
     "ChannelInstanceSpec",
     "ChannelManagementSpec",
@@ -55,6 +58,23 @@ __all__ = [
 
 
 _MISSING = object()
+
+
+@runtime_checkable
+class ChannelAdapter(Protocol):
+    """Minimal runtime channel boundary used by the kernel and channel manager."""
+
+    name: str
+
+    async def connect(self) -> None: ...
+
+    async def disconnect(self) -> None: ...
+
+    async def on_inbound(self, msg: InboundMessage) -> None: ...
+
+    async def send_outbound(self, msg: OutboundMessage) -> None: ...
+
+    async def health(self) -> dict[str, Any]: ...
 
 
 @dataclass(frozen=True)
