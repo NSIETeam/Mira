@@ -35,5 +35,6 @@ PLUGIN = ChannelPlugin(
         "mistune>=3.0.0,<4.0.0",
         "nh3>=0.2.17,<1.0.0",
     ),
+    tier="archive",
     webui="webui/index.ts",
 )

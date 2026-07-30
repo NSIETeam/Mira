@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from packaging.requirements import InvalidRequirement, Requirement
 
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from mira.channels.base import BaseChannel
 
 _CHANNEL_PACKAGE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+ChannelTier = Literal["core", "optional", "archive"]
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,7 @@ class ChannelPlugin:
     settings_visible: bool = True
     capabilities: frozenset[str] = frozenset()
     webui: str | None = None
+    tier: ChannelTier = "optional"
 
     def __post_init__(self) -> None:
         if _CHANNEL_PACKAGE_NAME.fullmatch(self.name) is None:
@@ -70,6 +72,8 @@ class ChannelPlugin:
             if webui.startswith("/") or ".." in webui.split("/"):
                 raise ValueError("channel plugin webui entry must stay inside its package")
             object.__setattr__(self, "webui", webui)
+        if self.tier not in {"core", "optional", "archive"}:
+            raise ValueError("channel plugin tier must be core, optional, or archive")
 
     def load_channel_class(self) -> type[BaseChannel]:
         """Resolve and validate the runtime class only when the channel is needed."""
@@ -180,6 +184,7 @@ def load_channel_package(name: str) -> ChannelPlugin | None:
 
 
 __all__ = [
+    "ChannelTier",
     "ChannelPlugin",
     "has_channel_package",
     "load_channel_package",

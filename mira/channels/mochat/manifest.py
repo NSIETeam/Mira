@@ -27,4 +27,5 @@ PLUGIN = ChannelPlugin(
         "msgpack>=1.1.0,<2.0.0",
     ),
     settings_visible=False,
+    tier="archive",
 )

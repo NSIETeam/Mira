@@ -436,6 +436,7 @@ def optional_features_payload(
         if channel_plugin is not None:
             feature["capabilities"] = sorted(channel_plugin.capabilities)
             feature["settings_visible"] = channel_plugin.settings_visible
+            feature["tier"] = channel_plugin.tier
             if channel_plugin.webui is not None:
                 feature["webui"] = channel_plugin.webui
 

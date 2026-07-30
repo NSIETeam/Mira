@@ -21,5 +21,6 @@ PLUGIN = ChannelPlugin(
     runtime=f"{__package__}.runtime:NapcatChannel",
     setup=SETUP_SPEC,
     dependencies=("aiohttp>=3.9.0,<4.0.0",),
+    tier="archive",
     webui="webui/index.ts",
 )

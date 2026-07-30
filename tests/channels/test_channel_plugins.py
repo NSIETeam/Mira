@@ -633,6 +633,7 @@ def test_plugin_contract_error_is_isolated_in_feature_payload(monkeypatch):
         "type": "channel",
         "capabilities": [],
         "settings_visible": True,
+        "tier": "optional",
         "setup": {"fields": []},
         "enabled": False,
         "configured": False,
@@ -1940,6 +1941,7 @@ def test_package_manifest_metadata_drives_optional_feature_payload(monkeypatch):
     assert checked_extras == [("demo", ["demo-sdk>=1"])]
     assert demo["display_name"] == "Demo Chat"
     assert demo["capabilities"] == ["custom_ui"]
+    assert demo["tier"] == "optional"
     assert demo["webui"] == "webui/entry.tsx"
 
 

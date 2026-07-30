@@ -17,5 +17,6 @@ PLUGIN = ChannelPlugin(
     setup=SETUP_SPEC,
     default_enabled=True,
     capabilities=frozenset({"always_enabled"}),
+    tier="core",
     webui="webui/index.ts",
 )

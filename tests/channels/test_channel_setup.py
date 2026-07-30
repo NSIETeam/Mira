@@ -32,6 +32,8 @@ EXPECTED_CHANNELS = {
     "weixin",
     "whatsapp",
 }
+CORE_CHANNELS = {"telegram", "feishu", "weixin", "discord", "websocket", "email"}
+ARCHIVE_CHANNELS = EXPECTED_CHANNELS - CORE_CHANNELS
 
 
 def test_channel_setup_spec_derives_route_and_secret_metadata() -> None:
@@ -113,8 +115,20 @@ def test_every_channel_is_a_self_contained_package() -> None:
         assert plugin.name == name
         assert plugin.runtime.startswith(f"mira.channels.{name}.runtime:")
         assert plugin.setup is channel_setup_spec(name)
+        assert plugin.tier in {"core", "optional", "archive"}
         if plugin.webui is not None:
             assert (package_dir / plugin.webui).is_file()
+
+
+def test_channel_manifests_mark_core_vs_archive_split() -> None:
+    tiers = {
+        name: load_channel_package(name).tier
+        for name in EXPECTED_CHANNELS
+        if load_channel_package(name) is not None
+    }
+
+    assert {name for name, tier in tiers.items() if tier == "core"} == CORE_CHANNELS
+    assert {name for name, tier in tiers.items() if tier == "archive"} == ARCHIVE_CHANNELS
 
 
 def test_channel_locales_cover_authoritative_setup_contracts() -> None:

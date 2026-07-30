@@ -27,5 +27,6 @@ PLUGIN = ChannelPlugin(
         "socksio>=1.0.0,<2.0.0",
         "python-socks[asyncio]>=2.8.0,<3.0.0; sys_platform != 'win32'",
     ),
+    tier="core",
     webui="webui/index.ts",
 )
