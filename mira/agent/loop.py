@@ -9,8 +9,7 @@ import os
 import time
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
 from contextlib import AbstractContextManager, ExitStack, nullcontext, suppress
-from dataclasses import dataclass, field
-from enum import Enum, auto
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -34,6 +33,12 @@ from mira.agent.tools.file_state import bind_file_states, reset_file_states
 from mira.agent.tools.message import MessageTool
 from mira.agent.tools.registry import ToolRegistry
 from mira.agent.tools.self import MyTool
+from mira.agent.turn_context import (
+    StateTraceEntry,
+    TurnContext,
+    TurnKind,
+    TurnState,
+)
 from mira.agent.turn_delivery import (
     TurnDelivery,
     TurnDeliveryFactory,
@@ -119,84 +124,6 @@ if TYPE_CHECKING:
     )
     from mira.cron.service import CronService
     from mira.kernel.process import AgentProcess
-
-class TurnState(Enum):
-    RESTORE = auto()
-    COMPACT = auto()
-    COMMAND = auto()
-    BUILD = auto()
-    RUN = auto()
-    SAVE = auto()
-    RESPOND = auto()
-    DONE = auto()
-
-
-class TurnKind(Enum):
-    USER = auto()
-    SYSTEM = auto()
-
-
-@dataclass
-class StateTraceEntry:
-    state: TurnState
-    started_at: float
-    duration_ms: float
-    event: str
-    error: str | None = None
-
-
-@dataclass
-class TurnContext:
-    msg: InboundMessage
-    session_key: str
-    state: TurnState
-    turn_id: str
-    runtime: LLMRuntime | None
-    kind: TurnKind
-    delivery: TurnDelivery
-    original_user_text: str | None = None
-    session: Session | None = None
-
-    history: list[dict[str, Any]] = field(default_factory=list)
-    initial_messages: list[dict[str, Any]] = field(default_factory=list)
-    request_context: RequestContext | None = None
-    runtime_context_blocks: list[RuntimeContextBlock] = field(default_factory=list)
-
-    final_content: str | None = None
-    tools_used: list[str] = field(default_factory=list)
-    all_messages: list[dict[str, Any]] = field(default_factory=list)
-    stop_reason: str = ""
-    had_injections: bool = False
-    streamed_content: bool = False
-
-    input_persisted_early: bool = False
-    save_skip: int = 0
-
-    outbound: OutboundMessage | None = None
-    suppress_response: bool = False
-
-    on_progress: Callable[..., Awaitable[None]] | None = None
-    on_stream: Callable[[str], Awaitable[None]] | None = None
-    on_stream_end: Callable[..., Awaitable[None]] | None = None
-    on_runtime_admitted: Callable[[LLMRuntime], Awaitable[None]] | None = None
-    on_retry_wait: Callable[[str], Awaitable[None]] | None = None
-
-    pending_queue: asyncio.Queue[InboundMessage] | None = None
-    pending_summary: str | None = None
-
-    ephemeral: bool = False
-    run_extra_hooks_for_ephemeral: bool = False
-    hooks: list[AgentHook] = field(default_factory=list)
-    hook_factories: list[AgentTurnHookFactory] = field(default_factory=list)
-    turn_scopes: list[AbstractContextManager[Any]] = field(default_factory=list)
-    tools: ToolRegistry | None = None
-
-    turn_wall_started_at: float = field(default_factory=time.time)
-    visible_run_started_at: float | None = None
-    turn_latency_ms: int | None = None
-
-    trace: list[StateTraceEntry] = field(default_factory=list)
-
 
 @dataclass(slots=True)
 class AgentLoopConfig:
