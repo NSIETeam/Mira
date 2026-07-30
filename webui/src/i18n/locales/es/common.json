@@ -971,6 +971,7 @@
         "none": "Sin próxima ejecución"
       }
     },
+    "heroSubtitle": "Opera un kernel de ejecucion reutilizable con estado de runtime, controles y rutas de hosts nativos o embebidos visibles.",
     "composer": {
       "placeholderThread": "Escribe tu mensaje…",
       "placeholderHero": "¿Qué tienes en mente?",

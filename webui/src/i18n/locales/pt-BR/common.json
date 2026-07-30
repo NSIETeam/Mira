@@ -984,6 +984,7 @@
         "none": "Sem próxima execução"
       }
     },
+    "heroSubtitle": "Opere um kernel de execucao reutilizavel com postura de runtime, controles e caminhos para hosts nativos ou embarcados visiveis.",
     "composer": {
       "placeholderThread": "Digite sua mensagem…",
       "placeholderHero": "Pergunte qualquer coisa...",

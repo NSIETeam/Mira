@@ -93,6 +93,15 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     overflow: hidden;
+    text-rendering: optimizeLegibility;
+  }
+
+  :lang(zh),
+  :lang(zh-CN),
+  :lang(zh-TW) {
+    line-break: loose;
+    word-break: normal;
+    overflow-wrap: anywhere;
   }
 
   * {

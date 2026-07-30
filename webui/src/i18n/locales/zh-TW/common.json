@@ -970,6 +970,7 @@
         "none": "沒有下次執行"
       }
     },
+    "heroSubtitle": "直接操作可重用的執行內核，保持運行狀態、操作入口，以及未來原生或嵌入式宿主路徑可見。",
     "composer": {
       "placeholderThread": "輸入訊息…",
       "placeholderHero": "任何問題都可以問…",

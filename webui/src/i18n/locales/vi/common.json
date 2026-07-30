@@ -970,6 +970,7 @@
         "none": "Không có lần chạy tiếp theo"
       }
     },
+    "heroSubtitle": "Van hanh kernel thuc thi co the tai su dung voi trang thai runtime, dieu khien va duong host native hoac embedded hien ro.",
     "composer": {
       "placeholderThread": "Nhập tin nhắn…",
       "placeholderHero": "Bạn đang nghĩ gì?",

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type {
   ExecutionSummary,
@@ -182,6 +183,29 @@ export function MiraKernelConsole({
     action_result?: KernelOperatorActionResult;
   } | void>;
 }) {
+  const { i18n } = useTranslation();
+  const isChineseLocale = (i18n.resolvedLanguage ?? i18n.language ?? "").toLowerCase().startsWith("zh");
+  const text = {
+    console: isChineseLocale ? "控制台" : "Console",
+    profile: isChineseLocale ? "配置" : "profile",
+    status: isChineseLocale ? "状态" : "status",
+    runtime: isChineseLocale ? "运行" : "Runtime",
+    showDetails: isChineseLocale ? "显示详情" : "Show details",
+    hideDetails: isChineseLocale ? "隐藏详情" : "Hide details",
+    actions: isChineseLocale ? "动作" : "actions",
+    lanes: isChineseLocale ? "通道" : "lanes",
+    paneRouting: isChineseLocale ? "面板" : "Pane routing",
+    controlPlane: isChineseLocale ? "控制面" : "Control plane",
+    gate: isChineseLocale ? "闸门" : "gate",
+    native: isChineseLocale ? "原生" : "native",
+    privilege: isChineseLocale ? "权限" : "Privilege",
+    faults: isChineseLocale ? "故障" : "Faults",
+    goal: isChineseLocale ? "目标" : "Goal",
+    inspectRuntime: isChineseLocale ? "检查运行" : "Inspect runtime",
+    focusFaults: isChineseLocale ? "查看故障" : "Focus faults",
+    moduleGraph: isChineseLocale ? "模块图" : "Open module graph",
+    boardStatus: isChineseLocale ? "板卡状态" : "Board status",
+  };
   const appIdentity = kernelManifest?.identity?.app_name ?? "Mira";
   const hostContract = resolveShellRegistration(shellDescriptor).hostContract;
   const shellMode = hostContract.mode;
@@ -677,7 +701,7 @@ export function MiraKernelConsole({
     return commands;
   }, [nativeAction, selectedModuleFillNativeReplayAction, selectedModuleFocusNativeAction, selectedModuleInspectNativeAction]);
   const paneClass = (pane: string) =>
-    selectedPane === pane ? "space-y-2" : "hidden";
+    showAdvancedDetails && selectedPane === pane ? "space-y-2" : "hidden";
   const lastNativeContext = {
     status: nativeLastCommand?.status ?? "idle",
     code: nativeLastCommand?.code ?? 0,
@@ -701,15 +725,6 @@ export function MiraKernelConsole({
     },
     { fault: 0, runtime: 0, bridge: 0 },
   );
-  const maturitySummary = [
-    runtimeCapabilities?.threads ? "threads" : null,
-    runtimeCapabilities?.api ? "api" : null,
-    runtimeCapabilities?.gui ? "gui" : null,
-    runtimeCapabilities?.approvals ? "approvals" : null,
-  ].filter(Boolean).join(" · ") || "minimal kernel";
-  const faultSummary = nativeFaultModules.length || faultedBridges.length || eventLaneCounts.fault
-    ? `${nativeFaultModules.length} native / ${faultedBridges.length} bridge / ${eventLaneCounts.fault} events`
-    : "no active kernel faults";
   const dispatchRestrictionHint = dispatchPrioritizeAction
     ? actionRestrictionReason(dispatchPrioritizeAction)
     : null;
@@ -948,33 +963,33 @@ export function MiraKernelConsole({
   ] as const;
   const cockpitQuickRoutes = [
     {
-      label: "Inspect runtime",
+      label: text.inspectRuntime,
       pane: "runtime",
       command: inspectRuntimeAction?.command ?? "runtime health",
       tone: "border-cyan-300/80 bg-cyan-50 text-cyan-700 hover:bg-cyan-100",
     },
     {
-      label: "Focus faults",
+      label: text.focusFaults,
       pane: "faults",
       command: inspectFaultsAction?.command ?? faultLaneRoute?.command ?? "fault inspect",
       tone: "border-rose-300/80 bg-rose-50 text-rose-700 hover:bg-rose-100",
     },
     {
-      label: "Open module graph",
+      label: text.moduleGraph,
       pane: "modules",
       command: selectedModuleShowModuleAction?.command ?? moduleShowCommand(selectedModuleName ?? "") ?? "module list",
       tone: "border-emerald-300/80 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
     },
     ...(nativeFaultModules[0]?.[0]
       ? [{
-          label: "Focus fault module",
+          label: isChineseLocale ? "故障模块" : "Focus fault module",
           pane: "modules",
           command: moduleShowCommand(nativeFaultModules[0][0]) ?? moduleFocusCommand(nativeFaultModules[0][0]) ?? "module list",
           tone: "border-rose-300/80 bg-rose-50 text-rose-700 hover:bg-rose-100",
         }]
       : []),
     {
-      label: "Board status",
+      label: text.boardStatus,
       pane: "adapters",
       command: embeddedBoardStatusAction?.command ?? "board status",
       tone: "border-amber-300/80 bg-amber-50 text-amber-700 hover:bg-amber-100",
@@ -1066,49 +1081,36 @@ export function MiraKernelConsole({
   return (
     <aside className="hidden w-[300px] shrink-0 border-l border-border/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.96)_100%)] lg:flex lg:flex-col xl:w-[324px]">
       <div className="border-b border-border/70 px-3 py-3">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          {appIdentity} Kernel Console
+        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          {appIdentity} {text.console}
         </div>
-        <div className="mt-1 text-sm font-semibold leading-tight text-foreground">
-          Runtime, faults, and quick actions
-        </div>
-        <div className="mt-3 flex flex-col gap-1.5">
-          <ConsoleBadge label="profile" value={profile?.name ?? "unknown"} tone="slate" />
-          <ConsoleBadge label="status" value={connectionStatus} tone={connectionStatus === "connected" ? "emerald" : "amber"} />
-          <ConsoleBadge label="runs" value={`${runningExecutionCount}`} tone="slate" />
+        <div className="mt-2 flex flex-col gap-1.5">
+          <ConsoleBadge label={text.profile} value={profile?.name ?? "unknown"} tone="slate" />
+          <ConsoleBadge label={text.status} value={connectionStatus} tone={connectionStatus === "connected" ? "emerald" : "amber"} />
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 py-3 text-sm">
+      <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-auto px-3 py-3 text-sm">
         <section className="space-y-3">
-          <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+          <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-[0_14px_42px_rgba(15,23,42,0.07)]">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Kernel cockpit
-                </div>
-                <div className="mt-1 text-base font-semibold leading-tight text-foreground">
-                  Execution cockpit
-                </div>
-                <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  The default view stays small: health, faults, modules, and board attachment.
+                <div className="text-sm font-semibold leading-tight text-foreground">
+                  {text.runtime}
                 </div>
               </div>
               <div className="max-w-[8rem] truncate rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700">
                 {privilegePosture.summary}
               </div>
             </div>
-            <div className="mt-3 grid gap-2 xl:grid-cols-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               {cockpitOverviewCards.map((card) => (
                 <div key={card.label} className={cn("min-w-0 rounded-xl border p-3", card.tone)}>
                   <div className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                     {card.label}
                   </div>
-                  <div className="mt-1.5 truncate text-sm font-semibold text-slate-900">
+                  <div className="mt-1.5 truncate text-sm font-semibold text-slate-900" title={card.value}>
                     {card.value}
-                  </div>
-                  <div className="mt-1 line-clamp-2 text-xs leading-snug text-slate-600">
-                    {card.detail}
                   </div>
                 </div>
               ))}
@@ -1139,10 +1141,10 @@ export function MiraKernelConsole({
                 onClick={() => setShowAdvancedDetails((value) => !value)}
                 className="rounded-full border border-slate-300/80 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700 transition-colors hover:bg-slate-50"
               >
-                {showAdvancedDetails ? "Hide details" : "Show details"}
+                {showAdvancedDetails ? text.hideDetails : text.showDetails}
               </button>
-              <span className="truncate text-[10px] uppercase tracking-[0.14em] text-slate-500">
-                {operatorActionRegistry.length} actions · {executionLanes.length} lanes
+              <span className="truncate text-[10px] uppercase tracking-[0.12em] text-slate-500">
+                {operatorActionRegistry.length} {text.actions} · {executionLanes.length} {text.lanes}
               </span>
             </div>
             {showAdvancedDetails ? (
@@ -1167,64 +1169,53 @@ export function MiraKernelConsole({
           </div>
         </section>
 
-        <section className="space-y-2">
-          <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Pane routing
-          </div>
-          <div className="grid grid-cols-2 gap-1.5">
-            {(operatorConsole?.panes ?? []).map((pane) => (
-              <button
-                key={pane}
-                type="button"
-                onClick={() => onSelectPane(pane)}
-                className={cn(
-                  "min-w-0 truncate rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] transition-colors",
-                  selectedPane === pane
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-300/80 bg-white text-slate-700 hover:bg-slate-50",
-                )}
-              >
-                {pane}
-              </button>
-            ))}
-          </div>
-        </section>
+        {showAdvancedDetails ? (
+          <section className="space-y-2">
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              {text.paneRouting}
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {(operatorConsole?.panes ?? []).map((pane) => (
+                <button
+                  key={pane}
+                  type="button"
+                  onClick={() => onSelectPane(pane)}
+                  className={cn(
+                    "min-w-0 truncate rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] transition-colors",
+                    selectedPane === pane
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-300/80 bg-white text-slate-700 hover:bg-slate-50",
+                  )}
+                >
+                  {pane}
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className={paneClass("control_plane")}>
           <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Control plane
+            {text.controlPlane}
           </div>
-          <div className="grid gap-3 rounded-2xl border border-slate-900 bg-[linear-gradient(135deg,#020617_0%,#0f172a_55%,#111827_100%)] p-4 text-slate-100 shadow-[0_24px_80px_rgba(15,23,42,0.28)]">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-2">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-200/80">
-                  Mira kernel shell
-                </div>
-                <div className="text-2xl font-semibold tracking-[-0.03em] text-white">
-                  {kernelManifest?.identity?.app_name ?? "Mira"} operator console
-                </div>
-                <div className="max-w-2xl text-sm text-slate-300">
-                  General execution layer with runtime supervision, privilege-aware control, native bridge
-                  control, module focus, board operations, and fault recovery in one shell.
+          <div className="grid gap-2 rounded-2xl border border-slate-900 bg-[linear-gradient(135deg,#020617_0%,#0f172a_60%,#111827_100%)] p-3 text-slate-100 shadow-[0_18px_55px_rgba(15,23,42,0.22)]">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-white">
+                  {kernelManifest?.identity?.app_name ?? "Mira"}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <ConsoleBadge label="shell" value={shellMode} tone="slate" />
-                <ConsoleBadge label="role" value={privilegePosture.roleLabel} tone={privilegeRole === "root" ? "emerald" : "amber"} />
-                <ConsoleBadge label="access" value={privilegePosture.accessLabel} tone={allowsPrivilegedControls ? "emerald" : "amber"} />
-                <ConsoleBadge label="recovery" value={privilegePosture.recoveryLabel} tone={allowsPrivilegedControls ? "emerald" : "amber"} />
-                <ConsoleBadge label="maintenance" value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"} tone={runtimeControl?.maintenance_mode?.enabled ? "amber" : "slate"} />
-                <ConsoleBadge label="gate" value={runtimeControl?.execution_gate?.state ?? "open"} tone={runtimeControl?.execution_gate?.state === "open" ? "emerald" : "amber"} />
-                <ConsoleBadge label="board" value={boardAttachmentLabel} tone={boardSnapshot?.attached ? "emerald" : "amber"} />
-                <ConsoleBadge label="native" value={nativeHealthLabel} tone={nativeSnapshot?.health === "ready" ? "emerald" : "amber"} />
+              <div className="flex shrink-0 gap-1.5">
+                <ConsoleBadge label={text.gate} value={runtimeControl?.execution_gate?.state ?? "open"} tone={runtimeControl?.execution_gate?.state === "open" ? "emerald" : "amber"} />
+                <ConsoleBadge label={text.native} value={nativeHealthLabel} tone={nativeSnapshot?.health === "ready" ? "emerald" : "amber"} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Privilege</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">{text.privilege}</div>
                 <div className="mt-2 flex min-w-0 items-center gap-2">
                   <span className={cn(
-                    "shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em]",
+                    "shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]",
                     privilegeRole === "root"
                       ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
                       : "border-amber-400/40 bg-amber-500/15 text-amber-100",
@@ -1232,38 +1223,23 @@ export function MiraKernelConsole({
                     {privilegePosture.roleLabel}
                   </span>
                 </div>
-                <div className="mt-2 line-clamp-2 text-xs leading-snug text-slate-300">
-                  {privilegePosture.summary}
-                </div>
               </div>
               <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Runtime</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">{text.runtime}</div>
                 <div className="mt-2 truncate text-sm font-semibold text-white">{runtimeModel ?? "unresolved"}</div>
-                <div className="line-clamp-2 text-xs leading-snug text-slate-300">
-                  {runtimeControl?.execution_gate?.reason ?? operatorReadyLabel}
-                </div>
               </div>
               <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Kernel maturity</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">{text.profile}</div>
                 <div className="mt-2 truncate text-sm font-semibold text-white">
                   {profile?.name ?? "unknown"}
                 </div>
-                <div className="line-clamp-2 text-xs leading-snug text-slate-300">
-                  {maturitySummary}
-                </div>
               </div>
               <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Fault posture</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">{text.faults}</div>
                 <div className="mt-2 flex min-w-0 items-center gap-2">
                   <div className="min-w-0 truncate text-sm font-semibold text-white">
                     {nativeFaultModules.length || faultedBridges.length || eventLaneCounts.fault ? "attention" : "stable"}
                   </div>
-                </div>
-                <div className="line-clamp-2 text-xs leading-snug text-slate-300">
-                  {faultSummary}
-                </div>
-                <div className="mt-1 truncate text-xs text-slate-400">
-                  {runtimeControl?.maintenance_mode?.enabled ? "maintenance gate is active" : "maintenance gate is clear"}
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-1 text-[10px] uppercase tracking-[0.14em] text-slate-300">
                   <span className={cn(
@@ -1272,7 +1248,7 @@ export function MiraKernelConsole({
                       ? "border-amber-300/50 bg-amber-500/10 text-amber-100"
                       : "border-white/10 bg-white/5",
                   )}>
-                    modules {nativeFaultModules.length}
+                    {isChineseLocale ? "模块" : "modules"} {nativeFaultModules.length}
                   </span>
                   <span className={cn(
                     "min-w-0 truncate rounded-full border px-1.5 py-1 text-center",
@@ -1280,7 +1256,7 @@ export function MiraKernelConsole({
                       ? "border-amber-300/50 bg-amber-500/10 text-amber-100"
                       : "border-white/10 bg-white/5",
                   )}>
-                    bridges {faultedBridges.length}
+                    {isChineseLocale ? "桥" : "bridges"} {faultedBridges.length}
                   </span>
                   <span className={cn(
                     "min-w-0 truncate rounded-full border px-1.5 py-1 text-center",
@@ -1288,33 +1264,27 @@ export function MiraKernelConsole({
                       ? "border-amber-300/50 bg-amber-500/10 text-amber-100"
                       : "border-white/10 bg-white/5",
                   )}>
-                    lane {eventLaneCounts.fault}
+                    {isChineseLocale ? "通道" : "lane"} {eventLaneCounts.fault}
                   </span>
                 </div>
               </div>
               <div className="col-span-2 min-w-0 rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Mission control</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-400">{text.goal}</div>
                 <div className="mt-2 flex min-w-0 items-center gap-2">
                   <div className="min-w-0 truncate text-sm font-semibold text-white">
                     {goalState?.active ? "active" : "idle"}
                   </div>
                   <ConsoleBadge
-                    label="lane"
+                    label={text.lanes}
                     value={diagnostics?.snapshot.dispatch_handoff_lane ?? "none"}
                     tone={goalState?.active ? "amber" : "slate"}
                   />
                 </div>
-                <div className="line-clamp-2 text-xs leading-snug text-slate-300">
-                  {goalState?.ui_summary ?? goalState?.objective ?? "no sustained objective recorded"}
-                </div>
-                <div className="mt-1 truncate text-xs text-slate-400">
-                  {goalState?.active
-                    ? `continuations ${goalState?.continuation_rounds ?? 0} · progress ${goalState?.last_progress_at ?? "pending"}`
-                    : "goal runtime is cold"}
-                </div>
               </div>
             </div>
           </div>
+          {showAdvancedDetails ? (
+            <>
           <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
             <ConsoleRowGrid items={controlPlaneRows} className="grid gap-2" />
             <div className="mt-3 flex flex-wrap gap-2">
@@ -1322,8 +1292,6 @@ export function MiraKernelConsole({
               <AdapterActionButton binding={resolveActionBinding("exit_maintenance")} />
             </div>
           </div>
-          {showAdvancedDetails ? (
-            <>
           <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Kernel identity

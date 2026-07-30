@@ -970,6 +970,7 @@
         "none": "Aucune prochaine exécution"
       }
     },
+    "heroSubtitle": "Pilotez un noyau d'execution reutilisable avec l'etat runtime, les controles et les chemins d'hotes natifs ou embarques visibles.",
     "composer": {
       "placeholderThread": "Saisissez votre message…",
       "placeholderHero": "Qu’avez-vous en tête ?",

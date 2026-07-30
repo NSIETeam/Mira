@@ -970,6 +970,7 @@
         "none": "다음 실행 없음"
       }
     },
+    "heroSubtitle": "재사용 가능한 실행 커널을 조작하고 런타임 상태, 운영자 제어, 네이티브 또는 임베디드 호스트 경로를 확인합니다.",
     "composer": {
       "placeholderThread": "메시지를 입력하세요…",
       "placeholderHero": "무슨 생각을 하고 있나요?",

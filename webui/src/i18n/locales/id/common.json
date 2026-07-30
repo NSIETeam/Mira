@@ -970,6 +970,7 @@
         "none": "Tidak ada jadwal berikutnya"
       }
     },
+    "heroSubtitle": "Operasikan kernel eksekusi yang dapat digunakan ulang dengan postur runtime, kontrol operator, dan jalur host native atau embedded yang terlihat.",
     "composer": {
       "placeholderThread": "Ketik pesan Anda…",
       "placeholderHero": "Apa yang sedang Anda pikirkan?",

@@ -328,11 +328,11 @@ function HeroGreeting({ text }: { text: string }) {
   }, [text]);
 
   return (
-    <div ref={containerRef} className="min-w-0 w-full max-w-[44rem]">
+    <div ref={containerRef} className="min-w-0 w-full max-w-[36rem] overflow-hidden">
       <h1
         ref={headingRef}
         data-testid="hero-greeting"
-        className="whitespace-nowrap text-[34px] font-normal leading-[1.08] tracking-normal text-foreground sm:text-[48px] sm:leading-tight"
+        className="text-balance break-words text-[28px] font-normal leading-[1.12] tracking-normal text-foreground sm:text-[38px] sm:leading-tight"
       >
         {text}
       </h1>
@@ -443,7 +443,8 @@ export function ThreadShell({
   const activeExecution = execution ?? session;
   const handleCreateExecution = onCreateExecution ?? onCreateChat;
   const handleForkExecution = onForkExecution ?? onForkChat;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isChineseLocale = (i18n.resolvedLanguage ?? i18n.language ?? "").toLowerCase().startsWith("zh");
   const chatId = activeExecution?.chatId ?? null;
   const historyKey = activeExecution?.key ?? null;
   const {
@@ -1088,66 +1089,21 @@ export function ThreadShell({
   ) : null;
 
   const capabilityBadges = [
-    supportsThreads ? "multi-session" : "single-session",
-    supportsRuntimeControls ? "runtime-control" : "fixed-runtime",
-    supportsFileActivity ? "file-activity" : "no-file-activity",
-    readOnlyExecution ? "read-only" : "interactive",
+    readOnlyExecution ? (isChineseLocale ? "只读" : "read-only") : (isChineseLocale ? "可交互" : "interactive"),
+    supportsRuntimeControls ? (isChineseLocale ? "运行控制" : "runtime-control") : (isChineseLocale ? "固定运行" : "fixed-runtime"),
   ];
   const shellPosture = [
+    allowComposer ? (isChineseLocale ? "可输入" : "operator ready") : (isChineseLocale ? "仅观察" : "observer only"),
     shellDescription,
-    allowComposer ? "operator shell" : "observer shell",
-    readOnlyExecution ? "locked execution" : "live execution lane",
   ].filter(Boolean).join(" · ");
-  const toolingSurface = [
-    {
-      label: "Slash",
-      value: `${slashCommands.length}`,
-      detail: slashCommands.slice(0, 2).map((command) => command.command).join(" · ") || "no commands",
-      action: slashCommands[0]?.command ?? null,
-    },
-    {
-      label: "CLI",
-      value: `${cliApps.length}`,
-      detail: cliApps.slice(0, 2).map((app) => app.name).join(" · ") || "no apps",
-      action: cliApps[0] ? `@${cliApps[0].name}` : null,
-    },
-    {
-      label: "MCP",
-      value: `${mcpPresets.length}`,
-      detail: mcpPresets.slice(0, 2).map((preset) => preset.name).join(" · ") || "no presets",
-      action: mcpPresets[0] ? `@${mcpPresets[0].name}` : null,
-    },
-  ];
-  const primitiveSurface = [
-    supportsRuntimeControls ? "runtime control" : "fixed runtime",
-    supportsFileActivity ? "file activity" : "no file activity",
-    supportsThreads ? "forkable sessions" : "single session",
-    allowComposer ? "live operator input" : "observer only",
-  ];
   const emptyState = loading ? (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
       {t("thread.loadingConversation")}
     </div>
   ) : (
     <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
-      <div className="rounded-full border border-cyan-200/80 bg-cyan-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
-        Mira engineering cockpit
-      </div>
-      <div className="mt-5 rounded-[28px] border border-slate-200/80 bg-white/90 px-8 py-8 shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
+      <div className="rounded-[22px] border border-slate-200/80 bg-white/90 px-7 py-6 shadow-[0_20px_55px_rgba(15,23,42,0.07)]">
         <HeroGreeting text={t(heroGreetingKey)} />
-        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-          Unified execution entry for operator flow, runtime control, and module supervision.
-        </p>
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em]">
-          {capabilityBadges.map((badge) => (
-            <span
-              key={badge}
-              className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-slate-700"
-            >
-              {badge}
-            </span>
-          ))}
-        </div>
       </div>
     </div>
   );
@@ -1167,79 +1123,29 @@ export function ThreadShell({
       className="relative flex min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.08),transparent_28%),linear-gradient(180deg,rgba(248,250,252,0.95)_0%,rgba(241,245,249,0.98)_100%)]"
     >
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden px-3 pb-3 pt-2">
-        <div className="mb-3 grid shrink-0 gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
+        <div className="mb-3 shrink-0">
           <div className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Execution cockpit
+                  {isChineseLocale ? "执行" : "Execution"}
                 </div>
-                <div className="mt-1 text-sm font-semibold text-foreground">
+                <div className="mt-1 truncate text-sm font-semibold text-foreground">
                   {title}
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {shellPosture || "universal execution shell"}
+                <div className="mt-1 truncate text-xs text-muted-foreground">
+                  {shellPosture || (isChineseLocale ? "通用执行 Shell" : "universal execution shell")}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex max-w-full flex-wrap gap-1.5">
                 {capabilityBadges.map((badge) => (
                   <span
                     key={badge}
-                    className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700"
+                    className="rounded-full border border-slate-300/80 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700"
                   >
                     {badge}
                   </span>
                 ))}
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Tooling surface
-            </div>
-            <div className="mt-2 grid gap-2">
-              {toolingSurface.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
-                      {item.label}
-                    </div>
-                    <div className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700">
-                      {item.value}
-                    </div>
-                  </div>
-                  <div className="mt-1 text-xs text-slate-600">
-                    {item.detail}
-                  </div>
-                  <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
-                    {item.action ? `ready: ${item.action}` : "ready: pending install"}
-                  </div>
-                </div>
-              ))}
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Shell posture</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">
-                  {allowComposer ? "operator ready" : "observer only"}
-                </div>
-                <div className="mt-1 text-xs text-slate-600">
-                  {readOnlyExecution ? "locked execution lane" : "live execution lane"}
-                </div>
-              </div>
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Execution primitives</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {primitiveSurface.map((primitive) => (
-                    <span
-                      key={primitive}
-                      className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700"
-                    >
-                      {primitive}
-                    </span>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
