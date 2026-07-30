@@ -29,6 +29,7 @@ from mira.agent.model_runtime import ModelRuntimeResolver
 from mira.agent.process_lifecycle import TurnProcessLifecycle
 from mira.agent.run_turn import RunTurnHandler
 from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunSpec
+from mira.agent.save_turn import SaveTurnHandler
 from mira.agent.subagent import SubagentManager
 from mira.agent.subsystems import create_agent_loop_subsystems
 from mira.agent.tools.context import RequestContext, bind_request_context, reset_request_context
@@ -88,7 +89,6 @@ from mira.session.keys import UNIFIED_SESSION_KEY, remember_last_channel
 from mira.session.manager import (
     Session,
     SessionManager,
-    replay_max_messages_for_context,
 )
 from mira.session.model_selection import (
     SESSION_MODEL_PRESET_METADATA_KEY,
@@ -107,9 +107,6 @@ from mira.utils.helpers import image_placeholder_text
 from mira.utils.helpers import truncate_text as truncate_text_fn
 from mira.utils.llm_runtime import LLMRuntime
 from mira.utils.logging import session_logger, turn_logger
-from mira.utils.runtime import (
-    EMPTY_FINAL_RESPONSE_MESSAGE,
-)
 from mira.webui.users import (
     WEBUI_GROUP_METADATA_KEY,
     WEBUI_MEMORY_WORKSPACE_METADATA_KEY,
@@ -549,6 +546,7 @@ class AgentLoop:
         )
         self.build_turns = BuildTurnHandler(self)
         self.run_turns = RunTurnHandler(self)
+        self.save_turns = SaveTurnHandler(self)
         try:
             from mira.kernel.app import register_kernel_loop
 
@@ -1940,52 +1938,11 @@ class AgentLoop:
         )
 
     async def _state_save(self, ctx: TurnContext) -> str:
-        turn_continuation.prepare_save_boundary(ctx)
-
-        if (
-            ctx.kind is TurnKind.USER
-            and (ctx.final_content is None or not ctx.final_content.strip())
-            and not ctx.suppress_response
-        ):
-            ctx.final_content = EMPTY_FINAL_RESPONSE_MESSAGE
-
-        latency_started_at = (
-            ctx.visible_run_started_at
-            if (
-                ctx.kind is TurnKind.SYSTEM
-                or turn_continuation.internal_continuation_inbound(ctx.msg.metadata)
-            )
-            and ctx.visible_run_started_at is not None
-            else ctx.turn_wall_started_at
+        return await self.save_turns.handle(
+            ctx,
+            session=_ctx_session(ctx),
+            runtime=_ctx_runtime(ctx),
         )
-        ctx.turn_latency_ms = max(0, int((time.time() - latency_started_at) * 1000))
-        session = _ctx_session(ctx)
-        runtime = _ctx_runtime(ctx)
-        self._save_turn(
-            session, ctx.all_messages, ctx.save_skip,
-            turn_latency_ms=ctx.turn_latency_ms,
-        )
-        ctx.delivery.record_latency(ctx.turn_latency_ms)
-        if not ctx.ephemeral:
-            session.enforce_file_cap(
-                on_archive=partial(
-                    self._memory_store_for_metadata(session.metadata).raw_archive,
-                    session_key=ctx.session_key,
-                )
-            )
-            self._schedule_background(
-                self._consolidator_for_metadata(session.metadata).maybe_consolidate_by_tokens(
-                    session,
-                    runtime=runtime,
-                    replay_max_messages=replay_max_messages_for_context(
-                        runtime.context_window_tokens
-                    ),
-                )
-            )
-        self._clear_pending_user_turn(session)
-        self._clear_runtime_checkpoint(session)
-        self.sessions.save(session)
-        return "ok"
 
     async def _state_respond(self, ctx: TurnContext) -> str:
         if ctx.suppress_response:
