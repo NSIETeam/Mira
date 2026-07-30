@@ -966,7 +966,7 @@
       "count": "{{count}}",
       "loading": "Loading automations...",
       "loadFailed": "Could not load automations.",
-      "empty": "No automations in this session yet.",
+      "empty": "No automations in this execution yet.",
       "disabled": "Off",
       "schedule": {
         "at": "{{time}}",

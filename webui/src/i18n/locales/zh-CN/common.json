@@ -957,16 +957,16 @@
       "newChat": "从顶部新建执行",
       "toggleTheme": "从顶部切换主题",
       "settings": "打开设置",
-      "sessionInfo": "会话详情"
+      "sessionInfo": "执行详情"
     },
     "sessionInfo": {
-      "title": "会话",
+      "title": "执行",
       "untitled": "未命名执行",
       "automations": "自动任务",
       "count": "{{count}}",
       "loading": "正在加载自动任务...",
       "loadFailed": "无法加载自动任务。",
-      "empty": "这个会话暂时没有自动任务。",
+      "empty": "这个执行暂时没有自动任务。",
       "disabled": "已关闭",
       "schedule": {
         "at": "{{time}}",
