@@ -19,6 +19,7 @@ from loguru import logger
 from mira.agent import context as agent_context
 from mira.agent import model_presets as preset_helpers
 from mira.agent.automation_turns import publish_next_deferred_turn
+from mira.agent.command_turn import CommandTurnHandler
 from mira.agent.context import ContextBuilder
 from mira.agent.cron_turns import CronTurnCoordinator
 from mira.agent.hook import AgentHook, AgentTurnHookFactory
@@ -537,6 +538,13 @@ class AgentLoop:
         self._current_iteration: int = 0
         self.commands = CommandRouter()
         register_builtin_commands(self.commands)
+        self.command_turns = CommandTurnHandler(
+            commands=self.commands,
+            loop=self,
+            persist_user_message=self._persist_user_message_early,
+            save_session=self.sessions.save,
+            clear_pending_user_turn=self._clear_pending_user_turn,
+        )
         try:
             from mira.kernel.app import register_kernel_loop
 
@@ -1913,46 +1921,9 @@ class AgentLoop:
         return "ok"
 
     async def _state_command(self, ctx: TurnContext) -> str:
-        if ctx.kind is TurnKind.SYSTEM:
-            return "dispatch"
-        raw = ctx.msg.content.strip()
-        _, automation_metadata = automation_history_overrides(ctx.msg.metadata)
-        is_user_turn = (
-            ctx.original_user_text is not None
-            and not automation_metadata
-            and ctx.msg.channel != "system"
-            and ctx.msg.sender_id != "subagent"
-        )
-        cmd_ctx = CommandContext(
-            msg=ctx.msg,
-            session=ctx.session,
-            key=ctx.session_key,
-            raw=raw,
-            loop=self,
-            runtime=ctx.runtime,
-            is_user_turn=is_user_turn,
-            turn_scopes=ctx.turn_scopes,
-        )
-        session = _ctx_session(ctx)
-        result = await self.commands.dispatch(cmd_ctx)
-        if result is not None:
-            ctx.outbound = result
-            # Shortcut commands skip BUILD and SAVE, so we must persist the
-            # turn here so WebUI history hydration after _turn_end sees the
-            # message.  Mark messages with _command so get_history can filter
-            # them out of LLM context.  /new is excluded because it
-            # intentionally clears the session.
-            if cmd_ctx.raw.lower() != "/new":
-                ctx.input_persisted_early = self._persist_user_message_early(
-                    ctx.msg, session, _command=True
-                )
-                session.add_message(
-                    "assistant", result.content, _command=True
-                )
-                self.sessions.save(session)
-                self._clear_pending_user_turn(session)
-            return "shortcut"
-        return "dispatch"
+        result = await self.command_turns.handle(ctx, _ctx_session(ctx))
+        ctx.input_persisted_early = result.input_persisted_early
+        return result.event
 
     async def _state_build(self, ctx: TurnContext) -> str:
         runtime = ctx.runtime
