@@ -42,8 +42,21 @@ class KernelModuleDescriptor:
         }
 
 
-def _status(name: str, profile: KernelProfile, configured: object | None = None) -> str:
-    enabled = name in set(profile.features) or name in set(profile.tools) or name in set(profile.channels)
+def _status(
+    name: str,
+    profile: KernelProfile,
+    configured: object | None = None,
+    *,
+    enabled_by_default: bool = True,
+) -> str:
+    enabled = (
+        enabled_by_default
+        and (
+            name in set(profile.features)
+            or name in set(profile.tools)
+            or name in set(profile.channels)
+        )
+    )
     registry = getattr(configured, "registry", {}) if configured is not None else {}
     module_cfg = registry.get(name) if isinstance(registry, dict) else None
     if module_cfg is not None:
@@ -155,7 +168,7 @@ def list_kernel_modules(
             name="workflow_dsl",
             display_name="Workflow DSL",
             category="workflow",
-            status=_status("workflow_dsl", profile, configured),
+            status=_status("workflow_dsl", profile, configured, enabled_by_default=False),
             kind="runtime",
             lazy=True,
             enabled_by_default=False,
@@ -167,7 +180,7 @@ def list_kernel_modules(
             name="computer_use",
             display_name="Computer Use",
             category="tool",
-            status=_status("computer_use", profile, configured),
+            status=_status("computer_use", profile, configured, enabled_by_default=False),
             kind="tool",
             lazy=True,
             enabled_by_default=False,

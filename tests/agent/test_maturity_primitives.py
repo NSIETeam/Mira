@@ -268,6 +268,17 @@ def test_optional_workflow_dsl_tool_mounts_when_enabled(tmp_path):
     assert "workflow_dsl" in loop.tools.tool_names
 
 
+def test_optional_computer_use_tool_mounts_when_enabled(tmp_path):
+    loop = AgentLoop(
+        bus=MessageBus(),
+        provider=make_provider(spec=False),
+        workspace=tmp_path,
+        modules_config=ModulesConfig(registry={"computer_use": ModuleConfig(enabled=True)}),
+    )
+
+    assert "computer_use" in loop.tools.tool_names
+
+
 def test_virtual_context_pages_real_agent_loop_history(tmp_path):
     loop = AgentLoop(
         bus=MessageBus(),
