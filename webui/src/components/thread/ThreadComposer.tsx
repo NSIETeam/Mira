@@ -1844,8 +1844,8 @@ export function ThreadComposer({
     "w-full resize-none bg-transparent",
     isHero
       ? cn(
-          "min-h-[78px] px-4 text-[16px] leading-6 sm:px-5",
-          relaxedHeroInput ? "pb-2 pt-[27px]" : "pb-1.5 pt-4",
+          "min-h-[64px] px-4 text-[16px] leading-6 sm:px-5",
+          relaxedHeroInput ? "pb-2 pt-[20px]" : "pb-1.5 pt-4",
         )
       : "min-h-[50px] px-3.5 pb-1.5 pt-3 text-[16px] leading-5 sm:px-4",
   );
@@ -1886,9 +1886,9 @@ export function ThreadComposer({
       <div
         data-testid="thread-composer-surface"
         className={cn(
-          "thread-composer-surface group/composer relative mx-auto flex w-full flex-col overflow-visible border border-slate-300/80 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.12)] transition-all duration-200 focus-within:border-slate-900 focus-within:shadow-[0_22px_60px_rgba(15,23,42,0.16)] dark:border-white/15 dark:bg-card",
+          "thread-composer-surface group/composer relative mx-auto flex w-full min-w-0 flex-col overflow-visible border border-slate-300/80 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.12)] transition-all duration-200 focus-within:border-slate-900 focus-within:shadow-[0_22px_60px_rgba(15,23,42,0.16)] dark:border-white/15 dark:bg-card",
           isHero
-            ? "max-w-[58rem] rounded-[28px]"
+            ? "max-w-[52rem] rounded-[24px]"
             : "max-w-[49.5rem] rounded-[22px]",
           disabled && "opacity-60",
           isDragging && "ring-2 ring-primary/40 motion-reduce:ring-0 motion-reduce:border-primary",
@@ -2026,11 +2026,11 @@ export function ThreadComposer({
         ) : null}
         <div
           className={cn(
-            "thread-composer-footer flex flex-nowrap items-center",
+            "thread-composer-footer flex min-w-0 flex-nowrap items-center",
             isHero
               ? cn(
                   "gap-x-1.5 px-3 sm:px-4",
-                  showProjectPicker ? "pb-1.5" : "pb-3.5",
+                  showProjectPicker ? "pb-1.5" : "pb-3",
                 )
               : "gap-x-2 px-2.5 pb-2 sm:px-3",
           )}

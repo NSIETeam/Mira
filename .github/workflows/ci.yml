@@ -180,3 +180,6 @@ jobs:
           docker run --rm --user 1000:1000 --entrypoint sh mira:test -c
           'test -w /app/.venv && test ! -w /app && test ! -w /app/mira &&
           python -m scripts.install_channel_dependencies discord && python -c "import discord"'
+
+      - name: Smoke gateway and bundled WebUI in Docker
+        run: MIRA_DOCKER_SMOKE_BUILD=0 MIRA_DOCKER_SMOKE_IMAGE=mira:test scripts/docker_gateway_smoke.sh

@@ -16,3 +16,13 @@ def test_compose_passes_canonical_channel_build_arg() -> None:
     compose = (ROOT / "docker-compose.yml").read_text()
     assert "MIRA_CHANNELS: ${MIRA_CHANNELS:-whatsapp}" in compose
     assert "mira_CHANNELS" not in compose
+
+
+def test_docker_gateway_smoke_checks_gateway_and_webui() -> None:
+    script = (ROOT / "scripts" / "docker_gateway_smoke.sh").read_text()
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    assert "MIRA_CHANNELS=websocket" in script
+    assert "/health" in script
+    assert "/webui/bootstrap" in script
+    assert "test -f /app/mira/web/dist/index.html" in script
+    assert "scripts/docker_gateway_smoke.sh" in workflow

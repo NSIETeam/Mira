@@ -327,14 +327,34 @@ function HeroGreeting({ text }: { text: string }) {
   }, [text]);
 
   return (
-    <div ref={containerRef} className="min-w-0 w-full max-w-[36rem] overflow-hidden">
+    <div ref={containerRef} className="min-w-0 w-full max-w-[32rem] overflow-hidden">
       <h1
         ref={headingRef}
         data-testid="hero-greeting"
-        className="text-balance break-words text-[28px] font-normal leading-[1.12] tracking-normal text-foreground sm:text-[38px] sm:leading-tight"
+        className="text-balance break-words text-[24px] font-semibold leading-tight tracking-[-0.03em] text-foreground sm:text-[30px]"
       >
         {text}
       </h1>
+    </div>
+  );
+}
+
+function EmptyThreadPrompt({
+  greeting,
+  hint,
+}: {
+  greeting: string;
+  hint: string;
+}) {
+  return (
+    <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+      <div className="mb-3 rounded-full border border-slate-200/80 bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-sm">
+        Mira chat
+      </div>
+      <HeroGreeting text={greeting} />
+      <p className="mt-2 max-w-[26rem] text-[13px] leading-5 text-muted-foreground">
+        {hint}
+      </p>
     </div>
   );
 }
@@ -1099,12 +1119,10 @@ export function ThreadShell({
       {t("thread.loadingConversation")}
     </div>
   ) : (
-    <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
-      <HeroGreeting text={t(heroGreetingKey)} />
-      <p className="mt-2 max-w-md text-[13px] leading-6 text-muted-foreground">
-        {t("thread.empty.hint")}
-      </p>
-    </div>
+    <EmptyThreadPrompt
+      greeting={t(heroGreetingKey)}
+      hint={t("thread.empty.hint")}
+    />
   );
   const sessionInfoAction = supportsThreads && historyKey ? (
     <ExecutionInfoPopover executionKey={historyKey} token={token} title={title} />
@@ -1119,7 +1137,7 @@ export function ThreadShell({
   return (
     <section
       ref={shellRef}
-      className="relative flex min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(148,163,184,0.16),transparent_34%),linear-gradient(180deg,rgba(248,250,252,0.94)_0%,rgba(248,250,252,0.99)_100%)]"
+      className="relative flex min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_22%_0%,rgba(56,189,248,0.10),transparent_33%),radial-gradient(circle_at_78%_0%,rgba(15,23,42,0.08),transparent_30%),linear-gradient(180deg,rgba(248,250,252,0.97)_0%,rgba(241,245,249,0.99)_100%)]"
     >
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden px-2 pb-2 pt-1">
         {!hideHeader ? (
@@ -1142,14 +1160,14 @@ export function ThreadShell({
           resolve={historyKey ? resolveFilePreviewAvailability : undefined}
         >
           {!session && !loading ? (
-            <div className="relative flex min-h-0 flex-1 items-center justify-center px-4 py-8">
-              <div className="w-full max-w-[50rem]">
-                <div className="mb-4 text-center">{emptyState}</div>
+            <div className="relative flex min-h-0 flex-1 items-center justify-center px-3 py-5 sm:px-4">
+              <div className="w-full max-w-[46rem]">
+                <div className="mb-3 text-center">{emptyState}</div>
                 {composer}
               </div>
             </div>
           ) : (
-          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[22px] bg-white/58 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[20px] border border-slate-200/75 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
             <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-[linear-gradient(180deg,rgba(248,250,252,0.92)_0%,rgba(248,250,252,0)_100%)]" />
             <div className="h-full">
               <ThreadViewport

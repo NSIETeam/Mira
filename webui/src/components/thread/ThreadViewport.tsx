@@ -630,17 +630,17 @@ export const ThreadViewport = forwardRef<ThreadViewportHandle, ThreadViewportPro
           data-testid={!hasMessages ? "thread-welcome-layout" : undefined}
           data-layout={hasMessages ? "thread" : "hero"}
           className={cn(
-            "thread-layout mx-auto grid min-h-full w-full",
+            "thread-layout mx-auto grid min-h-full w-full min-w-0",
             hasMessages
               ? "max-w-[64rem]"
-              : "max-w-[72rem] px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-6 sm:px-4 sm:py-12",
+              : "max-w-[54rem] px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-5 sm:px-4 sm:py-8",
           )}
         >
           {hasMessages ? (
             <div
               ref={messageRegionRef}
               data-testid="thread-message-region"
-              className="row-start-1 flex min-h-0 min-w-0 flex-col justify-start px-3 pb-4 pt-4 sm:px-4"
+              className="row-start-1 flex min-h-0 min-w-0 flex-col justify-start px-2 pb-4 pt-4 sm:px-4"
             >
               <div ref={messageContentRef} className="mx-auto w-full max-w-[49.5rem]">
                 <ThreadMessages
@@ -659,7 +659,7 @@ export const ThreadViewport = forwardRef<ThreadViewportHandle, ThreadViewportPro
               </div>
             </div>
           ) : (
-            <div className="row-start-1 flex min-h-0 min-w-0 w-full items-center justify-center sm:items-end sm:pb-8">
+            <div className="row-start-1 flex min-h-0 w-full min-w-0 items-end justify-center pb-4 sm:pb-6">
               {emptyState}
             </div>
           )}
@@ -683,7 +683,7 @@ export const ThreadViewport = forwardRef<ThreadViewportHandle, ThreadViewportPro
             >
               <div
                 data-testid="thread-composer-motion"
-                className="mx-auto w-full max-w-[58rem]"
+                className="mx-auto w-full max-w-[52rem]"
               >
                 {composer}
               </div>

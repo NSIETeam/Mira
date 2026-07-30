@@ -988,9 +988,9 @@ describe("ThreadViewport", () => {
     expect(layout).toHaveAttribute("data-layout", "hero");
     expect(screen.getByText("welcome").parentElement).toHaveClass(
       "min-h-0",
-      "items-center",
-      "sm:items-end",
-      "sm:pb-8",
+      "items-end",
+      "pb-4",
+      "sm:pb-6",
     );
     expect(screen.getByTestId("thread-composer-motion")).toContainElement(
       screen.getByText("composer"),

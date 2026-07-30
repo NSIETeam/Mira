@@ -730,6 +730,19 @@
   container-type: inline-size;
 }
 
+.thread-layout,
+.thread-composer-surface,
+.thread-composer-footer,
+.thread-composer-footer-primary,
+.thread-composer-footer-actions {
+  min-width: 0;
+}
+
+.thread-layout :where(p, span, button, code, pre, textarea),
+.thread-composer-surface :where(p, span, button, code, pre, textarea) {
+  overflow-wrap: anywhere;
+}
+
 .thread-composer-footer-actions {
   flex: 0 1 auto;
   max-width: 58%;

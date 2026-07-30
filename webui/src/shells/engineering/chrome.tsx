@@ -86,7 +86,7 @@ export function HostChrome({
       <div className="pointer-events-none absolute inset-x-0 top-0 flex h-12 items-center justify-center">
         <div
           className={cn(
-            "flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] transition-colors motion-reduce:animate-none",
+            "flex max-w-[min(56rem,calc(100vw-9rem))] items-center gap-2 overflow-hidden rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] transition-colors motion-reduce:animate-none",
             chromeCapsuleClass,
             chromeCapsuleMotionClass,
           )}
@@ -106,26 +106,26 @@ export function HostChrome({
           title={semantics.statusSummary}
         >
           {chromeStatusTitle ? <span className="sr-only">{chromeStatusTitle}</span> : null}
-          <span className="text-slate-900">{appName}</span>
+          <span className="shrink-0 text-slate-900">{appName}</span>
           <span className={cn("h-1.5 w-1.5 rounded-full", healthDotClass)} />
-          <span>{visibleTagline}</span>
+          <span className="min-w-0 truncate">{visibleTagline}</span>
           {chromeStatusLabel ? (
-            <span className="rounded-full border border-current/15 bg-black/[0.03] px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]">
+            <span className="hidden rounded-full border border-current/15 bg-black/[0.03] px-2 py-0.5 text-[10px] font-semibold tracking-[0.12em] sm:inline">
               {chromeStatusLabel}
             </span>
           ) : null}
           {privilegeBadge ? (
-            <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]", privilegeBadge.className)}>
+            <span className={cn("hidden rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.12em] md:inline", privilegeBadge.className)}>
               {privilegeBadge.label}
             </span>
           ) : null}
           {healthBadge ? (
-            <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]", healthBadge.className)}>
+            <span className={cn("hidden rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.12em] lg:inline", healthBadge.className)}>
               {healthBadge.label}
             </span>
           ) : null}
           {maintenanceBadge ? (
-            <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]", maintenanceBadge.className)}>
+            <span className={cn("hidden rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.12em] xl:inline", maintenanceBadge.className)}>
               {maintenanceBadge.label}
             </span>
           ) : null}
