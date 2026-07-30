@@ -178,10 +178,6 @@ export interface KernelTopologyPayload {
   runtime_topology: KernelManifestPayload["runtime_topology"];
 }
 
-export interface KernelEmbeddedPayload {
-  embedded_topology: KernelManifestPayload["embedded_topology"];
-}
-
 export interface KernelMemoryPayload {
   memory: BootstrapResponse["memory"];
   volume?: BootstrapResponse["volume"];
@@ -227,18 +223,6 @@ export async function fetchKernelTopology(
 ): Promise<KernelTopologyPayload> {
   return request<KernelTopologyPayload>(
     `${base}/api/kernel/topology`,
-    token,
-    undefined,
-    API_READ_TIMEOUT_MS,
-  );
-}
-
-export async function fetchKernelEmbedded(
-  token: string,
-  base: string = "",
-): Promise<KernelEmbeddedPayload> {
-  return request<KernelEmbeddedPayload>(
-    `${base}/api/kernel/embedded`,
     token,
     undefined,
     API_READ_TIMEOUT_MS,

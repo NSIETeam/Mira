@@ -2722,9 +2722,7 @@ function OverviewSettings({
     ? [
         activeBridge.backend_kind,
         activeBridge.health,
-        activeBridge.board_capable
-          ? tx("settings.values.boardCapable", "Board capable")
-          : tx("settings.values.hosted", "Hosted"),
+        tx("settings.values.hosted", "Hosted"),
       ].join(" · ")
     : tx("settings.values.unavailable", "Unavailable");
   return (

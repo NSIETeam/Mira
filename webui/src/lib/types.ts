@@ -730,7 +730,6 @@ export interface KernelManifestPayload {
     runtime_mode?: string | null;
     runtime_stage?: string;
     build_hint?: string | null;
-    board_capable: boolean;
     last_error: string | null;
     actions?: Array<{
       id: string;
@@ -774,17 +773,6 @@ export interface KernelManifestPayload {
       enabled: boolean;
       reason: string | null;
     };
-    board: {
-      attached: boolean;
-      transport: string | null;
-      port: string | null;
-      target: string | null;
-      preferred_transport: string | null;
-      runtime_mode?: string | null;
-      bridge_artifact?: string | null;
-      last_error?: string | null;
-      available_ports?: string[];
-    };
     fault_posture: {
       supervisor: string;
       restart_policy: string;
@@ -813,7 +801,6 @@ export interface KernelManifestPayload {
       privileged_reason?: string | null;
     }>;
     telemetry: string[];
-    embedded_transports: string[];
   };
   diagnostics: {
     supervisor: string;
@@ -835,18 +822,6 @@ export interface KernelManifestPayload {
         owner?: string | null;
         mode?: string | null;
         lane?: string | null;
-      };
-      board?: {
-        attached?: boolean;
-        health?: string | null;
-        transport?: string | null;
-        port?: string | null;
-        target?: string | null;
-        preferred_transport?: string | null;
-        runtime_mode?: string | null;
-        bridge_artifact?: string | null;
-        last_error?: string | null;
-        available_ports?: string[];
       };
       native?: {
         health?: string | null;
@@ -1028,29 +1003,6 @@ export interface KernelManifestPayload {
       error: string | null;
     }>;
   }>;
-  embedded_topology: {
-    board: {
-      attached: boolean;
-      transport: string | null;
-      port: string | null;
-      target: string | null;
-      preferred_transport: string | null;
-      runtime_mode?: string | null;
-      bridge_artifact?: string | null;
-      last_error?: string | null;
-      available_ports?: string[];
-    };
-    transports: string[];
-    active_adapter: string | null;
-    actions?: Array<{
-      id: string;
-      label: string;
-      pane?: string | null;
-      command?: string | null;
-      privileged?: boolean;
-      privileged_reason?: string | null;
-    }>;
-  };
   runtime_topology: {
     adapters: KernelManifestPayload["runtime_adapters"];
     modules: KernelManifestPayload["runtime_modules"];

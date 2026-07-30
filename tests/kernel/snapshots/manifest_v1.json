@@ -35,8 +35,7 @@
     "enter_maintenance",
     "exit_maintenance",
     "inspect_modules",
-    "switch_adapter",
-    "attach_board"
+    "switch_adapter"
   ],
   "session_action_ids": [
     "inspect_session",

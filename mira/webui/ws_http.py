@@ -947,8 +947,6 @@ class GatewayHTTPHandler:
             return self._handle_kernel_topology(request)
         if got == "/api/kernel/diagnostics":
             return _http_json_response({"diagnostics": _kernel_diagnostics_payload()})
-        if got == "/api/kernel/embedded":
-            return self._handle_kernel_embedded(request)
         if got == "/api/kernel/memory":
             return self._handle_kernel_memory(request)
         if got == "/api/kernel/users":
@@ -1035,14 +1033,6 @@ class GatewayHTTPHandler:
         if kernel is None:
             return _http_error(503, "kernel runtime unavailable")
         return _http_json_response({"runtime_topology": kernel.runtime_topology_snapshot()})
-
-    def _handle_kernel_embedded(self, request: WsRequest) -> Response:
-        if not self.check_api_token(request):
-            return _http_error(401, "Unauthorized")
-        kernel = self._get_kernel_app()
-        if kernel is None:
-            return _http_error(503, "kernel runtime unavailable")
-        return _http_json_response({"embedded_topology": kernel.embedded_topology_snapshot()})
 
     def _handle_kernel_memory(self, request: WsRequest) -> Response:
         if not self.check_api_token(request):

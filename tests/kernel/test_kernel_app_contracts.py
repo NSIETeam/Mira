@@ -25,7 +25,7 @@ from mira.kernel.app import (
     build_kernel_manifest,
     register_kernel_loop,
 )
-from mira.kernel.profile import lite_customer_profile, mira_embedded_lab_profile
+from mira.kernel.profile import lite_customer_profile, mira_external_runtime_profile
 from mira.kernel.shell import desktop_customer_shell
 
 
@@ -128,7 +128,6 @@ def test_kernel_manifest_contract_snapshot_for_desktop_shell() -> None:
             "exit_maintenance",
             "inspect_modules",
             "switch_adapter",
-            "attach_board",
         ],
         "profile": {
             "implementation_languages": ["python"],
@@ -147,13 +146,13 @@ def test_kernel_manifest_contract_snapshot_for_desktop_shell() -> None:
     }
 
 
-def test_embedded_manifest_defaults_to_serial_bridge_contract() -> None:
+def test_external_runtime_manifest_defaults_to_serial_bridge_contract() -> None:
     manifest = build_kernel_manifest(
-        profile=mira_embedded_lab_profile(),
+        profile=mira_external_runtime_profile(),
         shell=desktop_customer_shell(),
     )
 
-    assert manifest["targets"]["adapter"]["default_adapter"] == "c-serial-bridge"
+    assert manifest["targets"]["adapter"]["default_adapter"] == "python-inprocess"
     assert manifest["targets"]["adapter"]["transport_modes"] == [
         "in_process",
         "ffi",
@@ -162,9 +161,8 @@ def test_embedded_manifest_defaults_to_serial_bridge_contract() -> None:
         "usb",
         "can",
     ]
-    assert manifest["operator_console"]["embedded_transports"] == ["serial", "usb", "can"]
     assert manifest["capabilities"]["automations"] is True
-    assert manifest["runtime_control"]["active_adapter"] == "c-serial-bridge"
+    assert manifest["runtime_control"]["active_adapter"] == "python-inprocess"
 
 
 def test_operator_action_factories_keep_public_shape() -> None:
@@ -368,23 +366,10 @@ def test_workspace_and_repo_root_resolution(tmp_path: Path) -> None:
 
 def test_runtime_control_methods_record_native_backed_state(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(kernel_app_module, "dispatch_native_bridge_command", _native_ok)
-    monkeypatch.setattr(
-        kernel_app_module,
-        "attach_runtime_board_probe",
-        lambda *_args, **_kwargs: {
-            "ok": True,
-            "health": "ready",
-            "runtime_mode": "serial",
-            "artifact": "runtimes/mira-c/runtime.json",
-            "error": None,
-        },
-    )
     app = _app()
 
     assert app.switch_runtime_adapter("python-inprocess")["active_adapter"] == "python-inprocess"
     assert app.focus_runtime_module("session_state")["module_focus"] == "session_state"
-    assert app.attach_board(transport="serial", port="/dev/tty.test")["board"]["attached"] is True
-    assert app.detach_board()["board"]["attached"] is False
     assert app.record_fault("fault")["fault_posture"]["last_level"] == "fault"
     assert app.clear_fault()["fault_posture"]["last_level"] == "clear"
     assert app.restart_bridge("python-inprocess")["active_adapter"] == "python-inprocess"

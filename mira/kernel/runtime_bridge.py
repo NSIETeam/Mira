@@ -111,7 +111,6 @@ def build_runtime_bridges(
                 "runtime_mode": (probe or {}).get("runtime_mode"),
                 "runtime_stage": adapter.get("runtime_stage"),
                 "build_hint": adapter.get("build_hint"),
-                "board_capable": "board_io" in list(adapter.get("capabilities", [])),
                 "last_error": (probe or {}).get("last_error"),
             }
         )

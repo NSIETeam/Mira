@@ -1242,9 +1242,6 @@ function Shell({
         kernelControl.setSelectedPane("adapters");
         void kernelControl.cycleAdapter();
       },
-      attach_board: () => {
-        void kernelControl.attachBoard();
-      },
     },
   });
   useEffect(() => {
@@ -1599,11 +1596,6 @@ function Shell({
                 connectionStatus={connectionStatus}
                 runtimeModel={runtimeModel}
                 recentErrors={recentErrors}
-                embeddedTargetHint={
-                  kernelManifest?.profile.name === "mira-embedded-lab"
-                    ? "Embedded lab kernel profile enabled for constrained targets"
-                    : null
-                }
                 operatorActions={operatorActionMap}
                 selectedPane={kernelControl.selectedPane}
                 onSelectPane={kernelControl.setSelectedPane}
@@ -1612,13 +1604,6 @@ function Shell({
                 selectedModuleName={kernelControl.selectedModuleName}
                 onSelectModule={(name) => {
                   void kernelControl.focusModule(name);
-                }}
-                selectedBoardTransport={kernelControl.selectedBoardTransport}
-                onSelectBoardTransport={kernelControl.setSelectedBoardTransport}
-                selectedBoardPort={kernelControl.selectedBoardPort}
-                onSelectBoardPort={kernelControl.setSelectedBoardPort}
-                onAttachBoard={(options) => {
-                  void kernelControl.attachBoard(options);
                 }}
                 onRunOperatorCommand={async (command) => {
                   const payload = await executeKernelOperatorCommand(token, command);

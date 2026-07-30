@@ -140,7 +140,6 @@ export function MiraKernelConsole({
   connectionStatus,
   runtimeModel,
   recentErrors,
-  embeddedTargetHint,
   operatorActions,
   selectedPane,
   onSelectPane,
@@ -148,11 +147,6 @@ export function MiraKernelConsole({
   onSelectAdapter,
   selectedModuleName,
   onSelectModule,
-  selectedBoardTransport,
-  onSelectBoardTransport,
-  selectedBoardPort,
-  onSelectBoardPort,
-  onAttachBoard,
   onRunOperatorCommand,
   onClose,
 }: {
@@ -165,7 +159,6 @@ export function MiraKernelConsole({
   connectionStatus: string;
   runtimeModel: string | null;
   recentErrors: KernelConsoleErrorEntry[];
-  embeddedTargetHint?: string | null;
   operatorActions?: Record<string, KernelOperatorActionBinding>;
   selectedPane: string;
   onSelectPane: (pane: string) => void;
@@ -173,11 +166,6 @@ export function MiraKernelConsole({
   onSelectAdapter: (name: string | null) => void;
   selectedModuleName: string | null;
   onSelectModule: (name: string | null) => void;
-  selectedBoardTransport?: string | null;
-  onSelectBoardTransport?: (transport: string | null) => void;
-  selectedBoardPort?: string | null;
-  onSelectBoardPort?: (port: string | null) => void;
-  onAttachBoard?: (options?: { transport?: string | null; port?: string | null }) => void;
   onRunOperatorCommand?: (command: string) => Promise<{
     output?: string;
     targetPane?: string | null;
@@ -207,7 +195,6 @@ export function MiraKernelConsole({
     inspectRuntime: isChineseLocale ? "检查运行" : "Inspect runtime",
     focusFaults: isChineseLocale ? "查看故障" : "Focus faults",
     moduleGraph: isChineseLocale ? "模块图" : "Open module graph",
-    boardStatus: isChineseLocale ? "板卡状态" : "Board status",
     close: isChineseLocale ? "收起控制台" : "Collapse console",
   };
   const appIdentity = kernelManifest?.identity?.app_name ?? "Mira";
@@ -259,7 +246,6 @@ export function MiraKernelConsole({
       : null;
   };
   const diagnostics = kernelManifest?.diagnostics ?? null;
-  const boardSnapshot = diagnostics?.snapshot.board;
   const nativeSnapshot = diagnostics?.snapshot.native;
   const nativeLastCommand = nativeSnapshot?.last_command;
   const nativeModuleEntries = Object.entries(nativeSnapshot?.modules ?? {});
@@ -274,7 +260,6 @@ export function MiraKernelConsole({
   const runtimeCapabilities = kernelManifest?.capabilities ?? null;
   const executionContract = kernelManifest?.execution ?? null;
   const goalState = diagnostics?.snapshot.goal_state;
-  const boardAttachmentLabel = boardSnapshot?.attached ? "attached" : "detached";
   const nativeHealthLabel = nativeSnapshot?.health ?? "unknown";
   const executionLanes = kernelManifest?.execution_lanes.slice(0, 4) ?? [];
   const sessionControls = kernelManifest?.session_controls?.actions ?? [];
@@ -290,12 +275,10 @@ export function MiraKernelConsole({
   const dispatchQueue = schedulerQueues.find((queue) => queue.id === "tool_dispatch") ?? null;
   const dispatchQueueTasks = dispatchQueue?.active_tasks?.slice(0, 4) ?? [];
   const workers = kernelManifest?.workers.slice(0, 4) ?? [];
-  const embeddedTopology = kernelManifest?.embedded_topology ?? null;
   const runtimeTopology = kernelManifest?.runtime_topology ?? null;
   const runtimeTopologyAdapters = runtimeTopology?.adapters?.slice(0, 4) ?? [];
   const runtimeTopologyModules = runtimeTopology?.modules?.slice(0, 6) ?? [];
   const runtimeTopologyLanes = runtimeTopology?.execution_lanes?.slice(0, 4) ?? [];
-  const embeddedPorts = boardSnapshot?.available_ports?.slice(0, 6) ?? [];
   const eventLog = kernelManifest?.event_log.slice(0, 8) ?? [];
   const selectedAdapter = useMemo(
     () =>
@@ -324,7 +307,6 @@ export function MiraKernelConsole({
   const selectedBridgeAction = (id: string) => selectedBridge?.actions?.find((action) => action.id === id) ?? null;
   const faultAction = (id: string) => runtimeControl?.fault_posture.actions?.find((action) => action.id === id) ?? null;
   const runtimeTopologyAction = (id: string) => runtimeTopology?.actions?.find((action) => action.id === id) ?? null;
-  const embeddedTopologyAction = (id: string) => embeddedTopology?.actions?.find((action) => action.id === id) ?? null;
   const selectedBridgeInspectAction = selectedBridgeAction("inspect_bridge");
   const selectedBridgeRestartAction = selectedBridgeAction("restart_bridge");
   const selectedBridgeMarkFaultAction = selectedBridgeAction("mark_bridge_fault");
@@ -344,9 +326,6 @@ export function MiraKernelConsole({
   const exitMaintenanceAction = faultAction("exit_maintenance");
   const inspectRuntimeAction = runtimeTopologyAction("inspect_runtime");
   const runtimeOrchestrationAction = runtimeTopologyAction("runtime_orchestration");
-  const embeddedBoardStatusAction = embeddedTopologyAction("board_status");
-  const embeddedInspectAction = embeddedTopologyAction("inspect_embedded");
-  const embeddedRefreshPortsAction = embeddedTopologyAction("refresh_board_ports");
   const nativeReplayLastAction = nativeAction("replay_last");
   const nativeStatusAction = nativeAction("native_status");
   const nativeLastCommandAction = nativeAction("native_last_command");
@@ -426,7 +405,7 @@ export function MiraKernelConsole({
     details?: Record<string, string | number | boolean | null>;
   }>>([
     {
-      line: "mira-kernel shell ready. try `runtime health`, `native inspect memory`, `native focus memory`, `native replay runtime pause operator-ping`, or `board mode`.",
+      line: "mira-kernel shell ready. try `runtime health`, `native inspect memory`, `native focus memory`, or `native replay runtime pause operator-ping`.",
     },
   ]);
   const [operatorPending, setOperatorPending] = useState(false);
@@ -532,7 +511,7 @@ export function MiraKernelConsole({
     {
       label: "kernel",
       tone: "border-indigo-700 bg-indigo-950 text-indigo-100",
-      commands: ["kernel profile", "kernel manifest", "topology embedded"],
+      commands: ["kernel profile", "kernel manifest", "runtime topology"],
     },
     {
       label: "execution",
@@ -568,11 +547,6 @@ export function MiraKernelConsole({
       label: "module",
       tone: "border-lime-700 bg-lime-950 text-lime-100",
       commands: ["module list", "module show", "module actions", "module focus memory"],
-    },
-    {
-      label: "board",
-      tone: "border-amber-700 bg-amber-950 text-amber-100",
-      commands: ["board status", "board mode", "board target", "board transport", "board ports"],
     },
     {
       label: "native",
@@ -613,33 +587,6 @@ export function MiraKernelConsole({
         locked: false,
       },
     ];
-    const embeddedCommands = [
-      {
-        label: embeddedBoardStatusAction?.command ?? "board status",
-        command: embeddedBoardStatusAction?.command ?? "board status",
-        locked: false,
-      },
-      {
-        label: embeddedRefreshPortsAction?.command ?? "board ports",
-        command: embeddedRefreshPortsAction?.command ?? "board ports",
-        locked: false,
-      },
-      {
-        label: "board mode",
-        command: "board mode",
-        locked: false,
-      },
-      {
-        label: "board transport",
-        command: "board transport",
-        locked: false,
-      },
-      {
-        label: embeddedInspectAction?.command ?? "topology embedded",
-        command: embeddedInspectAction?.command ?? "topology embedded",
-        locked: false,
-      },
-    ];
     const moduleCommand = {
       label: selectedModuleInspectNativeAction?.command
         ?? selectedModuleFillNativeInspectAction?.command
@@ -668,10 +615,10 @@ export function MiraKernelConsole({
         commands: recoveryCommands.filter((item) => Boolean(item.command)),
       },
       {
-        label: "embedded attach",
+        label: "module inspect",
         tone: "border-amber-700 bg-amber-950 text-amber-100",
-        detail: "board / ports / native module",
-        commands: [...embeddedCommands.filter((item) => Boolean(item.command)), moduleCommand].filter((item) => Boolean(item.command)),
+        detail: "native module / runtime bridge",
+        commands: [moduleCommand].filter((item) => Boolean(item.command)),
       },
     ];
   }, [
@@ -679,9 +626,6 @@ export function MiraKernelConsole({
     canElevate,
     clearFaultsAction,
     dispatchDrainAction,
-    embeddedBoardStatusAction,
-    embeddedInspectAction,
-    embeddedRefreshPortsAction,
     inspectFaultsAction,
     privilegeRole,
     selectedModuleFillNativeInspectAction,
@@ -925,9 +869,6 @@ export function MiraKernelConsole({
     { label: "Diag iter", value: `${diagIteration ?? 0}` },
     { label: "Tool wait", value: `${diagPendingToolCalls}` },
     { label: "Subagents", value: `${diagSubagentWorkers}` },
-    { label: "Board", value: boardAttachmentLabel },
-    { label: "Board mode", value: boardSnapshot?.runtime_mode ?? "unprobed" },
-    { label: "Board health", value: boardSnapshot?.health ?? "unknown" },
     { label: "Native health", value: nativeHealthLabel },
     { label: "Native queue", value: `${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0}` },
     { label: "Native modules", value: `${nativeSnapshot?.module_count ?? nativeModuleEntries.length}` },
@@ -958,12 +899,6 @@ export function MiraKernelConsole({
       detail: `${nativeFaultModules.length} modules · ${faultedBridges.length} bridges · ${eventLaneCounts.fault} lane`,
       tone: "border-rose-200/80 bg-rose-50/70",
     },
-    {
-      label: "Embedded target",
-      value: embeddedTargetHint ?? boardSnapshot?.target ?? "not attached",
-      detail: `${boardAttachmentLabel} · ${boardSnapshot?.transport ?? "transport unknown"}`,
-      tone: "border-amber-200/80 bg-amber-50/70",
-    },
   ] as const;
   const cockpitQuickRoutes = [
     {
@@ -992,12 +927,6 @@ export function MiraKernelConsole({
           tone: "border-rose-300/80 bg-rose-50 text-rose-700 hover:bg-rose-100",
         }]
       : []),
-    {
-      label: text.boardStatus,
-      pane: "adapters",
-      command: embeddedBoardStatusAction?.command ?? "board status",
-      tone: "border-amber-300/80 bg-amber-50 text-amber-700 hover:bg-amber-100",
-    },
   ].filter((item) => item.command);
   const cockpitPrimitiveSurface = [
     {
@@ -1419,7 +1348,7 @@ export function MiraKernelConsole({
                       runOperatorCommand();
                     }
                   }}
-                  placeholder="runtime health | native replay runtime pause operator-ping | board attach /dev/ttyUSB0 serial"
+                  placeholder="runtime health | native replay runtime pause operator-ping | bridge status"
                   className="flex-1 bg-transparent text-slate-100 outline-none placeholder:text-slate-500"
                 />
                 <button
@@ -2746,19 +2675,6 @@ export function MiraKernelConsole({
                 </div>
               </>
             ) : null}
-            <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Embedded transports
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(operatorConsole?.embedded_transports ?? []).map((transport) => (
-                <span
-                  key={transport}
-                  className="rounded-full border border-orange-300/80 bg-orange-50 px-2.5 py-1 text-xs text-orange-700"
-                >
-                  {transport}
-                </span>
-              ))}
-            </div>
           </div>
         </section>
 
@@ -2841,11 +2757,6 @@ export function MiraKernelConsole({
                     label="status"
                     value={bridge.status}
                     tone={bridge.status === "active" ? "emerald" : "slate"}
-                  />
-                  <ConsoleBadge
-                    label="board"
-                    value={bridge.board_capable ? "capable" : "hosted"}
-                    tone={bridge.board_capable ? "amber" : "slate"}
                   />
                   {bridge.runtime_stage ? (
                     <ConsoleBadge
@@ -2971,125 +2882,6 @@ export function MiraKernelConsole({
                 No runtime bridges registered.
               </div>
             )}
-          </div>
-        </section>
-
-        <section className={paneClass("adapters")}>
-          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Board attachment
-          </div>
-          <div className="grid gap-2 rounded-xl border border-border/70 bg-background/80 p-3">
-            <Row label="Target" value={boardSnapshot?.target ?? "unknown"} />
-            <Row label="Attach" value={boardSnapshot?.attached ? "attached" : "detached"} />
-            <Row
-              label="Transport"
-              value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"}
-            />
-            <Row label="Port" value={boardSnapshot?.port ?? "not bound"} />
-            <Row
-              label="Supervisor"
-              value={runtimeControl?.fault_posture.supervisor ?? "unknown"}
-            />
-            <Row
-              label="Maintenance"
-              value={runtimeControl?.maintenance_mode?.enabled ? "enabled" : "off"}
-            />
-            <Row
-              label="Runtime mode"
-              value={boardSnapshot?.runtime_mode ?? "unprobed"}
-            />
-            <Row label="Health" value={boardSnapshot?.health ?? "unknown"} />
-            <Row
-              label="Bridge artifact"
-              value={boardSnapshot?.bridge_artifact ?? "none"}
-            />
-            <div className="grid gap-2 rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Attach controls
-              </div>
-              <label className="grid gap-1 text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                <span>Transport</span>
-                <select
-                  value={selectedBoardTransport ?? ""}
-                  onChange={(event) => onSelectBoardTransport?.(event.target.value || null)}
-                  className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900"
-                >
-                  <option value="">auto</option>
-                  {Array.from(new Set([
-                    ...(operatorConsole?.embedded_transports ?? []),
-                    ...([boardSnapshot?.preferred_transport].filter(Boolean) as string[]),
-                    ...([boardSnapshot?.transport].filter(Boolean) as string[]),
-                  ])).map((transport) => (
-                    <option key={transport} value={transport}>
-                      {transport}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-1 text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                <span>Port</span>
-                <select
-                  value={selectedBoardPort ?? ""}
-                  onChange={(event) => onSelectBoardPort?.(event.target.value || null)}
-                  className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900"
-                >
-                  <option value="">auto-detect</option>
-                  {(boardSnapshot?.available_ports ?? []).map((port) => (
-                    <option key={port} value={port}>
-                      {port}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => onAttachBoard?.({
-                    transport: selectedBoardTransport ?? null,
-                    port: selectedBoardPort ?? null,
-                  })}
-                  className="rounded-md border border-slate-900 bg-slate-900 px-2.5 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white transition-colors hover:bg-slate-800"
-                >
-                  Attach board
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runQuickCommand("detach-board")}
-                  className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[11px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  Detach board
-                </button>
-              </div>
-            </div>
-            {boardSnapshot?.available_ports?.length ? (
-              <div className="rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  Candidate ports
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(boardSnapshot?.available_ports ?? []).slice(0, 6).map((port) => (
-                    <button
-                      key={port}
-                      type="button"
-                      onClick={() => onSelectBoardPort?.(port)}
-                      className={cn(
-                        "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
-                        selectedBoardPort === port
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-300/80 bg-slate-50 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      {port}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            {boardSnapshot?.last_error ? (
-              <div className="rounded-md border border-rose-300/60 bg-rose-50 px-2.5 py-2 text-[11px] text-rose-800">
-                {boardSnapshot.last_error}
-              </div>
-            ) : null}
           </div>
         </section>
 
@@ -3499,141 +3291,6 @@ export function MiraKernelConsole({
               </button>
             </div>
           </div>
-          <div className="grid gap-3 rounded-xl border border-border/70 bg-background/80 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Embedded topology
-              </div>
-              <ConsoleBadge
-                label="board"
-                value={boardSnapshot?.attached ? "attached" : "detached"}
-                tone={boardSnapshot?.attached ? "emerald" : "amber"}
-              />
-            </div>
-            <div className="grid gap-3 md:grid-cols-4">
-              <div className="rounded-lg border border-amber-200/70 bg-amber-50/80 p-3">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Board health</div>
-                <div className="mt-2 text-sm font-semibold text-amber-950">
-                  {boardSnapshot?.health ?? "unknown"}
-                </div>
-              </div>
-              <div className="rounded-lg border border-slate-200/70 bg-slate-50/80 p-3">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-600">Runtime mode</div>
-                <div className="mt-2 text-sm font-semibold text-slate-950">
-                  {boardSnapshot?.runtime_mode ?? "userland"}
-                </div>
-              </div>
-              <div className="rounded-lg border border-cyan-200/70 bg-cyan-50/80 p-3">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-cyan-700">Known ports</div>
-                <div className="mt-2 text-lg font-semibold text-cyan-950">
-                  {embeddedPorts.length}
-                </div>
-              </div>
-              <div className="rounded-lg border border-fuchsia-200/70 bg-fuchsia-50/80 p-3">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-fuchsia-700">Bridge artifact</div>
-                <div className="mt-2 text-sm font-semibold text-fuchsia-950">
-                  {boardSnapshot?.bridge_artifact ?? "none"}
-                </div>
-              </div>
-            </div>
-            <div className="grid gap-2 md:grid-cols-2">
-              <Row label="Target" value={boardSnapshot?.target ?? embeddedTargetHint ?? "host"} />
-              <Row label="Transport" value={boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"} />
-              <Row label="Runtime mode" value={boardSnapshot?.runtime_mode ?? "userland"} />
-              <Row label="Health" value={boardSnapshot?.health ?? "unknown"} />
-              <Row label="Port" value={boardSnapshot?.port ?? "none"} />
-            </div>
-            <div className="space-y-2">
-              <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Available ports</div>
-              <div className="flex flex-wrap gap-2">
-                {embeddedPorts.length ? embeddedPorts.map((port) => (
-                  <button
-                    key={port}
-                    type="button"
-                    onClick={() => {
-                      onSelectPane(embeddedBoardStatusAction?.pane ?? "adapters");
-                      onSelectBoardPort?.(port);
-                      runContractAction(embeddedBoardStatusAction, "adapters");
-                    }}
-                    disabled={operatorPending || !embeddedBoardStatusAction?.command}
-                    className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
-                  >
-                    {port}
-                  </button>
-                )) : (
-                  <span className="text-xs text-muted-foreground">No serial ports discovered.</span>
-                )}
-              </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-lg border border-slate-200/80 bg-white/80 p-3">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Control posture</div>
-                <div className="mt-2 text-sm font-semibold text-slate-950">
-                  {privilegePosture.accessLabel}
-                </div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {allowsPrivilegedControls ? "board attachment and recovery actions are writable" : "this shell can inspect board state but not mutate hardware posture"}
-                </div>
-              </div>
-              <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 p-3">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700">Attach target</div>
-                <div className="mt-2 text-sm font-semibold text-amber-950">
-                  {boardSnapshot?.port ?? embeddedPorts[0] ?? "no-port"}
-                </div>
-                <div className="mt-1 text-xs text-amber-700/80">
-                  transport {boardSnapshot?.transport ?? boardSnapshot?.preferred_transport ?? "unset"}
-                </div>
-              </div>
-              <div className="rounded-lg border border-cyan-200/80 bg-cyan-50/80 p-3">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-cyan-700">Next action</div>
-                <div className="mt-2 text-sm font-semibold text-cyan-950">
-                  {boardSnapshot?.attached ? "stabilize board" : "attach board"}
-                </div>
-                <div className="mt-1 text-xs text-cyan-700/80">
-                  {boardSnapshot?.attached ? "inspect runtime mode or refresh ports before switching" : "refresh ports first, then attach on the target transport"}
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => runContractAction(embeddedInspectAction, "runtime")}
-                disabled={operatorPending || !embeddedInspectAction?.command}
-                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                inspect embedded
-              </button>
-              <button
-                type="button"
-                onClick={() => runContractAction(embeddedRefreshPortsAction, "adapters")}
-                disabled={operatorPending || !embeddedRefreshPortsAction?.command}
-                className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                refresh ports
-              </button>
-              <button
-                type="button"
-                onClick={() => runQuickCommand(boardSnapshot?.attached ? "board detach" : `board attach ${boardSnapshot?.port ?? embeddedPorts[0] ?? ""}`.trim())}
-                disabled={operatorPending || !allowsPrivilegedControls || (!boardSnapshot?.attached && !boardSnapshot?.port && !embeddedPorts.length)}
-                className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-700 transition-colors hover:bg-amber-100"
-              >
-                {boardSnapshot?.attached ? "detach board" : "attach board"}
-              </button>
-              <button
-                type="button"
-                onClick={() => runQuickCommand("board mode")}
-                disabled={operatorPending}
-                className="rounded-full border border-cyan-300/80 bg-cyan-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-cyan-700 transition-colors hover:bg-cyan-100"
-              >
-                board mode
-              </button>
-            </div>
-            {!allowsPrivilegedControls ? (
-              <div className="rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-800">
-                Board mutation is locked in this shell. Promote to a root-capable shell to attach, detach, or recover hardware targets.
-              </div>
-            ) : null}
-          </div>
           <div className="rounded-xl border border-border/70 bg-background/80 p-3">
             <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Execution lanes
@@ -3701,10 +3358,6 @@ export function MiraKernelConsole({
               <Row
                 label="Native queue"
                 value={`${nativeSnapshot?.queue_depth ?? nativeSnapshot?.command_depth ?? 0}`}
-              />
-              <Row
-                label="Board"
-                value={boardSnapshot?.attached ? "attached" : "detached"}
               />
             </div>
           </div>
@@ -4307,7 +3960,7 @@ export function MiraKernelConsole({
           </div>
           <div className="rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">
             <div className="font-medium text-foreground">
-              {embeddedTargetHint ?? "Universal execution kernel with desktop, service, and embedded headroom"}
+              Universal execution kernel for desktop and service runtimes
             </div>
             {runtimeControl ? (
               <div className="mt-2 grid gap-2 rounded-md border border-slate-300/70 bg-slate-50/80 p-3">
@@ -4338,7 +3991,7 @@ export function MiraKernelConsole({
             ) : null}
             <div className="mt-2">
               Mira keeps the shell thin and the kernel visible, so the same operator surface can supervise
-              desktop runtime faults, service modules, firmware flows, and board-level automation without
+              desktop runtime faults, service modules, and bridge automation without
               turning the core into product-specific UI code.
             </div>
           </div>

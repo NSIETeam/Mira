@@ -38,7 +38,6 @@ from mira.tool_contracts import tool_contract_family
 from mira.utils.logging import session_logger
 
 from .authorization import KernelAuthorizer
-from .embedded_plane import build_board_snapshot, build_embedded_topology
 from .events import (
     EXECUTION_LIFECYCLE_STATES,
     EXECUTION_SNAPSHOT_STATUSES,
@@ -49,7 +48,6 @@ from .events import (
     merge_snapshot_with_session_metadata,
     snapshot_from_run_result,
 )
-from .execution_plane import build_execution_lanes
 from .module_registry import list_kernel_modules
 from .native_bridge import dispatch_native_bridge_command, snapshot_native_bridge
 from .observability import append_kernel_event, build_diagnostics_snapshot
@@ -66,9 +64,6 @@ from .runtime_bridge import (
     set_bridge_maintenance,
 )
 from .runtime_control import (
-    attach_board as attach_runtime_board,
-)
-from .runtime_control import (
     build_runtime_control_state,
     clone_runtime_control_state,
     set_active_adapter,
@@ -77,22 +72,8 @@ from .runtime_control import (
     set_maintenance_mode,
     set_module_focus,
 )
-from .runtime_control import detach_board as detach_runtime_board
-from .runtime_probe import (
-    attach_runtime_board_probe,
-    board_status_runtime_probe,
-    discover_serial_ports,
-)
-from .runtime_topology import build_runtime_topology
-from .scheduler import (
-    build_scheduler_state,
-    clone_scheduler_state,
-    prioritize_lane,
-    request_background_drain,
-)
 from .session_projection import KernelSessionProjector
 from .shell import ShellDescriptor, default_engineering_shell, get_shell, list_shells
-from .worker_plane import build_worker_registry
 
 KERNEL_MANIFEST_VERSION = 1
 KERNEL_EVENT_CONTRACT_VERSION = 1
@@ -318,12 +299,130 @@ def _copy_rows(rows: list[dict[str, Any]], *, limit: int | None = None) -> list[
     return [dict(row) for row in source]
 
 
+def _build_scheduler_state() -> dict[str, Any]:
+    return {
+        "policy": "priority-foreground-with-background-drain",
+        "preferred_lane": "interactive",
+        "background_drain_requested": False,
+    }
+
+
+def _clone_scheduler_state(state: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **dict(state),
+        "queues": [dict(row) for row in list(state.get("queues", []))],
+    }
+
+
+def _request_background_drain(state: dict[str, Any]) -> dict[str, Any]:
+    next_state = _clone_scheduler_state(state)
+    next_state["background_drain_requested"] = True
+    next_state["policy"] = "background-drain-priority"
+    return next_state
+
+
+def _prioritize_lane(state: dict[str, Any], *, lane: str) -> dict[str, Any]:
+    if lane not in {"interactive", "sustained_goal", "subagent"}:
+        raise ValueError(f"Unknown scheduler lane: {lane}")
+    next_state = _clone_scheduler_state(state)
+    next_state["preferred_lane"] = lane
+    next_state["policy"] = (
+        "goal-lane-priority" if lane == "sustained_goal" else f"{lane}-lane-priority"
+    )
+    return next_state
+
+
+def _build_execution_lanes(
+    *,
+    preferred_lane: str,
+    goal_active: bool,
+    goal_continuing: bool,
+    goal_summary: str | None = None,
+) -> list[dict[str, Any]]:
+    sustained_state = "active" if goal_active else "idle"
+    if goal_continuing:
+        sustained_state = "continuing"
+    return [
+        {
+            "id": "interactive",
+            "label": "Interactive Lane",
+            "mode": "foreground",
+            "state": "preferred" if preferred_lane == "interactive" else "ready",
+            "summary": "Direct operator-driven execution in the active shell.",
+        },
+        {
+            "id": "sustained_goal",
+            "label": "Sustained Goal Lane",
+            "mode": "background",
+            "state": (
+                "preferred"
+                if preferred_lane == "sustained_goal" and sustained_state in {"active", "continuing"}
+                else sustained_state
+            ),
+            "summary": goal_summary or "Long-running objective slices with internal continuation support.",
+        },
+        {
+            "id": "subagent",
+            "label": "Subagent Lane",
+            "mode": "background",
+            "state": "preferred" if preferred_lane == "subagent" else "available",
+            "summary": "Delegated execution workers for specialized or parallel tasks.",
+        },
+    ]
+
+
+def _build_worker_registry() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "interactive_worker",
+            "label": "Interactive Worker",
+            "lane": "interactive",
+            "kind": "foreground",
+            "state": "ready",
+            "summary": "Primary worker bound to the active operator session.",
+        },
+        {
+            "id": "goal_worker",
+            "label": "Goal Worker",
+            "lane": "sustained_goal",
+            "kind": "background",
+            "state": "idle",
+            "summary": "Continuation-capable worker for sustained goals.",
+        },
+        {
+            "id": "subagent_worker",
+            "label": "Subagent Worker",
+            "lane": "subagent",
+            "kind": "background",
+            "state": "available",
+            "summary": "Delegated worker pool for parallel or specialized execution.",
+        },
+    ]
+
+
+def _build_runtime_topology(
+    *,
+    adapters: list[dict[str, Any]],
+    modules: list[dict[str, Any]],
+    bridges: list[dict[str, Any]],
+    execution_lanes: list[dict[str, Any]],
+    scheduler: dict[str, Any],
+    workers: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "adapters": [dict(row) for row in adapters],
+        "modules": [dict(row) for row in modules],
+        "bridges": [dict(row) for row in bridges],
+        "execution_lanes": [dict(row) for row in execution_lanes],
+        "scheduler": _clone_scheduler_state(scheduler),
+        "workers": [dict(row) for row in workers],
+    }
+
+
 _PRIVILEGED_REASON_RUNTIME = "requires elevated runtime control"
 _PRIVILEGED_REASON_FAULT = "requires elevated fault control"
 _PRIVILEGED_REASON_MAINTENANCE = "requires elevated maintenance control"
 _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
-    "attach-board",
-    "detach-board",
     "switch-adapter",
     "restart-bridge",
     "clear-fault",
@@ -338,8 +437,6 @@ _PRIVILEGED_OPERATOR_COMMAND_PREFIXES = {
 }
 _PRIVILEGED_CONTROL_ACTIONS = {
     "switch_adapter",
-    "attach_board",
-    "detach_board",
     "clear_fault",
     "record_fault",
     "restart_bridge",
@@ -392,7 +489,7 @@ def build_kernel_manifest(
     """
     runtime_adapters = list_runtime_adapters()
     runtime_modules = list_kernel_modules(profile)
-    default_adapter = "c-serial-bridge" if "embedded-lab" in profile.runtime_targets else "python-inprocess"
+    default_adapter = "python-inprocess"
     runtime_bridges = build_runtime_bridges(runtime_adapters, active_adapter=default_adapter)
     def operator_action(
         action_id: str,
@@ -509,7 +606,6 @@ def build_kernel_manifest(
                 "exit_maintenance",
                 "inspect_modules",
                 "switch_adapter",
-                "attach_board",
             ],
             "action_registry": [
                 operator_action("open_kernel_settings", "Kernel settings", kind="host", target_pane="control_plane"),
@@ -605,15 +701,6 @@ def build_kernel_manifest(
                     privileged=True,
                     privileged_reason="requires elevated adapter control",
                 ),
-                operator_action(
-                    "attach_board",
-                    "Attach board",
-                    kind="planned",
-                    target_pane="adapters",
-                    availability="planned",
-                    privileged=True,
-                    privileged_reason="requires elevated board control",
-                ),
             ],
             "telemetry": [
                 "connection_status",
@@ -624,10 +711,8 @@ def build_kernel_manifest(
                 "workspace_health",
                 "module_status",
                 "adapter_status",
-                "board_attachment",
                 "fault_posture",
             ],
-            "embedded_transports": ["serial", "usb", "can"],
         },
         "diagnostics": {
             **build_diagnostics_snapshot(
@@ -702,21 +787,9 @@ def build_kernel_manifest(
                 **worker,
                 "state": "preferred" if str(worker.get("lane") or "") == "interactive" else worker.get("state"),
             }
-            for worker in build_worker_registry()
+            for worker in _build_worker_registry()
         ],
-        "embedded_topology": build_embedded_topology(
-            board=build_board_snapshot(
-                attached=False,
-                health="detached",
-                transport=None,
-                port=None,
-                target="embedded" if "embedded-lab" in profile.runtime_targets else "desktop",
-                preferred_transport="serial" if "embedded-lab" in profile.runtime_targets else "in_process",
-            ),
-            transports=["serial", "usb", "can"],
-            active_adapter=default_adapter,
-        ),
-        "runtime_topology": build_runtime_topology(
+        "runtime_topology": _build_runtime_topology(
             adapters=runtime_adapters,
             modules=runtime_modules,
             bridges=runtime_bridges,
@@ -751,9 +824,7 @@ class KernelApp:
         self._authorizer = KernelAuthorizer()
         self._runtime_adapters = list_runtime_adapters()
         self._runtime_modules = list_kernel_modules(self._profile)
-        default_adapter = (
-            "c-serial-bridge" if "embedded-lab" in self._profile.runtime_targets else "python-inprocess"
-        )
+        default_adapter = "python-inprocess"
         self._runtime_bridges = build_runtime_bridges(
             self._runtime_adapters,
             active_adapter=default_adapter,
@@ -763,7 +834,7 @@ class KernelApp:
             default_adapter=default_adapter,
             module_names=[module["name"] for module in self._runtime_modules],
         )
-        self._scheduler_state = build_scheduler_state()
+        self._scheduler_state = _build_scheduler_state()
         self._event_log: list[dict[str, Any]] = []
         self._native_module_states: dict[str, dict[str, Any]] = {}
         self._native_bridge_artifact: str | None = None
@@ -779,7 +850,6 @@ class KernelApp:
         self._runtime_subscription_attached = False
         self._checkpoint_signatures: dict[str, tuple[Any, ...]] = {}
         self._subagent_signatures: dict[str, tuple[Any, ...]] = {}
-        self._board_signatures: dict[str, tuple[Any, ...]] = {}
         self._session_projector = KernelSessionProjector(self)
         self._attach_runtime_bus()
         self._record_kernel_event(
@@ -1307,7 +1377,6 @@ class KernelApp:
 
     def describe(self) -> dict[str, Any]:
         """Return the stable manifest a shell can use to configure itself."""
-        self._refresh_board_runtime_status()
         self._refresh_live_event_log()
         manifest = build_kernel_manifest(profile=self.profile, shell=self.shell)
         manifest["runtime_adapters"] = self.runtime_adapters_snapshot()
@@ -1324,7 +1393,6 @@ class KernelApp:
         manifest["execution_lanes"] = self.execution_lanes(session_metadata=self._active_session_metadata())
         manifest["scheduler"] = self.scheduler_snapshot(session_metadata=self._active_session_metadata())
         manifest["workers"] = self.worker_snapshot(session_metadata=self._active_session_metadata())
-        manifest["embedded_topology"] = self.embedded_topology_snapshot()
         manifest["runtime_topology"] = self.runtime_topology_snapshot(
             session_metadata=self._active_session_metadata()
         )
@@ -1368,13 +1436,6 @@ class KernelApp:
             if not module:
                 raise ValueError("missing module")
             return self.focus_runtime_module(module)
-        if normalized == "attach_board":
-            return self.attach_board(
-                transport=str(payload.get("transport") or "").strip() or None,
-                port=str(payload.get("port") or "").strip() or None,
-            )
-        if normalized == "detach_board":
-            return self.detach_board()
         if normalized == "record_fault":
             return self.record_fault(
                 str(payload.get("level") or "fault").strip() or "fault",
@@ -1416,65 +1477,12 @@ class KernelApp:
             return
         self._authorizer.assert_allowed(action, raw=raw)
 
-    def _refresh_board_runtime_status(self) -> None:
-        board = dict(self._runtime_control.get("board", {}))
-        if not board.get("attached"):
-            return
-        active_adapter_name = str(self._runtime_control.get("active_adapter") or "")
-        active_adapter = next(
-            (adapter for adapter in self._runtime_adapters if adapter.get("name") == active_adapter_name),
-            None,
-        )
-        if not isinstance(active_adapter, dict):
-            return
-        probe = board_status_runtime_probe(
-            active_adapter,
-            transport=board.get("transport"),
-            port=board.get("port"),
-        )
-        if probe is None:
-            return
-        board["runtime_mode"] = probe.get("runtime_mode")
-        board["bridge_artifact"] = probe.get("artifact")
-        board["last_error"] = probe.get("error")
-        board["health"] = probe.get("health") or ("ready" if probe.get("ok") else "fault")
-        board["attached"] = bool(probe.get("ok"))
-        self._runtime_control["board"] = board
-        active_adapter_name = str(self._runtime_control.get("active_adapter") or "")
-        signature = (
-            bool(board.get("attached")),
-            board.get("health"),
-            board.get("runtime_mode"),
-            board.get("bridge_artifact"),
-            board.get("last_error"),
-            board.get("transport"),
-            board.get("port"),
-        )
-        if self._board_signatures.get(active_adapter_name) != signature:
-            self._board_signatures[active_adapter_name] = signature
-            self._record_kernel_event(
-                "board_runtime_status",
-                state="ok" if board.get("attached") and not board.get("last_error") else "fault",
-                message=(
-                    f"{active_adapter_name or 'board'} "
-                    f"{'attached' if board.get('attached') else 'detached'} "
-                    f"health={board.get('health') or 'unknown'} "
-                    f"mode={board.get('runtime_mode') or 'unknown'} "
-                    f"port={board.get('port') or 'unset'}"
-                    + (
-                        f" error={board.get('last_error')}"
-                        if board.get("last_error")
-                        else ""
-                    )
-                ),
-            )
-
     def runtime_topology_snapshot(
         self,
         *,
         session_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        topology = build_runtime_topology(
+        topology = _build_runtime_topology(
             adapters=self.runtime_adapters_snapshot(),
             modules=self.runtime_modules_snapshot(),
             bridges=self.runtime_bridges_snapshot(),
@@ -1498,55 +1506,14 @@ class KernelApp:
         ]
         return topology
 
-    def embedded_topology_snapshot(self) -> dict[str, Any]:
-        board = dict(self._runtime_control.get("board", {}))
-        topology = build_embedded_topology(
-            board=build_board_snapshot(
-                attached=bool(board.get("attached", False)),
-                transport=board.get("transport"),
-                port=board.get("port"),
-                target=board.get("target"),
-                preferred_transport=board.get("preferred_transport"),
-                health=board.get("health"),
-                runtime_mode=board.get("runtime_mode"),
-                bridge_artifact=board.get("bridge_artifact"),
-                last_error=board.get("last_error"),
-                available_ports=discover_serial_ports(),
-            ),
-            transports=["serial", "usb", "can"],
-            active_adapter=self._runtime_control.get("active_adapter"),
-        )
-        topology["actions"] = [
-            {
-                "id": "inspect_embedded",
-                "label": "inspect embedded",
-                "pane": "runtime",
-                "command": "topology embedded",
-            },
-            {
-                "id": "refresh_board_ports",
-                "label": "refresh ports",
-                "pane": "adapters",
-                "command": "board ports",
-            },
-            {
-                "id": "board_status",
-                "label": "board status",
-                "pane": "adapters",
-                "command": "board status",
-            },
-        ]
-        return topology
-
     @property
     def diagnostics_snapshot(self) -> dict[str, Any]:
         fault_posture = dict(self._runtime_control.get("fault_posture", {}))
         execution_gate = dict(self._runtime_control.get("execution_gate", {}))
         maintenance_mode = dict(self._runtime_control.get("maintenance_mode", {}))
-        board = dict(self._runtime_control.get("board", {}))
         dispatch_depth = len(self._dispatch_queue)
         native_depth = self._native_queue_depth
-        scheduler_state = clone_scheduler_state(self._scheduler_state)
+        scheduler_state = _clone_scheduler_state(self._scheduler_state)
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "") or None
         dispatch_queue_state = (
             "delegated"
@@ -1587,10 +1554,8 @@ class KernelApp:
         subagent_rows = self._subagent_snapshot(self._active_session_key)
         if subagent_rows:
             snapshot["snapshot"]["subagent_workers"] = len(subagent_rows)
-        board_snapshot = self._board_runtime_snapshot(board)
         native_snapshot = self._native_runtime_snapshot()
         session_metadata = self._active_session_metadata()
-        snapshot["snapshot"]["board"] = board_snapshot
         snapshot["snapshot"]["native"] = native_snapshot
         snapshot["snapshot"]["goal_state"] = goal_state_ws_blob(session_metadata) if session_metadata else {"active": False}
         snapshot["snapshot"]["dispatch_contract"] = {
@@ -1615,7 +1580,7 @@ class KernelApp:
     ) -> list[dict[str, Any]]:
         goal_blob = goal_state_ws_blob(session_metadata) if session_metadata else {"active": False}
         continuation = internal_continuation_pending(session_metadata) if session_metadata else False
-        scheduler_state = clone_scheduler_state(self._scheduler_state)
+        scheduler_state = _clone_scheduler_state(self._scheduler_state)
         session_key = self._active_session_key
         subagent_count = len(self._subagent_snapshot(session_key))
         dispatch_depth = len(self._dispatch_queue)
@@ -1631,7 +1596,7 @@ class KernelApp:
             if goal_blob.get("active")
             else "Long-running objective slices with internal continuation support."
         )
-        lanes = build_execution_lanes(
+        lanes = _build_execution_lanes(
             preferred_lane=preferred_lane,
             goal_active=bool(goal_blob.get("active")),
             goal_continuing=continuation,
@@ -1681,7 +1646,7 @@ class KernelApp:
         goal_lane = lanes.get("sustained_goal", {})
         goal_state = str(goal_lane.get("state") or "idle")
         goal_depth = 1 if goal_state in {"active", "continuing"} else 0
-        scheduler_state = clone_scheduler_state(self._scheduler_state)
+        scheduler_state = _clone_scheduler_state(self._scheduler_state)
         background_drain_requested = bool(scheduler_state.get("background_drain_requested"))
         dispatch_priority = bool(scheduler_state.get("dispatch_priority"))
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "")
@@ -1902,7 +1867,7 @@ class KernelApp:
     ) -> list[dict[str, Any]]:
         goal_blob = goal_state_ws_blob(session_metadata) if session_metadata else {"active": False}
         continuation = internal_continuation_pending(session_metadata) if session_metadata else False
-        scheduler_state = clone_scheduler_state(self._scheduler_state)
+        scheduler_state = _clone_scheduler_state(self._scheduler_state)
         preferred_lane = str(scheduler_state.get("preferred_lane") or "interactive")
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "")
         queue_snapshot = self._dispatch_queue_snapshot(limit=3)
@@ -1910,7 +1875,7 @@ class KernelApp:
         dispatch_items = [dict(item) for item in list(queue_snapshot.get("queue_items") or [])]
         if any(status == "running" for status in self._session_status.values()):
             preferred_lane = "interactive"
-        workers = build_worker_registry()
+        workers = _build_worker_registry()
         for worker in workers:
             lane = str(worker.get("lane") or "")
             if lane == "interactive":
@@ -2063,7 +2028,7 @@ class KernelApp:
         return workers
 
     def drain_background(self) -> dict[str, Any]:
-        self._scheduler_state = request_background_drain(self._scheduler_state)
+        self._scheduler_state = _request_background_drain(self._scheduler_state)
         self._record_kernel_event(
             "drain_background",
             state="ok",
@@ -2072,7 +2037,7 @@ class KernelApp:
         return self.runtime_control
 
     def prioritize_goal_lane(self) -> dict[str, Any]:
-        self._scheduler_state = prioritize_lane(
+        self._scheduler_state = _prioritize_lane(
             self._scheduler_state,
             lane="sustained_goal",
         )
@@ -2189,20 +2154,6 @@ class KernelApp:
                 message=f"{target}:{action} failed · {error}",
             )
 
-    def _board_runtime_snapshot(self, board: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "attached": bool(board.get("attached")),
-            "health": board.get("health"),
-            "transport": board.get("transport"),
-            "port": board.get("port"),
-            "target": board.get("target"),
-            "preferred_transport": board.get("preferred_transport"),
-            "runtime_mode": board.get("runtime_mode"),
-            "bridge_artifact": board.get("bridge_artifact"),
-            "last_error": board.get("last_error"),
-            "available_ports": list(board.get("available_ports") or []),
-        }
-
     def _native_runtime_snapshot(self) -> dict[str, Any]:
         last_command = dict(self._native_last_command or {})
         return {
@@ -2305,7 +2256,7 @@ class KernelApp:
         return state, output, details, target_pane
 
     def _dispatch_queue_snapshot(self, *, limit: int = 6) -> dict[str, Any]:
-        scheduler_state = clone_scheduler_state(self._scheduler_state)
+        scheduler_state = _clone_scheduler_state(self._scheduler_state)
         dispatch_handoff_lane = str(scheduler_state.get("dispatch_handoff_lane") or "none")
         dispatch_priority = bool(scheduler_state.get("dispatch_priority"))
         lifecycle_counts: dict[str, int] = {}
@@ -2452,93 +2403,6 @@ class KernelApp:
             "focus_module",
             state="ok",
             message=f"module focus -> {module_name}",
-        )
-        return self.runtime_control
-
-    def attach_board(
-        self,
-        *,
-        transport: str | None = None,
-        port: str | None = None,
-    ) -> dict[str, Any]:
-        next_state = attach_runtime_board(
-            self._runtime_control,
-            transport=transport,
-            port=port,
-        )
-        board = dict(next_state.get("board", {}))
-        active_adapter_name = str(next_state.get("active_adapter") or "")
-        active_adapter = next(
-            (adapter for adapter in self._runtime_adapters if adapter.get("name") == active_adapter_name),
-            None,
-        )
-        probe_result = (
-            attach_runtime_board_probe(
-                active_adapter,
-                transport=str(board.get("transport") or "serial"),
-                port=str(board.get("port") or "/dev/tty.mira"),
-            )
-            if isinstance(active_adapter, dict)
-            else None
-        )
-        if probe_result is not None and not probe_result.get("ok"):
-            self._runtime_bridges = mark_bridge_fault(
-                self._runtime_bridges,
-                adapter_name=active_adapter_name,
-                error=str(probe_result.get("error") or "board attach failed"),
-            )
-            board["attached"] = False
-            board["health"] = "fault"
-            board["runtime_mode"] = None
-            board["bridge_artifact"] = probe_result.get("artifact")
-            board["last_error"] = probe_result.get("error")
-            next_state["board"] = board
-            self._runtime_control = next_state
-            self._record_kernel_event(
-                "attach_board",
-                state="fault",
-                message=str(probe_result.get("error") or "board attach failed"),
-            )
-            return self.runtime_control
-        if probe_result is not None:
-            board["health"] = probe_result.get("health") or ("ready" if probe_result.get("ok") else "fault")
-            board["runtime_mode"] = probe_result.get("runtime_mode")
-            board["bridge_artifact"] = probe_result.get("artifact")
-            board["last_error"] = probe_result.get("error")
-        next_state["board"] = board
-        self._runtime_control = next_state
-        self._dispatch_native_control(
-            target="board",
-            action="attach",
-            value=f"{board.get('transport') or transport or 'serial'}:{board.get('port') or port or 'auto'}",
-        )
-        self._record_kernel_event(
-            "attach_board",
-            state="ok",
-            message=(
-                f"board attached via {board.get('transport') or transport or 'default'}"
-                + (
-                    f" ({probe_result.get('artifact')})"
-                    if probe_result is not None and probe_result.get("artifact")
-                    else ""
-                )
-            ),
-        )
-        return self.runtime_control
-
-    def detach_board(self) -> dict[str, Any]:
-        self._runtime_control = detach_runtime_board(self._runtime_control)
-        active_adapter_name = str(self._runtime_control.get("active_adapter") or "")
-        self._board_signatures.pop(active_adapter_name, None)
-        self._dispatch_native_control(
-            target="board",
-            action="detach",
-            value=active_adapter_name,
-        )
-        self._record_kernel_event(
-            "detach_board",
-            state="ok",
-            message="board detached",
         )
         return self.runtime_control
 
