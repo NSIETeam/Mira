@@ -490,7 +490,7 @@ def test_loader_registers_slim_default_tools_and_opt_in_tools():
     }
     actual = set(registered)
     assert expected <= actual, f"Missing default tools: {expected - actual}"
-    assert not {"find_files", "grep", "cron"} & actual
+    assert not {"find_files", "grep"} & actual
 
     opt_in_ctx = ToolContext(
         config=mock_config,
@@ -498,7 +498,6 @@ def test_loader_registers_slim_default_tools_and_opt_in_tools():
         modules=ModulesConfig(
             registry={
                 "search": ModuleConfig(enabled=True),
-                "cron": ModuleConfig(enabled=True),
             }
         ),
         bus=MagicMock(),
