@@ -76,6 +76,7 @@ from mira.bus.outbound_events import (  # noqa: E402
 from mira.cli import provider_commands as _provider_commands  # noqa: E402
 from mira.cli import webui_helpers as _webui_helpers  # noqa: E402
 from mira.cli.agent_command import AgentCommandDeps, run_agent_command  # noqa: E402
+from mira.cli.api_command import ServeCommandDeps, run_serve_command  # noqa: E402
 from mira.cli.channel_plugin_commands import register_channel_plugin_commands  # noqa: E402
 from mira.cli.desktop_command import DesktopCommandDeps, run_desktop_command  # noqa: E402
 from mira.cli.gateway import create_gateway_app  # noqa: E402
@@ -85,6 +86,7 @@ from mira.cli.onboard_command import run_onboard_command  # noqa: E402
 from mira.cli.provider_commands import register_provider_commands  # noqa: E402
 from mira.cli.stream import StreamRenderer, ThinkingSpinner  # noqa: E402
 from mira.cli.system_commands import register_system_commands  # noqa: E402
+from mira.cli.trigger_command import run_trigger_command  # noqa: E402
 from mira.cli.webui_command import WebUICommandDeps, run_webui_command  # noqa: E402
 from mira.config.paths import get_workspace_path, is_default_workspace  # noqa: E402
 from mira.config.schema import Config  # noqa: E402
@@ -827,21 +829,6 @@ def _load_runtime_config(config: str | None = None, workspace: str | None = None
     return loaded
 
 
-def _read_trigger_cli_message(message: str | None) -> str:
-    """Read a trigger message from an argument or stdin."""
-    if message and message.strip():
-        return message
-    try:
-        if not sys.stdin.isatty():
-            content = sys.stdin.read()
-            if content.strip():
-                return content
-    except Exception:
-        pass
-    console.print("[red]Error: trigger message is required[/red]")
-    raise typer.Exit(1)
-
-
 def _warn_deprecated_config_keys(config_path: Path | None) -> None:
     """Hint users to remove obsolete keys from their config file."""
     from mira.config.loader import get_config_path
@@ -904,25 +891,17 @@ def trigger(
     config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
 ):
     """Deliver a local trigger message to its bound chat session."""
-    from mira.triggers.local_store import (
-        LocalTriggerStore,
-        TriggerDisabledError,
-        TriggerNotFoundError,
-        TriggerStoreError,
+    run_trigger_command(
+        trigger_id=trigger_id,
+        message=message,
+        workspace=workspace,
+        config_path_arg=config,
+        console=console,
+        load_runtime_config=lambda config_path, workspace_path: _load_runtime_config(
+            config_path,
+            workspace_path,
+        ),
     )
-
-    runtime_config = _load_runtime_config(config, workspace)
-    content = _read_trigger_cli_message(message)
-    store = LocalTriggerStore(runtime_config.workspace_path)
-    try:
-        delivery = store.enqueue(trigger_id, content)
-    except (TriggerNotFoundError, TriggerDisabledError) as exc:
-        console.print(f"[red]Error: {exc}[/red]")
-        raise typer.Exit(1) from exc
-    except (TriggerStoreError, ValueError) as exc:
-        console.print(f"[red]Error: {exc}[/red]")
-        raise typer.Exit(1) from exc
-    console.print(f"[green]Queued[/green] {delivery.trigger_id} ({delivery.id})")
 
 
 # ============================================================================
@@ -940,73 +919,34 @@ def serve(
     config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
 ):
     """Start the OpenAI-compatible API server (/v1/chat/completions)."""
-    try:
-        from aiohttp import web  # noqa: F401
-    except ImportError:
-        console.print("[red]aiohttp is required. Install with: mira plugins enable api[/red]")
-        raise typer.Exit(1)
-
-    from mira.api.server import create_app
     from mira.bus.queue import MessageBus
     from mira.providers.image_generation import image_gen_provider_configs
     from mira.session.manager import SessionManager
 
-    _set_mira_logs(verbose)
-
-    runtime_config = _load_runtime_config(config, workspace)
-    api_cfg = runtime_config.api
-    host = host if host is not None else api_cfg.host
-    port = port if port is not None else api_cfg.port
-    timeout = timeout if timeout is not None else api_cfg.timeout
-    api_key = api_cfg.api_key.strip() if api_cfg.api_key else ""
-    if not is_loopback_host(host) and not api_key:
-        console.print(
-            f"[red]Error: host {host} is available beyond this device but api_key is not set. "
-            "Set api.api_key in config to prevent unauthenticated access.[/red]"
-        )
-        raise typer.Exit(1)
-    sync_workspace_templates(runtime_config.workspace_path)
-    bus = MessageBus()
-    session_manager = SessionManager(runtime_config.workspace_path)
-    try:
-        agent_loop = AgentLoop.from_config(
-            runtime_config, bus,
-            session_manager=session_manager,
-            image_generation_provider_configs=image_gen_provider_configs(runtime_config),
-            hook_factories=[create_file_edit_activity_hook],
-        )
-    except ValueError as exc:
-        console.print(f"[red]Error: {exc}[/red]")
-        raise typer.Exit(1) from exc
-
-    model_name, preset_tag = _model_display(runtime_config)
-    console.print(f"{__logo__} Starting OpenAI-compatible API server")
-    console.print(f"  [cyan]Endpoint[/cyan] : http://{host}:{port}/v1/chat/completions")
-    console.print(f"  [cyan]Model[/cyan]    : {model_name}{preset_tag}")
-    console.print("  [cyan]Session[/cyan]  : api:default")
-    console.print(f"  [cyan]Timeout[/cyan]  : {timeout}s")
-    if not is_loopback_host(host):
-        console.print(
-            "[yellow]API is available beyond this device "
-            "(authentication required).[/yellow]"
-        )
-    console.print()
-
-    api_app = create_app(
-        agent_loop, model_name=model_name, request_timeout=timeout,
-        api_key=api_key,
+    run_serve_command(
+        port=port,
+        host=host,
+        timeout=timeout,
+        verbose=verbose,
+        workspace=workspace,
+        config_path_arg=config,
+        console=console,
+        deps=ServeCommandDeps(
+            agent_loop_cls=lambda: AgentLoop,
+            bus_cls=MessageBus,
+            session_manager_cls=SessionManager,
+            load_runtime_config=lambda config_path, workspace_path: _load_runtime_config(
+                config_path,
+                workspace_path,
+            ),
+            sync_workspace_templates=sync_workspace_templates,
+            set_mira_logs=lambda enabled: _set_mira_logs(enabled),
+            create_file_edit_activity_hook=create_file_edit_activity_hook,
+            image_gen_provider_configs=image_gen_provider_configs,
+            model_display=_model_display,
+            is_loopback_host=is_loopback_host,
+        ),
     )
-
-    async def on_startup(_app):
-        await agent_loop._connect_mcp()
-
-    async def on_cleanup(_app):
-        await agent_loop.close_mcp()
-
-    api_app.on_startup.append(on_startup)
-    api_app.on_cleanup.append(on_cleanup)
-
-    web.run_app(api_app, host=host, port=port, print=lambda msg: logger.info(msg))
 
 
 # ============================================================================
