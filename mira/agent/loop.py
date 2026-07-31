@@ -7,7 +7,6 @@ import dataclasses
 import time
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
 from contextlib import AbstractContextManager, suppress
-from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -15,6 +14,7 @@ from loguru import logger
 
 from mira.agent import context as agent_context
 from mira.agent import model_presets as preset_helpers
+from mira.agent.agent_event_loop import run_agent_event_loop
 from mira.agent.agent_runner_loop import run_agent_iteration_loop
 from mira.agent.automation_turns import publish_next_deferred_turn
 from mira.agent.context import ContextBuilder
@@ -83,7 +83,6 @@ from mira.session.recovery import (
     restore_pending_user_turn,
     restore_runtime_checkpoint,
 )
-from mira.utils.cancellation import task_is_cancelling
 from mira.utils.document import extract_documents, reference_non_image_attachments
 from mira.utils.llm_runtime import LLMRuntime
 from mira.utils.logging import session_logger, turn_logger
@@ -871,100 +870,7 @@ class AgentLoop:
 
     async def run(self) -> None:
         """Run the agent loop, dispatching messages as tasks to stay responsive to /stop."""
-        self._running = True
-        try:
-            await self._connect_mcp()
-            session_logger(None).info("Agent loop started")
-
-            while self._running:
-                try:
-                    msg = await asyncio.wait_for(self.bus.consume_inbound(), timeout=1.0)
-                except TimeoutError:
-                    self._check_expired_sessions_if_due()
-                    continue
-                except asyncio.CancelledError:
-                    # Preserve real task cancellation so shutdown can complete cleanly.
-                    # Only ignore non-task CancelledError signals that may leak from integrations.
-                    if not self._running or task_is_cancelling():
-                        raise
-                    logger.warning(
-                        "Ignoring leaked CancelledError while consuming inbound messages"
-                    )
-                    continue
-                except BaseException as e:
-                    if isinstance(e, (KeyboardInterrupt, SystemExit)):
-                        raise
-                    session_logger(None).warning(
-                        "Error consuming inbound message: {}, continuing...",
-                        e,
-                    )
-                    continue
-
-                raw = msg.content.strip()
-                effective_key = self._effective_session_key(msg)
-                if await agent_context.handle_runtime_control(self, msg, self.tools):
-                    continue
-                if self.commands.is_priority(raw):
-                    await self._dispatch_command_inline(
-                        msg, effective_key, raw,
-                        self.commands.dispatch_priority,
-                    )
-                    continue
-                deferred = False
-                for label, coordinator in self._automation_turn_coordinators:
-                    if coordinator.defer_if_active(
-                        msg,
-                        session_key=effective_key,
-                        active_session_keys=self._pending_queues.keys(),
-                    ):
-                        session_logger(effective_key).info(
-                            "Deferred {} turn for active session {}",
-                            label,
-                            effective_key,
-                        )
-                        deferred = True
-                        break
-                if deferred:
-                    continue
-                # If this session already has an active pending queue (i.e. a task
-                # is processing this session), route the message there for mid-turn
-                # injection instead of creating a competing task.
-                if effective_key in self._pending_queues:
-                    # Non-priority commands must not be queued for injection;
-                    # dispatch them directly (same pattern as priority commands).
-                    if self.commands.is_dispatchable_command(raw):
-                        await self._dispatch_command_inline(
-                            msg, effective_key, raw,
-                            self.commands.dispatch,
-                        )
-                        continue
-                    pending_msg = msg
-                    if effective_key != msg.session_key:
-                        pending_msg = dataclasses.replace(
-                            msg,
-                            session_key_override=effective_key,
-                        )
-                    try:
-                        self._pending_queues[effective_key].put_nowait(pending_msg)
-                    except asyncio.QueueFull:
-                        session_logger(effective_key).warning(
-                            "Pending queue full for session {}, falling back to queued task",
-                            effective_key,
-                        )
-                    else:
-                        session_logger(effective_key).info(
-                            "Routed follow-up message to pending queue for session {}",
-                            effective_key,
-                        )
-                        continue
-                # Compute the effective session key before dispatching
-                # This ensures /stop command can find tasks correctly when unified session is enabled
-                task = asyncio.create_task(self._dispatch(msg))
-                self._active_tasks.setdefault(effective_key, []).append(task)
-                task.add_done_callback(partial(self._forget_active_task, session_key=effective_key))
-        finally:
-            # MCP stdio transports use AnyIO cancel scopes; close them from the task that opened them.
-            await self.close_mcp()
+        await run_agent_event_loop(self)
 
     async def _dispatch(self, msg: InboundMessage) -> None:
         """Process a message: per-session serial, cross-session concurrent."""
