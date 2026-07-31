@@ -3,7 +3,6 @@
 import asyncio
 import json
 import os
-import signal
 import sys
 from collections.abc import Callable, Iterable
 from contextlib import suppress
@@ -56,6 +55,7 @@ from mira import (  # noqa: E402
 )
 from mira.agent.hooks import create_file_edit_activity_hook  # noqa: E402
 from mira.agent.loop import AgentLoop  # noqa: E402
+from mira.cli import gateway_support as _gateway_support  # noqa: E402
 from mira.cli import interactive as _interactive  # noqa: E402
 from mira.cli import provider_commands as _provider_commands  # noqa: E402
 from mira.cli import runtime_config as _runtime_config  # noqa: E402
@@ -77,10 +77,6 @@ from mira.cli.webui_command import WebUICommandDeps, run_webui_command  # noqa: 
 from mira.config.paths import get_workspace_path  # noqa: E402
 from mira.config.schema import Config  # noqa: E402
 from mira.security.network import is_loopback_host  # noqa: E402
-from mira.session.keys import (  # noqa: E402
-    UNIFIED_SESSION_KEY,
-    last_channel_from_metadata,
-)
 from mira.utils.evaluator import evaluate_response, resolve_evaluator_prompt  # noqa: E402
 from mira.utils.helpers import (  # noqa: E402
     sync_workspace_templates,
@@ -124,37 +120,11 @@ _OAUTH_PROVIDER_DEFAULT_MODELS = _provider_commands.OAUTH_PROVIDER_DEFAULT_MODEL
 
 
 def _signal_name(signum: int) -> str:
-    with suppress(ValueError):
-        return signal.Signals(signum).name
-    return f"signal {signum}"
+    return _gateway_support.signal_name(signum)
 
 
 def _ensure_interactive_tty_mode() -> None:
-    """Restore interactive line input after a raw-mode TTY leak."""
-    try:
-        fd = sys.stdin.fileno()
-        if not os.isatty(fd):
-            return
-    except Exception:
-        return
-
-    with suppress(Exception):
-        import termios
-
-        attrs = termios.tcgetattr(fd)
-        required_lflag = termios.ISIG | termios.ICANON | termios.ECHO
-        blocked_input_flags = getattr(termios, "IGNCR", 0) | getattr(termios, "INLCR", 0)
-        if (
-            (attrs[3] & required_lflag) == required_lflag
-            and attrs[0] & termios.ICRNL
-            and not attrs[0] & blocked_input_flags
-        ):
-            return
-        attrs[0] = (attrs[0] | termios.ICRNL) & ~blocked_input_flags
-        attrs[3] |= required_lflag
-        termios.tcsetattr(fd, termios.TCSANOW, attrs)
-        termios.tcflush(fd, termios.TCIFLUSH)
-        logger.debug("Restored foreground gateway TTY mode")
+    _gateway_support.ensure_interactive_tty_mode()
 
 
 def _install_gateway_shutdown_handlers(
@@ -163,68 +133,20 @@ def _install_gateway_shutdown_handlers(
     tasks: list[asyncio.Task],
     print_status: Callable[[str], None],
 ) -> Callable[[], None]:
-    """Install foreground gateway signal handlers and return a restore callback."""
-    loop_signals: list[int] = []
-    previous_handlers: list[tuple[int, Any]] = []
-    shutdown_requested = False
-
-    def request_shutdown(signum: int) -> None:
-        nonlocal shutdown_requested
-        sig_name = _signal_name(signum)
-        if shutdown_requested:
-            logger.warning("Forcing gateway shutdown after repeated {}", sig_name)
-            for task in tasks:
-                if not task.done():
-                    task.cancel()
-            return
-        shutdown_requested = True
-        logger.info("Gateway shutdown requested by {}", sig_name)
-        print_status("\nShutting down... Press Ctrl+C again to force.")
-        shutdown_event.set()
-
-    for signum in (signal.SIGINT, signal.SIGTERM):
-        try:
-            loop.add_signal_handler(signum, request_shutdown, signum)
-        except (NotImplementedError, RuntimeError, ValueError):
-            try:
-                previous = signal.getsignal(signum)
-                signal.signal(signum, lambda sig, _frame: request_shutdown(sig))
-            except (RuntimeError, ValueError):
-                logger.debug("Could not install gateway handler for {}", _signal_name(signum))
-                continue
-            previous_handlers.append((signum, previous))
-        else:
-            loop_signals.append(signum)
-
-    def restore() -> None:
-        for signum in loop_signals:
-            with suppress(NotImplementedError, RuntimeError, ValueError):
-                loop.remove_signal_handler(signum)
-        for signum, handler in previous_handlers:
-            with suppress(RuntimeError, ValueError):
-                signal.signal(signum, handler)
-
-    return restore
+    return _gateway_support.install_gateway_shutdown_handlers(
+        loop,
+        shutdown_event,
+        tasks,
+        print_status,
+    )
 
 
 def _advance_dream_cursor_if_behind(memory: Any) -> None:
-    latest = memory.get_latest_cursor()
-    if memory.get_last_dream_cursor() < latest:
-        memory.set_last_dream_cursor(latest)
+    _gateway_support.advance_dream_cursor_if_behind(memory)
 
 
 def _commit_dream_changes(memory: Any) -> str | None:
-    """Commit durable Dream edits, without entering the commit path for a no-op run."""
-    if not memory.git.is_initialized():
-        return None
-    diff_body = memory.dream_content_diff()
-    if not diff_body:
-        return None
-    message = memory.build_dream_commit_message(
-        "dream: periodic memory consolidation",
-        diff_body,
-    )
-    return memory.git.auto_commit(message)
+    return _gateway_support.commit_dream_changes(memory)
 
 
 PromptSession = _interactive.PromptSession
@@ -250,38 +172,11 @@ EXIT_COMMANDS = _interactive.EXIT_COMMANDS
 _REASONING_SENTENCE_ENDINGS = _interactive.REASONING_SENTENCE_ENDINGS
 _REASONING_FLUSH_CHARS = _interactive.REASONING_FLUSH_CHARS
 
-_HEARTBEAT_PREAMBLE = (
-    "[Your response will be delivered directly to the user's messaging app. "
-    "Output ONLY the final user-facing message. Never reference internal "
-    "files (HEARTBEAT.md, AWARENESS.md, etc.), your instructions, or your "
-    "decision process. If nothing needs reporting, respond with just "
-    "'All clear.' and nothing else.]\n\n"
-)
+_HEARTBEAT_PREAMBLE = _gateway_support.HEARTBEAT_PREAMBLE
 
 
 def _heartbeat_has_active_tasks(content: str) -> bool:
-    """True if HEARTBEAT.md has task lines, ignoring headers, blanks and comments."""
-    in_comment = False
-    in_active_section: bool = False
-    for line in content.splitlines():
-        stripped = line.strip()
-        if in_comment:
-            if "-->" in stripped:
-                in_comment = False
-            continue
-        if not stripped or stripped.startswith("#"):
-            if stripped.startswith("##") and not stripped.startswith("###"):
-                heading = stripped.lstrip("#").strip().lower()
-                in_active_section = heading.startswith("active tasks")
-            continue
-        if stripped.startswith("<!--"):
-            if "-->" not in stripped[4:]:
-                in_comment = True
-            continue
-        if in_active_section is False:
-            continue
-        return True
-    return False
+    return _gateway_support.heartbeat_has_active_tasks(content)
 
 
 def _pick_heartbeat_target_from_sessions(
@@ -291,27 +186,12 @@ def _pick_heartbeat_target_from_sessions(
     archived_keys: Iterable[str],
     unified_session_metadata: dict[str, Any] | None = None,
 ) -> tuple[str, str]:
-    enabled = set(enabled_channels)
-    archived = set(archived_keys)
-    for item in sessions:
-        key = item.get("key") or ""
-        if key in archived:
-            continue
-        if key == UNIFIED_SESSION_KEY:
-            route = last_channel_from_metadata(unified_session_metadata)
-            if route is not None:
-                channel, chat_id = route
-                if channel not in {"cli", "system"} and channel in enabled:
-                    return channel, chat_id
-            continue
-        if ":" not in key:
-            continue
-        channel, chat_id = key.split(":", 1)
-        if channel in {"cli", "system"}:
-            continue
-        if channel in enabled and chat_id:
-            return channel, chat_id
-    return "cli", "direct"
+    return _gateway_support.pick_heartbeat_target_from_sessions(
+        enabled_channels=enabled_channels,
+        sessions=sessions,
+        archived_keys=archived_keys,
+        unified_session_metadata=unified_session_metadata,
+    )
 
 
 _PROMPT_SESSION: Any | None = None
