@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
-import inspect
 import time
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
 from contextlib import AbstractContextManager, ExitStack, suppress
@@ -24,6 +23,7 @@ from mira.agent.loop_config import AgentLoopConfig, agent_loop_config_from_legac
 from mira.agent.loop_init import initialize_agent_loop
 from mira.agent.memory import Consolidator, MemoryStore
 from mira.agent.pending_injections import PendingInjectionDrainer
+from mira.agent.process_message import process_inbound_message
 from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunSpec
 from mira.agent.subagent import SubagentManager
 from mira.agent.tools.context import RequestContext, bind_request_context, reset_request_context
@@ -33,7 +33,6 @@ from mira.agent.tools.registry import ToolRegistry
 from mira.agent.tools.runtime_state import RuntimeState
 from mira.agent.tools.self import MyTool
 from mira.agent.turn_context import (
-    StateTraceEntry,
     TurnContext,
     TurnKind,
     TurnState,
@@ -1173,151 +1172,23 @@ class AgentLoop:
         delivery: TurnDelivery | None = None,
         on_runtime_admitted: Callable[[LLMRuntime], Awaitable[None]] | None = None,
     ) -> OutboundMessage | None:
-        """Process a single inbound message and return the response."""
-        kind = TurnKind.SYSTEM if msg.channel == "system" else TurnKind.USER
-        if kind is TurnKind.SYSTEM:
-            destination = (
-                msg.chat_id.split(":", 1) if ":" in msg.chat_id else ("cli", msg.chat_id)
-            )
-            key = session_key or msg.session_key_override or f"{destination[0]}:{destination[1]}"
-        else:
-            key = session_key or msg.session_key
-        if delivery is None:
-            delivery = self.turn_delivery_factory.create(msg, key)
-        elif delivery.session_key != key:
-            raise ValueError("turn delivery session does not match the processing session")
-        if on_stream is None:
-            on_stream = delivery.on_stream
-        if on_stream_end is None:
-            on_stream_end = delivery.on_stream_end
-        t0 = time.time()
-        ctx = TurnContext(
-            msg=msg,
-            session=None,
-            session_key=key,
-            state=TurnState.RESTORE,
-            turn_id=f"{key}:{time.time_ns()}",
-            runtime=runtime,
-            kind=kind,
-            delivery=delivery,
-            original_user_text=(
-                None
-                if kind is TurnKind.SYSTEM
-                or turn_continuation.internal_continuation_inbound(msg.metadata)
-                else msg.content
-            ),
-            turn_wall_started_at=t0,
-            visible_run_started_at=turn_continuation.internal_continuation_run_started_at(
-                msg.metadata,
-            ),
+        return await process_inbound_message(
+            self,
+            msg,
+            session_key=session_key,
             on_progress=on_progress,
             on_stream=on_stream,
             on_stream_end=on_stream_end,
-            on_runtime_admitted=on_runtime_admitted,
             pending_queue=pending_queue,
             ephemeral=ephemeral,
             run_extra_hooks_for_ephemeral=run_extra_hooks_for_ephemeral,
-            hooks=list(hooks or []),
-            hook_factories=list(hook_factories or []),
+            hooks=hooks,
+            hook_factories=hook_factories,
             tools=tools,
+            runtime=runtime,
+            delivery=delivery,
+            on_runtime_admitted=on_runtime_admitted,
         )
-        # A streaming callback may be present even when the final text comes from a
-        # non-streaming recovery. Only the last completed segment can suppress the
-        # regular outbound message.
-        if ctx.on_stream is not None:
-            stream_callback = ctx.on_stream
-            stream_end_callback = ctx.on_stream_end
-            stream_end_accepts_merge_next = False
-            if stream_end_callback is not None:
-                try:
-                    stream_end_signature = inspect.signature(stream_end_callback)
-                    stream_end_accepts_merge_next = (
-                        "merge_next" in stream_end_signature.parameters
-                        or any(
-                            parameter.kind is inspect.Parameter.VAR_KEYWORD
-                            for parameter in stream_end_signature.parameters.values()
-                        )
-                    )
-                except (TypeError, ValueError):
-                    pass
-            segment_streamed_content = False
-
-            async def _tracked_stream(delta: str) -> None:
-                nonlocal segment_streamed_content
-                if delta:
-                    segment_streamed_content = True
-                await stream_callback(delta)
-
-            async def _tracked_stream_end(
-                *,
-                resuming: bool = False,
-                merge_next: bool = False,
-            ) -> None:
-                nonlocal segment_streamed_content
-                ctx.streamed_content = segment_streamed_content
-                segment_streamed_content = False
-                if stream_end_callback is not None:
-                    if merge_next and stream_end_accepts_merge_next:
-                        await stream_end_callback(resuming=resuming, merge_next=True)
-                    else:
-                        await stream_end_callback(resuming=resuming)
-
-            ctx.on_stream = _tracked_stream
-            ctx.on_stream_end = _tracked_stream_end
-
-        while ctx.state is not TurnState.DONE:
-            handler_name = f"_state_{ctx.state.name.lower()}"
-            handler = getattr(self, handler_name, None)
-            if handler is None:
-                raise RuntimeError(f"Missing state handler for {ctx.state}")
-
-            t0 = time.perf_counter()
-            try:
-                event = await handler(ctx)
-            except BaseException:
-                duration = (time.perf_counter() - t0) * 1000
-                ctx.trace.append(
-                    StateTraceEntry(
-                        state=ctx.state,
-                        started_at=t0,
-                        duration_ms=duration,
-                        event="",
-                        error="exception",
-                    )
-                )
-                raise
-
-            duration = (time.perf_counter() - t0) * 1000
-            ctx.trace.append(
-                StateTraceEntry(
-                    state=ctx.state,
-                    started_at=t0,
-                    duration_ms=duration,
-                    event=event,
-                )
-            )
-            _ctx_logger(ctx).debug(
-                "[turn {}] State {} took {:.1f}ms -> event {}",
-                ctx.turn_id,
-                ctx.state.name,
-                duration,
-                event,
-            )
-
-            next_state = self._TRANSITIONS.get((ctx.state, event))
-            if next_state is None:
-                raise RuntimeError(
-                    f"[turn {ctx.turn_id}] No transition from {ctx.state} "
-                    f"on event {event!r}"
-                )
-            ctx.state = next_state
-
-        _ctx_logger(ctx).debug(
-            "[turn {}] Turn completed after {} states",
-            ctx.turn_id,
-            len(ctx.trace),
-        )
-        return ctx.outbound
 
     def _assemble_outbound(
         self,
