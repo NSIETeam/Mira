@@ -101,18 +101,31 @@ wait_for_url() {
   done
 }
 
+require_response() {
+  local label="$1"
+  local pattern="$2"
+  if ! grep -Eq "$pattern" /tmp/mira-docker-smoke-response; then
+    echo "Docker smoke failed validating ${label}: ${pattern}" >&2
+    echo "--- response ---" >&2
+    cat /tmp/mira-docker-smoke-response >&2 || true
+    echo "--- container logs ---" >&2
+    docker logs "$CONTAINER_NAME" >&2 || true
+    return 1
+  fi
+}
+
 wait_for_url "gateway health" "http://127.0.0.1:${GATEWAY_PORT}/health"
-grep -q '"status": "ok"' /tmp/mira-docker-smoke-response
+require_response "gateway health" '"status": "ok"'
 
 wait_for_url "webui bootstrap" "http://127.0.0.1:${WEBUI_PORT}/webui/bootstrap" \
   -H "X-mira-Auth: ${SECRET}"
-grep -q '"token"' /tmp/mira-docker-smoke-response
-grep -q '"api_token"' /tmp/mira-docker-smoke-response
+require_response "webui bootstrap websocket token" '"token"'
+require_response "webui bootstrap api token" '"api_token"'
 
 wait_for_url "webui index" "http://127.0.0.1:${WEBUI_PORT}/"
-grep -Eq '<div id="root"|/assets/' /tmp/mira-docker-smoke-response
+require_response "webui index" '<div id="root"|/assets/'
 
 docker exec "$CONTAINER_NAME" sh -lc \
-  'test -f /app/mira/web/dist/index.html && test -d /app/.venv && test "$(id -u)" != "0"'
+  'test -f /app/mira/web/dist/index.html && test -d /app/.venv && test "$(awk "/^Uid:/ {print \$2}" /proc/1/status)" != "0"'
 
 echo "Docker gateway smoke passed: gateway=${GATEWAY_PORT} webui=${WEBUI_PORT}"
