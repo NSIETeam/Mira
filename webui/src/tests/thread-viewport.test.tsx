@@ -989,8 +989,8 @@ describe("ThreadViewport", () => {
     expect(screen.getByText("welcome").parentElement).toHaveClass(
       "min-h-0",
       "items-end",
-      "pb-3",
-      "sm:pb-4",
+      "pb-2",
+      "sm:pb-3",
     );
     expect(screen.getByTestId("thread-composer-motion")).toContainElement(
       screen.getByText("composer"),

@@ -1164,7 +1164,7 @@ describe("ThreadShell", () => {
 
     const greeting = screen.getByRole("heading", { level: 1, name: HERO_GREETING_PATTERN });
     expect(greeting).toHaveAttribute("data-testid", "hero-greeting");
-    expect(greeting).toHaveClass("break-words");
+    expect(greeting).toHaveClass("truncate");
     expect(greeting).not.toHaveClass("whitespace-nowrap");
     expect(screen.getByPlaceholderText("Ask anything...")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Write code" })).not.toBeInTheDocument();
@@ -1229,7 +1229,7 @@ describe("ThreadShell", () => {
       expect(screen.getByPlaceholderText("Ask anything...")).toBeInTheDocument(),
     );
     const input = screen.getByPlaceholderText("Ask anything...");
-    expect(input.className).toContain("min-h-[52px]");
+    expect(input.className).toContain("min-h-[72px]");
     expect(screen.queryByText("old answer")).not.toBeInTheDocument();
   });
 

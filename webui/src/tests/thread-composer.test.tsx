@@ -398,12 +398,12 @@ describe("ThreadComposer", () => {
     expect(screen.queryByRole("button", { name: "Voice input" })).not.toBeInTheDocument();
     const input = screen.getByPlaceholderText("Ask anything...");
     expect(input).toBeInTheDocument();
-    expect(input.className).toContain("min-h-[52px]");
+    expect(input.className).toContain("min-h-[72px]");
     expect(input.className).toContain("text-[16px]");
-    expect(input.className).toContain("pt-[15px]");
+    expect(input.className).toContain("pt-4");
     fireEvent.change(input, { target: { value: "1" } });
-    expect(input.className).toContain("pt-[15px]");
-    expect(input.parentElement?.parentElement?.className).toContain("max-w-[54rem]");
+    expect(input.className).toContain("pt-4");
+    expect(input.parentElement?.parentElement?.className).toContain("max-w-[48rem]");
   });
 
   it("lets long model preset labels use their intrinsic width", () => {
