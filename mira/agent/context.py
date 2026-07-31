@@ -83,6 +83,7 @@ class ContextBuilder:
         skill_names: list[str] | None = None,
         channel: str | None = None,
         session_summary: str | None = None,
+        memory_query: str | None = None,
         workspace: Path | None = None,
         include_memory_recent_history: bool = True,
         session_key: str | None = None,
@@ -99,10 +100,6 @@ class ContextBuilder:
             parts.append(bootstrap)
 
         parts.append(render_template("agent/tool_contract.md"))
-
-        memory = memory_store.get_memory_context()
-        if memory and not self._is_template_content(memory_store.read_memory(), "memory/MEMORY.md"):
-            parts.append(f"# Memory\n\n{memory}")
 
         memory_audit = memory_store.memory_audit(memory_store.workspace)
         loaded_layers = [
@@ -121,6 +118,24 @@ class ContextBuilder:
                 f"- evidence: {graph_meta['evidence_count']}"
             )
 
+        recent_history = []
+        if include_memory_recent_history:
+            recent_history = memory_store.read_recent_history_for_prompt(
+                since_cursor=memory_store.get_last_dream_cursor(),
+                session_key=session_key,
+                unified_session=unified_session,
+            )
+        memory_recall = memory_store.memory_recall_context(
+            query=memory_query or session_summary,
+            recent_history=recent_history,
+        )
+        if memory_recall:
+            parts.append(f"# Relevant Memory\n\n{memory_recall}")
+        else:
+            memory = memory_store.get_memory_context()
+            if memory and not self._is_template_content(memory_store.read_memory(), "memory/MEMORY.md"):
+                parts.append(f"# Memory\n\n{memory}")
+
         always_skills = self.skills.get_always_skills()
         if always_skills:
             always_content = self.skills.load_skills_for_context(always_skills)
@@ -131,12 +146,8 @@ class ContextBuilder:
         if skills_summary:
             parts.append(render_template("agent/skills_section.md", skills_summary=skills_summary))
 
-        if include_memory_recent_history:
-            entries = memory_store.read_recent_history_for_prompt(
-                since_cursor=memory_store.get_last_dream_cursor(),
-                session_key=session_key,
-                unified_session=unified_session,
-            )
+        if include_memory_recent_history and not memory_recall:
+            entries = recent_history
             if entries:
                 capped = entries[-self._MAX_RECENT_HISTORY:]
                 history_text = "\n".join(
@@ -234,6 +245,7 @@ class ContextBuilder:
         session_key: str | None = None,
         unified_session: bool = False,
         memory_workspace: Path | None = None,
+        memory_query: str | None = None,
     ) -> list[dict[str, Any]]:
         """Build the complete message list for an LLM call."""
         root = workspace or self.workspace
@@ -252,6 +264,7 @@ class ContextBuilder:
                     session_key=session_key,
                     unified_session=unified_session,
                     memory_workspace=memory_workspace,
+                    memory_query=memory_query or current_message,
                 ),
             },
             *history,

@@ -45,6 +45,24 @@ class TestMemoryStoreBasicIO:
         assert "Long-term Memory" in ctx
         assert "important fact" in ctx
 
+    def test_memory_recall_context_returns_ranked_shortlist(self, store):
+        store.write_memory("## Topic Index\n- [otto](memory/topics/otto.md): project memory notes\n")
+        store.write_topic_file("otto", "### otto\n- keep recall short\n- plugin names matter\n")
+        store.append_history("token budget recall should stay short", session_key="chat-1")
+
+        context = store.memory_recall_context(
+            query="token budget recall",
+            recent_history=store.read_recent_history_for_prompt(
+                since_cursor=0,
+                session_key="chat-1",
+            ),
+        )
+
+        assert "## Topic Memory" in context or "## Long-term Memory" in context
+        assert "token budget recall should stay short" in context
+        assert "matches:" in context
+        assert "plugin names matter" not in context
+
 
 class TestHistoryWithCursor:
     def test_append_history_returns_cursor(self, store):
