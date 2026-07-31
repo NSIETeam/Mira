@@ -900,6 +900,7 @@
         "build": "O que vamos construir hoje?",
         "tackle": "O que vamos resolver juntos?"
       },
+      "inputHint": "Digite abaixo para conversar, programar, inspecionar arquivos ou executar uma tarefa.",
       "quickActions": {
         "plan": {
           "title": "Criar um plano de projeto",

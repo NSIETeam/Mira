@@ -887,6 +887,7 @@
         "build": "¿Qué construimos hoy?",
         "tackle": "¿Qué resolvemos juntos?"
       },
+      "inputHint": "Escribe abajo para chatear, programar, revisar archivos o ejecutar una tarea.",
       "quickActions": {
         "plan": {
           "title": "Crear un plan de proyecto",

@@ -886,6 +886,7 @@
         "build": "Que construisons-nous aujourd'hui ?",
         "tackle": "Que résout-on ensemble ?"
       },
+      "inputHint": "Tapez ci-dessous pour discuter, coder, inspecter des fichiers ou lancer une tâche.",
       "quickActions": {
         "plan": {
           "title": "Créer un plan de projet",

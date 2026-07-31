@@ -271,10 +271,10 @@ const HERO_GREETING_KEYS = [
 
 function HeroGreeting({ text }: { text: string }) {
   return (
-    <div className="min-w-0 w-full max-w-[32rem] overflow-hidden">
+    <div className="min-w-0 w-full max-w-[36rem]">
       <h1
         data-testid="hero-greeting"
-        className="truncate text-[15px] font-semibold leading-6 tracking-[-0.01em] text-slate-700 dark:text-slate-200 sm:text-[16px]"
+        className="text-balance break-words text-[22px] font-semibold leading-tight tracking-[-0.03em] text-slate-950 dark:text-slate-50 sm:text-[28px]"
       >
         {text}
       </h1>
@@ -283,9 +283,13 @@ function HeroGreeting({ text }: { text: string }) {
 }
 
 function EmptyThreadPrompt({ greeting }: { greeting: string }) {
+  const { t } = useTranslation();
   return (
-    <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+    <div className="flex w-full flex-col items-center gap-2 text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
       <HeroGreeting text={greeting} />
+      <p className="max-w-[26rem] text-[13px] leading-5 text-muted-foreground sm:text-sm">
+        {t("thread.empty.inputHint")}
+      </p>
     </div>
   );
 }

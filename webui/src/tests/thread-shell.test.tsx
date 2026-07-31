@@ -16,7 +16,7 @@ import type {
 } from "@/lib/types";
 
 const HERO_GREETING_PATTERN =
-  /What do you want to do\?|Start with a message\.|Ask Mira to build it\.|What should Mira handle\?/;
+  /What should Mira work on\?|Start with a message\.|Give Mira a task\.|What should Mira handle\?/;
 
 function makeClient() {
   const errorHandlers = new Set<(err: { kind: string }) => void>();
@@ -833,7 +833,7 @@ describe("ThreadShell", () => {
     await waitFor(() => {
       expect(screen.queryByText("delete me cleanly")).not.toBeInTheDocument();
     });
-    expect(screen.getByPlaceholderText("Ask anything...")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Message Mira, or describe a task...")).toBeInTheDocument();
   });
 
   it("creates a chat only when the blank landing sends a first message", async () => {
@@ -1164,9 +1164,11 @@ describe("ThreadShell", () => {
 
     const greeting = screen.getByRole("heading", { level: 1, name: HERO_GREETING_PATTERN });
     expect(greeting).toHaveAttribute("data-testid", "hero-greeting");
-    expect(greeting).toHaveClass("truncate");
-    expect(greeting).not.toHaveClass("whitespace-nowrap");
-    expect(screen.getByPlaceholderText("Ask anything...")).toBeInTheDocument();
+    expect(greeting).toHaveClass("break-words");
+    expect(greeting).not.toHaveClass("truncate");
+    expect(screen.getByText("Type below to chat, code, inspect files, or run a task.")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Message Mira, or describe a task...")).toBeInTheDocument();
+    expect(screen.getByTestId("thread-composer-surface")).toHaveClass("max-w-[54rem]");
     expect(screen.queryByRole("button", { name: "Write code" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create a project plan" })).not.toBeInTheDocument();
   });
@@ -1226,10 +1228,10 @@ describe("ThreadShell", () => {
 
     expect(screen.queryByText("old answer")).not.toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.getByPlaceholderText("Ask anything...")).toBeInTheDocument(),
+      expect(screen.getByPlaceholderText("Message Mira, or describe a task...")).toBeInTheDocument(),
     );
-    const input = screen.getByPlaceholderText("Ask anything...");
-    expect(input.className).toContain("min-h-[72px]");
+    const input = screen.getByPlaceholderText("Message Mira, or describe a task...");
+    expect(input.className).toContain("min-h-[118px]");
     expect(screen.queryByText("old answer")).not.toBeInTheDocument();
   });
 

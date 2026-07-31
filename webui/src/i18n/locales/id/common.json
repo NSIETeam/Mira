@@ -886,6 +886,7 @@
         "build": "Apa yang kita bangun hari ini?",
         "tackle": "Apa yang kita selesaikan bersama?"
       },
+      "inputHint": "Ketik di bawah untuk chat, menulis kode, memeriksa file, atau menjalankan tugas.",
       "quickActions": {
         "plan": {
           "title": "Buat rencana proyek",

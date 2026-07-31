@@ -895,11 +895,12 @@
     "loadingConversation": "Loading chat…",
     "empty": {
       "greetings": {
-        "workOn": "What do you want to do?",
+        "workOn": "What should Mira work on?",
         "start": "Start with a message.",
-        "build": "Ask Mira to build it.",
+        "build": "Give Mira a task.",
         "tackle": "What should Mira handle?"
       },
+      "inputHint": "Type below to chat, code, inspect files, or run a task.",
       "quickActions": {
         "plan": {
           "title": "Create a project plan",
@@ -991,7 +992,7 @@
     "heroSubtitle": "Chat with Mira.",
     "composer": {
       "placeholderThread": "Type your message…",
-      "placeholderHero": "Ask anything...",
+      "placeholderHero": "Message Mira, or describe a task...",
       "placeholderOpening": "Opening a new execution…",
       "placeholderStreaming": "Model is responding…",
       "inputAria": "Message input",
