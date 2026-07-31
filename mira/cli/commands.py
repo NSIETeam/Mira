@@ -3,7 +3,7 @@
 import os
 import sys
 from contextlib import suppress
-from pathlib import Path
+from functools import partial
 from typing import Any
 
 # Force UTF-8 encoding for Windows console
@@ -305,6 +305,15 @@ def _make_agent_progress_adapter(
 
 
 _is_exit_command = _interactive.is_exit_command
+_print_enable_options = partial(_runtime_config.print_enable_options, console=console)
+_model_display = _runtime_config.model_display
+_load_runtime_config = partial(_runtime_config.load_runtime_config, console=console)
+_warn_deprecated_config_keys = partial(
+    _runtime_config.warn_deprecated_config_keys,
+    console=console,
+)
+_load_inspection_config = partial(_runtime_config.load_inspection_config, console=console)
+_migrate_cron_store = _runtime_config.migrate_cron_store
 
 
 async def _read_interactive_input_async() -> str:
@@ -351,42 +360,6 @@ def onboard(
         sync_workspace_templates=sync_workspace_templates,
         get_workspace_path=get_workspace_path,
     )
-
-
-def _print_enable_options(
-    extras: dict[str, list[str] | None],
-    channel_plugins: dict[str, Any],
-    config: Config,
-) -> None:
-    _runtime_config.print_enable_options(
-        extras,
-        channel_plugins,
-        config,
-        console=console,
-    )
-
-
-def _model_display(config: Config) -> tuple[str, str]:
-    return _runtime_config.model_display(config)
-
-
-def _load_runtime_config(config: str | None = None, workspace: str | None = None) -> Config:
-    return _runtime_config.load_runtime_config(config, workspace, console=console)
-
-
-def _warn_deprecated_config_keys(config_path: Path | None) -> None:
-    _runtime_config.warn_deprecated_config_keys(config_path, console=console)
-
-
-def _load_inspection_config(
-    config: str | None = None,
-    workspace: str | None = None,
-) -> tuple[Path, Config]:
-    return _runtime_config.load_inspection_config(config, workspace, console=console)
-
-
-def _migrate_cron_store(config: "Config") -> None:
-    _runtime_config.migrate_cron_store(config)
 
 
 @app.command()
