@@ -244,6 +244,50 @@ class TestBundledToolContract:
 
 
 # ---------------------------------------------------------------------------
+# Memory recall injection
+# ---------------------------------------------------------------------------
+
+
+class TestMemoryRecallInjection:
+    def test_relevant_memory_replaces_full_memory_block_when_query_matches(self, tmp_path):
+        builder = _builder(tmp_path)
+        store = builder.memory_for_workspace()
+        store.append_history("token budget decision: keep recall short", session_key="chat-1")
+        store.write_memory("## Topic Index\n- [memory](memory/topics/memory.md): project memory notes\n")
+        store.write_topic_file("memory", "### memory\n- concise recall should win\n")
+
+        prompt = builder.build_system_prompt(
+            session_key="chat-1",
+            memory_query="token budget recall",
+            memory_workspace=tmp_path,
+            include_memory_recent_history=True,
+        )
+
+        assert "# Relevant Memory" in prompt
+        assert "token budget decision" in prompt
+        assert "recall should win" in prompt
+        assert "matches:" in prompt
+        assert "# Memory\n" not in prompt
+
+    def test_recall_does_not_drop_explicit_user_memory(self, tmp_path):
+        (tmp_path / "USER.md").write_text("Always answer this user in Chinese.", encoding="utf-8")
+        builder = _builder(tmp_path)
+        store = builder.memory_for_workspace()
+        store.append_history("token budget decision: keep recall short", session_key="chat-1")
+
+        prompt = builder.build_system_prompt(
+            session_key="chat-1",
+            memory_query="token budget",
+            memory_workspace=tmp_path,
+            include_memory_recent_history=True,
+        )
+
+        assert "## USER.md" in prompt
+        assert "Always answer this user in Chinese." in prompt
+        assert "# Relevant Memory" in prompt
+
+
+# ---------------------------------------------------------------------------
 # _build_user_content
 # ---------------------------------------------------------------------------
 

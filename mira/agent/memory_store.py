@@ -6,7 +6,7 @@ import json
 import os
 import re
 import threading
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +32,19 @@ from mira.utils.workspace_prompts import (
 
 if TYPE_CHECKING:
     pass
+
+_MEMORY_RECALL_STOP_WORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "to",
+    "of", "in", "for", "on", "with", "at", "by", "from", "as", "into", "about",
+    "like", "through", "after", "over", "between", "out", "against", "during",
+    "without", "before", "under", "around", "among", "and", "but", "or", "nor",
+    "not", "so", "yet", "both", "either", "neither", "each", "every", "all",
+    "any", "few", "more", "most", "other", "some", "such", "no", "only", "own",
+    "same", "than", "too", "very", "just", "because", "then", "now", "also",
+    "here", "there", "when", "where", "why", "how", "who", "whom", "which",
+    "what", "this", "that", "these", "those", "it", "its", "i", "you", "we",
+    "they", "them", "my", "your", "our", "their", "memory",
+}
 
 # ---------------------------------------------------------------------------
 # MemoryStore — pure file I/O layer
@@ -1030,6 +1043,126 @@ class MemoryStore:
         if graph:
             sections.append(f"## Knowledge Graph Memory\n{graph}")
         return "\n\n".join(sections)
+
+    def _recall_terms(self, query: str | None) -> list[str]:
+        if not query:
+            return []
+        cleaned = re.sub(r"[^\w\u4e00-\u9fff@/._-]+", " ", query.lower())
+        seen: set[str] = set()
+        terms: list[str] = []
+        for token in re.split(r"[\s,，、;；:：]+", cleaned):
+            term = token.strip().strip("._-")
+            if len(term) < 2 or term in _MEMORY_RECALL_STOP_WORDS or term in seen:
+                continue
+            seen.add(term)
+            terms.append(term)
+            if len(terms) >= 16:
+                break
+        return terms
+
+    def _recall_line_matches(self, line: str, terms: list[str]) -> list[str]:
+        lowered = line.lower()
+        return [term for term in terms if term and term in lowered]
+
+    def _score_recall_line(self, line: str, terms: list[str], section_label: str) -> float:
+        matches = self._recall_line_matches(line, terms)
+        if not matches:
+            return 0.0
+        score = 0.0
+        for term in matches:
+            score += max(2.0, min(8.0, float(len(term))))
+        if line.startswith("- "):
+            score += 1.5
+        elif line.startswith("#"):
+            score += 1.0
+        section_lower = section_label.lower()
+        if "project" in section_lower and any(term in {"project", "repo", "otto", "mira"} for term in terms):
+            score += 1.5
+        if "session" in section_lower and any(term in {"session", "history"} for term in terms):
+            score += 1.5
+        if "topic" in section_lower and any(term in {"topic", "decision", "issue"} for term in terms):
+            score += 1.0
+        return score
+
+    def _recall_block(
+        self,
+        section_label: str,
+        content: str,
+        terms: list[str],
+        *,
+        max_items: int,
+    ) -> tuple[float, str]:
+        scored: list[tuple[float, int, str]] = []
+        for index, raw_line in enumerate(content.splitlines()):
+            line = raw_line.strip()
+            if not line or line == "(empty)":
+                continue
+            score = self._score_recall_line(line, terms, section_label)
+            if score <= 0:
+                continue
+            scored.append((score, index, line))
+        if not scored:
+            return 0.0, ""
+        scored.sort(key=lambda item: (-item[0], item[1], len(item[2])))
+        selected_items = scored[:max_items]
+        selected = [
+            (
+                line if line.startswith("- ") else f"- {line}"
+            ) + f" (matches: {', '.join(self._recall_line_matches(line, terms)[:4])})"
+            for _score, _index, line in selected_items
+        ]
+        if not selected:
+            return 0.0, ""
+        block_score = sum(score for score, _index, _line in selected_items)
+        return block_score, f"## {section_label}\n" + "\n".join(selected)
+
+    def memory_recall_context(
+        self,
+        *,
+        query: str | None = None,
+        recent_history: Sequence[Mapping[str, Any]] | None = None,
+        max_sections: int = 4,
+        max_items_per_section: int = 3,
+        max_chars: int = 1200,
+    ) -> str:
+        terms = self._recall_terms(query)
+        if not terms:
+            return ""
+
+        sections: list[tuple[str, str]] = [
+            ("Long-term Memory", self.read_memory()),
+            ("Topic Memory", self.topic_memory_context()),
+            ("Knowledge Graph Memory", self.graph_memory_context()),
+        ]
+        if recent_history:
+            recent_lines = []
+            for entry in recent_history:
+                content = str(entry.get("content") or "").strip()
+                if not content:
+                    continue
+                timestamp = str(entry.get("timestamp") or "").strip()
+                if timestamp:
+                    recent_lines.append(f"- [{timestamp}] {content}")
+                else:
+                    recent_lines.append(f"- {content}")
+            if recent_lines:
+                sections.append(("Recent History", "\n".join(recent_lines)))
+
+        blocks: list[tuple[float, int, str]] = []
+        used_chars = 0
+        for index, (label, content) in enumerate(sections):
+            score, block = self._recall_block(label, content, terms, max_items=max_items_per_section)
+            if not block:
+                continue
+            if used_chars + len(block) > max_chars:
+                break
+            blocks.append((score, index, block))
+            used_chars += len(block)
+            if len(blocks) >= max_sections:
+                break
+
+        blocks.sort(key=lambda item: (-item[0], item[1]))
+        return "\n\n".join(block for _score, _index, block in blocks)
 
     # -- history.jsonl — append-only, JSONL format ---------------------------
 
