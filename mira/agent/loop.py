@@ -46,6 +46,12 @@ from mira.agent.turn_persistence import (
     sanitize_persisted_blocks,
     save_turn_messages,
 )
+from mira.agent.turn_security import (
+    capability_policy_for_metadata,
+    policy_for_metadata,
+    record_capability_audit_event,
+    tools_for_metadata,
+)
 from mira.bus.events import InboundMessage, OutboundMessage
 from mira.bus.outbound_events import StreamedResponseEvent
 from mira.bus.queue import MessageBus
@@ -66,7 +72,6 @@ from mira.runtime_context import (
     resolve_runtime_context,
     runtime_context_blocks_from_metadata,
 )
-from mira.security.policy import effective_principal_policy
 from mira.security.workspace_access import (
     bind_workspace_scope,
     reset_workspace_scope,
@@ -145,14 +150,6 @@ def _ctx_runtime(ctx: TurnContext) -> LLMRuntime:
     if ctx.runtime is None:
         raise RuntimeError("Turn runtime is not available")
     return ctx.runtime
-
-
-def _string_tuple(value: Any) -> tuple[str, ...]:
-    if isinstance(value, str):
-        return (value,)
-    if isinstance(value, list | tuple | set):
-        return tuple(item for item in value if isinstance(item, str))
-    return ()
 
 
 class AgentLoop:
@@ -387,26 +384,14 @@ class AgentLoop:
                 session.metadata[key] = value
 
     def _tools_for_metadata(self, metadata: Mapping[str, Any] | None) -> ToolRegistry:
-        if not isinstance(metadata, Mapping):
-            return self.tools
-        user = metadata.get(WEBUI_USER_METADATA_KEY)
-        if not isinstance(user, str) or user in ("", "default"):
-            return self.tools
-        policy = effective_principal_policy(
-            self.security_config,
-            user_id=user,
-            group_id=metadata.get(WEBUI_GROUP_METADATA_KEY),
+        return tools_for_metadata(
+            metadata,
+            tools=self.tools,
+            security_config=self.security_config,
         )
-        return self.tools.filtered_copy(exclude=set(policy.deny_tools))
 
     def _policy_for_metadata(self, metadata: Mapping[str, Any] | None) -> Any | None:
-        if not isinstance(metadata, Mapping):
-            return None
-        user = metadata.get(WEBUI_USER_METADATA_KEY)
-        group = metadata.get(WEBUI_GROUP_METADATA_KEY)
-        if not isinstance(user, str) or not user.strip():
-            return None
-        return effective_principal_policy(self.security_config, user_id=user, group_id=group)
+        return policy_for_metadata(metadata, security_config=self.security_config)
 
     def _capability_policy_for_metadata(
         self,
@@ -414,46 +399,10 @@ class AgentLoop:
         *,
         sender_id: str | None,
     ) -> Any | None:
-        if not isinstance(metadata, Mapping):
-            return None
-        raw = metadata.get("capability_policy") or metadata.get("agent_capabilities")
-        if not isinstance(raw, Mapping):
-            return None
-        from mira.kernel.acl import CapabilityPolicy, CapabilityRule
-
-        rules: list[CapabilityRule] = []
-        for capability, spec in raw.items():
-            if not isinstance(capability, str) or not isinstance(spec, Mapping):
-                continue
-            rules.append(
-                CapabilityRule(
-                    capability=capability,
-                    allow=_string_tuple(spec.get("allow")),
-                    deny=_string_tuple(spec.get("deny")),
-                    require_approval=bool(spec.get("require_approval")),
-                )
-            )
-        if not rules:
-            return None
-        return CapabilityPolicy(agent=sender_id or "unknown", rules=tuple(rules))
+        return capability_policy_for_metadata(metadata, sender_id=sender_id)
 
     def _record_capability_audit_event(self, session: Session, event: Any) -> None:
-        timestamp = getattr(event, "timestamp", None)
-        isoformat = getattr(timestamp, "isoformat", None)
-        timestamp_value = isoformat() if callable(isoformat) else str(timestamp or "")
-        item = {
-            "agent": str(getattr(event, "agent", "")),
-            "capability": str(getattr(event, "capability", "")),
-            "target": str(getattr(event, "target", "")),
-            "decision": str(getattr(event, "decision", "")),
-            "reason": str(getattr(event, "reason", "")),
-            "timestamp": timestamp_value,
-        }
-        current = session.metadata.get("capability_audit_log")
-        audit_log = list(current) if isinstance(current, list) else []
-        audit_log.append(item)
-        session.metadata["capability_audit_log"] = audit_log[-200:]
-        self.sessions.save(session)
+        record_capability_audit_event(session, event, sessions=self.sessions)
 
     def _module_enabled(self, name: str, *, default: bool = True) -> bool:
         is_enabled = getattr(self.modules_config, "is_enabled", None)
