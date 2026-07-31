@@ -15,7 +15,7 @@ from mira.agent.subagent import SubagentManager, SubagentStatus
 from mira.agent.tools.search import FindFilesTool, GrepTool
 from mira.agent.tools.web import WebSearchTool
 from mira.bus.queue import MessageBus
-from mira.config.schema import WebSearchConfig
+from mira.config.schema import ModuleConfig, ModulesConfig, WebSearchConfig
 from mira.providers.base import GenerationSettings
 from mira.utils.llm_runtime import LLMRuntime
 
@@ -339,15 +339,26 @@ async def test_search_tools_reject_paths_outside_workspace(tmp_path: Path) -> No
     assert grep_result.startswith("Error:")
 
 
-def test_agent_loop_registers_grep(tmp_path: Path) -> None:
+def test_agent_loop_skips_grep_until_search_module_enabled(tmp_path: Path) -> None:
     bus = MessageBus()
     provider = MagicMock()
     provider.get_default_model.return_value = "test-model"
 
-    loop = AgentLoop(bus=bus, provider=provider, workspace=tmp_path, model="test-model")
+    default_loop = AgentLoop(bus=bus, provider=provider, workspace=tmp_path, model="test-model")
 
-    assert "find_files" in loop.tools.tool_names
-    assert "grep" in loop.tools.tool_names
+    assert "find_files" not in default_loop.tools.tool_names
+    assert "grep" not in default_loop.tools.tool_names
+
+    opt_in_loop = AgentLoop(
+        bus=bus,
+        provider=provider,
+        workspace=tmp_path,
+        model="test-model",
+        modules_config=ModulesConfig(registry={"search": ModuleConfig(enabled=True)}),
+    )
+
+    assert "find_files" in opt_in_loop.tools.tool_names
+    assert "grep" in opt_in_loop.tools.tool_names
 
 
 @pytest.mark.asyncio

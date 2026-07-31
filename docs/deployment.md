@@ -74,7 +74,7 @@ Run mira online without managing a server. The blueprint deploys the gateway and
 
 ### Docker Compose
 
-The default image preinstalls WhatsApp dependencies. To bake other enabled
+The default image preinstalls the core WebSocket channel dependencies. To bake other enabled
 channels into an image (recommended for deployments without PyPI access), pass
 a comma-separated `MIRA_CHANNELS` build argument:
 

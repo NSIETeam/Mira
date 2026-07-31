@@ -79,7 +79,7 @@ def test_tool_context_defaults():
 
 def test_skip_modules_excludes_infrastructure():
     infra = {"base", "schema", "registry", "context", "loader", "config",
-             "file_state", "sandbox", "mcp", "__init__"}
+             "file_state", "sandbox", "mcp", "runtime_state", "__init__"}
     assert infra <= _SKIP_MODULES
 
 
@@ -136,6 +136,69 @@ def test_loader_registers_exec_with_real_tools_config(tmp_path):
 
     assert "exec" in registered
     assert registry.has("exec")
+
+
+def test_loader_default_core_excludes_optional_tools(tmp_path):
+    """The default tool surface stays small; optional tool packs need explicit module opt-in."""
+    from types import SimpleNamespace
+
+    from mira.agent.tools.registry import ToolRegistry
+    from mira.config.schema import ModulesConfig, ToolsConfig
+
+    ctx = ToolContext(
+        config=ToolsConfig(),
+        workspace=str(tmp_path),
+        modules=ModulesConfig(),
+        subagent_manager=SimpleNamespace(
+            get_running_count=lambda: 0,
+            max_concurrent_subagents=4,
+        ),
+        timezone="UTC",
+    )
+    registry = ToolRegistry()
+    registered = set(ToolLoader().load(ctx, registry))
+
+    assert registered == {
+        "edit_file",
+        "exec",
+        "list_dir",
+        "list_exec_sessions",
+        "message",
+        "read_file",
+        "spawn",
+        "web_fetch",
+        "web_search",
+        "write_file",
+        "write_stdin",
+    }
+
+
+def test_loader_explicitly_enables_optional_tool_packs(tmp_path):
+    from types import SimpleNamespace
+
+    from mira.agent.tools.registry import ToolRegistry
+    from mira.config.schema import ModuleConfig, ModulesConfig, ToolsConfig
+
+    ctx = ToolContext(
+        config=ToolsConfig(),
+        workspace=str(tmp_path),
+        modules=ModulesConfig(
+            registry={
+                "apply_patch": ModuleConfig(enabled=True),
+                "cli_apps": ModuleConfig(enabled=True),
+                "search": ModuleConfig(enabled=True),
+            }
+        ),
+        subagent_manager=SimpleNamespace(
+            get_running_count=lambda: 0,
+            max_concurrent_subagents=4,
+        ),
+        timezone="UTC",
+    )
+    registry = ToolRegistry()
+    registered = set(ToolLoader().load(ctx, registry))
+
+    assert {"apply_patch", "find_files", "grep", "run_cli_app"} <= registered
 
 
 def test_loader_wires_shared_exec_session_manager(tmp_path):
@@ -382,10 +445,11 @@ def test_mcp_wrappers_not_discoverable():
 # --- Task 10: Integration test ---
 
 
-def test_loader_registers_same_tools_as_old_hardcoded():
-    """Verify the loader produces the same tool set as the old _register_default_tools."""
+def test_loader_registers_slim_default_tools_and_opt_in_tools():
+    """Default core stays slim; optional packs remain available through modules."""
     from mira.agent.tools.loader import ToolLoader
     from mira.agent.tools.registry import ToolRegistry
+    from mira.config.schema import ModuleConfig, ModulesConfig
 
     mock_config = MagicMock()
     mock_config.exec.enable = True
@@ -408,6 +472,7 @@ def test_loader_registers_same_tools_as_old_hardcoded():
     ctx = ToolContext(
         config=mock_config,
         workspace="/tmp",
+        modules=ModulesConfig(),
         bus=MagicMock(),
         subagent_manager=MagicMock(),
         cron_service=MagicMock(),
@@ -419,9 +484,28 @@ def test_loader_registers_same_tools_as_old_hardcoded():
 
     expected = {
         "read_file", "write_file", "edit_file", "list_dir",
-        "find_files", "grep", "exec", "write_stdin", "list_exec_sessions",
+        "exec", "write_stdin", "list_exec_sessions",
         "web_search", "web_fetch",
-        "message", "spawn", "cron",
+        "message", "spawn",
     }
     actual = set(registered)
-    assert expected <= actual, f"Missing tools: {expected - actual}"
+    assert expected <= actual, f"Missing default tools: {expected - actual}"
+    assert not {"find_files", "grep", "cron"} & actual
+
+    opt_in_ctx = ToolContext(
+        config=mock_config,
+        workspace="/tmp",
+        modules=ModulesConfig(
+            registry={
+                "search": ModuleConfig(enabled=True),
+                "cron": ModuleConfig(enabled=True),
+            }
+        ),
+        bus=MagicMock(),
+        subagent_manager=MagicMock(),
+        cron_service=MagicMock(),
+        timezone="UTC",
+    )
+    opt_in_registry = ToolRegistry()
+    opt_in_registered = set(loader.load(opt_in_ctx, opt_in_registry))
+    assert {"find_files", "grep", "cron"} <= opt_in_registered

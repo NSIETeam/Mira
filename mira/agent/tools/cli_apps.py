@@ -60,6 +60,7 @@ class CliAppsTool(Tool):
 
     config_key = "cli_apps"
     _scopes = {"core", "subagent"}
+    _core_default = False
 
     @classmethod
     def config_cls(cls):
