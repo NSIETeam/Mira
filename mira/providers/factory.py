@@ -65,6 +65,11 @@ def _make_provider_core(
     if spec and spec.is_transcription_only:
         raise ValueError(f"Provider '{provider_name}' only supports transcription.")
     backend = spec.backend if spec else "openai_compat"
+    if p and p.proxy and backend not in {"openai_compat", "openai_codex", "xai_grok"}:
+        raise ValueError(
+            f"providers.{provider_name}.proxy is only supported for "
+            "OpenAI-compatible providers, OpenAI Codex, and xAI Grok."
+        )
     if spec and spec.provider_factory:
         provider = _make_external_provider(
             spec.provider_factory,
@@ -76,16 +81,8 @@ def _make_provider_core(
         )
         provider.generation = resolved.to_generation_settings()
         return provider
-    if p and p.proxy and backend not in {"openai_compat", "openai_codex", "xai_grok"}:
-        raise ValueError(
-            f"providers.{provider_name}.proxy is only supported for "
-            "OpenAI-compatible providers, OpenAI Codex, and xAI Grok."
-        )
 
-    if backend == "azure_openai":
-        if not p or not p.api_base:
-            raise ValueError("Azure OpenAI requires api_base in config.")
-    elif (
+    if (
         backend == "openai_compat"
         and spec
         and spec.is_direct
@@ -99,35 +96,7 @@ def _make_provider_core(
         if needs_key and not exempt:
             raise ValueError(f"No API key configured for provider '{provider_name}'.")
 
-    if backend == "openai_codex":
-        from mira.providers.openai_codex_provider import OpenAICodexProvider
-
-        provider = OpenAICodexProvider(
-            default_model=model,
-            proxy=getattr(p, "proxy", None) if p else None,
-            extra_body=p.extra_body if p else None,
-        )
-    elif backend == "xai_grok":
-        from mira.providers.xai_grok_provider import XAIGrokProvider
-
-        provider = XAIGrokProvider(
-            default_model=model,
-            proxy=getattr(p, "proxy", None) if p else None,
-            extra_body=p.extra_body if p else None,
-        )
-    elif backend == "azure_openai":
-        from mira.providers.azure_openai_provider import AzureOpenAIProvider
-
-        provider = AzureOpenAIProvider(
-            api_key=p.api_key or "",
-            api_base=p.api_base,
-            default_model=model,
-        )
-    elif backend == "github_copilot":
-        from mira.providers.github_copilot_provider import GitHubCopilotProvider
-
-        provider = GitHubCopilotProvider(default_model=model)
-    elif backend == "anthropic":
+    if backend == "anthropic":
         from mira.providers.anthropic_provider import AnthropicProvider
 
         provider = AnthropicProvider(
@@ -136,18 +105,7 @@ def _make_provider_core(
             default_model=model,
             extra_headers=_provider_extra_headers(spec, p),
         )
-    elif backend == "bedrock":
-        from mira.providers.bedrock_provider import BedrockProvider
-
-        provider = BedrockProvider(
-            api_key=p.api_key if p else None,
-            api_base=p.api_base if p else None,
-            default_model=model,
-            region=getattr(p, "region", None) if p else None,
-            profile=getattr(p, "profile", None) if p else None,
-            extra_body=p.extra_body if p else None,
-        )
-    else:
+    elif backend == "openai_compat":
         from mira.providers.openai_compat_provider import OpenAICompatProvider
 
         provider = OpenAICompatProvider(
@@ -160,6 +118,11 @@ def _make_provider_core(
             api_type=p.api_type if p and provider_name == "openai" else "auto",
             extra_query=p.extra_query if p else None,
             proxy=p.proxy if p else None,
+        )
+    else:
+        raise ValueError(
+            f"Provider '{provider_name}' backend '{backend}' must be exposed through "
+            "ProviderSpec.provider_factory or migrated to openai_compat/anthropic."
         )
 
     provider.generation = resolved.to_generation_settings()
