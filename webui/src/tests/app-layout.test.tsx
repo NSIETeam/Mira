@@ -16,7 +16,7 @@ const runStatusHandlers = new Set<(chatId: string, startedAt: number | null) => 
 const sessionUpdateHandlers = new Set<(chatId: string, scope?: string) => void>();
 let mockSessions: ChatSummary[] = [];
 const HERO_GREETING_PATTERN =
-  /What do you want to do\?|Start with a message\.|Ask Mira to build it\.|What should Mira handle\?/;
+  /What should Mira work on\?|Start with a message\.|Give Mira a task\.|What should Mira handle\?/;
 
 function setNavigatorPlatform(platform: string): void {
   Object.defineProperty(window.navigator, "platform", {
