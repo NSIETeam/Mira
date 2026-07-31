@@ -1,10 +1,7 @@
 """CLI commands for Mira."""
 
-import asyncio
-import json
 import os
 import sys
-from collections.abc import Callable, Iterable
 from contextlib import suppress
 from pathlib import Path
 from typing import Any
@@ -68,6 +65,7 @@ from mira.cli.gateway import create_gateway_app  # noqa: E402
 from mira.cli.gateway_runtime import GatewayRuntimeDeps, run_gateway_runtime  # noqa: E402
 from mira.cli.kernel_commands import register_kernel_commands  # noqa: E402
 from mira.cli.kernel_lifecycle_commands import register_kernel_lifecycle_commands  # noqa: E402
+from mira.cli.onboard_command import onboard_plugins as _onboard_plugins  # noqa: E402
 from mira.cli.onboard_command import run_onboard_command  # noqa: E402
 from mira.cli.provider_commands import register_provider_commands  # noqa: E402
 from mira.cli.stream import StreamRenderer, ThinkingSpinner  # noqa: E402
@@ -118,35 +116,11 @@ _LOGIN_HANDLERS = _provider_commands.LOGIN_HANDLERS
 _LOGOUT_HANDLERS = _provider_commands.LOGOUT_HANDLERS
 _OAUTH_PROVIDER_DEFAULT_MODELS = _provider_commands.OAUTH_PROVIDER_DEFAULT_MODELS
 
-
-def _signal_name(signum: int) -> str:
-    return _gateway_support.signal_name(signum)
-
-
-def _ensure_interactive_tty_mode() -> None:
-    _gateway_support.ensure_interactive_tty_mode()
-
-
-def _install_gateway_shutdown_handlers(
-    loop: asyncio.AbstractEventLoop,
-    shutdown_event: asyncio.Event,
-    tasks: list[asyncio.Task],
-    print_status: Callable[[str], None],
-) -> Callable[[], None]:
-    return _gateway_support.install_gateway_shutdown_handlers(
-        loop,
-        shutdown_event,
-        tasks,
-        print_status,
-    )
-
-
-def _advance_dream_cursor_if_behind(memory: Any) -> None:
-    _gateway_support.advance_dream_cursor_if_behind(memory)
-
-
-def _commit_dream_changes(memory: Any) -> str | None:
-    return _gateway_support.commit_dream_changes(memory)
+_signal_name = _gateway_support.signal_name
+_ensure_interactive_tty_mode = _gateway_support.ensure_interactive_tty_mode
+_install_gateway_shutdown_handlers = _gateway_support.install_gateway_shutdown_handlers
+_advance_dream_cursor_if_behind = _gateway_support.advance_dream_cursor_if_behind
+_commit_dream_changes = _gateway_support.commit_dream_changes
 
 
 PromptSession = _interactive.PromptSession
@@ -173,41 +147,22 @@ _REASONING_SENTENCE_ENDINGS = _interactive.REASONING_SENTENCE_ENDINGS
 _REASONING_FLUSH_CHARS = _interactive.REASONING_FLUSH_CHARS
 
 _HEARTBEAT_PREAMBLE = _gateway_support.HEARTBEAT_PREAMBLE
-
-
-def _heartbeat_has_active_tasks(content: str) -> bool:
-    return _gateway_support.heartbeat_has_active_tasks(content)
-
-
-def _pick_heartbeat_target_from_sessions(
-    *,
-    enabled_channels: Iterable[str],
-    sessions: Iterable[dict[str, Any]],
-    archived_keys: Iterable[str],
-    unified_session_metadata: dict[str, Any] | None = None,
-) -> tuple[str, str]:
-    return _gateway_support.pick_heartbeat_target_from_sessions(
-        enabled_channels=enabled_channels,
-        sessions=sessions,
-        archived_keys=archived_keys,
-        unified_session_metadata=unified_session_metadata,
-    )
+_heartbeat_has_active_tasks = _gateway_support.heartbeat_has_active_tasks
+_pick_heartbeat_target_from_sessions = _gateway_support.pick_heartbeat_target_from_sessions
 
 
 _PROMPT_SESSION: Any | None = None
 _SAVED_TERM_ATTRS = None
 
 
-def _flush_pending_tty_input() -> None:
-    _interactive.flush_pending_tty_input()
+_flush_pending_tty_input = _interactive.flush_pending_tty_input
 
 
 def _restore_terminal() -> None:
     _interactive.restore_terminal(_SAVED_TERM_ATTRS)
 
 
-def _build_cli_key_bindings():
-    return _interactive.build_cli_key_bindings()
+_build_cli_key_bindings = _interactive.build_cli_key_bindings
 
 
 def _init_prompt_session() -> None:
@@ -349,8 +304,7 @@ def _make_agent_progress_adapter(
     )
 
 
-def _is_exit_command(command: str) -> bool:
-    return _interactive.is_exit_command(command)
+_is_exit_command = _interactive.is_exit_command
 
 
 async def _read_interactive_input_async() -> str:
@@ -397,31 +351,6 @@ def onboard(
         sync_workspace_templates=sync_workspace_templates,
         get_workspace_path=get_workspace_path,
     )
-
-
-def _onboard_plugins(config_path: Path) -> None:
-    """Inject default config for all discovered channels (built-in + plugins)."""
-    from mira.channels.contracts import channel_default_config
-    from mira.channels.registry import discover_plugins
-    from mira.config.loader import merge_missing_defaults
-
-    plugins = discover_plugins()
-    if not plugins:
-        return
-
-    with open(config_path, encoding="utf-8") as f:
-        data = json.load(f)
-
-    channels = data.setdefault("channels", {})
-    for name, plugin in plugins.items():
-        defaults = channel_default_config(plugin)
-        if name not in channels:
-            channels[name] = defaults
-        else:
-            channels[name] = merge_missing_defaults(channels[name], defaults)
-
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
 
 
 def _print_enable_options(
