@@ -84,3 +84,10 @@ def test_core_factory_does_not_hardcode_split_provider_classes() -> None:
     assert "XAIGrokProvider" not in source
     assert "GitHubCopilotProvider" not in source
     assert "BedrockProvider" not in source
+
+
+def test_fallback_provider_logic_lives_in_factory() -> None:
+    from mira.providers import fallback_provider
+
+    assert fallback_provider.FallbackProvider is provider_factory.FallbackProvider
+    assert fallback_provider.FallbackProvider.__module__ == "mira.providers.factory"
