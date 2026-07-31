@@ -47,7 +47,6 @@ def _set_mira_logs(enabled: bool) -> None:
 
 
 from rich.console import Console  # noqa: E402
-from rich.table import Table  # noqa: E402
 
 from mira import (  # noqa: E402
     __app_name__,
@@ -55,11 +54,11 @@ from mira import (  # noqa: E402
     __logo__,
     __version__,
 )
-from mira import optional_features as feature_support  # noqa: E402
 from mira.agent.hooks import create_file_edit_activity_hook  # noqa: E402
 from mira.agent.loop import AgentLoop  # noqa: E402
 from mira.cli import interactive as _interactive  # noqa: E402
 from mira.cli import provider_commands as _provider_commands  # noqa: E402
+from mira.cli import runtime_config as _runtime_config  # noqa: E402
 from mira.cli import webui_helpers as _webui_helpers  # noqa: E402
 from mira.cli.agent_command import AgentCommandDeps, run_agent_command  # noqa: E402
 from mira.cli.api_command import ServeCommandDeps, run_serve_command  # noqa: E402
@@ -550,117 +549,35 @@ def _print_enable_options(
     channel_plugins: dict[str, Any],
     config: Config,
 ) -> None:
-    table = Table(title="Available Features")
-    table.add_column("Name", style="cyan")
-    table.add_column("Type")
-    table.add_column("Enabled")
-
-    for item in sorted(set(channel_plugins) | set(extras)):
-        plugin = channel_plugins.get(item)
-        is_channel = plugin is not None
-        enabled = (
-            feature_support.channel_enabled(
-                config,
-                item,
-                plugin,
-                default_enabled=plugin.default_enabled,
-            )
-            if is_channel
-            else feature_support.extra_installed(item, extras[item])
-        )
-        table.add_row(
-            item,
-            "channel" if is_channel else "feature",
-            "[green]yes[/green]" if enabled else "[dim]no[/dim]",
-        )
-
-    console.print(table)
+    _runtime_config.print_enable_options(
+        extras,
+        channel_plugins,
+        config,
+        console=console,
+    )
 
 
 def _model_display(config: Config) -> tuple[str, str]:
-    """Return (resolved_model_name, preset_tag) for display strings."""
-    resolved = config.resolve_preset()
-    name = config.agents.defaults.model_preset
-    tag = f" (preset: {name})" if name else ""
-    return resolved.model, tag
+    return _runtime_config.model_display(config)
 
 
 def _load_runtime_config(config: str | None = None, workspace: str | None = None) -> Config:
-    """Load config and optionally override the active workspace."""
-    from mira.config.loader import load_config, resolve_config_env_vars, set_config_path
-
-    config_path = None
-    if config:
-        config_path = Path(config).expanduser().resolve()
-        if not config_path.exists():
-            console.print(f"[red]Error: Config file not found: {config_path}[/red]")
-            raise typer.Exit(1)
-        set_config_path(config_path)
-        console.print(f"[dim]Using config: {config_path}[/dim]")
-
-    try:
-        loaded = resolve_config_env_vars(load_config(config_path))
-    except ValueError as e:
-        console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
-    _warn_deprecated_config_keys(config_path)
-    if workspace:
-        loaded.agents.defaults.workspace = workspace
-    return loaded
+    return _runtime_config.load_runtime_config(config, workspace, console=console)
 
 
 def _warn_deprecated_config_keys(config_path: Path | None) -> None:
-    """Hint users to remove obsolete keys from their config file."""
-    from mira.config.loader import get_config_path
-
-    path = config_path or get_config_path()
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return
-    if "memoryWindow" in raw.get("agents", {}).get("defaults", {}):
-        console.print(
-            "[dim]Hint: `memoryWindow` in your config is no longer used "
-            "and can be safely removed.[/dim]"
-        )
+    _runtime_config.warn_deprecated_config_keys(config_path, console=console)
 
 
 def _load_inspection_config(
     config: str | None = None,
     workspace: str | None = None,
 ) -> tuple[Path, Config]:
-    """Load config for diagnostic commands without resolving secret env refs."""
-    from mira.config.loader import get_config_path, load_config, set_config_path
-
-    config_path = None
-    if config:
-        config_path = Path(config).expanduser().resolve(strict=False)
-        set_config_path(config_path)
-        console.print(f"[dim]Using config: {config_path}[/dim]")
-
-    display_path = config_path or get_config_path()
-    try:
-        loaded = load_config(config_path)
-    except ValueError as exc:
-        console.print(f"[red]Error: {exc}[/red]")
-        raise typer.Exit(1) from exc
-    _warn_deprecated_config_keys(display_path)
-    if workspace:
-        loaded.agents.defaults.workspace = workspace
-    return display_path, loaded
+    return _runtime_config.load_inspection_config(config, workspace, console=console)
 
 
 def _migrate_cron_store(config: "Config") -> None:
-    """One-time migration: move legacy global cron store into the workspace."""
-    from mira.config.paths import get_cron_dir
-
-    legacy_path = get_cron_dir() / "jobs.json"
-    new_path = config.workspace_path / "cron" / "jobs.json"
-    if legacy_path.is_file() and not new_path.exists():
-        new_path.parent.mkdir(parents=True, exist_ok=True)
-        import shutil
-
-        shutil.move(str(legacy_path), str(new_path))
+    _runtime_config.migrate_cron_store(config)
 
 
 @app.command()
