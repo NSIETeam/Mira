@@ -6,7 +6,7 @@ import asyncio
 import dataclasses
 import time
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
-from contextlib import AbstractContextManager, ExitStack, suppress
+from contextlib import AbstractContextManager, suppress
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -15,6 +15,7 @@ from loguru import logger
 
 from mira.agent import context as agent_context
 from mira.agent import model_presets as preset_helpers
+from mira.agent.agent_runner_loop import run_agent_iteration_loop
 from mira.agent.automation_turns import publish_next_deferred_turn
 from mira.agent.context import ContextBuilder
 from mira.agent.dispatch_turn import dispatch_inbound_turn
@@ -22,12 +23,9 @@ from mira.agent.hook import AgentHook, AgentTurnHookFactory
 from mira.agent.loop_config import AgentLoopConfig, agent_loop_config_from_legacy_args
 from mira.agent.loop_init import initialize_agent_loop
 from mira.agent.memory import Consolidator, MemoryStore
-from mira.agent.pending_injections import PendingInjectionDrainer
 from mira.agent.process_message import process_inbound_message
-from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunSpec
 from mira.agent.subagent import SubagentManager
-from mira.agent.tools.context import RequestContext, bind_request_context, reset_request_context
-from mira.agent.tools.file_state import bind_file_states, reset_file_states
+from mira.agent.tools.context import RequestContext
 from mira.agent.tools.message import MessageTool
 from mira.agent.tools.registry import ToolRegistry
 from mira.agent.tools.runtime_state import RuntimeState
@@ -41,7 +39,6 @@ from mira.agent.turn_delivery import (
     TurnDelivery,
 )
 from mira.agent.turn_delivery import TurnRoute as TurnRoute
-from mira.agent.turn_hooks import AgentTurnHookSpec, build_agent_turn_hook
 from mira.agent.turn_persistence import (
     persist_subagent_followup,
     sanitize_persisted_blocks,
@@ -72,17 +69,8 @@ from mira.runtime_context import (
     resolve_runtime_context,
     runtime_context_blocks_from_metadata,
 )
-from mira.security.workspace_access import (
-    bind_workspace_scope,
-    reset_workspace_scope,
-)
 from mira.session import turn_continuation
 from mira.session.automation_turns import automation_history_overrides
-from mira.session.goal_state import (
-    goal_state_runtime_lines,
-    runner_wall_llm_timeout_s,
-    sustained_goal_active,
-)
 from mira.session.keys import UNIFIED_SESSION_KEY, remember_last_channel
 from mira.session.manager import Session, SessionManager
 from mira.session.model_selection import (
@@ -844,166 +832,30 @@ class AgentLoop:
 
         Returns (final_content, tools_used, messages, stop_reason, had_injections).
         """
-        self._sync_subagent_runtime_limits()
-
-        async def _checkpoint(payload: dict[str, Any]) -> None:
-            if session is None:
-                return
-            self._set_runtime_checkpoint(session, payload)
-            runtime_snapshots = self._runtime_vars.setdefault("session_checkpoints", {})
-            runtime_snapshots[session.key] = dict(payload)
-
-        active_session_key = session.key if session else session_key
-        effective_scope = self.workspace_scopes.for_turn(
-            channel=channel,
-            message_metadata=metadata,
-            session_metadata=session.metadata if session is not None else None,
-        )
-        effective_tools = tools or self.tools
-        request_ctx = request_context or RequestContext(
+        return await run_agent_iteration_loop(
+            self,
+            initial_messages,
+            on_progress=on_progress,
+            on_stream=on_stream,
+            on_stream_end=on_stream_end,
+            on_retry_wait=on_retry_wait,
+            runtime=runtime,
+            session=session,
             channel=channel,
             chat_id=chat_id,
             message_id=message_id,
-            session_key=active_session_key,
+            metadata=metadata,
+            session_key=session_key,
             original_user_text=original_user_text,
-            runtime=runtime,
-            metadata=dict(metadata or {}),
-            workspace=effective_scope.project_path,
-            policy=self._policy_for_metadata(metadata),
-            capability_policy=self._capability_policy_for_metadata(
-                metadata,
-                sender_id=metadata.get("sender_id") if isinstance(metadata, dict) else None,
-            ),
-            capability_audit_sink=(
-                (lambda event: self._record_capability_audit_event(session, event))
-                if session is not None
-                else None
-            ),
-        )
-        pending_injections = PendingInjectionDrainer(
             pending_queue=pending_queue,
-            session=session,
-            active_session_key=active_session_key,
-            runtime=runtime,
-            request_turn_id=str(request_ctx.turn_id or ""),
-            effective_tools=effective_tools,
-            workspace_scopes=self.workspace_scopes,
-            build_user_content=self.context._build_user_content,
-            prepare_message_media=self._prepare_message_media,
-            resolve_runtime_context=self._resolve_runtime_context_for_request,
-            get_running_subagents=self.subagents.get_running_count_by_session,
+            ephemeral=ephemeral,
+            run_extra_hooks_for_ephemeral=run_extra_hooks_for_ephemeral,
+            hooks=hooks,
+            hook_factories=hook_factories,
+            turn_scopes=turn_scopes,
+            tools=tools,
+            request_context=request_context,
         )
-
-        async def _drain_pending(*, limit: int = _MAX_INJECTIONS_PER_TURN) -> list[dict[str, Any]]:
-            return await pending_injections.drain(limit=limit)
-
-        file_state_token = bind_file_states(self._file_state_store.for_session(active_session_key))
-        request_token = bind_request_context(request_ctx)
-        workspace_token = bind_workspace_scope(effective_scope)
-        turn_scope_stack = ExitStack()
-        # Compute lazily because create_goal may create goal metadata during this run.
-        def _goal_continue() -> str | None:
-            _goal_lines = goal_state_runtime_lines(session.metadata if session is not None else None)
-            if not _goal_lines:
-                return None
-            return (
-                "You have an active sustained goal:\n\n"
-                + "\n".join(_goal_lines)
-                + "\n\nPlease continue working toward the objective using your tools, "
-                "or call update_goal with action='complete' if the work is truly finished."
-            )
-
-        session_metadata = session.metadata if session is not None else None
-        try:
-            for scope in turn_scopes or ():
-                turn_scope_stack.enter_context(scope)
-            hook = build_agent_turn_hook(AgentTurnHookSpec(
-                on_progress=on_progress,
-                on_stream=on_stream,
-                on_stream_end=on_stream_end,
-                channel=channel,
-                chat_id=chat_id,
-                message_id=message_id,
-                metadata=metadata,
-                session_key=active_session_key,
-                workspace=effective_scope.project_path,
-                tool_hint_max_length=self.tool_hint_max_length,
-                on_iteration=lambda iteration: setattr(self, "_current_iteration", iteration),
-                registered_hook_factories=self._hook_factories,
-                turn_hook_factories=list(hook_factories or []),
-                registered_hooks=self._extra_hooks,
-                turn_hooks=list(hooks or []),
-                ephemeral=ephemeral,
-                run_extra_hooks_for_ephemeral=run_extra_hooks_for_ephemeral,
-            ))
-            result = await self.runner.run(AgentRunSpec(
-                initial_messages=initial_messages,
-                tools=effective_tools,
-                runtime=runtime,
-                max_iterations=self.max_iterations,
-                max_tool_result_chars=self.max_tool_result_chars,
-                hook=hook,
-                error_message="Sorry, I encountered an error calling the AI model.",
-                concurrent_tools=True,
-                workspace=effective_scope.project_path,
-                session_key=session.key if session else None,
-                context_block_limit=self.context_block_limit,
-                provider_retry_mode=self.provider_retry_mode,
-                progress_callback=on_progress,
-                stream_progress_deltas=on_stream is not None,
-                retry_wait_callback=on_retry_wait,
-                checkpoint_callback=_checkpoint,
-                injection_callback=_drain_pending,
-                # Sustained goals may legitimately exceed mira_LLM_TIMEOUT_S; idle stall
-                # is still capped by mira_STREAM_IDLE_TIMEOUT_S in streaming providers.
-                llm_timeout_s=runner_wall_llm_timeout_s(
-                    self.sessions,
-                    session.key if session is not None else session_key,
-                    metadata=session_metadata,
-                    message_metadata=metadata,
-                ),
-                goal_active_predicate=lambda: sustained_goal_active(session.metadata) if session is not None else False,
-                goal_continue_message=_goal_continue,
-                execution_gate=self.execution_gate,
-                finalize_on_max_iterations=turn_continuation.should_finalize_on_max_iterations(
-                    pending_queue_available=pending_queue is not None and session is not None,
-                    session_metadata=session_metadata,
-                    message_metadata=metadata,
-                ),
-            ))
-        finally:
-            turn_scope_stack.close()
-            reset_workspace_scope(workspace_token)
-            reset_request_context(request_token)
-            reset_file_states(file_state_token)
-        self._last_usage = result.usage
-        if result.stop_reason == "max_iterations":
-            session_logger(active_session_key).warning(
-                "Max iterations ({}) reached",
-                self.max_iterations,
-            )
-            should_stream = turn_continuation.should_stream_budget_response(
-                stop_reason=result.stop_reason,
-                pending_queue_available=pending_queue is not None and session is not None,
-                session_metadata=session_metadata,
-                message_metadata=metadata,
-            )
-            # Push final content through stream so streaming channels (e.g. Feishu)
-            # update the card instead of leaving it empty.
-            if on_stream and on_stream_end and should_stream:
-                stream_content = (
-                    result.pending_stream_content
-                    if result.pending_stream_content is not None
-                    else result.final_content or ""
-                )
-                await on_stream(stream_content)
-                await on_stream_end(resuming=False)
-        elif result.stop_reason == "error":
-            session_logger(active_session_key).error(
-                "LLM returned error: {}",
-                (result.final_content or "")[:200],
-            )
-        return result.final_content, result.tools_used, result.messages, result.stop_reason, result.had_injections
 
     def _check_expired_sessions_if_due(self) -> None:
         """Scan idle sessions no more often than the configured interval."""
