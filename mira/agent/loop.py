@@ -22,6 +22,7 @@ from mira.agent.hook import AgentHook, AgentTurnHookFactory
 from mira.agent.loop_config import AgentLoopConfig, agent_loop_config_from_legacy_args
 from mira.agent.loop_init import initialize_agent_loop
 from mira.agent.memory import Consolidator, MemoryStore
+from mira.agent.pending_injections import PendingInjectionDrainer
 from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunSpec
 from mira.agent.subagent import SubagentManager
 from mira.agent.tools.context import RequestContext, bind_request_context, reset_request_context
@@ -65,7 +66,6 @@ from mira.providers.base import LLMProvider
 from mira.providers.factory import ProviderSnapshot
 from mira.runtime_context import (
     RUNTIME_CONTEXT_HISTORY_META,
-    RUNTIME_CONTEXT_MESSAGE_META,
     RuntimeContextBlock,
     RuntimeContextProvider,
     append_runtime_context,
@@ -83,7 +83,6 @@ from mira.session.goal_state import (
     runner_wall_llm_timeout_s,
     sustained_goal_active,
 )
-from mira.session.history_visibility import HIDDEN_HISTORY_META
 from mira.session.keys import UNIFIED_SESSION_KEY, remember_last_channel
 from mira.session.manager import Session, SessionManager
 from mira.session.model_selection import (
@@ -855,125 +854,6 @@ class AgentLoop:
             runtime_snapshots = self._runtime_vars.setdefault("session_checkpoints", {})
             runtime_snapshots[session.key] = dict(payload)
 
-        async def _drain_pending(*, limit: int = _MAX_INJECTIONS_PER_TURN) -> list[dict[str, Any]]:
-            """Drain follow-up messages from the pending queue.
-
-            When no messages are immediately available but sub-agents
-            spawned in this dispatch are still running, blocks until at
-            least one result arrives (or timeout).  This keeps the runner
-            loop alive so subsequent sub-agent completions are consumed
-            in-order rather than dispatched separately.
-            """
-            if pending_queue is None:
-                return []
-
-            async def _to_user_message(pending_msg: InboundMessage) -> dict[str, Any]:
-                content = pending_msg.content
-                media = pending_msg.media if pending_msg.media else None
-                if media:
-                    content, media = self._prepare_message_media(content, media)
-                    media = media or None
-                user_content = self.context._build_user_content(content, media)
-                row: dict[str, Any] = {"role": "user", "content": user_content}
-                metadata = pending_msg.metadata if isinstance(pending_msg.metadata, dict) else {}
-                if pending_msg.channel != "system":
-                    scope = self.workspace_scopes.for_turn(
-                        channel=pending_msg.channel,
-                        message_metadata=metadata,
-                        session_metadata=session.metadata if session is not None else None,
-                    )
-                    pending_request = RequestContext(
-                        channel=pending_msg.channel,
-                        chat_id=pending_msg.chat_id,
-                        message_id=metadata.get("message_id"),
-                        session_key=active_session_key,
-                        original_user_text=pending_msg.content,
-                        runtime=runtime,
-                        metadata=dict(metadata),
-                        sender_id=pending_msg.sender_id,
-                        turn_id=request_ctx.turn_id,
-                        workspace=scope.project_path,
-                    )
-                    blocks = await self._resolve_runtime_context_for_request(
-                        pending_request,
-                        effective_tools,
-                    )
-                    row["content"], runtime_marker = append_runtime_context(user_content, blocks)
-                    if runtime_marker is not None:
-                        row["_meta"] = {RUNTIME_CONTEXT_MESSAGE_META: runtime_marker}
-                if (
-                    pending_msg.sender_id == "subagent"
-                    and metadata.get("injected_event") == "subagent_result"
-                ):
-                    hidden_marker: dict[str, Any] = {"kind": "subagent_result"}
-                    task_id = metadata.get("subagent_task_id")
-                    if isinstance(task_id, str) and task_id:
-                        hidden_marker["subagent_task_id"] = task_id
-                        row["subagent_task_id"] = task_id
-                    row[HIDDEN_HISTORY_META] = hidden_marker
-                    row["injected_event"] = "subagent_result"
-                return row
-
-            items: list[dict[str, Any]] = []
-            while len(items) < limit:
-                try:
-                    items.append(await _to_user_message(pending_queue.get_nowait()))
-                except asyncio.QueueEmpty:
-                    break
-
-            # Block if nothing drained but sub-agents spawned in this dispatch
-            # are still running.  Keeps the runner loop alive so subsequent
-            # completions are injected in-order rather than dispatched separately.
-            if (not items
-                    and session is not None
-                    and self.subagents.get_running_count_by_session(session.key) > 0):
-                try:
-                    msg = await asyncio.wait_for(pending_queue.get(), timeout=300)
-                except TimeoutError:
-                    session_logger(session.key).warning(
-                        "Timeout waiting for sub-agent completion in session {}",
-                        session.key,
-                    )
-                    return items
-                items.append(await _to_user_message(msg))
-                while len(items) < limit:
-                    try:
-                        items.append(await _to_user_message(pending_queue.get_nowait()))
-                    except asyncio.QueueEmpty:
-                        break
-
-            subagent_items = [
-                item for item in items
-                if item.get("injected_event") == "subagent_result"
-            ]
-            if len(subagent_items) >= 2:
-                lines = [
-                    "Structured subagent result summary:",
-                    f"- completed_results: {len(subagent_items)}",
-                ]
-                for item in subagent_items[:6]:
-                    task_id = str(item.get("subagent_task_id") or "unknown")
-                    content = item.get("content")
-                    if isinstance(content, list):
-                        text_parts = []
-                        for block in content:
-                            if isinstance(block, dict) and block.get("type") == "text":
-                                text_parts.append(str(block.get("text") or ""))
-                        content_text = " ".join(part.strip() for part in text_parts if part.strip())
-                    else:
-                        content_text = str(content or "")
-                    content_text = " ".join(content_text.split())
-                    if len(content_text) > 280:
-                        content_text = content_text[:277] + "..."
-                    lines.append(f"- {task_id}: {content_text}")
-                items.insert(0, {
-                    "role": "user",
-                    "content": "\n".join(lines),
-                    HIDDEN_HISTORY_META: {"kind": "subagent_result_rollup"},
-                })
-
-            return items
-
         active_session_key = session.key if session else session_key
         effective_scope = self.workspace_scopes.for_turn(
             channel=channel,
@@ -1001,6 +881,23 @@ class AgentLoop:
                 else None
             ),
         )
+        pending_injections = PendingInjectionDrainer(
+            pending_queue=pending_queue,
+            session=session,
+            active_session_key=active_session_key,
+            runtime=runtime,
+            request_turn_id=str(request_ctx.turn_id or ""),
+            effective_tools=effective_tools,
+            workspace_scopes=self.workspace_scopes,
+            build_user_content=self.context._build_user_content,
+            prepare_message_media=self._prepare_message_media,
+            resolve_runtime_context=self._resolve_runtime_context_for_request,
+            get_running_subagents=self.subagents.get_running_count_by_session,
+        )
+
+        async def _drain_pending(*, limit: int = _MAX_INJECTIONS_PER_TURN) -> list[dict[str, Any]]:
+            return await pending_injections.drain(limit=limit)
+
         file_state_token = bind_file_states(self._file_state_store.for_session(active_session_key))
         request_token = bind_request_context(request_ctx)
         workspace_token = bind_workspace_scope(effective_scope)
