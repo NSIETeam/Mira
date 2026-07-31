@@ -7,7 +7,7 @@ import dataclasses
 import inspect
 import time
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
-from contextlib import AbstractContextManager, ExitStack, nullcontext, suppress
+from contextlib import AbstractContextManager, ExitStack, suppress
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -18,6 +18,7 @@ from mira.agent import context as agent_context
 from mira.agent import model_presets as preset_helpers
 from mira.agent.automation_turns import publish_next_deferred_turn
 from mira.agent.context import ContextBuilder
+from mira.agent.dispatch_turn import dispatch_inbound_turn
 from mira.agent.hook import AgentHook, AgentTurnHookFactory
 from mira.agent.loop_config import AgentLoopConfig, agent_loop_config_from_legacy_args
 from mira.agent.loop_init import initialize_agent_loop
@@ -130,7 +131,6 @@ if TYPE_CHECKING:
         ToolsConfig,
     )
     from mira.execution_gate import ExecutionGate
-    from mira.kernel.process import AgentProcess
     from mira.security.workspace_access import WorkspaceScopeResolver
     from mira.triggers.local_turns import LocalTriggerTurnCoordinator
 
@@ -1117,132 +1117,7 @@ class AgentLoop:
 
     async def _dispatch(self, msg: InboundMessage) -> None:
         """Process a message: per-session serial, cross-session concurrent."""
-        session_key = self._effective_session_key(msg)
-        if session_key != msg.session_key:
-            msg = dataclasses.replace(msg, session_key_override=session_key)
-        lock = self._session_locks.setdefault(session_key, asyncio.Lock())
-        gate = self._concurrency_gate or nullcontext()
-
-        delivery = self.turn_delivery_factory.unrouted(msg, session_key)
-        pending: asyncio.Queue[InboundMessage] | None = None
-        process: AgentProcess | None = None
-        try:
-            async with lock, gate:
-                await self.execution_gate.wait_for_turn_admission()
-                process = self.turn_processes.spawn(msg)
-                # Only the task that owns the session lock may publish the
-                # active mid-turn injection queue for this session.
-                pending = asyncio.Queue(maxsize=20)
-                self._pending_queues[session_key] = pending
-                try:
-                    delivery = self.turn_delivery_factory.create(
-                        msg,
-                        session_key,
-                        enable_stream=True,
-                    )
-                    response = await self._process_message(
-                        msg,
-                        on_stream=delivery.on_stream,
-                        on_stream_end=delivery.on_stream_end,
-                        pending_queue=pending,
-                        delivery=delivery,
-                    )
-                    continuing = turn_continuation.internal_continuation_pending(msg.metadata)
-                    await delivery.complete(
-                        response,
-                        publish_completion=not continuing,
-                    )
-                    self.turn_processes.complete(process, session_key, reason="completed")
-                    for _, coordinator in self._automation_turn_coordinators:
-                        coordinator.complete(msg, response=response)
-                except asyncio.CancelledError:
-                    for _, coordinator in self._automation_turn_coordinators:
-                        coordinator.complete(msg, error=asyncio.CancelledError())
-                    session_logger(session_key).info("Task cancelled for session {}", session_key)
-                    try:
-                        await delivery.abort_stream()
-                    except (OSError, RuntimeError, ValueError):
-                        session_logger(session_key).debug(
-                            "Could not close stream for cancelled session {}",
-                            session_key,
-                            exc_info=True,
-                        )
-                    # Preserve partial context from the interrupted turn so
-                    # the user does not lose tool results and assistant
-                    # messages accumulated before /stop.  The checkpoint was
-                    # already persisted to session metadata by
-                    # _emit_checkpoint during tool execution; materializing
-                    # it into session history now makes it visible in the
-                    # next conversation turn.
-                    try:
-                        key = self._effective_session_key(msg)
-                        session = self.sessions.get_or_create(key)
-                        if self._restore_runtime_checkpoint(session):
-                            self._clear_pending_user_turn(session)
-                            self.sessions.save(session)
-                            session_logger(key).info(
-                                "Restored partial context for cancelled session {}",
-                                key,
-                            )
-                    except (OSError, RuntimeError, ValueError):
-                        session_logger(session_key).debug(
-                            "Could not restore checkpoint for cancelled session {}",
-                            session_key,
-                            exc_info=True,
-                        )
-                    self.turn_processes.stop_for_swap(process, session_key, reason="cancelled")
-                    raise
-                except BaseException as exc:
-                    if isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)):
-                        raise
-                    session_logger(session_key).exception(
-                        "Error processing message for session {}",
-                        session_key,
-                    )
-                    await delivery.fail(
-                        publish_completion=not turn_continuation.internal_continuation_pending(
-                            msg.metadata
-                        )
-                    )
-                    for _, coordinator in self._automation_turn_coordinators:
-                        coordinator.complete(msg, error=exc)
-                    self.turn_processes.complete(
-                        process,
-                        session_key,
-                        reason=f"error: {type(exc).__name__}",
-                    )
-                finally:
-                    # Drain any messages still in the pending queue and re-publish
-                    # them to the bus so they are processed as fresh inbound messages
-                    # rather than silently lost.  Only remove our own queue; a
-                    # later task waiting on the lock must not be able to steal
-                    # cleanup ownership.
-                    queue = None
-                    if self._pending_queues.get(session_key) is pending:
-                        queue = self._pending_queues.pop(session_key, None)
-                    else:
-                        queue = pending
-                    if queue is not None:
-                        leftover = 0
-                        while True:
-                            try:
-                                item = queue.get_nowait()
-                            except asyncio.QueueEmpty:
-                                break
-                            await self.bus.publish_inbound(item)
-                            leftover += 1
-                        if leftover:
-                            session_logger(session_key).info(
-                                "Re-published {} leftover message(s) to bus for session {}",
-                                leftover, session_key,
-                            )
-                    if not turn_continuation.internal_continuation_pending(msg.metadata):
-                        await delivery.idle()
-                    await self._publish_next_deferred_automation_turn(session_key)
-        finally:
-            if pending is None:
-                await delivery.idle()
-                await self._publish_next_deferred_automation_turn(session_key)
+        await dispatch_inbound_turn(self, msg)
 
     async def close_mcp(self) -> None:
         """Drain background work, stop exec sessions, then close MCP connections."""
