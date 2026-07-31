@@ -5,38 +5,30 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import inspect
-import os
 import time
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
 from contextlib import AbstractContextManager, ExitStack, nullcontext, suppress
-from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from loguru import logger
 
 from mira.agent import context as agent_context
 from mira.agent import model_presets as preset_helpers
 from mira.agent.automation_turns import publish_next_deferred_turn
-from mira.agent.build_turn import BuildTurnHandler
-from mira.agent.command_turn import CommandTurnHandler
 from mira.agent.context import ContextBuilder
-from mira.agent.cron_turns import CronTurnCoordinator
 from mira.agent.hook import AgentHook, AgentTurnHookFactory
+from mira.agent.loop_config import AgentLoopConfig, agent_loop_config_from_legacy_args
+from mira.agent.loop_init import initialize_agent_loop
 from mira.agent.memory import Consolidator, MemoryStore
-from mira.agent.model_runtime import ModelRuntimeResolver
-from mira.agent.process_lifecycle import TurnProcessLifecycle
-from mira.agent.respond_turn import RespondTurnHandler
-from mira.agent.run_turn import RunTurnHandler
 from mira.agent.runner import _MAX_INJECTIONS_PER_TURN, AgentRunSpec
-from mira.agent.save_turn import SaveTurnHandler
 from mira.agent.subagent import SubagentManager
-from mira.agent.subsystems import create_agent_loop_subsystems
 from mira.agent.tools.context import RequestContext, bind_request_context, reset_request_context
 from mira.agent.tools.file_state import bind_file_states, reset_file_states
 from mira.agent.tools.message import MessageTool
 from mira.agent.tools.registry import ToolRegistry
+from mira.agent.tools.runtime_state import RuntimeState
 from mira.agent.tools.self import MyTool
 from mira.agent.turn_context import (
     StateTraceEntry,
@@ -46,7 +38,6 @@ from mira.agent.turn_context import (
 )
 from mira.agent.turn_delivery import (
     TurnDelivery,
-    TurnDeliveryFactory,
 )
 from mira.agent.turn_delivery import TurnRoute as TurnRoute
 from mira.agent.turn_hooks import AgentTurnHookSpec, build_agent_turn_hook
@@ -54,13 +45,11 @@ from mira.bus.events import InboundMessage, OutboundMessage
 from mira.bus.outbound_events import StreamedResponseEvent
 from mira.bus.queue import MessageBus
 from mira.bus.runtime_events import (
-    RuntimeEventBus,
     RuntimeEventPublisher,
     ensure_runtime_event_publisher,
 )
-from mira.command import CommandContext, CommandRouter, register_builtin_commands
-from mira.config.schema import AgentDefaults, ModelPresetConfig
-from mira.execution_gate import ExecutionGate
+from mira.command import CommandContext
+from mira.config.schema import ModelPresetConfig
 from mira.providers.base import LLMProvider
 from mira.providers.factory import ProviderSnapshot
 from mira.runtime_context import (
@@ -74,7 +63,6 @@ from mira.runtime_context import (
 )
 from mira.security.policy import effective_principal_policy
 from mira.security.workspace_access import (
-    WorkspaceScopeResolver,
     bind_workspace_scope,
     reset_workspace_scope,
 )
@@ -87,10 +75,7 @@ from mira.session.goal_state import (
 )
 from mira.session.history_visibility import HIDDEN_HISTORY_META
 from mira.session.keys import UNIFIED_SESSION_KEY, remember_last_channel
-from mira.session.manager import (
-    Session,
-    SessionManager,
-)
+from mira.session.manager import Session, SessionManager
 from mira.session.model_selection import (
     SESSION_MODEL_PRESET_METADATA_KEY,
     model_preset_from_metadata,
@@ -101,7 +86,6 @@ from mira.session.recovery import (
     restore_pending_user_turn,
     restore_runtime_checkpoint,
 )
-from mira.triggers.local_turns import LocalTriggerTurnCoordinator
 from mira.utils.cancellation import task_is_cancelling
 from mira.utils.document import extract_documents, reference_non_image_attachments
 from mira.utils.helpers import image_placeholder_text
@@ -114,94 +98,34 @@ from mira.webui.users import (
     WEBUI_USER_METADATA_KEY,
 )
 
-_LEGACY_PATCH_TARGETS = (ContextBuilder, SubagentManager)
+_LEGACY_PATCH_TARGETS = (ContextBuilder, SessionManager, SubagentManager, Consolidator)
 
 if TYPE_CHECKING:
-    from mira.agent.tools.mcp import MCPConnection
+    from mira.agent.autocompact import AutoCompact
+    from mira.agent.build_turn import BuildTurnHandler
+    from mira.agent.command_turn import CommandTurnHandler
+    from mira.agent.cron_turns import CronTurnCoordinator
+    from mira.agent.maturity import VirtualContextManager
+    from mira.agent.model_runtime import ModelRuntimeResolver
+    from mira.agent.process_lifecycle import TurnProcessLifecycle
+    from mira.agent.respond_turn import RespondTurnHandler
+    from mira.agent.run_turn import RunTurnHandler
+    from mira.agent.save_turn import SaveTurnHandler
+    from mira.agent.tools.exec_session import ExecSessionManager
+    from mira.agent.tools.file_state import FileStateStore
+    from mira.agent.turn_delivery import TurnDeliveryFactory
+    from mira.bus.runtime_events import RuntimeEventBus
+    from mira.command import CommandRouter
     from mira.config.schema import (
         ChannelsConfig,
-        ProviderConfig,
+        ModulesConfig,
+        SecurityConfig,
         ToolsConfig,
     )
-    from mira.cron.service import CronService
+    from mira.execution_gate import ExecutionGate
     from mira.kernel.process import AgentProcess
-
-@dataclass(slots=True)
-class AgentLoopConfig:
-    """Construction parameters for the composition-kernel migration path."""
-
-    bus: MessageBus
-    provider: LLMProvider
-    workspace: Path
-    model: str | None = None
-    max_iterations: int | None = None
-    max_concurrent_subagents: int | None = None
-    context_window_tokens: int | None = None
-    context_block_limit: int | None = None
-    max_tool_result_chars: int | None = None
-    fail_on_tool_error: bool | None = None
-    provider_retry_mode: str = "standard"
-    tool_hint_max_length: int | None = None
-    cron_service: CronService | None = None
-    restrict_to_workspace: bool = False
-    session_manager: SessionManager | None = None
-    mcp_servers: dict[str, Any] | None = None
-    channels_config: ChannelsConfig | None = None
-    timezone: str | None = None
-    session_ttl_minutes: int = 0
-    consolidation_ratio: float = 0.5
-    hooks: list[AgentHook] | None = None
-    hook_factories: list[AgentTurnHookFactory] | None = None
-    unified_session: bool = False
-    disabled_skills: list[str] | None = None
-    tools_config: ToolsConfig | None = None
-    modules_config: Any | None = None
-    security_config: Any | None = None
-    image_generation_provider_config: ProviderConfig | None = None
-    image_generation_provider_configs: dict[str, ProviderConfig] | None = None
-    provider_snapshot_loader: Callable[..., ProviderSnapshot] | None = None
-    provider_signature: tuple[object, ...] | None = None
-    model_presets: dict[str, ModelPresetConfig] | None = None
-    preset_catalog_loader: preset_helpers.PresetCatalogLoader | None = None
-    model_preset: str | None = None
-    preset_snapshot_loader: preset_helpers.PresetSnapshotLoader | None = None
-    runtime_events: RuntimeEventBus | None = None
-    turn_delivery_factory: TurnDeliveryFactory | None = None
-    runtime_model_publisher: Callable[[str, str | None], None] | None = None
-    restart_mode: str = "auto"
-    local_trigger_store: Any | None = None
-    idle_compact_check_interval_seconds: int = 0
-    execution_gate: ExecutionGate | None = None
-
-    def to_kwargs(self) -> dict[str, Any]:
-        return {field.name: getattr(self, field.name) for field in dataclasses.fields(self)}
-
-
-def _agent_loop_config_from_legacy_kwargs(legacy: dict[str, Any]) -> AgentLoopConfig:
-    """Normalize legacy ``AgentLoop(**kwargs)`` callers into one config object."""
-    field_names = {field.name for field in dataclasses.fields(AgentLoopConfig)}
-    unknown = sorted(set(legacy) - field_names)
-    if unknown:
-        raise TypeError(f"Unexpected AgentLoop argument(s): {', '.join(unknown)}")
-    missing = [name for name in ("bus", "provider", "workspace") if name not in legacy]
-    if missing:
-        raise TypeError(f"Missing required AgentLoop argument(s): {', '.join(missing)}")
-    return AgentLoopConfig(**legacy)
-
-
-def _agent_loop_config_from_legacy_args(
-    args: tuple[Any, ...],
-    legacy: dict[str, Any],
-) -> AgentLoopConfig:
-    """Normalize legacy positional/keyword construction into one config object."""
-    positional_names = ("bus", "provider", "workspace")
-    if len(args) > len(positional_names):
-        raise TypeError(f"AgentLoop expected at most 3 positional arguments, got {len(args)}")
-    for name, value in zip(positional_names, args, strict=False):
-        if name in legacy:
-            raise TypeError(f"AgentLoop got multiple values for argument '{name}'")
-        legacy[name] = value
-    return _agent_loop_config_from_legacy_kwargs(legacy)
+    from mira.security.workspace_access import WorkspaceScopeResolver
+    from mira.triggers.local_turns import LocalTriggerTurnCoordinator
 
 
 def _ctx_logger(ctx: TurnContext) -> Any:
@@ -239,6 +163,75 @@ class AgentLoop:
     4. Executes tool calls
     5. Sends responses back
     """
+
+    bus: MessageBus
+    loop_config: AgentLoopConfig
+    turn_delivery_factory: TurnDeliveryFactory
+    runtime_events: RuntimeEventBus
+    runtime_event_publisher: RuntimeEventPublisher
+    channels_config: ChannelsConfig | None
+    execution_gate: ExecutionGate
+    restart_mode: str
+    workspace: Path
+    max_iterations: int
+    runtime_resolver: ModelRuntimeResolver
+    context_block_limit: int | None
+    max_tool_result_chars: int
+    provider_retry_mode: str
+    tool_hint_max_length: int
+    tools_config: ToolsConfig
+    modules_config: ModulesConfig | None
+    security_config: SecurityConfig | None
+    web_config: Any
+    exec_config: Any
+    cron_service: Any | None
+    local_trigger_store: Any | None
+    restrict_to_workspace: bool
+    workspace_scopes: WorkspaceScopeResolver
+    context: ContextBuilder
+    sessions: SessionManager
+    tools: ToolRegistry
+    runner: Any
+    subagents: SubagentManager
+    process_table: Any
+    turn_processes: TurnProcessLifecycle
+    consolidator: Consolidator
+    auto_compact: AutoCompact
+    commands: CommandRouter
+    command_turns: CommandTurnHandler
+    build_turns: BuildTurnHandler
+    run_turns: RunTurnHandler
+    save_turns: SaveTurnHandler
+    respond_turns: RespondTurnHandler
+    _runtime_model_publisher: Callable[[str, str | None], None] | None
+    _image_generation_provider_configs: dict[str, Any]
+    _start_time: float
+    _last_usage: dict[str, int]
+    _extra_hooks: list[AgentHook]
+    _hook_factories: list[AgentTurnHookFactory]
+    _file_state_store: FileStateStore
+    _exec_session_manager: ExecSessionManager
+    _virtual_context_manager: VirtualContextManager
+    _unified_session: bool
+    _running: bool
+    _mcp_servers: Mapping[str, Any]
+    _mcp_stacks: dict[str, Any]
+    _mcp_connecting: bool
+    _runtime_context_providers: list[RuntimeContextProvider]
+    _active_tasks: dict[str, list[asyncio.Task[None]]]
+    _background_tasks: list[asyncio.Task[None]]
+    _session_locks: dict[str, asyncio.Lock]
+    _pending_queues: dict[str, asyncio.Queue[InboundMessage]]
+    _deferred_automation_turns: dict[str, list[InboundMessage]]
+    _cron_turns: CronTurnCoordinator
+    _local_trigger_turns: LocalTriggerTurnCoordinator
+    _automation_turn_coordinators: tuple[tuple[str, Any], tuple[str, Any]]
+    _concurrency_gate: asyncio.Semaphore | None
+    _memory_consolidators: dict[str, Consolidator]
+    _idle_compact_check_interval_s: float
+    _next_idle_compact_check_at: float
+    _runtime_vars: dict[str, Any]
+    _current_iteration: int
 
     @property
     def current_iteration(self) -> int:
@@ -315,240 +308,17 @@ class AgentLoop:
         config: AgentLoopConfig | None = None,
         **legacy: Any,
     ):
-        from mira.config.schema import ToolsConfig, ensure_tool_config_refs
+        from mira.config.schema import ensure_tool_config_refs
 
         ensure_tool_config_refs()
         if config is None:
-            config = _agent_loop_config_from_legacy_args(args, legacy)
+            config = agent_loop_config_from_legacy_args(args, legacy)
         elif args:
             raise TypeError("AgentLoop accepts either config=AgentLoopConfig or legacy args, not both")
         elif legacy:
             raise TypeError("AgentLoop accepts either config=AgentLoopConfig or legacy kwargs, not both")
         self.loop_config = config
-        bus = config.bus
-        provider = config.provider
-        workspace = config.workspace
-        model = config.model
-        max_iterations = config.max_iterations
-        max_concurrent_subagents = config.max_concurrent_subagents
-        context_window_tokens = config.context_window_tokens
-        context_block_limit = config.context_block_limit
-        max_tool_result_chars = config.max_tool_result_chars
-        fail_on_tool_error = config.fail_on_tool_error
-        provider_retry_mode = config.provider_retry_mode
-        tool_hint_max_length = config.tool_hint_max_length
-        cron_service = config.cron_service
-        restrict_to_workspace = config.restrict_to_workspace
-        session_manager = config.session_manager
-        mcp_servers = config.mcp_servers
-        channels_config = config.channels_config
-        timezone = config.timezone
-        session_ttl_minutes = config.session_ttl_minutes
-        consolidation_ratio = config.consolidation_ratio
-        hooks = config.hooks
-        hook_factories = config.hook_factories
-        unified_session = config.unified_session
-        disabled_skills = config.disabled_skills
-        tools_config = config.tools_config
-        modules_config = config.modules_config
-        security_config = config.security_config
-        image_generation_provider_config = config.image_generation_provider_config
-        image_generation_provider_configs = config.image_generation_provider_configs
-        provider_snapshot_loader = config.provider_snapshot_loader
-        provider_signature = config.provider_signature
-        model_presets = config.model_presets
-        preset_catalog_loader = config.preset_catalog_loader
-        model_preset = config.model_preset
-        preset_snapshot_loader = config.preset_snapshot_loader
-        runtime_events = config.runtime_events
-        turn_delivery_factory = config.turn_delivery_factory
-        runtime_model_publisher = config.runtime_model_publisher
-        restart_mode = config.restart_mode
-        local_trigger_store = config.local_trigger_store
-        idle_compact_check_interval_seconds = config.idle_compact_check_interval_seconds
-        execution_gate = config.execution_gate
-        _tc = tools_config or ToolsConfig()
-        defaults = AgentDefaults()
-        self.bus = bus
-        if turn_delivery_factory is not None:
-            if turn_delivery_factory.bus is not bus:
-                raise ValueError("turn delivery factory must use the agent message bus")
-            if (
-                runtime_events is not None
-                and turn_delivery_factory.runtime_events is not runtime_events
-            ):
-                raise ValueError("turn delivery factory must use the agent runtime event bus")
-            self.turn_delivery_factory = turn_delivery_factory
-            self.runtime_events = turn_delivery_factory.runtime_events
-        else:
-            self.runtime_events = runtime_events or RuntimeEventBus()
-            self.turn_delivery_factory = TurnDeliveryFactory(bus, self.runtime_events)
-        self.runtime_event_publisher = self.turn_delivery_factory.runtime_event_publisher
-        self.channels_config = channels_config
-        self.execution_gate = execution_gate or ExecutionGate()
-        self.restart_mode = restart_mode
-        self._runtime_model_publisher = runtime_model_publisher
-        self.workspace = workspace
-        initial_model = model or provider.get_default_model()
-        self.max_iterations = (
-            max_iterations if max_iterations is not None else defaults.max_tool_iterations
-        )
-        initial_context_window = (
-            context_window_tokens
-            if context_window_tokens is not None
-            else defaults.context_window_tokens
-        )
-        configured_presets = model_presets or {}
-        self.runtime_resolver = ModelRuntimeResolver(
-            LLMRuntime.capture(
-                provider,
-                initial_model,
-                context_window_tokens=initial_context_window,
-                snapshot_signature=provider_signature,
-            ),
-            model_presets=configured_presets,
-            preset_catalog_loader=preset_catalog_loader,
-            configured_default_preset=model_preset,
-            provider_snapshot_loader=provider_snapshot_loader,
-            preset_snapshot_loader=preset_snapshot_loader,
-        )
-        self.context_block_limit = context_block_limit
-        self.max_tool_result_chars = (
-            max_tool_result_chars
-            if max_tool_result_chars is not None
-            else defaults.max_tool_result_chars
-        )
-        self.provider_retry_mode = provider_retry_mode
-        self.tool_hint_max_length = (
-            tool_hint_max_length if tool_hint_max_length is not None
-            else defaults.tool_hint_max_length
-        )
-        self.tools_config = _tc
-        self.modules_config = modules_config
-        self.security_config = security_config
-        self.web_config = _tc.web
-        self.exec_config = _tc.exec
-        self._image_generation_provider_configs = dict(image_generation_provider_configs or {})
-        if (
-            image_generation_provider_config is not None
-            and "openrouter" not in self._image_generation_provider_configs
-        ):
-            self._image_generation_provider_configs["openrouter"] = image_generation_provider_config
-        self.cron_service = cron_service
-        self.local_trigger_store = local_trigger_store
-        self.restrict_to_workspace = restrict_to_workspace
-        self.workspace_scopes = WorkspaceScopeResolver(
-            default_workspace=workspace,
-            default_restrict_to_workspace=restrict_to_workspace,
-        )
-        self._start_time = time.time()
-        self._last_usage: dict[str, int] = {}
-        self._extra_hooks: list[AgentHook] = hooks or []
-        self._hook_factories: list[AgentTurnHookFactory] = hook_factories or []
-
-        subsystems = create_agent_loop_subsystems(
-            workspace=workspace,
-            bus=bus,
-            tools_config=_tc,
-            max_tool_result_chars=self.max_tool_result_chars,
-            restrict_to_workspace=restrict_to_workspace,
-            disabled_skills=disabled_skills,
-            max_iterations=self.max_iterations,
-            max_concurrent_subagents=max_concurrent_subagents,
-            fail_on_tool_error=fail_on_tool_error,
-            execution_gate=self.execution_gate,
-            session_manager=session_manager,
-            timezone=timezone,
-            consolidation_ratio=consolidation_ratio,
-            unified_session=unified_session,
-            session_ttl_minutes=session_ttl_minutes,
-            context_builder_cls=ContextBuilder,
-            session_manager_cls=SessionManager,
-            subagent_manager_cls=SubagentManager,
-            consolidator_cls=Consolidator,
-        )
-        self.context = subsystems.context
-        self.sessions = subsystems.sessions
-        self.tools = subsystems.tools
-        # One file-read/write tracker per logical session. The tool registry is
-        # shared by this loop, so tools resolve the active state via contextvars.
-        self._file_state_store = subsystems.file_state_store
-        self._exec_session_manager = subsystems.exec_session_manager
-        self.runner = subsystems.runner
-        self.subagents = subsystems.subagents
-        self._virtual_context_manager = subsystems.virtual_context_manager
-        self.process_table = subsystems.process_table
-        self.turn_processes = TurnProcessLifecycle(
-            sessions=self.sessions,
-            tools=self.tools,
-            process_table=self.process_table,
-            model_hint=lambda: self.model_preset or self.model,
-            token_usage=lambda: self._last_usage,
-        )
-        self._unified_session = unified_session
-        self._running = False
-        self._mcp_servers = mcp_servers or {}
-        self._mcp_stacks: dict[str, MCPConnection] = {}
-        self._mcp_connecting = False
-        self._runtime_context_providers: list[RuntimeContextProvider] = []
-        self._active_tasks: dict[str, list[asyncio.Task[None]]] = {}  # session_key -> tasks
-        self._background_tasks: list[asyncio.Task[None]] = []
-        self._session_locks: dict[str, asyncio.Lock] = {}
-        # Per-session pending queues for mid-turn message injection.
-        # When a session has an active task, new messages for that session
-        # are routed here instead of creating a new task.
-        self._pending_queues: dict[str, asyncio.Queue[InboundMessage]] = {}
-        self._deferred_automation_turns: dict[str, list[InboundMessage]] = {}
-        self._cron_turns = CronTurnCoordinator(
-            publish_inbound=self.bus.publish_inbound,
-            dispatch=self._dispatch,
-            is_running=lambda: self._running,
-            deferred_queues=self._deferred_automation_turns,
-        )
-        self._local_trigger_turns = LocalTriggerTurnCoordinator(
-            publish_inbound=self.bus.publish_inbound,
-            dispatch=self._dispatch,
-            is_running=lambda: self._running,
-            deferred_queues=self._deferred_automation_turns,
-        )
-        self._automation_turn_coordinators = (
-            ("cron", self._cron_turns),
-            ("local trigger", self._local_trigger_turns),
-        )
-        # mira_MAX_CONCURRENT_REQUESTS: <=0 means unlimited; default 3.
-        _max = int(os.environ.get("mira_MAX_CONCURRENT_REQUESTS", "3"))
-        self._concurrency_gate: asyncio.Semaphore | None = (
-            asyncio.Semaphore(_max) if _max > 0 else None
-        )
-        self.consolidator = subsystems.consolidator
-        self._memory_consolidators: dict[str, Consolidator] = {}
-        self.auto_compact = subsystems.auto_compact
-        self._idle_compact_check_interval_s = idle_compact_check_interval_seconds
-        self._next_idle_compact_check_at = time.monotonic()
-        if model_preset:
-            self.set_model_preset(model_preset, publish_update=False)
-        self._register_default_tools(provider_snapshot_loader=provider_snapshot_loader)
-        self._runtime_vars: dict[str, Any] = {}
-        self._current_iteration: int = 0
-        self.commands = CommandRouter()
-        register_builtin_commands(self.commands)
-        self.command_turns = CommandTurnHandler(
-            commands=self.commands,
-            loop=self,
-            persist_user_message=self._persist_user_message_early,
-            save_session=self.sessions.save,
-            clear_pending_user_turn=self._clear_pending_user_turn,
-        )
-        self.build_turns = BuildTurnHandler(self)
-        self.run_turns = RunTurnHandler(self)
-        self.save_turns = SaveTurnHandler(self)
-        self.respond_turns = RespondTurnHandler(self._assemble_outbound_for_context)
-        try:
-            from mira.kernel.app import register_kernel_loop
-
-            register_kernel_loop(self)
-        except (ImportError, TypeError, ValueError, RuntimeError):
-            logger.debug("kernel loop registration skipped", exc_info=True)
+        initialize_agent_loop(self, config)
 
     @classmethod
     def from_loop_config(cls, config: AgentLoopConfig) -> AgentLoop:
@@ -861,7 +631,10 @@ class AgentLoop:
         # MyTool needs runtime state reference — manual registration
         if self.tools_config.my.enable:
             self.tools.register(
-                MyTool(runtime_state=self, modify_allowed=self.tools_config.my.allow_set)
+                MyTool(
+                    runtime_state=cast(RuntimeState, self),
+                    modify_allowed=self.tools_config.my.allow_set,
+                )
             )
             registered.append("my")
 
