@@ -50,39 +50,42 @@ from mira import (  # noqa: E402
     __logo__,
     __version__,
 )
-from mira.agent.hooks import create_file_edit_activity_hook  # noqa: E402
+from mira.agent.hooks import create_file_edit_activity_hook  # noqa: E402,F401
 from mira.agent.loop import AgentLoop  # noqa: E402
 from mira.cli import gateway_support as _gateway_support  # noqa: E402
 from mira.cli import interactive as _interactive  # noqa: E402
+from mira.cli import interactive_bridge as _interactive_bridge  # noqa: E402
 from mira.cli import provider_commands as _provider_commands  # noqa: E402
+from mira.cli import root_deps as _root_deps  # noqa: E402
 from mira.cli import runtime_config as _runtime_config  # noqa: E402
 from mira.cli import webui_helpers as _webui_helpers  # noqa: E402
-from mira.cli.agent_command import AgentCommandDeps, run_agent_command  # noqa: E402
-from mira.cli.api_command import ServeCommandDeps, run_serve_command  # noqa: E402
+from mira.cli.agent_command import run_agent_command  # noqa: E402,F401
+from mira.cli.api_command import run_serve_command  # noqa: E402,F401
 from mira.cli.channel_plugin_commands import register_channel_plugin_commands  # noqa: E402
-from mira.cli.desktop_command import DesktopCommandDeps, run_desktop_command  # noqa: E402
+from mira.cli.desktop_command import run_desktop_command  # noqa: E402,F401
 from mira.cli.gateway import create_gateway_app  # noqa: E402
-from mira.cli.gateway_runtime import GatewayRuntimeDeps, run_gateway_runtime  # noqa: E402
+from mira.cli.gateway_runtime import run_gateway_runtime  # noqa: E402
 from mira.cli.kernel_commands import register_kernel_commands  # noqa: E402
 from mira.cli.kernel_lifecycle_commands import register_kernel_lifecycle_commands  # noqa: E402
-from mira.cli.onboard_command import onboard_plugins as _onboard_plugins  # noqa: E402
-from mira.cli.onboard_command import run_onboard_command  # noqa: E402
+from mira.cli.onboard_command import onboard_plugins as _onboard_plugins  # noqa: E402,F401
+from mira.cli.onboard_command import run_onboard_command  # noqa: E402,F401
 from mira.cli.provider_commands import register_provider_commands  # noqa: E402
+from mira.cli.root_commands import register_root_commands  # noqa: E402
 from mira.cli.stream import StreamRenderer, ThinkingSpinner  # noqa: E402
 from mira.cli.system_commands import register_system_commands  # noqa: E402
-from mira.cli.trigger_command import run_trigger_command  # noqa: E402
-from mira.cli.webui_command import WebUICommandDeps, run_webui_command  # noqa: E402
-from mira.config.paths import get_workspace_path  # noqa: E402
+from mira.cli.trigger_command import run_trigger_command  # noqa: E402,F401
+from mira.cli.webui_command import run_webui_command  # noqa: E402,F401
+from mira.config.paths import get_workspace_path  # noqa: E402,F401
 from mira.config.schema import Config  # noqa: E402
-from mira.security.network import is_loopback_host  # noqa: E402
-from mira.utils.evaluator import evaluate_response, resolve_evaluator_prompt  # noqa: E402
-from mira.utils.helpers import (  # noqa: E402
+from mira.security.network import is_loopback_host  # noqa: E402,F401
+from mira.utils.evaluator import evaluate_response, resolve_evaluator_prompt  # noqa: E402,F401
+from mira.utils.helpers import (  # noqa: E402,F401
     sync_workspace_templates,
 )
 from mira.webui.build import (  # noqa: E402
     BuildMode,
 )
-from mira.webui.sidebar_state import read_webui_sidebar_state  # noqa: E402
+from mira.webui.sidebar_state import read_webui_sidebar_state  # noqa: E402,F401
 
 time = _webui_helpers.time
 
@@ -159,27 +162,22 @@ _flush_pending_tty_input = _interactive.flush_pending_tty_input
 
 
 def _restore_terminal() -> None:
-    _interactive.restore_terminal(_SAVED_TERM_ATTRS)
+    _interactive_bridge.restore_terminal(sys.modules[__name__])
 
 
 _build_cli_key_bindings = _interactive.build_cli_key_bindings
 
 
 def _init_prompt_session() -> None:
-    global _PROMPT_SESSION, _SAVED_TERM_ATTRS
-    _PROMPT_SESSION, _SAVED_TERM_ATTRS = _interactive.init_prompt_session(
-        prompt_session_cls=PromptSession,
-        history_cls=SafeFileHistory,
-        key_bindings_factory=_build_cli_key_bindings,
-    )
+    _interactive_bridge.init_prompt_session(sys.modules[__name__])
 
 
 def _make_console() -> Console:
-    return _interactive.make_console()
+    return _interactive_bridge.make_console(sys.modules[__name__])
 
 
 def _render_interactive_ansi(render_fn) -> str:
-    return _interactive.render_interactive_ansi(render_fn, base_console=console)
+    return _interactive_bridge.render_interactive_ansi(sys.modules[__name__], render_fn)
 
 
 def _print_agent_response(
@@ -188,27 +186,19 @@ def _print_agent_response(
     metadata: dict | None = None,
     show_header: bool = True,
 ) -> None:
-    _interactive.print_agent_response(
-        response,
-        render_markdown,
-        console_factory=_make_console,
-        metadata=metadata,
-        show_header=show_header,
+    _interactive_bridge.print_agent_response(
+        sys.modules[__name__], response, render_markdown, metadata, show_header
     )
 
 
 def _response_renderable(content: str, render_markdown: bool, metadata: dict | None = None):
-    return _interactive.response_renderable(content, render_markdown, metadata)
+    return _interactive_bridge.response_renderable(
+        sys.modules[__name__], content, render_markdown, metadata
+    )
 
 
 async def _print_interactive_line(text: str) -> None:
-    await _interactive.print_interactive_line(
-        text,
-        base_console=console,
-        render_ansi=lambda fn, *, base_console: _render_interactive_ansi(fn),
-        formatted_print=print_formatted_text,
-        terminal_runner=run_in_terminal,
-    )
+    await _interactive_bridge.print_interactive_line(sys.modules[__name__], text)
 
 
 async def _print_interactive_response(
@@ -216,14 +206,8 @@ async def _print_interactive_response(
     render_markdown: bool,
     metadata: dict | None = None,
 ) -> None:
-    await _interactive.print_interactive_response(
-        response,
-        render_markdown,
-        base_console=console,
-        render_ansi=lambda fn, *, base_console: _render_interactive_ansi(fn),
-        formatted_print=print_formatted_text,
-        terminal_runner=run_in_terminal,
-        metadata=metadata,
+    await _interactive_bridge.print_interactive_response(
+        sys.modules[__name__], response, render_markdown, metadata
     )
 
 
@@ -232,7 +216,7 @@ def _print_cli_progress_line(
     thinking: ThinkingSpinner | None,
     renderer: StreamRenderer | None = None,
 ) -> None:
-    _interactive.print_cli_progress_line(text, thinking, renderer, base_console=console)
+    _interactive_bridge.print_cli_progress_line(sys.modules[__name__], text, thinking, renderer)
 
 
 def _print_cli_reasoning(
@@ -240,7 +224,7 @@ def _print_cli_reasoning(
     thinking: ThinkingSpinner | None,
     renderer: StreamRenderer | None = None,
 ) -> None:
-    _interactive.print_cli_reasoning(text, thinking, renderer, base_console=console)
+    _interactive_bridge.print_cli_reasoning(sys.modules[__name__], text, thinking, renderer)
 
 
 def _flush_cli_reasoning(
@@ -248,11 +232,8 @@ def _flush_cli_reasoning(
     thinking: ThinkingSpinner | None,
     renderer: StreamRenderer | None = None,
 ) -> None:
-    _interactive.flush_cli_reasoning(
-        reasoning_buffer,
-        thinking,
-        renderer,
-        print_reasoning=_print_cli_reasoning,
+    _interactive_bridge.flush_cli_reasoning(
+        sys.modules[__name__], reasoning_buffer, thinking, renderer
     )
 
 
@@ -261,11 +242,8 @@ async def _print_interactive_progress_line(
     thinking: ThinkingSpinner | None,
     renderer: StreamRenderer | None = None,
 ) -> None:
-    await _interactive.print_interactive_progress_line(
-        text,
-        thinking,
-        renderer,
-        print_line=_print_interactive_line,
+    await _interactive_bridge.print_interactive_progress_line(
+        sys.modules[__name__], text, thinking, renderer
     )
 
 
@@ -276,14 +254,13 @@ async def _maybe_print_interactive_progress(
     renderer: StreamRenderer | None = None,
     reasoning_buffer: _ReasoningBuffer | None = None,
 ) -> bool:
-    return await _interactive.maybe_print_interactive_progress(
+    return await _interactive_bridge.maybe_print_interactive_progress(
+        sys.modules[__name__],
         msg,
         thinking,
         channels_config,
         renderer,
         reasoning_buffer,
-        print_progress_line=_print_interactive_progress_line,
-        print_reasoning=_print_cli_reasoning,
     )
 
 
@@ -294,13 +271,12 @@ def _make_agent_progress_adapter(
     *,
     reasoning_buffer_only: bool = False,
 ) -> Any:
-    return _interactive.make_agent_progress_adapter(
+    return _interactive_bridge.make_agent_progress_adapter(
+        sys.modules[__name__],
         agent_loop,
         thinking,
         renderer,
         reasoning_buffer_only=reasoning_buffer_only,
-        print_progress_line=_print_cli_progress_line,
-        print_reasoning=_print_cli_reasoning,
     )
 
 
@@ -317,10 +293,8 @@ _migrate_cron_store = _runtime_config.migrate_cron_store
 
 
 async def _read_interactive_input_async() -> str:
-    return await _interactive.read_interactive_input_async(
-        _PROMPT_SESSION,
-        patch_stdout_cm=patch_stdout,
-    )
+    return await _interactive_bridge.read_interactive_input_async(sys.modules[__name__])
+
 
 def version_callback(value: bool):
     if value:
@@ -338,217 +312,7 @@ def main(
     pass
 
 
-# ============================================================================
-# Onboard / Setup
-# ============================================================================
-
-
-@app.command()
-def onboard(
-    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
-    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
-    wizard: bool = typer.Option(False, "--wizard", help="Use interactive wizard"),
-    non_interactive_refresh: bool = typer.Option(False, "--refresh", help="Refresh config, preserving existing settings without prompting"),
-):
-    """Initialize Mira configuration and workspace."""
-    run_onboard_command(
-        workspace=workspace,
-        config=config,
-        wizard=wizard,
-        non_interactive_refresh=non_interactive_refresh,
-        onboard_plugins=_onboard_plugins,
-        sync_workspace_templates=sync_workspace_templates,
-        get_workspace_path=get_workspace_path,
-    )
-
-
-@app.command()
-def trigger(
-    trigger_id: str = typer.Argument(..., help="Trigger ID returned by /trigger"),
-    message: str | None = typer.Argument(None, help="Message to deliver; stdin is used when omitted"),
-    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
-    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
-):
-    """Deliver a local trigger message to its bound chat session."""
-    run_trigger_command(
-        trigger_id=trigger_id,
-        message=message,
-        workspace=workspace,
-        config_path_arg=config,
-        console=console,
-        load_runtime_config=lambda config_path, workspace_path: _load_runtime_config(
-            config_path,
-            workspace_path,
-        ),
-    )
-
-
-# ============================================================================
-# OpenAI-Compatible API Server
-# ============================================================================
-
-
-@app.command()
-def serve(
-    port: int | None = typer.Option(None, "--port", "-p", help="API server port"),
-    host: str | None = typer.Option(None, "--host", "-H", help="Bind address"),
-    timeout: float | None = typer.Option(None, "--timeout", "-t", help="Per-request timeout (seconds)"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show Mira runtime logs"),
-    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
-    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
-):
-    """Start the OpenAI-compatible API server (/v1/chat/completions)."""
-    from mira.bus.queue import MessageBus
-    from mira.providers.image_generation import image_gen_provider_configs
-    from mira.session.manager import SessionManager
-
-    run_serve_command(
-        port=port,
-        host=host,
-        timeout=timeout,
-        verbose=verbose,
-        workspace=workspace,
-        config_path_arg=config,
-        console=console,
-        deps=ServeCommandDeps(
-            agent_loop_cls=lambda: AgentLoop,
-            bus_cls=MessageBus,
-            session_manager_cls=SessionManager,
-            load_runtime_config=lambda config_path, workspace_path: _load_runtime_config(
-                config_path,
-                workspace_path,
-            ),
-            sync_workspace_templates=sync_workspace_templates,
-            set_mira_logs=lambda enabled: _set_mira_logs(enabled),
-            create_file_edit_activity_hook=create_file_edit_activity_hook,
-            image_gen_provider_configs=image_gen_provider_configs,
-            model_display=_model_display,
-            is_loopback_host=is_loopback_host,
-        ),
-    )
-
-
-# ============================================================================
-# WebUI Launcher
-# ============================================================================
-
-
-@app.command()
-def webui(
-    port: int | None = typer.Option(None, "--port", "-p", help="WebUI port"),
-    gateway_port: int | None = typer.Option(
-        None,
-        "--gateway-port",
-        help="Gateway health port",
-    ),
-    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
-    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
-    background: bool = typer.Option(
-        False,
-        "--background",
-        help="Keep the gateway running after this command exits",
-    ),
-    no_open: bool = typer.Option(False, "--no-open", help="Do not open a browser"),
-    yes: bool = typer.Option(
-        False,
-        "--yes",
-        "-y",
-        help="Apply safe local WebUI defaults without prompting",
-    ),
-    user: str | None = typer.Option(
-        None,
-        "--user",
-        help="Temporary WebUI user account name for shared gateway use",
-    ),
-    group: str | None = typer.Option(
-        None,
-        "--group",
-        help="Temporary WebUI project group; users in the same group share memory",
-    ),
-) -> None:
-    """Prepare the local WebUI, start the gateway, and open the browser workbench."""
-    run_webui_command(
-        port=port,
-        gateway_port=gateway_port,
-        workspace=workspace,
-        config=config,
-        background=background,
-        no_open=no_open,
-        yes=yes,
-        user=user,
-        group=group,
-        deps=WebUICommandDeps(
-            ensure_interactive_tty_mode=_ensure_interactive_tty_mode,
-            resolve_webui_config_path=_resolve_webui_config_path,
-            sync_workspace_templates=sync_workspace_templates,
-            confirm_webui_action=_confirm_webui_action,
-            load_webui_setup_config=_load_webui_setup_config,
-            provider_setup_error=_provider_setup_error,
-            run_quick_start_for_webui=_run_quick_start_for_webui,
-            ensure_local_webui_channel=_ensure_local_webui_channel,
-            warn_webui_bind_scope=_warn_webui_bind_scope,
-            webui_browser_url=_webui_browser_url,
-            load_runtime_config=_load_runtime_config,
-            webui_display_url=_webui_display_url,
-            gateway_health_url=_gateway_health_url,
-            gateway_health_bind_note=_gateway_health_bind_note,
-            webui_build_mode_for_interactive=_webui_build_mode_for_interactive,
-            prepare_webui_bundle_for_gateway=_prepare_webui_bundle_for_gateway,
-            gateway_instance_command=_gateway_instance_command,
-            open_webui_browser=_open_webui_browser,
-            gateway_health_ready=_gateway_health_ready,
-            webui_endpoint_reachable=_webui_endpoint_reachable,
-            attach_to_background_gateway=_attach_to_background_gateway,
-            tcp_endpoint_reachable=_tcp_endpoint_reachable,
-            host_for_local_browser=_host_for_local_browser,
-            print_foreground_port_conflict=_print_foreground_port_conflict,
-            print_webui_foreground_lifecycle=_print_webui_foreground_lifecycle,
-            run_gateway=_run_gateway,
-        ),
-    )
-
-
-@app.command()
-def desktop(
-    port: int | None = typer.Option(None, "--port", "-p", help="WebUI port"),
-    gateway_port: int | None = typer.Option(
-        None,
-        "--gateway-port",
-        help="Gateway health port",
-    ),
-    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
-    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
-    yes: bool = typer.Option(
-        False,
-        "--yes",
-        "-y",
-        help="Apply safe local desktop defaults without prompting",
-    ),
-    debug: bool = typer.Option(False, "--debug", help="Open the native shell with WebView debug mode"),
-    stop_on_close: bool = typer.Option(
-        True,
-        "--stop-on-close/--keep-running",
-        help="Stop the gateway started by this window when the native shell closes",
-    ),
-) -> None:
-    """Launch the Mira workbench inside a native desktop window."""
-    run_desktop_command(
-        port=port,
-        gateway_port=gateway_port,
-        workspace=workspace,
-        config=config,
-        yes=yes,
-        debug=debug,
-        stop_on_close=stop_on_close,
-        deps=DesktopCommandDeps(
-            resolve_webui_config_path=_resolve_webui_config_path,
-            load_runtime_config=_load_runtime_config,
-            webui_browser_url=_webui_browser_url,
-            gateway_health_ready=_gateway_health_ready,
-            webui_endpoint_reachable=_webui_endpoint_reachable,
-            start_webui=webui,
-        ),
-    )
+register_root_commands(app, sys.modules[__name__])
 
 
 # ============================================================================
@@ -579,37 +343,7 @@ def _run_gateway(
         webui_runtime_capabilities=webui_runtime_capabilities,
         health_server_enabled=health_server_enabled,
         unconfigured_provider_error=unconfigured_provider_error,
-        deps=GatewayRuntimeDeps(
-            console=console,
-            logger=logger,
-            logo=__logo__,
-            app_name=__app_name__,
-            version=__version__,
-            agent_loop_cls=lambda: AgentLoop,
-            create_file_edit_activity_hook=create_file_edit_activity_hook,
-            sync_workspace_templates=sync_workspace_templates,
-            webui_browser_url=_webui_browser_url,
-            host_for_local_browser=_host_for_local_browser,
-            tcp_endpoint_reachable=_tcp_endpoint_reachable,
-            webui_channel_enabled=_webui_channel_enabled,
-            webui_endpoint_reachable=_webui_endpoint_reachable,
-            print_foreground_port_conflict=_print_foreground_port_conflict,
-            prepare_webui_bundle_for_gateway=_prepare_webui_bundle_for_gateway,
-            migrate_cron_store=_migrate_cron_store,
-            commit_dream_changes=_commit_dream_changes,
-            advance_dream_cursor_if_behind=_advance_dream_cursor_if_behind,
-            heartbeat_has_active_tasks=_heartbeat_has_active_tasks,
-            heartbeat_preamble=_HEARTBEAT_PREAMBLE,
-            read_webui_sidebar_state=read_webui_sidebar_state,
-            pick_heartbeat_target_from_sessions=_pick_heartbeat_target_from_sessions,
-            evaluate_response=evaluate_response,
-            resolve_evaluator_prompt=resolve_evaluator_prompt,
-            ensure_interactive_tty_mode=_ensure_interactive_tty_mode,
-            install_gateway_shutdown_handlers=_install_gateway_shutdown_handlers,
-            print_gateway_health_endpoint=_print_gateway_health_endpoint,
-            gateway_health_max_connections=_GATEWAY_HEALTH_MAX_CONNECTIONS,
-            gateway_health_read_timeout_seconds=_GATEWAY_HEALTH_READ_TIMEOUT_SECONDS,
-        ),
+        deps=_root_deps.gateway(sys.modules[__name__]),
     )
 
 app.add_typer(
@@ -625,49 +359,6 @@ app.add_typer(
     ),
     name="gateway",
 )
-
-
-# ============================================================================
-# Agent Commands
-# ============================================================================
-
-
-@app.command()
-def agent(
-    message: str = typer.Option(None, "--message", "-m", help="Message to send to the agent"),
-    session_id: str = typer.Option("cli:direct", "--session", "-s", help="Session ID"),
-    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
-    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
-    markdown: bool = typer.Option(True, "--markdown/--no-markdown", help="Render assistant output as Markdown"),
-    logs: bool = typer.Option(False, "--logs/--no-logs", help="Show Mira runtime logs during chat"),
-):
-    """Interact with the agent directly."""
-    run_agent_command(
-        message=message,
-        session_id=session_id,
-        workspace=workspace,
-        config_path_arg=config,
-        markdown=markdown,
-        logs=logs,
-        deps=AgentCommandDeps(
-            agent_loop_cls=AgentLoop,
-            load_runtime_config=_load_runtime_config,
-            sync_workspace_templates=sync_workspace_templates,
-            migrate_cron_store=_migrate_cron_store,
-            set_mira_logs=_set_mira_logs,
-            create_file_edit_activity_hook=create_file_edit_activity_hook,
-            print_agent_response=_print_agent_response,
-            make_model_display=_model_display,
-            init_prompt_session=_init_prompt_session,
-            restore_terminal=_restore_terminal,
-            flush_pending_tty_input=_flush_pending_tty_input,
-            read_interactive_input_async=_read_interactive_input_async,
-            is_exit_command=_is_exit_command,
-            maybe_print_interactive_progress=_maybe_print_interactive_progress,
-            print_interactive_response=_print_interactive_response,
-            make_progress=_make_agent_progress_adapter,
-        ),
-    )
 
 
 register_channel_plugin_commands(
