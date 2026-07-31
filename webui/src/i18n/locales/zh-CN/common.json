@@ -900,7 +900,7 @@
         "build": "给 Mira 一个任务。",
         "tackle": "要处理什么任务？"
       },
-      "inputHint": "在下方输入：对话、写代码、检查文件或执行任务。",
+      "inputHint": "输入消息即可开始。",
       "quickActions": {
         "plan": {
           "title": "创建项目计划",
@@ -992,7 +992,7 @@
     "heroSubtitle": "和 Mira 对话。",
     "composer": {
       "placeholderThread": "输入消息…",
-      "placeholderHero": "给 Mira 发消息，或描述一个任务…",
+      "placeholderHero": "输入问题或任务…",
       "placeholderOpening": "正在打开新执行…",
       "placeholderStreaming": "模型正在回复…",
       "inputAria": "消息输入框",

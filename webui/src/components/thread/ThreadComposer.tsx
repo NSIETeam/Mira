@@ -1844,8 +1844,8 @@ export function ThreadComposer({
     "w-full resize-none bg-transparent",
     isHero
       ? cn(
-          "min-h-[118px] px-4 text-[18px] leading-7 sm:px-5",
-          relaxedHeroInput ? "pb-3 pt-5" : "pb-3 pt-4",
+          "min-h-[74px] px-4 text-[17px] leading-7 sm:px-5",
+          relaxedHeroInput ? "pb-2 pt-3" : "pb-2 pt-3",
         )
       : "min-h-[50px] px-3.5 pb-1.5 pt-3 text-[16px] leading-5 sm:px-4",
   );
@@ -1886,9 +1886,9 @@ export function ThreadComposer({
       <div
         data-testid="thread-composer-surface"
         className={cn(
-          "thread-composer-surface group/composer relative mx-auto flex w-full min-w-0 flex-col overflow-visible border border-slate-300/90 bg-white shadow-[0_18px_56px_rgba(15,23,42,0.15)] transition-all duration-200 focus-within:border-slate-950 focus-within:shadow-[0_22px_72px_rgba(15,23,42,0.20)] dark:border-white/15 dark:bg-card",
+          "thread-composer-surface group/composer relative mx-auto flex w-full min-w-0 flex-col overflow-visible border border-slate-300/90 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.12)] transition-all duration-200 focus-within:border-slate-950 focus-within:shadow-[0_18px_54px_rgba(15,23,42,0.18)] dark:border-white/15 dark:bg-card",
           isHero
-            ? "max-w-[54rem] rounded-[28px] ring-2 ring-slate-950/10"
+            ? "max-w-[48rem] rounded-[24px] ring-1 ring-slate-950/10"
             : "max-w-[49.5rem] rounded-[22px]",
           disabled && "opacity-60",
           isDragging && "ring-2 ring-primary/40 motion-reduce:ring-0 motion-reduce:border-primary",
@@ -1973,7 +1973,7 @@ export function ThreadComposer({
         ) : null}
         <RunElapsedStrip startedAt={runStartedAt} goalState={goalState} />
         {isHero ? (
-          <div className="px-4 pt-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 sm:px-5">
+          <div className="px-4 pt-3 text-left text-[12px] font-medium tracking-[-0.01em] text-slate-500 dark:text-slate-400 sm:px-5">
             {t("thread.composer.inputAria")}
           </div>
         ) : null}

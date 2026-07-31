@@ -900,7 +900,7 @@
         "build": "Give Mira a task.",
         "tackle": "What should Mira handle?"
       },
-      "inputHint": "Type below to chat, code, inspect files, or run a task.",
+      "inputHint": "Ask anything or assign a task.",
       "quickActions": {
         "plan": {
           "title": "Create a project plan",
@@ -992,7 +992,7 @@
     "heroSubtitle": "Chat with Mira.",
     "composer": {
       "placeholderThread": "Type your message…",
-      "placeholderHero": "Message Mira, or describe a task...",
+      "placeholderHero": "Ask Mira anything, or describe a task...",
       "placeholderOpening": "Opening a new execution…",
       "placeholderStreaming": "Model is responding…",
       "inputAria": "Message input",

@@ -886,7 +886,7 @@
         "build": "今天要一起打造什麼？",
         "tackle": "我們要一起解決什麼？"
       },
-      "inputHint": "在下方輸入：對話、寫程式、檢查檔案或執行任務。",
+      "inputHint": "輸入訊息即可開始。",
       "quickActions": {
         "plan": {
           "title": "建立專案計畫",
@@ -978,7 +978,7 @@
     "heroSubtitle": "和 Mira 對話。",
     "composer": {
       "placeholderThread": "輸入訊息…",
-      "placeholderHero": "任何問題都可以問…",
+      "placeholderHero": "輸入問題或任務…",
       "placeholderOpening": "正在開啟新執行…",
       "placeholderStreaming": "模型正在回覆…",
       "inputAria": "訊息輸入框",
