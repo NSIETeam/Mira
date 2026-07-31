@@ -177,6 +177,33 @@ class AgentLoopConfig:
         return {field.name: getattr(self, field.name) for field in dataclasses.fields(self)}
 
 
+def _agent_loop_config_from_legacy_kwargs(legacy: dict[str, Any]) -> AgentLoopConfig:
+    """Normalize legacy ``AgentLoop(**kwargs)`` callers into one config object."""
+    field_names = {field.name for field in dataclasses.fields(AgentLoopConfig)}
+    unknown = sorted(set(legacy) - field_names)
+    if unknown:
+        raise TypeError(f"Unexpected AgentLoop argument(s): {', '.join(unknown)}")
+    missing = [name for name in ("bus", "provider", "workspace") if name not in legacy]
+    if missing:
+        raise TypeError(f"Missing required AgentLoop argument(s): {', '.join(missing)}")
+    return AgentLoopConfig(**legacy)
+
+
+def _agent_loop_config_from_legacy_args(
+    args: tuple[Any, ...],
+    legacy: dict[str, Any],
+) -> AgentLoopConfig:
+    """Normalize legacy positional/keyword construction into one config object."""
+    positional_names = ("bus", "provider", "workspace")
+    if len(args) > len(positional_names):
+        raise TypeError(f"AgentLoop expected at most 3 positional arguments, got {len(args)}")
+    for name, value in zip(positional_names, args, strict=False):
+        if name in legacy:
+            raise TypeError(f"AgentLoop got multiple values for argument '{name}'")
+        legacy[name] = value
+    return _agent_loop_config_from_legacy_kwargs(legacy)
+
+
 def _ctx_logger(ctx: TurnContext) -> Any:
     return turn_logger(ctx.session_key, ctx.turn_id)
 
@@ -284,96 +311,62 @@ class AgentLoop:
 
     def __init__(
         self,
-        bus: MessageBus,
-        provider: LLMProvider,
-        workspace: Path,
-        model: str | None = None,
-        max_iterations: int | None = None,
-        max_concurrent_subagents: int | None = None,
-        context_window_tokens: int | None = None,
-        context_block_limit: int | None = None,
-        max_tool_result_chars: int | None = None,
-        fail_on_tool_error: bool | None = None,
-        provider_retry_mode: str = "standard",
-        tool_hint_max_length: int | None = None,
-        cron_service: CronService | None = None,
-        restrict_to_workspace: bool = False,
-        session_manager: SessionManager | None = None,
-        mcp_servers: dict[str, Any] | None = None,
-        channels_config: ChannelsConfig | None = None,
-        timezone: str | None = None,
-        session_ttl_minutes: int = 0,
-        consolidation_ratio: float = 0.5,
-        hooks: list[AgentHook] | None = None,
-        hook_factories: list[AgentTurnHookFactory] | None = None,
-        unified_session: bool = False,
-        disabled_skills: list[str] | None = None,
-        tools_config: ToolsConfig | None = None,
-        modules_config: Any | None = None,
-        security_config: Any | None = None,
-        image_generation_provider_config: ProviderConfig | None = None,
-        image_generation_provider_configs: dict[str, ProviderConfig] | None = None,
-        provider_snapshot_loader: Callable[..., ProviderSnapshot] | None = None,
-        provider_signature: tuple[object, ...] | None = None,
-        model_presets: dict[str, ModelPresetConfig] | None = None,
-        preset_catalog_loader: preset_helpers.PresetCatalogLoader | None = None,
-        model_preset: str | None = None,
-        preset_snapshot_loader: preset_helpers.PresetSnapshotLoader | None = None,
-        runtime_events: RuntimeEventBus | None = None,
-        turn_delivery_factory: TurnDeliveryFactory | None = None,
-        runtime_model_publisher: Callable[[str, str | None], None] | None = None,
-        restart_mode: str = "auto",
-        local_trigger_store: Any | None = None,
-        idle_compact_check_interval_seconds: int = 0,
-        execution_gate: ExecutionGate | None = None,
+        *args: Any,
+        config: AgentLoopConfig | None = None,
+        **legacy: Any,
     ):
         from mira.config.schema import ToolsConfig, ensure_tool_config_refs
 
         ensure_tool_config_refs()
-        self.loop_config = AgentLoopConfig(
-            bus=bus,
-            provider=provider,
-            workspace=workspace,
-            model=model,
-            max_iterations=max_iterations,
-            max_concurrent_subagents=max_concurrent_subagents,
-            context_window_tokens=context_window_tokens,
-            context_block_limit=context_block_limit,
-            max_tool_result_chars=max_tool_result_chars,
-            fail_on_tool_error=fail_on_tool_error,
-            provider_retry_mode=provider_retry_mode,
-            tool_hint_max_length=tool_hint_max_length,
-            cron_service=cron_service,
-            restrict_to_workspace=restrict_to_workspace,
-            session_manager=session_manager,
-            mcp_servers=mcp_servers,
-            channels_config=channels_config,
-            timezone=timezone,
-            session_ttl_minutes=session_ttl_minutes,
-            consolidation_ratio=consolidation_ratio,
-            hooks=hooks,
-            hook_factories=hook_factories,
-            unified_session=unified_session,
-            disabled_skills=disabled_skills,
-            tools_config=tools_config,
-            modules_config=modules_config,
-            security_config=security_config,
-            image_generation_provider_config=image_generation_provider_config,
-            image_generation_provider_configs=image_generation_provider_configs,
-            provider_snapshot_loader=provider_snapshot_loader,
-            provider_signature=provider_signature,
-            model_presets=model_presets,
-            preset_catalog_loader=preset_catalog_loader,
-            model_preset=model_preset,
-            preset_snapshot_loader=preset_snapshot_loader,
-            runtime_events=runtime_events,
-            turn_delivery_factory=turn_delivery_factory,
-            runtime_model_publisher=runtime_model_publisher,
-            restart_mode=restart_mode,
-            local_trigger_store=local_trigger_store,
-            idle_compact_check_interval_seconds=idle_compact_check_interval_seconds,
-            execution_gate=execution_gate,
-        )
+        if config is None:
+            config = _agent_loop_config_from_legacy_args(args, legacy)
+        elif args:
+            raise TypeError("AgentLoop accepts either config=AgentLoopConfig or legacy args, not both")
+        elif legacy:
+            raise TypeError("AgentLoop accepts either config=AgentLoopConfig or legacy kwargs, not both")
+        self.loop_config = config
+        bus = config.bus
+        provider = config.provider
+        workspace = config.workspace
+        model = config.model
+        max_iterations = config.max_iterations
+        max_concurrent_subagents = config.max_concurrent_subagents
+        context_window_tokens = config.context_window_tokens
+        context_block_limit = config.context_block_limit
+        max_tool_result_chars = config.max_tool_result_chars
+        fail_on_tool_error = config.fail_on_tool_error
+        provider_retry_mode = config.provider_retry_mode
+        tool_hint_max_length = config.tool_hint_max_length
+        cron_service = config.cron_service
+        restrict_to_workspace = config.restrict_to_workspace
+        session_manager = config.session_manager
+        mcp_servers = config.mcp_servers
+        channels_config = config.channels_config
+        timezone = config.timezone
+        session_ttl_minutes = config.session_ttl_minutes
+        consolidation_ratio = config.consolidation_ratio
+        hooks = config.hooks
+        hook_factories = config.hook_factories
+        unified_session = config.unified_session
+        disabled_skills = config.disabled_skills
+        tools_config = config.tools_config
+        modules_config = config.modules_config
+        security_config = config.security_config
+        image_generation_provider_config = config.image_generation_provider_config
+        image_generation_provider_configs = config.image_generation_provider_configs
+        provider_snapshot_loader = config.provider_snapshot_loader
+        provider_signature = config.provider_signature
+        model_presets = config.model_presets
+        preset_catalog_loader = config.preset_catalog_loader
+        model_preset = config.model_preset
+        preset_snapshot_loader = config.preset_snapshot_loader
+        runtime_events = config.runtime_events
+        turn_delivery_factory = config.turn_delivery_factory
+        runtime_model_publisher = config.runtime_model_publisher
+        restart_mode = config.restart_mode
+        local_trigger_store = config.local_trigger_store
+        idle_compact_check_interval_seconds = config.idle_compact_check_interval_seconds
+        execution_gate = config.execution_gate
         _tc = tools_config or ToolsConfig()
         defaults = AgentDefaults()
         self.bus = bus
@@ -560,7 +553,7 @@ class AgentLoop:
     @classmethod
     def from_loop_config(cls, config: AgentLoopConfig) -> AgentLoop:
         """Create a loop from one parameter object while legacy kwargs migrate."""
-        return cls(**config.to_kwargs())
+        return cls(config=config)
 
     def _memory_workspace_from_metadata(self, metadata: Mapping[str, Any] | None) -> Path | None:
         if not isinstance(metadata, Mapping):
