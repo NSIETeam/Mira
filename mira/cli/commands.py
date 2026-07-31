@@ -51,7 +51,7 @@ from mira import (  # noqa: E402
     __version__,
 )
 from mira.agent.hooks import create_file_edit_activity_hook  # noqa: E402,F401
-from mira.agent.loop import AgentLoop  # noqa: E402
+from mira.agent.loop import AgentLoop  # noqa: E402,F401
 from mira.cli import gateway_support as _gateway_support  # noqa: E402
 from mira.cli import interactive as _interactive  # noqa: E402
 from mira.cli import interactive_bridge as _interactive_bridge  # noqa: E402
@@ -71,7 +71,7 @@ from mira.cli.onboard_command import onboard_plugins as _onboard_plugins  # noqa
 from mira.cli.onboard_command import run_onboard_command  # noqa: E402,F401
 from mira.cli.provider_commands import register_provider_commands  # noqa: E402
 from mira.cli.root_commands import register_root_commands  # noqa: E402
-from mira.cli.stream import StreamRenderer, ThinkingSpinner  # noqa: E402
+from mira.cli.stream import StreamRenderer, ThinkingSpinner  # noqa: E402,F401
 from mira.cli.system_commands import register_system_commands  # noqa: E402
 from mira.cli.trigger_command import run_trigger_command  # noqa: E402,F401
 from mira.cli.webui_command import run_webui_command  # noqa: E402,F401
@@ -161,125 +161,7 @@ _SAVED_TERM_ATTRS = None
 _flush_pending_tty_input = _interactive.flush_pending_tty_input
 
 
-def _restore_terminal() -> None:
-    _interactive_bridge.restore_terminal(sys.modules[__name__])
-
-
 _build_cli_key_bindings = _interactive.build_cli_key_bindings
-
-
-def _init_prompt_session() -> None:
-    _interactive_bridge.init_prompt_session(sys.modules[__name__])
-
-
-def _make_console() -> Console:
-    return _interactive_bridge.make_console(sys.modules[__name__])
-
-
-def _render_interactive_ansi(render_fn) -> str:
-    return _interactive_bridge.render_interactive_ansi(sys.modules[__name__], render_fn)
-
-
-def _print_agent_response(
-    response: str,
-    render_markdown: bool,
-    metadata: dict | None = None,
-    show_header: bool = True,
-) -> None:
-    _interactive_bridge.print_agent_response(
-        sys.modules[__name__], response, render_markdown, metadata, show_header
-    )
-
-
-def _response_renderable(content: str, render_markdown: bool, metadata: dict | None = None):
-    return _interactive_bridge.response_renderable(
-        sys.modules[__name__], content, render_markdown, metadata
-    )
-
-
-async def _print_interactive_line(text: str) -> None:
-    await _interactive_bridge.print_interactive_line(sys.modules[__name__], text)
-
-
-async def _print_interactive_response(
-    response: str,
-    render_markdown: bool,
-    metadata: dict | None = None,
-) -> None:
-    await _interactive_bridge.print_interactive_response(
-        sys.modules[__name__], response, render_markdown, metadata
-    )
-
-
-def _print_cli_progress_line(
-    text: str,
-    thinking: ThinkingSpinner | None,
-    renderer: StreamRenderer | None = None,
-) -> None:
-    _interactive_bridge.print_cli_progress_line(sys.modules[__name__], text, thinking, renderer)
-
-
-def _print_cli_reasoning(
-    text: str,
-    thinking: ThinkingSpinner | None,
-    renderer: StreamRenderer | None = None,
-) -> None:
-    _interactive_bridge.print_cli_reasoning(sys.modules[__name__], text, thinking, renderer)
-
-
-def _flush_cli_reasoning(
-    reasoning_buffer: _ReasoningBuffer,
-    thinking: ThinkingSpinner | None,
-    renderer: StreamRenderer | None = None,
-) -> None:
-    _interactive_bridge.flush_cli_reasoning(
-        sys.modules[__name__], reasoning_buffer, thinking, renderer
-    )
-
-
-async def _print_interactive_progress_line(
-    text: str,
-    thinking: ThinkingSpinner | None,
-    renderer: StreamRenderer | None = None,
-) -> None:
-    await _interactive_bridge.print_interactive_progress_line(
-        sys.modules[__name__], text, thinking, renderer
-    )
-
-
-async def _maybe_print_interactive_progress(
-    msg: Any,
-    thinking: ThinkingSpinner | None,
-    channels_config: Any,
-    renderer: StreamRenderer | None = None,
-    reasoning_buffer: _ReasoningBuffer | None = None,
-) -> bool:
-    return await _interactive_bridge.maybe_print_interactive_progress(
-        sys.modules[__name__],
-        msg,
-        thinking,
-        channels_config,
-        renderer,
-        reasoning_buffer,
-    )
-
-
-def _make_agent_progress_adapter(
-    agent_loop: AgentLoop,
-    thinking: ThinkingSpinner | None,
-    renderer: StreamRenderer | None = None,
-    *,
-    reasoning_buffer_only: bool = False,
-) -> Any:
-    return _interactive_bridge.make_agent_progress_adapter(
-        sys.modules[__name__],
-        agent_loop,
-        thinking,
-        renderer,
-        reasoning_buffer_only=reasoning_buffer_only,
-    )
-
-
 _is_exit_command = _interactive.is_exit_command
 _print_enable_options = partial(_runtime_config.print_enable_options, console=console)
 _model_display = _runtime_config.model_display
@@ -292,8 +174,7 @@ _load_inspection_config = partial(_runtime_config.load_inspection_config, consol
 _migrate_cron_store = _runtime_config.migrate_cron_store
 
 
-async def _read_interactive_input_async() -> str:
-    return await _interactive_bridge.read_interactive_input_async(sys.modules[__name__])
+_interactive_bridge.install_command_exports(sys.modules[__name__])
 
 
 def version_callback(value: bool):

@@ -170,3 +170,122 @@ async def read_interactive_input_async(ns: Any) -> str:
         ns._PROMPT_SESSION,
         patch_stdout_cm=ns.patch_stdout,
     )
+
+
+def install_command_exports(ns: Any) -> None:
+    """Install legacy ``mira.cli.commands`` interactive helper names."""
+
+    def _restore_terminal() -> None:
+        restore_terminal(ns)
+
+    def _init_prompt_session() -> None:
+        init_prompt_session(ns)
+
+    def _make_console() -> Console:
+        return make_console(ns)
+
+    def _render_interactive_ansi(render_fn: Any) -> str:
+        return render_interactive_ansi(ns, render_fn)
+
+    def _print_agent_response(
+        response: str,
+        render_markdown: bool,
+        metadata: dict | None = None,
+        show_header: bool = True,
+    ) -> None:
+        print_agent_response(ns, response, render_markdown, metadata, show_header)
+
+    def _response_renderable(
+        content: str,
+        render_markdown: bool,
+        metadata: dict | None = None,
+    ) -> Any:
+        return response_renderable(ns, content, render_markdown, metadata)
+
+    async def _print_interactive_line(text: str) -> None:
+        await print_interactive_line(ns, text)
+
+    async def _print_interactive_response(
+        response: str,
+        render_markdown: bool,
+        metadata: dict | None = None,
+    ) -> None:
+        await print_interactive_response(ns, response, render_markdown, metadata)
+
+    def _print_cli_progress_line(
+        text: str,
+        thinking: ThinkingSpinner | None,
+        renderer: StreamRenderer | None = None,
+    ) -> None:
+        print_cli_progress_line(ns, text, thinking, renderer)
+
+    def _print_cli_reasoning(
+        text: str,
+        thinking: ThinkingSpinner | None,
+        renderer: StreamRenderer | None = None,
+    ) -> None:
+        print_cli_reasoning(ns, text, thinking, renderer)
+
+    def _flush_cli_reasoning(
+        reasoning_buffer: Any,
+        thinking: ThinkingSpinner | None,
+        renderer: StreamRenderer | None = None,
+    ) -> None:
+        flush_cli_reasoning(ns, reasoning_buffer, thinking, renderer)
+
+    async def _print_interactive_progress_line(
+        text: str,
+        thinking: ThinkingSpinner | None,
+        renderer: StreamRenderer | None = None,
+    ) -> None:
+        await print_interactive_progress_line(ns, text, thinking, renderer)
+
+    async def _maybe_print_interactive_progress(
+        msg: Any,
+        thinking: ThinkingSpinner | None,
+        channels_config: Any,
+        renderer: StreamRenderer | None = None,
+        reasoning_buffer: Any | None = None,
+    ) -> bool:
+        return await maybe_print_interactive_progress(
+            ns,
+            msg,
+            thinking,
+            channels_config,
+            renderer,
+            reasoning_buffer,
+        )
+
+    def _make_agent_progress_adapter(
+        agent_loop: AgentLoop,
+        thinking: ThinkingSpinner | None,
+        renderer: StreamRenderer | None = None,
+        *,
+        reasoning_buffer_only: bool = False,
+    ) -> Any:
+        return make_agent_progress_adapter(
+            ns,
+            agent_loop,
+            thinking,
+            renderer,
+            reasoning_buffer_only=reasoning_buffer_only,
+        )
+
+    async def _read_interactive_input_async() -> str:
+        return await read_interactive_input_async(ns)
+
+    ns._restore_terminal = _restore_terminal
+    ns._init_prompt_session = _init_prompt_session
+    ns._make_console = _make_console
+    ns._render_interactive_ansi = _render_interactive_ansi
+    ns._print_agent_response = _print_agent_response
+    ns._response_renderable = _response_renderable
+    ns._print_interactive_line = _print_interactive_line
+    ns._print_interactive_response = _print_interactive_response
+    ns._print_cli_progress_line = _print_cli_progress_line
+    ns._print_cli_reasoning = _print_cli_reasoning
+    ns._flush_cli_reasoning = _flush_cli_reasoning
+    ns._print_interactive_progress_line = _print_interactive_progress_line
+    ns._maybe_print_interactive_progress = _maybe_print_interactive_progress
+    ns._make_agent_progress_adapter = _make_agent_progress_adapter
+    ns._read_interactive_input_async = _read_interactive_input_async
