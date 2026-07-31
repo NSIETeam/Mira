@@ -73,6 +73,7 @@ from mira.bus.outbound_events import (  # noqa: E402
     RetryWaitEvent,
     outbound_event_from_message,
 )
+from mira.cli import provider_commands as _provider_commands  # noqa: E402
 from mira.cli import webui_helpers as _webui_helpers  # noqa: E402
 from mira.cli.agent_command import AgentCommandDeps, run_agent_command  # noqa: E402
 from mira.cli.channel_plugin_commands import register_channel_plugin_commands  # noqa: E402
@@ -81,6 +82,7 @@ from mira.cli.gateway import create_gateway_app  # noqa: E402
 from mira.cli.kernel_commands import register_kernel_commands  # noqa: E402
 from mira.cli.kernel_lifecycle_commands import register_kernel_lifecycle_commands  # noqa: E402
 from mira.cli.onboard_command import run_onboard_command  # noqa: E402
+from mira.cli.provider_commands import register_provider_commands  # noqa: E402
 from mira.cli.stream import StreamRenderer, ThinkingSpinner  # noqa: E402
 from mira.cli.system_commands import register_system_commands  # noqa: E402
 from mira.cli.webui_command import WebUICommandDeps, run_webui_command  # noqa: E402
@@ -131,6 +133,9 @@ _webui_build_mode_for_interactive = _webui_helpers.webui_build_mode_for_interact
 _webui_channel_enabled = _webui_helpers.webui_channel_enabled
 _webui_display_url = _webui_helpers.webui_display_url
 _webui_endpoint_reachable = _webui_helpers.webui_endpoint_reachable
+_LOGIN_HANDLERS = _provider_commands.LOGIN_HANDLERS
+_LOGOUT_HANDLERS = _provider_commands.LOGOUT_HANDLERS
+_OAUTH_PROVIDER_DEFAULT_MODELS = _provider_commands.OAUTH_PROVIDER_DEFAULT_MODELS
 
 
 def _signal_name(signum: int) -> str:
@@ -1830,308 +1835,7 @@ register_kernel_lifecycle_commands(
 )
 
 
-# ============================================================================
-# OAuth Login
-# ============================================================================
-
-provider_app = typer.Typer(help="Manage providers")
-app.add_typer(provider_app, name="provider")
-
-
-_LOGIN_HANDLERS: dict[str, Callable[[], None]] = {}
-_LOGOUT_HANDLERS: dict[str, Callable[[], None]] = {}
-
-_PROVIDER_DISPLAY: dict[str, str] = {
-    "openai_codex": "OpenAI Codex",
-    "xai_grok": "xAI Grok",
-    "github_copilot": "GitHub Copilot",
-}
-
-_OAUTH_PROVIDER_DEFAULT_MODELS: dict[str, str] = {
-    "openai_codex": "openai-codex/gpt-5.6-sol",
-    "xai_grok": "xai-grok/grok-4.5",
-    "github_copilot": "github-copilot/gpt-5.4-mini",
-}
-
-
-def _register_login(name: str):
-    """Register an OAuth login handler."""
-    def decorator(fn):
-        _LOGIN_HANDLERS[name] = fn
-        return fn
-
-    return decorator
-
-
-def _register_logout(name: str):
-    """Register an OAuth logout handler."""
-    def decorator(fn):
-        _LOGOUT_HANDLERS[name] = fn
-        return fn
-    return decorator
-
-
-def _resolve_oauth_provider(provider: str):
-    """Resolve and validate an OAuth provider configuration."""
-    from mira.providers.registry import PROVIDERS
-
-    key = provider.replace("-", "_")
-    spec = next((s for s in PROVIDERS if s.name == key and s.is_oauth), None)
-    if not spec:
-        names = ", ".join(s.name.replace("_", "-") for s in PROVIDERS if s.is_oauth)
-        console.print(f"[red]Unknown OAuth provider: {provider}[/red]  Supported: {names}")
-        raise typer.Exit(1)
-    return spec
-
-
-def _set_oauth_provider_as_main(
-    provider_name: str,
-    *,
-    model: str | None = None,
-    config_path: str | None = None,
-) -> None:
-    """Persist an OAuth provider as the active agent provider."""
-    from mira.config.loader import get_config_path, load_config, save_config, set_config_path
-
-    resolved_config_path = Path(config_path).expanduser().resolve() if config_path else None
-    if resolved_config_path is not None and get_config_path() != resolved_config_path:
-        set_config_path(resolved_config_path)
-        console.print(f"[dim]Using config: {resolved_config_path}[/dim]")
-
-    config = load_config(resolved_config_path)
-    selected_model = (model or "").strip() or _OAUTH_PROVIDER_DEFAULT_MODELS[provider_name]
-    config.agents.defaults.model_preset = None
-    config.agents.defaults.provider = provider_name
-    config.agents.defaults.model = selected_model
-    if provider_name == "xai_grok" and selected_model == "xai-grok/grok-4.5":
-        config.agents.defaults.context_window_tokens = 500_000
-    save_config(config, resolved_config_path)
-
-    saved_path = resolved_config_path or get_config_path()
-    console.print(
-        f"[green] Set {provider_name.replace('_', '-')} as the main provider[/green]  "
-        f"[dim]{selected_model}[/dim]"
-    )
-    console.print(f"[dim]Saved: {saved_path}[/dim]")
-
-
-@provider_app.command("login")
-def provider_login(
-    provider: str = typer.Argument(
-        ...,
-        help="OAuth provider (e.g. 'openai-codex', 'xai-grok', 'github-copilot')",
-    ),
-    set_main: bool = typer.Option(
-        False,
-        "--set-main",
-        "--main",
-        help="Set this OAuth provider as the active agent provider after login",
-    ),
-    model: str | None = typer.Option(
-        None,
-        "--model",
-        "-m",
-        help="Model to use when setting this provider as the active provider",
-    ),
-    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
-):
-    """Authenticate with an OAuth provider."""
-    spec = _resolve_oauth_provider(provider)
-
-    handler = _LOGIN_HANDLERS.get(spec.name)
-    if not handler:
-        console.print(f"[red]Login not implemented for {spec.label}[/red]")
-        raise typer.Exit(1)
-
-    if config:
-        from mira.config.loader import set_config_path
-
-        resolved_config_path = Path(config).expanduser().resolve()
-        set_config_path(resolved_config_path)
-        console.print(f"[dim]Using config: {resolved_config_path}[/dim]")
-
-    console.print(f"{__logo__} OAuth Login - {spec.label}\n")
-    handler()
-    if set_main or model:
-        _set_oauth_provider_as_main(spec.name, model=model, config_path=config)
-
-
-@provider_app.command("logout")
-def provider_logout(
-    provider: str = typer.Argument(
-        ...,
-        help="OAuth provider (e.g. 'openai-codex', 'xai-grok', 'github-copilot')",
-    ),
-    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
-):
-    """Log out from an OAuth provider."""
-    spec = _resolve_oauth_provider(provider)
-
-    handler = _LOGOUT_HANDLERS.get(spec.name)
-    if not handler:
-        console.print(f"[red]Logout not implemented for {spec.label}[/red]")
-        raise typer.Exit(1)
-
-    if config:
-        from mira.config.loader import set_config_path
-
-        resolved_config_path = Path(config).expanduser().resolve()
-        set_config_path(resolved_config_path)
-        console.print(f"[dim]Using config: {resolved_config_path}[/dim]")
-
-    console.print(f"{__logo__} OAuth Logout - {spec.label}\n")
-    handler()
-
-
-@_register_login("openai_codex")
-def _login_openai_codex() -> None:
-    try:
-        from oauth_cli_kit import get_token, login_oauth_interactive
-
-        from mira.config.loader import load_config, resolve_config_env_vars
-
-        proxy = None
-        try:
-            proxy = resolve_config_env_vars(load_config()).providers.openai_codex.proxy or None
-        except ValueError as e:
-            console.print(f"[red]{e}[/red]")
-            raise typer.Exit(1) from e
-        token = None
-        with suppress(Exception):
-            token = get_token(proxy=proxy)
-        if not (token and token.access):
-            console.print("[cyan]Starting interactive OAuth login...[/cyan]\n")
-            token = login_oauth_interactive(
-                print_fn=lambda s: console.print(s),
-                prompt_fn=lambda s: typer.prompt(s),
-                proxy=proxy,
-            )
-        if not (token and token.access):
-            console.print("[red] Authentication failed[/red]")
-            raise typer.Exit(1)
-        console.print(f"[green] Authenticated with OpenAI Codex[/green]  [dim]{token.account_id}[/dim]")
-    except ImportError:
-        console.print("[red]oauth_cli_kit not installed. Run: pip install oauth-cli-kit[/red]")
-        raise typer.Exit(1)
-
-
-@_register_logout("openai_codex")
-def _logout_openai_codex() -> None:
-    """Clear local OAuth credentials for OpenAI Codex."""
-    try:
-        from oauth_cli_kit.providers import OPENAI_CODEX_PROVIDER
-        from oauth_cli_kit.storage import FileTokenStorage
-    except ImportError:
-        console.print("[red]oauth_cli_kit not installed. Run: pip install oauth-cli-kit[/red]")
-        raise typer.Exit(1)
-
-    storage = FileTokenStorage(token_filename=OPENAI_CODEX_PROVIDER.token_filename)
-    _delete_oauth_files(storage.get_token_path(), _PROVIDER_DISPLAY["openai_codex"])
-
-
-@_register_login("xai_grok")
-def _login_xai_grok() -> None:
-    """Authenticate with xAI using the Grok subscription OAuth contract."""
-    from mira.config.loader import load_config, resolve_config_env_vars
-    from mira.providers.xai_oauth import get_xai_oauth_token, login_xai_oauth
-
-    try:
-        proxy = resolve_config_env_vars(load_config()).providers.xai_grok.proxy or None
-    except ValueError as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(1) from exc
-
-    token = None
-    with suppress(Exception):
-        token = get_xai_oauth_token(proxy=proxy)
-    if not (token and token.access):
-        console.print(
-            "[cyan]Starting xAI browser sign-in for your X Premium / Grok subscription...[/cyan]\n"
-        )
-        try:
-            token = login_xai_oauth(
-                print_fn=lambda message: console.print(message),
-                prompt_fn=lambda prompt: typer.prompt(prompt),
-                proxy=proxy,
-            )
-        except Exception as exc:
-            console.print(f"[red]Authentication error: {exc}[/red]")
-            raise typer.Exit(1) from exc
-    account = token.account_id or "xAI account"
-    console.print(f"[green] Authenticated with xAI[/green]  [dim]{account}[/dim]")
-    console.print(
-        "[dim]Hosted X Search is enabled automatically when the selected model supports it.[/dim]"
-    )
-
-
-@_register_logout("xai_grok")
-def _logout_xai_grok() -> None:
-    """Clear local xAI OAuth credentials for this Mira instance."""
-    from mira.providers.xai_oauth import get_xai_oauth_storage_path, logout_xai_oauth
-
-    token_path = get_xai_oauth_storage_path()
-    provider_label = _PROVIDER_DISPLAY["xai_grok"]
-    if logout_xai_oauth():
-        console.print(f"[green] Logged out from {provider_label}[/green]")
-        console.print(f"[dim]Removed: {token_path}[/dim]")
-    else:
-        console.print(f"[yellow]! No local OAuth credentials found for {provider_label}[/yellow]")
-
-
-@_register_logout("github_copilot")
-def _logout_github_copilot() -> None:
-    """Clear local OAuth credentials for GitHub Copilot."""
-    try:
-        from mira.providers.github_copilot_provider import get_storage
-    except ImportError:
-        console.print("[red]oauth_cli_kit not installed. Run: pip install oauth-cli-kit[/red]")
-        raise typer.Exit(1)
-
-    storage = get_storage()
-    _delete_oauth_files(storage.get_token_path(), _PROVIDER_DISPLAY["github_copilot"])
-
-
-def _delete_oauth_files(token_path: Path, provider_label: str) -> None:
-    """Delete OAuth token and lock files, reporting the result."""
-    removed_paths: list[Path] = []
-    skipped: list[tuple[Path, OSError]] = []
-    for path in (token_path, token_path.with_suffix(".lock")):
-        try:
-            path.unlink()
-        except FileNotFoundError:
-            continue
-        except OSError as exc:
-            skipped.append((path, exc))
-            continue
-        removed_paths.append(path)
-
-    if not removed_paths and not skipped:
-        console.print(f"[yellow]! No local OAuth credentials found for {provider_label}[/yellow]")
-        return
-
-    if removed_paths:
-        console.print(f"[green] Logged out from {provider_label}[/green]")
-        for path in removed_paths:
-            console.print(f"[dim]Removed: {path}[/dim]")
-    for path, exc in skipped:
-        console.print(f"[yellow]! Could not remove {path}: {exc}[/yellow]")
-
-
-@_register_login("github_copilot")
-def _login_github_copilot() -> None:
-    try:
-        from mira.providers.github_copilot_provider import login_github_copilot
-
-        console.print("[cyan]Starting GitHub Copilot device flow...[/cyan]\n")
-        token = login_github_copilot(
-            print_fn=lambda s: console.print(s),
-            prompt_fn=lambda s: typer.prompt(s),
-        )
-        account = token.account_id or "GitHub"
-        console.print(f"[green] Authenticated with GitHub Copilot[/green]  [dim]{account}[/dim]")
-    except Exception as e:
-        console.print(f"[red]Authentication error: {e}[/red]")
-        raise typer.Exit(1)
+register_provider_commands(app, console=console)
 
 
 if __name__ == "__main__":
