@@ -3,11 +3,10 @@
 import asyncio
 import json
 import os
-import select
 import signal
 import sys
 from collections.abc import Callable, Iterable
-from contextlib import nullcontext, suppress
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -47,17 +46,8 @@ def _set_mira_logs(enabled: bool) -> None:
         logger.disable("mira")
 
 
-from prompt_toolkit import PromptSession, print_formatted_text  # noqa: E402
-from prompt_toolkit.application import run_in_terminal  # noqa: E402
-from prompt_toolkit.formatted_text import ANSI, HTML  # noqa: E402
-from prompt_toolkit.history import FileHistory  # noqa: E402
-from prompt_toolkit.key_binding import KeyBindings  # noqa: E402
-from prompt_toolkit.keys import Keys  # noqa: E402
-from prompt_toolkit.patch_stdout import patch_stdout  # noqa: E402
 from rich.console import Console  # noqa: E402
-from rich.markdown import Markdown  # noqa: E402
 from rich.table import Table  # noqa: E402
-from rich.text import Text  # noqa: E402
 
 from mira import (  # noqa: E402
     __app_name__,
@@ -68,11 +58,7 @@ from mira import (  # noqa: E402
 from mira import optional_features as feature_support  # noqa: E402
 from mira.agent.hooks import create_file_edit_activity_hook  # noqa: E402
 from mira.agent.loop import AgentLoop  # noqa: E402
-from mira.bus.outbound_events import (  # noqa: E402
-    ProgressEvent,
-    RetryWaitEvent,
-    outbound_event_from_message,
-)
+from mira.cli import interactive as _interactive  # noqa: E402
 from mira.cli import provider_commands as _provider_commands  # noqa: E402
 from mira.cli import webui_helpers as _webui_helpers  # noqa: E402
 from mira.cli.agent_command import AgentCommandDeps, run_agent_command  # noqa: E402
@@ -97,9 +83,6 @@ from mira.session.keys import (  # noqa: E402
     last_channel_from_metadata,
 )
 from mira.utils.evaluator import evaluate_response, resolve_evaluator_prompt  # noqa: E402
-from mira.utils.helpers import (  # noqa: E402
-    sanitize_surrogates as _sanitize_surrogates,
-)
 from mira.utils.helpers import (  # noqa: E402
     sync_workspace_templates,
 )
@@ -245,17 +228,16 @@ def _commit_dream_changes(memory: Any) -> str | None:
     return memory.git.auto_commit(message)
 
 
-class SafeFileHistory(FileHistory):
-    """FileHistory subclass that sanitizes surrogate characters on write.
-
-    On Windows, special Unicode input (emoji, mixed-script) can produce
-    surrogate characters that crash prompt_toolkit's file write.
-    See issue #2846.
-    """
-
-    def store_string(self, string: str) -> None:
-        super().store_string(_sanitize_surrogates(string))
-
+PromptSession = _interactive.PromptSession
+FileHistory = _interactive.FileHistory
+patch_stdout = _interactive.patch_stdout
+print_formatted_text = _interactive.print_formatted_text
+run_in_terminal = _interactive.run_in_terminal
+ANSI = _interactive.ANSI
+HTML = _interactive.HTML
+_sanitize_surrogates = _interactive._sanitize_surrogates
+SafeFileHistory = _interactive.SafeFileHistory
+_ReasoningBuffer = _interactive.ReasoningBuffer
 
 app = typer.Typer(
     name=__cli_name__,
@@ -265,9 +247,9 @@ app = typer.Typer(
 )
 
 console = Console()
-EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q"}
-_REASONING_SENTENCE_ENDINGS = (".", "!", "?", "。", "！", "？")
-_REASONING_FLUSH_CHARS = 60
+EXIT_COMMANDS = _interactive.EXIT_COMMANDS
+_REASONING_SENTENCE_ENDINGS = _interactive.REASONING_SENTENCE_ENDINGS
+_REASONING_FLUSH_CHARS = _interactive.REASONING_FLUSH_CHARS
 
 _HEARTBEAT_PREAMBLE = (
     "[Your response will be delivered directly to the user's messaging app. "
@@ -333,127 +315,37 @@ def _pick_heartbeat_target_from_sessions(
     return "cli", "direct"
 
 
-# ---------------------------------------------------------------------------
-# CLI input: prompt_toolkit for editing, paste, history, and display
-# ---------------------------------------------------------------------------
-
-_PROMPT_SESSION: PromptSession | None = None
-_SAVED_TERM_ATTRS = None  # original termios settings, restored on exit
+_PROMPT_SESSION: Any | None = None
+_SAVED_TERM_ATTRS = None
 
 
 def _flush_pending_tty_input() -> None:
-    """Drop unread keypresses typed while the model was generating output."""
-    try:
-        fd = sys.stdin.fileno()
-        if not os.isatty(fd):
-            return
-    except Exception:
-        return
-
-    with suppress(Exception):
-        import termios
-
-        termios.tcflush(fd, termios.TCIFLUSH)
-        return
-
-    with suppress(Exception):
-        while True:
-            ready, _, _ = select.select([fd], [], [], 0)
-            if not ready:
-                break
-            if not os.read(fd, 4096):
-                break
+    _interactive.flush_pending_tty_input()
 
 
 def _restore_terminal() -> None:
-    """Restore terminal to its original state (echo, line buffering, etc.)."""
-    if _SAVED_TERM_ATTRS is None:
-        return
-    with suppress(Exception):
-        import termios
-
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, _SAVED_TERM_ATTRS)
+    _interactive.restore_terminal(_SAVED_TERM_ATTRS)
 
 
-def _build_cli_key_bindings() -> KeyBindings:
-    """Key bindings for the interactive prompt.
-
-    Behaviour:
-      * Enter       -> submit the current input (keeps the familiar
-                       single-line Enter-to-send feel even though the buffer
-                       is multiline-capable).
-      * Alt+Enter   -> insert a newline for multi-line input.
-      * Shift+Enter -> insert a newline on terminals that emit the CSI-u
-                       (kitty / fixterms) keyboard-protocol encoding for it.
-    """
-    # prompt_toolkit does not recognize CSI-u, so register its Shift+Enter
-    # sequence as a best-effort addition without overriding existing mappings.
-    with suppress(Exception):
-        from prompt_toolkit.input import ansi_escape_sequences as _aes
-
-        _aes.ANSI_SEQUENCES.setdefault("\x1b[13;2u", Keys.ControlF3)
-
-    kb = KeyBindings()
-
-    @kb.add("enter")
-    def _(event):
-        event.current_buffer.validate_and_handle()
-
-    @kb.add("escape", "enter")  # Alt+Enter / Meta+Enter (ESC + CR, "\x1b\r")
-    def _(event):
-        event.current_buffer.insert_text("\n")
-
-    # LF-as-Enter terminals send Alt+Enter as ESC + LF rather than ESC + CR.
-    @kb.add("escape", Keys.ControlJ)  # Alt+Enter on LF-as-Enter terminals
-    def _(event):
-        event.current_buffer.insert_text("\n")
-
-    @kb.add(Keys.ControlF3)  # Shift+Enter on CSI-u capable terminals
-    def _(event):
-        event.current_buffer.insert_text("\n")
-
-    return kb
+def _build_cli_key_bindings():
+    return _interactive.build_cli_key_bindings()
 
 
 def _init_prompt_session() -> None:
-    """Create the prompt_toolkit session with persistent file history."""
     global _PROMPT_SESSION, _SAVED_TERM_ATTRS
-
-    # Save terminal state so we can restore it on exit
-    with suppress(Exception):
-        import termios
-
-        _SAVED_TERM_ATTRS = termios.tcgetattr(sys.stdin.fileno())
-
-    from mira.config.paths import get_cli_history_path
-
-    history_file = get_cli_history_path()
-    history_file.parent.mkdir(parents=True, exist_ok=True)
-
-    _PROMPT_SESSION = PromptSession(
-        history=SafeFileHistory(str(history_file)),
-        enable_open_in_editor=False,
-        # Multiline-capable buffer; Enter still submits via the custom key
-        # bindings, while Alt+Enter adds a newline.
-        multiline=True,
-        key_bindings=_build_cli_key_bindings(),
+    _PROMPT_SESSION, _SAVED_TERM_ATTRS = _interactive.init_prompt_session(
+        prompt_session_cls=PromptSession,
+        history_cls=SafeFileHistory,
+        key_bindings_factory=_build_cli_key_bindings,
     )
 
 
 def _make_console() -> Console:
-    return Console(file=sys.stdout)
+    return _interactive.make_console()
 
 
 def _render_interactive_ansi(render_fn) -> str:
-    """Render Rich output to ANSI so prompt_toolkit can print it safely."""
-    ansi_console = Console(
-        force_terminal=sys.stdout.isatty(),
-        color_system=console.color_system or "standard",
-        width=console.width,
-    )
-    with ansi_console.capture() as capture:
-        render_fn(ansi_console)
-    return capture.get()
+    return _interactive.render_interactive_ansi(render_fn, base_console=console)
 
 
 def _print_agent_response(
@@ -462,35 +354,27 @@ def _print_agent_response(
     metadata: dict | None = None,
     show_header: bool = True,
 ) -> None:
-    """Render assistant response with consistent terminal styling."""
-    console = _make_console()
-    content = response or ""
-    body = _response_renderable(content, render_markdown, metadata)
-    if show_header:
-        console.print()
-        console.print(f"[cyan]{__logo__} {__app_name__}[/cyan]")
-    console.print(body)
-    console.print()
+    _interactive.print_agent_response(
+        response,
+        render_markdown,
+        console_factory=_make_console,
+        metadata=metadata,
+        show_header=show_header,
+    )
 
 
 def _response_renderable(content: str, render_markdown: bool, metadata: dict | None = None):
-    """Render plain-text command output without markdown collapsing newlines."""
-    if not render_markdown:
-        return Text(content)
-    if (metadata or {}).get("render_as") == "text":
-        return Text(content)
-    return Markdown(content)
+    return _interactive.response_renderable(content, render_markdown, metadata)
 
 
 async def _print_interactive_line(text: str) -> None:
-    """Print async interactive updates with prompt_toolkit-safe Rich styling."""
-    def _write() -> None:
-        ansi = _render_interactive_ansi(
-            lambda c: c.print(f"  [dim]↳ {text}[/dim]")
-        )
-        print_formatted_text(ANSI(ansi), end="")
-
-    await run_in_terminal(_write)
+    await _interactive.print_interactive_line(
+        text,
+        base_console=console,
+        render_ansi=lambda fn, *, base_console: _render_interactive_ansi(fn),
+        formatted_print=print_formatted_text,
+        terminal_runner=run_in_terminal,
+    )
 
 
 async def _print_interactive_response(
@@ -498,73 +382,31 @@ async def _print_interactive_response(
     render_markdown: bool,
     metadata: dict | None = None,
 ) -> None:
-    """Print async interactive replies with prompt_toolkit-safe Rich styling."""
-    def _write() -> None:
-        content = response or ""
-        ansi = _render_interactive_ansi(
-            lambda c: (
-                c.print(),
-                c.print(f"[cyan]{__logo__} {__app_name__}[/cyan]"),
-                c.print(_response_renderable(content, render_markdown, metadata)),
-                c.print(),
-            )
-        )
-        print_formatted_text(ANSI(ansi), end="")
-
-    await run_in_terminal(_write)
+    await _interactive.print_interactive_response(
+        response,
+        render_markdown,
+        base_console=console,
+        render_ansi=lambda fn, *, base_console: _render_interactive_ansi(fn),
+        formatted_print=print_formatted_text,
+        terminal_runner=run_in_terminal,
+        metadata=metadata,
+    )
 
 
-def _print_cli_progress_line(text: str, thinking: ThinkingSpinner | None, renderer: StreamRenderer | None = None) -> None:
-    """Print a CLI progress line, pausing the spinner if needed."""
-    if not text.strip():
-        return
-    target = renderer.console if renderer else console
-    pause = renderer.pause_spinner() if renderer else (thinking.pause() if thinking else nullcontext())
-    with pause:
-        if renderer:
-            renderer.ensure_header()
-        target.print(f"  [dim]↳ {text}[/dim]")
+def _print_cli_progress_line(
+    text: str,
+    thinking: ThinkingSpinner | None,
+    renderer: StreamRenderer | None = None,
+) -> None:
+    _interactive.print_cli_progress_line(text, thinking, renderer, base_console=console)
 
 
-class _ReasoningBuffer:
-    def __init__(self) -> None:
-        self._text = ""
-
-    def add(self, text: str) -> str | None:
-        if not text:
-            return None
-        self._text += text
-        if self._should_flush(text):
-            return self.flush()
-        return None
-
-    def flush(self) -> str | None:
-        text = self._text.strip()
-        self._text = ""
-        return text or None
-
-    def clear(self) -> None:
-        self._text = ""
-
-    def _should_flush(self, text: str) -> bool:
-        stripped = text.rstrip()
-        return (
-            "\n" in text
-            or stripped.endswith(_REASONING_SENTENCE_ENDINGS)
-            or len(self._text) >= _REASONING_FLUSH_CHARS
-        )
-
-
-def _print_cli_reasoning(text: str, thinking: ThinkingSpinner | None, renderer: StreamRenderer | None = None) -> None:
-    """Print reasoning/thinking content in a distinct style."""
-    if not text.strip():
-        return
-    target = renderer.console if renderer else console
-    pause = renderer.pause_spinner() if renderer else (thinking.pause() if thinking else nullcontext())
-    with pause:
-        if renderer:
-            renderer.ensure_header()
-        target.print(f"[dim italic] {text}[/dim italic]")
+def _print_cli_reasoning(
+    text: str,
+    thinking: ThinkingSpinner | None,
+    renderer: StreamRenderer | None = None,
+) -> None:
+    _interactive.print_cli_reasoning(text, thinking, renderer, base_console=console)
 
 
 def _flush_cli_reasoning(
@@ -572,22 +414,25 @@ def _flush_cli_reasoning(
     thinking: ThinkingSpinner | None,
     renderer: StreamRenderer | None = None,
 ) -> None:
-    text = reasoning_buffer.flush()
-    if text:
-        _print_cli_reasoning(text, thinking, renderer)
+    _interactive.flush_cli_reasoning(
+        reasoning_buffer,
+        thinking,
+        renderer,
+        print_reasoning=_print_cli_reasoning,
+    )
 
 
-async def _print_interactive_progress_line(text: str, thinking: ThinkingSpinner | None, renderer: StreamRenderer | None = None) -> None:
-    """Print an interactive progress line, pausing the spinner if needed."""
-    if not text.strip():
-        return
-    if renderer:
-        with renderer.pause_spinner():
-            renderer.ensure_header()
-            renderer.console.print(f"  [dim]↳ {text}[/dim]")
-    else:
-        with thinking.pause() if thinking else nullcontext():
-            await _print_interactive_line(text)
+async def _print_interactive_progress_line(
+    text: str,
+    thinking: ThinkingSpinner | None,
+    renderer: StreamRenderer | None = None,
+) -> None:
+    await _interactive.print_interactive_progress_line(
+        text,
+        thinking,
+        renderer,
+        print_line=_print_interactive_line,
+    )
 
 
 async def _maybe_print_interactive_progress(
@@ -597,40 +442,15 @@ async def _maybe_print_interactive_progress(
     renderer: StreamRenderer | None = None,
     reasoning_buffer: _ReasoningBuffer | None = None,
 ) -> bool:
-    event = outbound_event_from_message(msg)
-    if isinstance(event, RetryWaitEvent):
-        await _print_interactive_progress_line(msg.content, thinking, renderer)
-        return True
-
-    if not isinstance(event, ProgressEvent):
-        return False
-
-    reasoning_buffer = reasoning_buffer or _ReasoningBuffer()
-
-    if event.reasoning_end:
-        if channels_config and not channels_config.show_reasoning:
-            reasoning_buffer.clear()
-        else:
-            _flush_cli_reasoning(reasoning_buffer, thinking, renderer)
-        return True
-
-    is_tool_hint = event.tool_hint
-    is_reasoning = event.reasoning or event.reasoning_delta
-    if is_reasoning:
-        if channels_config and not channels_config.show_reasoning:
-            reasoning_buffer.clear()
-            return True
-        text = reasoning_buffer.add(msg.content)
-        if text:
-            _print_cli_reasoning(text, thinking, renderer)
-        return True
-    if channels_config and is_tool_hint and not channels_config.send_tool_hints:
-        return True
-    if channels_config and not is_tool_hint and not channels_config.send_progress:
-        return True
-
-    await _print_interactive_progress_line(msg.content, thinking, renderer)
-    return True
+    return await _interactive.maybe_print_interactive_progress(
+        msg,
+        thinking,
+        channels_config,
+        renderer,
+        reasoning_buffer,
+        print_progress_line=_print_interactive_progress_line,
+        print_reasoning=_print_cli_reasoning,
+    )
 
 
 def _make_agent_progress_adapter(
@@ -640,66 +460,25 @@ def _make_agent_progress_adapter(
     *,
     reasoning_buffer_only: bool = False,
 ) -> Any:
-    reasoning_buffer = _ReasoningBuffer()
-    if reasoning_buffer_only:
-        return reasoning_buffer
-
-    async def _cli_progress(
-        content: str,
-        *,
-        tool_hint: bool = False,
-        reasoning: bool = False,
-        **_kwargs: Any,
-    ) -> None:
-        ch = agent_loop.channels_config
-
-        if _kwargs.get("reasoning_end"):
-            if ch and not ch.show_reasoning:
-                reasoning_buffer.clear()
-            else:
-                _flush_cli_reasoning(reasoning_buffer, thinking, renderer)
-            return
-
-        if reasoning:
-            if ch and not ch.show_reasoning:
-                reasoning_buffer.clear()
-                return
-            text = reasoning_buffer.add(content)
-            if text:
-                _print_cli_reasoning(text, thinking, renderer)
-            return
-        if ch and tool_hint and not ch.send_tool_hints:
-            return
-        if ch and not tool_hint and not ch.send_progress:
-            return
-        _print_cli_progress_line(content, thinking, renderer)
-
-    return _cli_progress
+    return _interactive.make_agent_progress_adapter(
+        agent_loop,
+        thinking,
+        renderer,
+        reasoning_buffer_only=reasoning_buffer_only,
+        print_progress_line=_print_cli_progress_line,
+        print_reasoning=_print_cli_reasoning,
+    )
 
 
 def _is_exit_command(command: str) -> bool:
-    """Return True when input should end interactive chat."""
-    return command.lower() in EXIT_COMMANDS
+    return _interactive.is_exit_command(command)
 
 
 async def _read_interactive_input_async() -> str:
-    """Read user input using prompt_toolkit (handles paste, history, display).
-
-    prompt_toolkit natively handles:
-    - Multiline paste (bracketed paste mode)
-    - History navigation (up/down arrows)
-    - Clean display (no ghost characters or artifacts)
-    """
-    if _PROMPT_SESSION is None:
-        raise RuntimeError("Call _init_prompt_session() first")
-    try:
-        with patch_stdout():
-            return await _PROMPT_SESSION.prompt_async(
-                HTML("<b fg='ansiblue'>You:</b> "),
-            )
-    except EOFError as exc:
-        raise KeyboardInterrupt from exc
-
+    return await _interactive.read_interactive_input_async(
+        _PROMPT_SESSION,
+        patch_stdout_cm=patch_stdout,
+    )
 
 def version_callback(value: bool):
     if value:
