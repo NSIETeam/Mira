@@ -282,14 +282,50 @@ function HeroGreeting({ text }: { text: string }) {
   );
 }
 
-function EmptyThreadPrompt({ greeting }: { greeting: string }) {
+function EmptyThreadPrompt({
+  greeting,
+  onSuggestion,
+  showSuggestions = true,
+}: {
+  greeting: string;
+  onSuggestion: (prompt: string) => void;
+  showSuggestions?: boolean;
+}) {
   const { t } = useTranslation();
+  const suggestions = [
+    {
+      title: t("thread.empty.quickActions.code.title"),
+      prompt: t("thread.empty.quickActions.code.prompt"),
+    },
+    {
+      title: t("thread.empty.quickActions.analyze.title"),
+      prompt: t("thread.empty.quickActions.analyze.prompt"),
+    },
+    {
+      title: t("thread.empty.quickActions.more.title"),
+      prompt: t("thread.empty.quickActions.more.prompt"),
+    },
+  ];
   return (
-    <div className="flex w-full flex-col items-center gap-2 text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+    <div className="flex w-full flex-col items-center gap-3 text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
       <HeroGreeting text={greeting} />
-      <p className="max-w-[26rem] text-[13px] leading-5 text-muted-foreground sm:text-sm">
+      <p className="max-w-[22rem] text-[13px] leading-5 text-muted-foreground">
         {t("thread.empty.inputHint")}
       </p>
+      {showSuggestions ? (
+        <div className="flex max-w-[34rem] flex-wrap items-center justify-center gap-2 pt-1">
+          {suggestions.map((item) => (
+            <button
+              key={item.title}
+              type="button"
+              className="rounded-full border border-slate-200 bg-white/70 px-3 py-1.5 text-[12px] font-medium text-slate-700 shadow-[0_6px_18px_rgba(15,23,42,0.06)] transition hover:border-slate-300 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-white/10 dark:bg-white/7 dark:text-slate-200 dark:hover:bg-white/10"
+              onClick={() => onSuggestion(item.prompt)}
+            >
+              {item.title}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -829,6 +865,14 @@ export function ThreadShell({
     [chatId, send, withWorkspaceScope],
   );
 
+  const handleEmptySuggestion = useCallback((prompt: string) => {
+    if (activeExecution) {
+      handleThreadSend(prompt);
+      return;
+    }
+    void handleWelcomeSend(prompt);
+  }, [activeExecution, handleThreadSend, handleWelcomeSend]);
+
   const handleOpenFilePreview = useCallback((path: string) => {
     if (filePreviewCloseTimerRef.current !== null) {
       window.clearTimeout(filePreviewCloseTimerRef.current);
@@ -1042,6 +1086,10 @@ export function ThreadShell({
 
   const capabilityBadges: string[] = [];
   const shellPosture = null;
+  const imageModeEnabled = Boolean(
+    settingsSnapshot?.image_generation?.enabled &&
+      settingsSnapshot.image_generation.provider_configured,
+  );
   const emptyState = loading ? (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
       {t("thread.loadingConversation")}
@@ -1049,6 +1097,8 @@ export function ThreadShell({
   ) : (
     <EmptyThreadPrompt
       greeting={t(heroGreetingKey)}
+      onSuggestion={handleEmptySuggestion}
+      showSuggestions={!imageModeEnabled}
     />
   );
   const sessionInfoAction = supportsThreads && historyKey ? (
