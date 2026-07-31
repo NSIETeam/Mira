@@ -472,6 +472,7 @@ class AgentLoop:
             context_builder_cls=ContextBuilder,
             session_manager_cls=SessionManager,
             subagent_manager_cls=SubagentManager,
+            consolidator_cls=Consolidator,
         )
         self.context = subsystems.context
         self.sessions = subsystems.sessions

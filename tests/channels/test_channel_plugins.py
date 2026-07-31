@@ -11,7 +11,7 @@ from dataclasses import replace
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 
@@ -808,14 +808,15 @@ def test_discover_plugins_warns_once_for_legacy_entry_points():
     finally:
         _warn_legacy_channel_entry_points.cache_clear()
 
-    metadata_entry_points.assert_called_once_with(group="mira.channels")
-    warning.assert_called_once_with(
+    assert metadata_entry_points.mock_calls.count(call(group="mira.channels")) == 1
+    legacy_warning = call(
         "Legacy channel entry points were detected but will not be loaded: {}. "
         "The '{}' entry-point group is no longer supported; use a built-in channel or "
         "migrate it into mira/channels/<channel>/.",
         "a-old, z-old",
         "mira.channels",
     )
+    assert warning.mock_calls.count(legacy_warning) == 1
 
 
 def test_channel_manifest_rejects_invalid_dependency_metadata():

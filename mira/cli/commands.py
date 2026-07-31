@@ -1820,7 +1820,7 @@ register_channel_plugin_commands(
     console=console,
     load_inspection_config=_load_inspection_config,
     print_enable_options=_print_enable_options,
-    set_mira_logs=_set_mira_logs,
+    set_mira_logs=lambda enabled: _set_mira_logs(enabled),
 )
 
 

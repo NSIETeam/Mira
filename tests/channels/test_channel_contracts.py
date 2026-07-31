@@ -627,6 +627,6 @@ def test_core_channels_inherit_base_adapter_without_importing_optional_sdks(
     runtime_path: str,
     class_name: str,
 ) -> None:
-    source = Path(runtime_path).read_text()
+    source = Path(runtime_path).read_text(encoding="utf-8")
 
     assert f"class {class_name}(BaseChannel)" in source

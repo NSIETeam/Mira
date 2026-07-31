@@ -13,6 +13,9 @@ DATA_DIR="$(mktemp -d "${TMPDIR:-/tmp}/mira-docker-smoke.XXXXXX")"
 
 cleanup() {
   docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+  docker run --rm --entrypoint sh \
+    -v "$DATA_DIR:/data" "$IMAGE_NAME" \
+    -c "chown -R $(id -u):$(id -g) /data" >/dev/null 2>&1 || true
   rm -rf "$DATA_DIR"
 }
 trap cleanup EXIT

@@ -61,6 +61,7 @@ def create_agent_loop_subsystems(
     context_builder_cls: Any | None = None,
     session_manager_cls: Any | None = None,
     subagent_manager_cls: Any | None = None,
+    consolidator_cls: Any | None = None,
 ) -> AgentLoopSubsystems:
     """Build the concrete subsystems that AgentLoop composes."""
     from mira.kernel.process import ProcessTable
@@ -68,6 +69,7 @@ def create_agent_loop_subsystems(
     context_builder_cls = context_builder_cls or ContextBuilder
     session_manager_cls = session_manager_cls or SessionManager
     subagent_manager_cls = subagent_manager_cls or SubagentManager
+    consolidator_cls = consolidator_cls or Consolidator
     context = context_builder_cls(workspace, timezone=timezone, disabled_skills=disabled_skills)
     sessions = session_manager or session_manager_cls(workspace)
     sessions.set_file_cap_archiver(context.memory.raw_archive)
@@ -89,7 +91,7 @@ def create_agent_loop_subsystems(
         execution_gate=execution_gate,
         llm_wall_timeout_for_session=lambda sk: runner_wall_llm_timeout_s(sessions, sk),
     )
-    consolidator = Consolidator(
+    consolidator = consolidator_cls(
         store=context.memory,
         sessions=sessions,
         build_messages=context.build_messages,
