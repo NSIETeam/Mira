@@ -1,0 +1,31 @@
+{
+  "actions": {
+    "allowExecutionFork": true
+  },
+  "chrome": {
+    "showSearchDialog": true,
+    "showSidebarChrome": true
+  },
+  "composer": {
+    "allowComposer": true,
+    "readOnlyExecution": false
+  },
+  "mode": "engineering",
+  "privilege": {
+    "canElevate": "<runtime>",
+    "dropHint": "<runtime>",
+    "elevateHint": "<runtime>",
+    "elevationMode": "<runtime>",
+    "role": "<runtime>",
+    "sessionPolicy": "<runtime>"
+  },
+  "schema": "mira.host/v1",
+  "surfaces": {
+    "allowKernelConsole": true,
+    "allowPrivilegedRuntimeControls": true,
+    "allowRuntimeModelControls": true,
+    "allowUtilitySurface": true,
+    "allowWorkspaceControls": true
+  },
+  "version": 1
+}

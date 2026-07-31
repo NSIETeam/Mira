@@ -42,10 +42,10 @@ COPY --from=webui-builder /app/mira/web/dist/ mira/web/dist/
 RUN NANOBOT_SKIP_WEBUI_BUILD=1 uv pip install --python "$VIRTUAL_ENV/bin/python" --no-cache .
 
 # Preinstall selected channel dependencies from their manifests. A comma-separated
-# list keeps the image configurable while preserving WhatsApp in the default image.
-ARG MIRA_CHANNELS=whatsapp
+# list keeps the image configurable while keeping the default image on core channels.
+ARG MIRA_CHANNELS=websocket
 ARG NANOBOT_CHANNELS=
-RUN selected_channels="${MIRA_CHANNELS:-${NANOBOT_CHANNELS:-whatsapp}}"; \
+RUN selected_channels="${MIRA_CHANNELS:-${NANOBOT_CHANNELS:-websocket}}"; \
     for channel in $(printf '%s' "$selected_channels" | tr ',' ' '); do \
         python -m scripts.install_channel_dependencies "$channel"; \
     done

@@ -123,9 +123,9 @@ describe("MessageBubble", () => {
 
     const { rerender } = render(<MessageBubble message={message} />);
 
-    const quote = screen.getByLabelText("Quoted context");
+    const quote = screen.getByLabelText("Execution context");
     expect(quote).toHaveTextContent("selected assistant excerpt");
-    expect(screen.queryByText("Quoted context")).not.toBeInTheDocument();
+    expect(screen.queryByText("Execution context")).not.toBeInTheDocument();
     expect(screen.getByText("What about this?")).toBeInTheDocument();
 
     rerender(
@@ -136,7 +136,7 @@ describe("MessageBubble", () => {
         }}
       />,
     );
-    expect(screen.queryByLabelText("Quoted context")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Execution context")).not.toBeInTheDocument();
   });
 
   it("copies user messages from the shared message action", async () => {

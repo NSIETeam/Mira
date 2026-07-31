@@ -121,7 +121,9 @@ def _format_summary(summary: _PatchSummary) -> str:
 )
 class ApplyPatchTool(_FsTool):
     """Apply file edits by providing structured edit instructions."""
+    config_key = "apply_patch"
     _scopes = {"core", "subagent"}
+    _core_default = False
 
     @property
     def name(self) -> str:

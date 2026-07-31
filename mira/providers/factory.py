@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -64,6 +65,17 @@ def _make_provider_core(
     if spec and spec.is_transcription_only:
         raise ValueError(f"Provider '{provider_name}' only supports transcription.")
     backend = spec.backend if spec else "openai_compat"
+    if spec and spec.provider_factory:
+        provider = _make_external_provider(
+            spec.provider_factory,
+            config=config,
+            provider_config=p,
+            spec=spec,
+            model=model,
+            preset=resolved,
+        )
+        provider.generation = resolved.to_generation_settings()
+        return provider
     if p and p.proxy and backend not in {"openai_compat", "openai_codex", "xai_grok"}:
         raise ValueError(
             f"providers.{provider_name}.proxy is only supported for "
@@ -151,6 +163,31 @@ def _make_provider_core(
         )
 
     provider.generation = resolved.to_generation_settings()
+    return provider
+
+
+def _make_external_provider(
+    factory_path: str,
+    *,
+    config: Config,
+    provider_config: ProviderConfig | None,
+    spec: ProviderSpec,
+    model: str,
+    preset: ModelPresetConfig,
+) -> LLMProvider:
+    module_name, _, function_name = factory_path.partition(":")
+    if not module_name or not function_name:
+        raise RuntimeError(f"Invalid provider factory path: {factory_path}")
+    factory = getattr(importlib.import_module(module_name), function_name)
+    provider = factory(
+        config=config,
+        provider_config=provider_config,
+        spec=spec,
+        model=model,
+        preset=preset,
+    )
+    if not isinstance(provider, LLMProvider):
+        raise TypeError(f"Provider factory {factory_path} did not return an LLMProvider")
     return provider
 
 

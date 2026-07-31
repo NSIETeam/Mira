@@ -122,7 +122,9 @@ class _SearchTool(_FsTool):
 
 class FindFilesTool(_SearchTool):
     """Find files by path fragment, glob, or type."""
+    config_key = "search"
     _scopes = {"core", "subagent"}
+    _core_default = False
 
     @property
     def name(self) -> str:
@@ -279,7 +281,9 @@ class FindFilesTool(_SearchTool):
 
 class GrepTool(_SearchTool):
     """Search file contents using a regex-like pattern."""
+    config_key = "search"
     _scopes = {"core", "subagent"}
+    _core_default = False
 
     _MAX_RESULT_CHARS = 128_000
     _MAX_FILE_BYTES = 2_000_000

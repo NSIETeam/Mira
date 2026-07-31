@@ -30,6 +30,8 @@ class RequestContext:
     turn_id: str | None = None
     workspace: Path | None = None
     policy: Any | None = None
+    capability_policy: Any | None = None
+    capability_audit_sink: Callable[[Any], None] | None = None
 
 
 @runtime_checkable

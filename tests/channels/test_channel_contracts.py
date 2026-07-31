@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from mira.bus.events import OutboundMessage
+from mira.bus.events import InboundMessage, OutboundMessage
+from mira.bus.queue import MessageBus
 from mira.channels._setup import channel_setup_spec
 from mira.channels.base import BaseChannel
 from mira.channels.contracts import (
     ChannelActivation,
+    ChannelAdapter,
     ChannelFieldSpec,
     ChannelInstanceSpec,
     ChannelManagementSpec,
@@ -586,3 +589,44 @@ def test_channel_setup_contract_owns_fields_and_validation() -> None:
             "required": True,
         }],
     }
+
+
+def test_base_channel_satisfies_adapter_protocol() -> None:
+    channel = _SingleChannel(config={}, bus=MessageBus())
+
+    assert isinstance(channel, ChannelAdapter)
+
+
+@pytest.mark.asyncio
+async def test_base_channel_adapter_aliases_publish_and_send() -> None:
+    bus = MessageBus()
+    channel = _SingleChannel(config={}, bus=bus)
+    inbound = InboundMessage(channel="single", sender_id="u1", chat_id="c1", content="hello")
+    outbound = OutboundMessage(channel="single", chat_id="c1", content="world")
+
+    await channel.connect()
+    await channel.on_inbound(inbound)
+    await channel.send_outbound(outbound)
+    health = await channel.health()
+    published = await bus.consume_inbound()
+
+    assert published is inbound
+    assert health["name"] == "single"
+    assert health["running"] is False
+
+
+@pytest.mark.parametrize(
+    ("runtime_path", "class_name"),
+    [
+        ("mira/channels/telegram/runtime.py", "TelegramChannel"),
+        ("mira/channels/weixin/runtime.py", "WeixinChannel"),
+        ("mira/channels/feishu/runtime.py", "FeishuChannel"),
+    ],
+)
+def test_core_channels_inherit_base_adapter_without_importing_optional_sdks(
+    runtime_path: str,
+    class_name: str,
+) -> None:
+    source = Path(runtime_path).read_text(encoding="utf-8")
+
+    assert f"class {class_name}(BaseChannel)" in source

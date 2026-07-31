@@ -5,12 +5,11 @@ from __future__ import annotations
 import asyncio
 import inspect
 import os
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
-
-from loguru import logger
+from typing import Any
 
 from mira.agent.context_governance import (
     ContextGovernanceConfig,
@@ -37,6 +36,7 @@ from mira.utils.helpers import (
     strip_think,
 )
 from mira.utils.llm_runtime import LLMRuntime
+from mira.utils.logging import session_logger, tool_logger
 from mira.utils.prompt_templates import render_template
 from mira.utils.runtime import (
     EMPTY_FINAL_RESPONSE_MESSAGE,
@@ -256,12 +256,12 @@ class AgentRunner:
                 )
         self._append_injected_messages(messages, injections)
         if real_injection:
-            logger.info(
+            session_logger(spec.session_key).info(
                 "Injected {} follow-up message(s) {} ({}/{})",
                 len(injections), phase, injection_cycles, _MAX_INJECTION_CYCLES,
             )
         else:
-            logger.info("Injected sustained-goal continuation {}", phase)
+            session_logger(spec.session_key).info("Injected sustained-goal continuation {}", phase)
         return True, injection_cycles
 
     def _build_goal_continue_message(self, spec: AgentRunSpec) -> dict[str, str]:
@@ -269,8 +269,8 @@ class AgentRunner:
         if callable(custom):
             try:
                 custom = custom()
-            except Exception:
-                logger.exception("goal_continue_message callback failed")
+            except (TypeError, ValueError, RuntimeError):
+                session_logger(spec.session_key).exception("goal_continue_message callback failed")
                 custom = None
         return build_goal_continue_message(custom)
 
@@ -297,8 +297,8 @@ class AgentRunner:
                 items = await spec.injection_callback(limit=_MAX_INJECTIONS_PER_TURN)
             else:
                 items = await spec.injection_callback()
-        except Exception:
-            logger.exception("injection_callback failed")
+        except (TypeError, ValueError, RuntimeError):
+            session_logger(spec.session_key).exception("injection_callback failed")
             return []
         if not items:
             return []
@@ -312,12 +312,12 @@ class AgentRunner:
                 continue
             if isinstance(item, dict):
                 continue
-            content = getattr(item, "content") if hasattr(item, "content") else str(item)
+            content = item.content if hasattr(item, "content") else str(item)
             if self._has_injection_content(content):
                 injected_messages.append({"role": "user", "content": content})
         if len(injected_messages) > _MAX_INJECTIONS_PER_TURN:
             dropped = len(injected_messages) - _MAX_INJECTIONS_PER_TURN
-            logger.warning(
+            session_logger(spec.session_key).warning(
                 "Injection callback returned {} messages, capping to {} ({} dropped)",
                 len(injected_messages), _MAX_INJECTIONS_PER_TURN, dropped,
             )
@@ -348,7 +348,9 @@ class AgentRunner:
             context.error = None
             context.exception = exc
             raise
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
             context.messages = deepcopy(messages)
             context.stop_reason = "error"
             context.error = f"Error: {type(exc).__name__}: {exc}"
@@ -376,8 +378,8 @@ class AgentRunner:
             else:
                 try:
                     await hook.on_finally(context)
-                except Exception:
-                    logger.exception(
+                except (TypeError, ValueError, RuntimeError, asyncio.CancelledError):
+                    session_logger(spec.session_key).exception(
                         "AgentHook.on_finally error after {}",
                         context.stop_reason or "run exception",
                     )
@@ -553,17 +555,17 @@ class AgentRunner:
                 continue
 
             if response.has_tool_calls:
-                logger.warning(
+                session_logger(spec.session_key).warning(
                     "Ignoring tool calls under finish_reason='{}' for {}",
                     response.finish_reason,
                     spec.session_key or "default",
                 )
 
-            clean = hook.finalize_content(context, response.content)
+            clean = hook.finalize_content(context, response.content) or ""
             if response.finish_reason != "error" and is_blank_text(clean):
                 empty_content_retries += 1
                 if empty_content_retries < _MAX_EMPTY_RETRIES:
-                    logger.warning(
+                    session_logger(spec.session_key).warning(
                         "Empty response on turn {} for {} ({}/{}); retrying",
                         iteration,
                         spec.session_key or "default",
@@ -574,7 +576,7 @@ class AgentRunner:
                         await hook.on_stream_end(context, resuming=False)
                     await hook.after_iteration(context)
                     continue
-                logger.warning(
+                session_logger(spec.session_key).warning(
                     "Empty response on turn {} for {} after {} retries; attempting finalization",
                     iteration,
                     spec.session_key or "default",
@@ -591,14 +593,14 @@ class AgentRunner:
                 context.usage = dict(raw_usage)
                 context.tool_calls = list(response.tool_calls)
                 original_content = response.content
-                clean = hook.finalize_content(context, response.content)
+                clean = hook.finalize_content(context, response.content) or ""
 
             if response.finish_reason == "length" and not is_blank_text(clean):
                 if len(length_recovery_parts) < _MAX_LENGTH_RECOVERIES:
                     length_recovery_parts.append(
                         _restore_outer_whitespace(clean, original_content)
                     )
-                    logger.info(
+                    session_logger(spec.session_key).info(
                         "Output truncated on turn {} for {} ({}/{}); continuing",
                         iteration,
                         spec.session_key or "default",
@@ -634,9 +636,9 @@ class AgentRunner:
                 )
                 context.streamed_content = True
 
-            assistant_message: dict[str, Any] | None = None
+            final_assistant_message: dict[str, Any] | None = None
             if response.finish_reason != "error" and not is_blank_text(clean):
-                assistant_message = build_assistant_message(
+                final_assistant_message = build_assistant_message(
                     clean,
                     reasoning_content=response.reasoning_content,
                     thinking_blocks=response.thinking_blocks,
@@ -646,7 +648,7 @@ class AgentRunner:
             # If injections are found we keep the stream alive (resuming=True)
             # so streaming channels don't prematurely finalize the card.
             should_continue, injection_cycles = await self._try_drain_injections(
-                spec, messages, assistant_message, injection_cycles,
+                spec, messages, final_assistant_message, injection_cycles,
                 phase="after final response",
                 iteration=iteration,
                 allow_goal_continue=True,
@@ -702,7 +704,7 @@ class AgentRunner:
                     continue
                 break
 
-            messages.append(assistant_message or build_assistant_message(
+            messages.append(final_assistant_message or build_assistant_message(
                 clean,
                 reasoning_content=response.reasoning_content,
                 thinking_blocks=response.thinking_blocks,
@@ -802,7 +804,7 @@ class AgentRunner:
         context: AgentHookContext,
         *,
         malformed_retry: bool = False,
-    ):
+    ) -> LLMResponse:
         timeout_s: float | None = spec.llm_timeout_s
         if timeout_s is None:
             # Default to a finite timeout to avoid per-session lock starvation when an LLM
@@ -828,6 +830,7 @@ class AgentRunner:
             and spec.progress_callback is not None
             and getattr(spec.runtime.provider, "supports_progress_deltas", False) is True
         )
+        progress_callback = spec.progress_callback
 
         progress_state: dict[str, bool] | None = None
         active_hosted_tools: dict[str, dict[str, Any]] = {}
@@ -898,7 +901,8 @@ class AgentRunner:
                         await hook.emit_reasoning_end()
                         progress_state["reasoning_open"] = False
                     context.streamed_content = True
-                    await spec.progress_callback(incremental)
+                    if progress_callback is not None:
+                        await progress_callback(incremental)
 
             coro = spec.runtime.provider.chat_stream_with_retry(
                 **kwargs,
@@ -924,7 +928,7 @@ class AgentRunner:
                 await coro if outer_timeout_s is None
                 else await asyncio.wait_for(coro, timeout=outer_timeout_s)
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             if outer_timeout_s is None:
                 response = LLMResponse(
                     content="Error calling LLM: stream stalled",
@@ -958,7 +962,7 @@ class AgentRunner:
             and original_finish_reason in ("tool_calls", "function_call")
             and not malformed_retry
         ):
-            logger.warning(
+            session_logger(spec.session_key).warning(
                 "Retrying LLM request after all {} malformed tool call(s) were dropped",
                 dropped,
             )
@@ -974,7 +978,7 @@ class AgentRunner:
             and original_finish_reason in ("tool_calls", "function_call")
             and malformed_retry
         ):
-            logger.warning(
+            session_logger(spec.session_key).warning(
                 "Malformed tool calls persisted after retry; falling back to no-tools request",
             )
             fallback_messages = self._malformed_tool_call_retry_messages(
@@ -1006,7 +1010,7 @@ class AgentRunner:
             return (0, False, getattr(response, "finish_reason", None))
         dropped = len(calls) - len(valid)
         original_finish_reason = getattr(response, "finish_reason", None)
-        logger.warning(
+        session_logger(None).warning(
             "Dropped {} malformed tool call(s) with missing/non-string name "
             "from LLM response (finish_reason={!r})",
             dropped,
@@ -1042,7 +1046,7 @@ class AgentRunner:
         self,
         spec: AgentRunSpec,
         messages: list[dict[str, Any]],
-    ):
+    ) -> LLMResponse:
         retry_messages = self._finalization_retry_messages(messages)
         return await self._request_no_tools(spec, retry_messages)
 
@@ -1062,8 +1066,8 @@ class AgentRunner:
         retry_messages = self._budget_exhausted_finalization_messages(messages)
         try:
             response = await self._request_no_tools(spec, retry_messages)
-        except Exception:
-            logger.exception(
+        except (OSError, TimeoutError, ValueError, RuntimeError):
+            session_logger(spec.session_key).exception(
                 "Budget-exhausted finalization failed for {}; using fallback",
                 spec.session_key or "default",
             )
@@ -1072,7 +1076,7 @@ class AgentRunner:
         raw_usage = self._usage_or_estimate(spec, retry_messages, response)
         self._accumulate_usage(usage, raw_usage)
         if response.finish_reason == "error" or response.has_tool_calls:
-            logger.warning(
+            session_logger(spec.session_key).warning(
                 "Budget-exhausted finalization returned finish_reason='{}' "
                 "with {} tool call(s) for {}; using fallback",
                 response.finish_reason,
@@ -1088,7 +1092,7 @@ class AgentRunner:
             usage=dict(raw_usage),
             session_key=spec.session_key,
         )
-        clean = hook.finalize_content(context, response.content)
+        clean = hook.finalize_content(context, response.content) or ""
         if is_blank_text(clean):
             return None
         return clean
@@ -1145,7 +1149,7 @@ class AgentRunner:
     ) -> dict[str, int]:
         try:
             tools = spec.tools.get_definitions()
-        except Exception:
+        except (TypeError, ValueError, RuntimeError):
             tools = None
         prompt_tokens, _ = estimate_prompt_tokens_chain(
             spec.runtime.provider,
@@ -1262,11 +1266,13 @@ class AgentRunner:
     ) -> tuple[Any, dict[str, str], BaseException | None]:
         hook = hook or AgentHook()
         context = context or AgentHookContext(iteration=0, messages=[])
+        log = tool_logger(spec.session_key, tool_call.id, tool_call.name)
         hint = "\n\n[Analyze the error above and try a different approach.]"
         if spec.execution_gate is not None:
             try:
                 spec.execution_gate.assert_tools_allowed()
             except ExecutionGateClosedError as exc:
+                log.warning("Tool execution blocked by closed execution gate")
                 event = {
                     "name": tool_call.name,
                     "status": "error",
@@ -1279,6 +1285,7 @@ class AgentRunner:
             external_lookup_counts,
         )
         if lookup_error:
+            log.warning("Tool execution blocked after repeated external lookup")
             event = {
                 "name": tool_call.name,
                 "status": "error",
@@ -1294,6 +1301,10 @@ class AgentRunner:
             if isinstance(prepared, tuple) and len(prepared) == 3:
                 tool, params, prep_error = prepared
         if prep_error:
+            log.warning(
+                "Tool preparation failed: {}",
+                prep_error.replace("\n", " ").strip()[:200],
+            )
             event = {
                 "name": tool_call.name,
                 "status": "error",
@@ -1315,6 +1326,10 @@ class AgentRunner:
         middleware_stack = ToolMiddlewareStack(list(spec.tool_middlewares))
         middleware_result = await middleware_stack.before_execute(tool_call, tool, params)
         if middleware_result is not None:
+            log.warning(
+                "Tool execution blocked by middleware: {}",
+                str(middleware_result).replace("\n", " ").strip()[:200],
+            )
             event = {
                 "name": tool_call.name,
                 "status": "error",
@@ -1330,9 +1345,15 @@ class AgentRunner:
                 result = await spec.tools.execute(tool_call.name, params)
         except asyncio.CancelledError:
             raise
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
             await middleware_stack.on_error(tool_call, tool, params, exc)
             await hook.on_execute_tool_error(context, tool_call, tool, params, exc)
+            log.bind(error_type=type(exc).__name__).error(
+                "Tool execution failed: {}",
+                str(exc).replace("\n", " ").strip()[:200],
+            )
             event = {
                 "name": tool_call.name,
                 "status": "error",
@@ -1356,6 +1377,10 @@ class AgentRunner:
         if is_tool_error_result(tool_call.name, result):
             await middleware_stack.on_error(tool_call, tool, params, result)
             await hook.on_execute_tool_error(context, tool_call, tool, params, result)
+            log.warning(
+                "Tool returned error result: {}",
+                result.replace("\n", " ").strip()[:200],
+            )
             event = {
                 "name": tool_call.name,
                 "status": "error",
@@ -1438,8 +1463,9 @@ class AgentRunner:
         workspace_violation_counts: dict[str, int],
     ) -> tuple[Any, dict[str, str], BaseException | None] | None:
         """Classify safety-boundary failures, or return ``None`` to pass through."""
+        log = tool_logger(None, tool_call.id, tool_call.name)
         if self._is_ssrf_violation(raw_text):
-            logger.warning(
+            log.warning(
                 "Tool {} blocked by SSRF guard; returning non-retryable tool error: {}",
                 tool_call.name,
                 raw_text.replace("\n", " ").strip()[:200],
@@ -1455,7 +1481,7 @@ class AgentRunner:
             )
             event["detail"] = self._event_detail("workspace_violation: ", raw_text)
             if escalation is not None:
-                logger.warning(
+                log.warning(
                     "Tool {} hit workspace boundary repeatedly; escalating hint",
                     tool_call.name,
                 )

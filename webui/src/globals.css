@@ -93,6 +93,15 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     overflow: hidden;
+    text-rendering: optimizeLegibility;
+  }
+
+  :lang(zh),
+  :lang(zh-CN),
+  :lang(zh-TW) {
+    line-break: loose;
+    word-break: normal;
+    overflow-wrap: anywhere;
   }
 
   * {
@@ -357,7 +366,7 @@
   }
   @media (min-width: 640px) {
     .thread-layout[data-layout="hero"] {
-      grid-template-rows: minmax(min-content, 1fr) auto 1fr;
+      grid-template-rows: minmax(min-content, 0.58fr) auto 1fr;
     }
   }
 
@@ -719,6 +728,19 @@
 .thread-composer-surface {
   container-name: thread-composer;
   container-type: inline-size;
+}
+
+.thread-layout,
+.thread-composer-surface,
+.thread-composer-footer,
+.thread-composer-footer-primary,
+.thread-composer-footer-actions {
+  min-width: 0;
+}
+
+.thread-layout :where(p, span, button, code, pre, textarea),
+.thread-composer-surface :where(p, span, button, code, pre, textarea) {
+  overflow-wrap: anywhere;
 }
 
 .thread-composer-footer-actions {

@@ -7,8 +7,8 @@ import base64
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from agent.runner_helpers import make_run_spec
+
 from mira.config.schema import AgentDefaults
 from mira.providers.base import LLMResponse, ToolCallRequest
 

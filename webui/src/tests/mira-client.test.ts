@@ -428,6 +428,24 @@ describe("miraClient", () => {
     await expect(promise).resolves.toBe("fresh-id");
   });
 
+  it("resolves newChat() after the initial ready frame with the attached chat id", async () => {
+    const client = new miraClient({
+      url: "ws://test",
+      reconnect: false,
+      socketFactory: (url) => new FakeSocket(url) as unknown as WebSocket,
+    });
+    client.connect();
+    lastSocket().fakeOpen();
+    lastSocket().fakeMessage({ event: "ready", chat_id: "default-id" });
+
+    const promise = client.newChat(1_000);
+    expect(lastSocket().sent).toContain(JSON.stringify({ type: "new_chat" }));
+    lastSocket().fakeMessage({ event: "attached", chat_id: "fresh-id" });
+
+    await expect(promise).resolves.toBe("fresh-id");
+    expect(client.defaultChatId).toBe("default-id");
+  });
+
   it("serializes workspace scope for new chats and messages", async () => {
     const client = new miraClient({
       url: "ws://test",

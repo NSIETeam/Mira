@@ -21,8 +21,6 @@ from mira.tool_contracts import (
     tool_contract_family_groups,
 )
 
-from .scheduler import prioritize_lane
-
 
 def _copy_rows(rows: list[dict[str, Any]], *, limit: int | None = None) -> list[dict[str, Any]]:
     source = rows[:limit] if isinstance(limit, int) else rows
@@ -51,6 +49,17 @@ def _parse_dispatch_args(args: list[str]) -> tuple[str, dict[str, Any]]:
     return tool_name, params
 
 
+def _prioritize_lane(state: dict[str, Any], *, lane: str) -> dict[str, Any]:
+    if lane not in {"interactive", "sustained_goal", "subagent"}:
+        raise ValueError(f"Unknown scheduler lane: {lane}")
+    next_state = dict(state)
+    next_state["preferred_lane"] = lane
+    next_state["policy"] = (
+        "goal-lane-priority" if lane == "sustained_goal" else f"{lane}-lane-priority"
+    )
+    return next_state
+
+
 def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
     raw = str(command_line or "").strip()
     if not raw:
@@ -58,7 +67,27 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
     parts = shlex.split(raw)
     command = (parts[0] if parts else "").strip().lower()
     args = parts[1:]
-    if command in {"adapter", "board", "bridge", "runtime", "fault", "goal", "lane", "maintenance", "module", "scheduler", "worker", "event", "session", "workspace", "repo", "tool"}:
+    if command in {
+        "adapter",
+        "bridge",
+        "runtime",
+        "fault",
+        "goal",
+        "lane",
+        "maintenance",
+        "module",
+        "scheduler",
+        "worker",
+        "event",
+        "session",
+        "privilege",
+        "kernel",
+        "topology",
+        "workspace",
+        "native",
+        "repo",
+        "tool",
+    }:
         subject = command
         verb = (args[0] if args else "").strip().lower()
         tail = args[1:]
@@ -66,13 +95,6 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
             ("adapter", "switch"): ("switch-adapter", tail),
             ("adapter", "status"): ("adapter-status", tail),
             ("adapter", "list"): ("adapter-list", tail),
-            ("board", "attach"): ("attach-board", tail),
-            ("board", "detach"): ("detach-board", tail),
-            ("board", "status"): ("board-status", tail),
-            ("board", "ports"): ("board-ports", tail),
-            ("board", "target"): ("board-target", tail),
-            ("board", "transport"): ("board-transport", tail),
-            ("board", "mode"): ("board-mode", tail),
             ("bridge", "status"): ("bridge-status", tail),
             ("bridge", "list"): ("bridge-list", tail),
             ("bridge", "fault"): ("bridge-fault", tail),
@@ -116,7 +138,6 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
             ("kernel", "profile"): ("kernel-profile", tail),
             ("kernel", "manifest"): ("kernel-manifest", tail),
             ("topology", "runtime"): ("runtime-topology", tail),
-            ("topology", "embedded"): ("embedded-topology", tail),
             ("workspace", "status"): ("workspace-status", tail),
             ("workspace", "scope"): ("workspace-scope", tail),
             ("workspace", "modules"): ("workspace-modules", tail),
@@ -156,15 +177,15 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
             "target_pane": "control_plane",
             "output": (
                 "commands: help, pane <name>, switch-adapter [name], focus-module <name>, "
-                "adapter-status [name], adapter-list, module-status [name], module-list, module-actions [name], board-status, board-ports, board-target, board-transport, board-mode, native-status, native-last-command, native-replay-last, native-replay <target> <action> [value], native-focus <module>, native-inspect <module>, native-modules, bridge-status [name], bridge-list, bridge-fault [name], runtime-status, runtime-gate, runtime-health, runtime-orchestration, runtime-queues, runtime-adapters, runtime-bridges, fault-status, scheduler-status, lane-status, lane-list, maintenance-status, worker-status, worker-list, "
-                "event-status, event-tail [count], session-status, session-goal, session-continuation, privilege-status, goal-reset, goal-resume, goal-complete, goal-cancel, kernel-profile, kernel-manifest, runtime-topology, embedded-topology, workspace-status, workspace-scope, workspace-modules, workspace-focus-module <name>, repo-status, repo-root, repo-tools, repo-prepare-tool <name>, tool-inspect <name>, tool-dispatch <name>, tool-queue, tool-clear-queue, tool-prioritize, tool-drain, tool-delegate-goal, tool-delegate-subagent, tool-complete, tool-fail, tool-status, "
-                "attach-board [port] [transport], detach-board, restart-bridge [adapter], "
+                "adapter-status [name], adapter-list, module-status [name], module-list, module-actions [name], native-status, native-last-command, native-replay-last, native-replay <target> <action> [value], native-focus <module>, native-inspect <module>, native-modules, bridge-status [name], bridge-list, bridge-fault [name], runtime-status, runtime-gate, runtime-health, runtime-orchestration, runtime-queues, runtime-adapters, runtime-bridges, fault-status, scheduler-status, lane-status, lane-list, maintenance-status, worker-status, worker-list, "
+                "event-status, event-tail [count], session-status, session-goal, session-continuation, privilege-status, goal-reset, goal-resume, goal-complete, goal-cancel, kernel-profile, kernel-manifest, runtime-topology, workspace-status, workspace-scope, workspace-modules, workspace-focus-module <name>, repo-status, repo-root, repo-tools, repo-prepare-tool <name>, tool-inspect <name>, tool-dispatch <name>, tool-queue, tool-clear-queue, tool-prioritize, tool-drain, tool-delegate-goal, tool-delegate-subagent, tool-complete, tool-fail, tool-status, "
+                "restart-bridge [adapter], "
                 "clear-fault [adapter], record-fault [level] [adapter], pause-runtime [reason], "
                 "resume-runtime, degrade-runtime [reason], drain-background, "
                 "prioritize-goal-lane, enter-maintenance [reason], exit-maintenance; "
                 "aliases: adapter switch|status|list <name>, module focus|show|list|actions <name>, "
-                "board attach|detach|status|ports|target|transport|mode [port] [transport], native status|last-command|replay-last|replay <target> <action> [value]|focus <module>|inspect <module>|modules, bridge status|list|fault <name>, runtime pause|resume|degrade|drain|status|gate|health|orchestration|queues|adapters|bridges, fault clear|record|show, "
-                "scheduler status, worker show|list, maintenance enter|exit|status, lane prioritize-goal|show|list, event show|tail [count], session status|goal|continuation, privilege status, goal reset|resume|complete|cancel, kernel profile|manifest, topology runtime|embedded, workspace status|scope|modules|focus-module <name>, repo status|root|tools|prepare-tool <name>, tool inspect|dispatch <name>, tool queue|clear-queue|prioritize|drain|delegate-goal|delegate-subagent|complete|fail|status"
+                "native status|last-command|replay-last|replay <target> <action> [value]|focus <module>|inspect <module>|modules, bridge status|list|fault <name>, runtime pause|resume|degrade|drain|status|gate|health|orchestration|queues|adapters|bridges, fault clear|record|show, "
+                "scheduler status, worker show|list, maintenance enter|exit|status, lane prioritize-goal|show|list, event show|tail [count], session status|goal|continuation, privilege status, goal reset|resume|complete|cancel, kernel profile|manifest, topology runtime, workspace status|scope|modules|focus-module <name>, repo status|root|tools|prepare-tool <name>, tool inspect|dispatch <name>, tool queue|clear-queue|prioritize|drain|delegate-goal|delegate-subagent|complete|fail|status"
             ),
             "runtime_control": self.runtime_control_snapshot(),
             "details": {
@@ -303,113 +324,6 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
             "count": len(actions),
             "items": ", ".join(str(action) for action in actions) or "none",
         }
-    elif command == "attach-board":
-        port = args[0] if args else None
-        transport = args[1] if len(args) > 1 else None
-        state = self.attach_board(
-            port=str(port).strip() or None if port is not None else None,
-            transport=str(transport).strip() or None if transport is not None else None,
-        )
-        target_pane = "adapters"
-        output = f"board attach -> {port or state.get('board', {}).get('port') or 'auto'}"
-        board = self._board_runtime_snapshot(dict(state.get("board", {})))
-        details = {
-            "subject": "board",
-            "action": "attach",
-            "transport": board.get("transport"),
-            "port": board.get("port"),
-            "attached": board.get("attached"),
-            "health": board.get("health"),
-            "mode": board.get("runtime_mode"),
-            "error": board.get("last_error"),
-        }
-    elif command == "detach-board":
-        state = self.detach_board()
-        target_pane = "adapters"
-        output = "board detached"
-        details = {"subject": "board", "action": "detach"}
-    elif command == "board-status":
-        board = self._board_runtime_snapshot(dict(self._runtime_control.get("board", {})))
-        target_pane = "adapters"
-        state = self.runtime_control_snapshot()
-        output = (
-            f"board attached={bool(board.get('attached'))}"
-            f" health={board.get('health') or 'unknown'}"
-            f" transport={board.get('transport') or board.get('preferred_transport') or 'unset'}"
-            f" port={board.get('port') or 'auto'}"
-            f" mode={board.get('runtime_mode') or 'unprobed'}"
-            f" error={board.get('last_error') or 'none'}"
-        )
-        details = {
-            "subject": "board",
-            "action": "status",
-            "attached": bool(board.get("attached")),
-            "health": board.get("health") or "unknown",
-            "transport": board.get("transport") or board.get("preferred_transport") or "unset",
-            "port": board.get("port") or "auto",
-            "mode": board.get("runtime_mode") or "unprobed",
-            "error": board.get("last_error") or "none",
-        }
-    elif command == "board-ports":
-        board = self._board_runtime_snapshot(dict(self._runtime_control.get("board", {})))
-        ports = list(board.get("available_ports") or [])
-        target_pane = "adapters"
-        state = self.runtime_control_snapshot()
-        output = f"board ports count={len(ports)} preferred={board.get('preferred_transport') or 'unset'}"
-        details = {
-            "subject": "board",
-            "action": "ports",
-            "count": len(ports),
-            "preferred_transport": board.get("preferred_transport") or "unset",
-            "items": ", ".join(str(port) for port in ports) or "none",
-        }
-    elif command == "board-target":
-        board = self._board_runtime_snapshot(dict(self._runtime_control.get("board", {})))
-        target_pane = "adapters"
-        state = self.runtime_control_snapshot()
-        output, details = (
-            f"board target={board.get('target') or 'unknown'}"
-            f" attached={bool(board.get('attached'))}",
-            {
-                "subject": "board",
-                "action": "target",
-                "target": board.get("target") or "unknown",
-                "attached": bool(board.get("attached")),
-                "mode": board.get("runtime_mode") or "unprobed",
-            },
-        )
-    elif command == "board-transport":
-        board = self._board_runtime_snapshot(dict(self._runtime_control.get("board", {})))
-        target_pane = "adapters"
-        state = self.runtime_control_snapshot()
-        transport = board.get("transport") or board.get("preferred_transport") or "unset"
-        output, details = (
-            f"board transport={transport}"
-            f" port={board.get('port') or 'auto'}",
-            {
-                "subject": "board",
-                "action": "transport",
-                "transport": transport,
-                "preferred_transport": board.get("preferred_transport") or "unset",
-                "port": board.get("port") or "auto",
-                "ports_known": len(list(board.get("available_ports") or [])),
-            },
-        )
-    elif command == "board-mode":
-        board = self._board_runtime_snapshot(dict(self._runtime_control.get("board", {})))
-        target_pane = "adapters"
-        state = self.runtime_control_snapshot()
-        output, details = (
-            f"board mode={board.get('runtime_mode') or 'unprobed'}"
-            f" artifact={board.get('bridge_artifact') or 'none'}",
-            {
-                "subject": "board",
-                "action": "mode",
-                "mode": board.get("runtime_mode") or "unprobed",
-                "artifact": board.get("bridge_artifact") or "none",
-                "error": board.get("last_error") or "none",
-            },
-        )
     elif command == "native-status":
         native_context = self._native_runtime_snapshot()
         native_last_command = dict(native_context.get("last_command") or {})
@@ -680,7 +594,6 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
                     "module_count": int(bridge.get("module_count") or 0),
                     "updated_at_ms": bridge.get("updated_at_ms"),
                 },
-                "board_capable": bool(bridge.get("board_capable")),
             },
         )
     elif command == "bridge-list":
@@ -1111,26 +1024,6 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
             "modules": ", ".join(str(row.get("name") or "unknown") for row in topology.get("modules", [])) or "none",
             "lanes": ", ".join(str(row.get("id") or "lane") for row in topology.get("execution_lanes", [])) or "none",
         }
-    elif command == "embedded-topology":
-        topology = self.embedded_topology_snapshot()
-        board = dict(topology.get("board", {}))
-        target_pane = "runtime"
-        state = self.runtime_control_snapshot()
-        output = (
-            f"embedded topology attached={'yes' if board.get('attached') else 'no'}"
-            f" transport={board.get('transport') or board.get('preferred_transport') or 'unset'}"
-            f" target={board.get('target') or 'host'}"
-        )
-        details = {
-            "subject": "topology",
-            "action": "embedded",
-            "attached": "yes" if board.get("attached") else "no",
-            "port": board.get("port") or "none",
-            "transport": board.get("transport") or board.get("preferred_transport") or "unset",
-            "target": board.get("target") or "host",
-            "runtime_mode": board.get("runtime_mode") or "userland",
-            "available_ports": ", ".join(board.get("available_ports") or []) or "none",
-        }
     elif command == "workspace-status":
         workspace = self._workspace_root()
         target_pane = "workspace"
@@ -1370,7 +1263,7 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
     elif command == "tool-prioritize":
         for row in self._dispatch_queue:
             row["lifecycle"] = "prioritized"
-        self._scheduler_state = prioritize_lane(
+        self._scheduler_state = _prioritize_lane(
             self._scheduler_state,
             lane="interactive",
         )
@@ -1420,7 +1313,7 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
     elif command == "tool-delegate-goal":
         for row in self._dispatch_queue:
             row["lifecycle"] = "delegated_goal"
-        self._scheduler_state = prioritize_lane(
+        self._scheduler_state = _prioritize_lane(
             self._scheduler_state,
             lane="sustained_goal",
         )
@@ -1445,7 +1338,7 @@ def execute_operator_command(self: Any, command_line: str) -> dict[str, Any]:
     elif command == "tool-delegate-subagent":
         for row in self._dispatch_queue:
             row["lifecycle"] = "delegated_subagent"
-        self._scheduler_state = prioritize_lane(
+        self._scheduler_state = _prioritize_lane(
             self._scheduler_state,
             lane="subagent",
         )

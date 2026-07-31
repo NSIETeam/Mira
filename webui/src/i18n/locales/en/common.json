@@ -43,12 +43,13 @@
   "sidebar": {
     "navigation": "Sidebar navigation",
     "collapse": "Collapse sidebar",
-    "newChat": "New execution",
+    "workbench": "Work",
+    "newChat": "New chat",
     "searchAria": "Search",
     "searchPlaceholder": "Search",
     "searchResults": "Results",
-    "noSearchResults": "No matching executions.",
-    "recent": "Recent executions",
+    "noSearchResults": "No matching chats.",
+    "recent": "Recent",
     "settings": "Settings",
     "language": {
       "label": "Language",
@@ -891,14 +892,15 @@
     "error": "Connection error"
   },
   "thread": {
-    "loadingConversation": "Loading conversation…",
+    "loadingConversation": "Loading chat…",
     "empty": {
       "greetings": {
-        "workOn": "What should we work on?",
-        "start": "Where should we start?",
-        "build": "What are we building today?",
-        "tackle": "What should we tackle together?"
+        "workOn": "What should Mira work on?",
+        "start": "Start with a message.",
+        "build": "Give Mira a task.",
+        "tackle": "What should Mira handle?"
       },
+      "inputHint": "Type below to chat, code, inspect files, or run a task.",
       "quickActions": {
         "plan": {
           "title": "Create a project plan",
@@ -954,10 +956,13 @@
     },
     "header": {
       "toggleSidebar": "Toggle sidebar",
-      "newChat": "Start a new execution",
+      "newChat": "New chat",
       "toggleTheme": "Toggle theme from header",
       "settings": "Open system settings",
-      "sessionInfo": "Execution details"
+      "sessionInfo": "Chat details"
+    },
+    "statusButton": {
+      "label": "Status"
     },
     "sessionInfo": {
       "title": "Execution",
@@ -966,7 +971,7 @@
       "count": "{{count}}",
       "loading": "Loading automations...",
       "loadFailed": "Could not load automations.",
-      "empty": "No automations in this session yet.",
+      "empty": "No automations in this execution yet.",
       "disabled": "Off",
       "schedule": {
         "at": "{{time}}",
@@ -984,13 +989,13 @@
         "none": "No next run"
       }
     },
-    "heroSubtitle": "Operate a reusable execution kernel with visible runtime posture, operator controls, and room for native or embedded hosts.",
+    "heroSubtitle": "Chat with Mira.",
     "composer": {
       "placeholderThread": "Type your message…",
-      "placeholderHero": "Describe the execution you want to run…",
+      "placeholderHero": "Message Mira, or describe a task...",
       "placeholderOpening": "Opening a new execution…",
       "placeholderStreaming": "Model is responding…",
-      "inputAria": "Execution input",
+      "inputAria": "Message input",
       "sendHint": "Enter to send · Shift+Enter for newline",
       "runRuntimeTitle": "Running · {{elapsed}}",
       "goalStateStrip": "Goal · {{label}}",
@@ -998,7 +1003,7 @@
       "goalStateExpandAria": "Show full goal",
       "goalStateSheetTitle": "Goal",
       "goalStateCloseAria": "Close goal",
-      "send": "Run execution",
+      "send": "Send message",
       "stop": "Stop response",
       "quotedContext": "Execution context",
       "removeQuotedContext": "Remove execution context",

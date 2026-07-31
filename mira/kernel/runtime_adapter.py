@@ -2,8 +2,7 @@
 
 The Python agent loop remains the default implementation today, but the kernel
 should expose a stable adapter contract so other runtimes can be attached over
-time: Rust workers, C/firmware bridges, serial targets, and board-level
-operator loops.
+time: Rust workers, C/firmware bridges, serial targets, and operator loops.
 """
 
 from __future__ import annotations
@@ -146,16 +145,14 @@ def list_runtime_adapters() -> list[dict[str, object]]:
                 "fault_stream",
                 "module_state",
                 "diagnostics",
-                "board_io",
                 "firmware_bridge",
             ),
             operator_actions=(
-                "attach_board",
                 "restart_bridge",
                 "inspect_modules",
                 "inspect_faults",
             ),
-            notes="MCU-facing control loop skeleton for serial and board-side operations.",
+            notes="External bridge control loop skeleton for serial runtime operations.",
             runtime_root="runtimes/mira-c",
             bootstrap_artifact="runtimes/mira-c/src/mira_bridge.c",
             runtime_manifest="runtimes/mira-c/runtime.json",

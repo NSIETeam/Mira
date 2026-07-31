@@ -43,12 +43,13 @@
   "sidebar": {
     "navigation": "侧边栏导航",
     "collapse": "收起侧边栏",
-    "newChat": "新建执行",
+    "workbench": "工作",
+    "newChat": "新对话",
     "searchAria": "搜索",
     "searchPlaceholder": "搜索",
     "searchResults": "搜索结果",
-    "noSearchResults": "没有匹配的执行。",
-    "recent": "最近执行",
+    "noSearchResults": "没有匹配的对话。",
+    "recent": "最近",
     "settings": "设置",
     "language": {
       "label": "语言",
@@ -891,14 +892,15 @@
     "error": "连接出错"
   },
   "thread": {
-    "loadingConversation": "正在加载执行…",
+    "loadingConversation": "正在加载对话…",
     "empty": {
       "greetings": {
-        "workOn": "我们要一起做点什么？",
-        "start": "今天从哪里开始？",
-        "build": "今天一起构建什么？",
-        "tackle": "我们要一起解决什么？"
+        "workOn": "Mira 要帮你做什么？",
+        "start": "先发一条消息。",
+        "build": "给 Mira 一个任务。",
+        "tackle": "要处理什么任务？"
       },
+      "inputHint": "在下方输入：对话、写代码、检查文件或执行任务。",
       "quickActions": {
         "plan": {
           "title": "创建项目计划",
@@ -954,19 +956,22 @@
     },
     "header": {
       "toggleSidebar": "切换侧边栏",
-      "newChat": "从顶部新建执行",
+      "newChat": "新对话",
       "toggleTheme": "从顶部切换主题",
       "settings": "打开设置",
-      "sessionInfo": "会话详情"
+      "sessionInfo": "对话详情"
+    },
+    "statusButton": {
+      "label": "状态"
     },
     "sessionInfo": {
-      "title": "会话",
+      "title": "执行",
       "untitled": "未命名执行",
       "automations": "自动任务",
       "count": "{{count}}",
       "loading": "正在加载自动任务...",
       "loadFailed": "无法加载自动任务。",
-      "empty": "这个会话暂时没有自动任务。",
+      "empty": "这个执行暂时没有自动任务。",
       "disabled": "已关闭",
       "schedule": {
         "at": "{{time}}",
@@ -984,10 +989,10 @@
         "none": "没有下次运行"
       }
     },
-    "heroSubtitle": "直接操作一个可复用执行内核，运行时姿态、操控入口和未来的原生/嵌入式宿主路径都保持可见。",
+    "heroSubtitle": "和 Mira 对话。",
     "composer": {
       "placeholderThread": "输入消息…",
-      "placeholderHero": "描述你要发起的执行…",
+      "placeholderHero": "给 Mira 发消息，或描述一个任务…",
       "placeholderOpening": "正在打开新执行…",
       "placeholderStreaming": "模型正在回复…",
       "inputAria": "消息输入框",

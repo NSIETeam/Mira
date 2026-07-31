@@ -12,7 +12,6 @@ stabilizes the boundary around it.
 """
 
 from .app import KernelApp, active_kernel_app, build_kernel_manifest, register_kernel_loop
-from .embedded_plane import build_board_snapshot, build_embedded_topology
 from .events import (
     EXECUTION_LIFECYCLE_STATES,
     EXECUTION_SNAPSHOT_STATUSES,
@@ -30,7 +29,6 @@ from .events import (
     normalize_stream_event,
     snapshot_from_run_result,
 )
-from .execution_plane import build_execution_lanes
 from .module_registry import KernelModuleDescriptor, list_kernel_modules
 from .native_bridge import (
     NativeBridgeSnapshot,
@@ -70,13 +68,6 @@ from .runtime_control import (
     set_maintenance_mode,
     set_module_focus,
 )
-from .runtime_topology import build_runtime_topology
-from .scheduler import (
-    build_scheduler_state,
-    clone_scheduler_state,
-    prioritize_lane,
-    request_background_drain,
-)
 from .shell import (
     ShellDescriptor,
     default_engineering_shell,
@@ -86,7 +77,6 @@ from .shell import (
     review_shell,
     single_execution_shell,
 )
-from .worker_plane import build_worker_registry, project_worker_registry
 
 ExecutionKernel = KernelApp
 
@@ -106,18 +96,12 @@ __all__ = [
     "build_kernel_manifest",
     "active_kernel_app",
     "register_kernel_loop",
-    "build_execution_lanes",
     "KERNEL_EVENT_LOG_LIMIT",
     "append_kernel_event",
     "build_diagnostics_snapshot",
     "NativeBridgeSnapshot",
     "dispatch_native_bridge_command",
     "snapshot_native_bridge",
-    "build_worker_registry",
-    "project_worker_registry",
-    "build_runtime_topology",
-    "build_board_snapshot",
-    "build_embedded_topology",
     "merge_snapshot_with_session_metadata",
     "KernelEvent",
     "KernelEventType",
@@ -155,8 +139,4 @@ __all__ = [
     "set_module_focus",
     "normalize_stream_event",
     "snapshot_from_run_result",
-    "build_scheduler_state",
-    "clone_scheduler_state",
-    "prioritize_lane",
-    "request_background_drain",
 ]

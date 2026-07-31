@@ -27,5 +27,6 @@ PLUGIN = ChannelPlugin(
         "qrcode[pil]>=8.0",
         "pycryptodome>=3.20.0",
     ),
+    tier="core",
     webui="webui/index.tsx",
 )

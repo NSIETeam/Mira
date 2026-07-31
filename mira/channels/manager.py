@@ -27,6 +27,7 @@ from mira.bus.queue import MessageBus
 from mira.channels._setup import channel_setup_spec
 from mira.channels.base import BaseChannel
 from mira.channels.contracts import (
+    ChannelAdapter,
     channel_default_config,
     channel_instance_specs,
     channel_runtime_name,
@@ -110,7 +111,7 @@ class ChannelManager:
         self._webui_static_dist = webui_static_dist
         self._webui_runtime_surface = webui_runtime_surface
         self._webui_runtime_capabilities = dict(webui_runtime_capabilities or {})
-        self.channels: dict[str, BaseChannel] = {}
+        self.channels: dict[str, ChannelAdapter] = {}
         self._channel_owners: dict[str, str] = {}
         self._channel_runtime_specs: dict[str, tuple[str, str]] = {}
         self._channel_errors: dict[str, str] = {}
@@ -970,6 +971,20 @@ class ChannelManager:
             if error:
                 status[runtime_name]["error"] = error
         return status
+
+    async def health_all(self) -> dict[str, dict[str, Any]]:
+        """Return health for every registered channel through ChannelAdapter."""
+        health: dict[str, dict[str, Any]] = {}
+        for name, channel in self.channels.items():
+            try:
+                health[name] = await channel.health()
+            except Exception as exc:
+                health[name] = {
+                    "name": name,
+                    "running": False,
+                    "error": str(exc),
+                }
+        return health
 
     @property
     def enabled_channels(self) -> list[str]:

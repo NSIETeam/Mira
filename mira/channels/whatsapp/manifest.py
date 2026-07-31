@@ -31,5 +31,6 @@ PLUGIN = ChannelPlugin(
         "neonize>=0.3.18.post0,<0.4.0",
         "segno>=1.6.1,<2.0.0",
     ),
+    tier="archive",
     webui="webui/index.ts",
 )

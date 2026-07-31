@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
-      content="Mira WebUI — operate your Mira execution workspace."
+      content="Mira workbench UI — operate your execution workspace."
       data-i18n-meta="description"
     />
     <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
@@ -28,7 +28,9 @@
         font-family:
           system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           "Helvetica Neue", Arial, "Noto Sans", "Noto Sans SC",
-          "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+          "Noto Sans CJK SC", "Noto Sans TC", "Noto Sans CJK TC",
+          "PingFang SC", "PingFang TC", "Hiragino Sans GB",
+          "Heiti SC", "Heiti TC", "Microsoft YaHei", "Microsoft JhengHei",
           sans-serif;
       }
 
@@ -97,53 +99,53 @@
       <div class="boot-splash">
         <div class="boot-splash-inner">
           <span class="boot-dot" aria-hidden="true"></span>
-          <span data-boot-copy>Loading Mira…</span>
+          <span data-boot-copy>Loading mira…</span>
         </div>
       </div>
     </div>
     <script>
       (function () {
-          var localeKey = "mira.locale";
+        var localeKey = "mira.locale";
         var copy = {
           en: {
             boot: "Loading Mira…",
-            description: "Mira WebUI — operate your Mira execution workspace."
+            description: "Mira workbench UI — operate your execution workspace."
           },
           "zh-CN": {
             boot: "正在加载 Mira…",
-            description: "Mira WebUI —— 操作你的 Mira 执行工作区。"
+            description: "Mira 工作台 UI —— 操作你的执行工作区。"
           },
           "zh-TW": {
-            boot: "正在載入 Mira…",
-            description: "Mira WebUI —— 操作你的 Mira 執行工作區。"
+            boot: "正在載入 mira…",
+            description: "mira 工作台 UI —— 操作你的 mira 執行工作區。"
           },
           fr: {
-            boot: "Chargement de Mira…",
-            description: "Mira WebUI — pilotez votre espace d'execution Mira."
+            boot: "Chargement de mira…",
+            description: "Interface web mira — discutez avec votre espace de travail mira."
           },
           ja: {
-            boot: "Mira を読み込み中…",
-            description: "Mira WebUI — Mira 実行ワークスペースを操作します。"
+            boot: "mira を読み込み中…",
+            description: "mira Web UI — mira ワークスペースと会話します。"
           },
           ko: {
-            boot: "Mira 불러오는 중…",
-            description: "Mira WebUI — Mira 실행 워크스페이스를 조작하세요."
+            boot: "mira 불러오는 중…",
+            description: "mira 웹 UI — mira 작업공간과 대화하세요."
           },
           es: {
-            boot: "Cargando Mira…",
-            description: "Mira WebUI: opera tu espacio de ejecucion de Mira."
+            boot: "Cargando mira…",
+            description: "Interfaz web de mira: conversa con tu espacio de trabajo de mira."
           },
           "pt-BR": {
-            boot: "Carregando Mira…",
-            description: "Mira WebUI — opere seu workspace de execucao Mira."
+            boot: "Carregando mira…",
+            description: "Interface web do mira — converse com o seu workspace do mira."
           },
           vi: {
-            boot: "Đang tải Mira…",
-            description: "Mira WebUI — van hanh workspace thuc thi Mira cua ban."
+            boot: "Đang tải mira…",
+            description: "Giao diện web mira — trò chuyện với workspace mira của bạn."
           },
           id: {
-            boot: "Memuat Mira…",
-            description: "Mira WebUI — operasikan workspace eksekusi Mira Anda."
+            boot: "Memuat mira…",
+            description: "UI web mira — ngobrol dengan workspace mira Anda."
           }
         };
 

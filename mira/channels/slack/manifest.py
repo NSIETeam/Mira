@@ -26,5 +26,6 @@ PLUGIN = ChannelPlugin(
         "slack-sdk>=3.39.0,<4.0.0",
         "slackify-markdown>=0.2.0,<1.0.0",
     ),
+    tier="archive",
     webui="webui/index.ts",
 )

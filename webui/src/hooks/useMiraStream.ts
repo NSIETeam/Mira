@@ -946,13 +946,14 @@ export function useMiraStream(
       }
 
       if (kernelToolCallActionMatches(event, "trace")) {
+        if (suppressStreamUntilTurnEndRef.current) return;
         flushPendingStreamEvents({ closeAnswerSegment: true });
         const rawToolEvents = payload.toolEvents as ToolProgressEvent[] | undefined;
         const structuredEvents = normalizeToolProgressEvents(rawToolEvents);
         const text = payload.text ?? "";
         setMessages((prev) => {
           const segmentId = ensureActivitySegmentId();
-          const base = prev;
+          const base = closeReasoningStream(prev);
           const visibleStructuredEvents = filterCoveredFileEditToolEvents(base, structuredEvents);
           const structuredLines = toolTraceLinesFromEvents(visibleStructuredEvents);
           const lines = structuredLines.length > 0
@@ -1011,6 +1012,7 @@ export function useMiraStream(
       }
 
       if (kernelToolResultActionMatches(event, "file_edit")) {
+        if (suppressStreamUntilTurnEndRef.current) return;
         flushPendingStreamEvents({ closeAnswerSegment: true });
         const edits = (payload.edits ?? []) as UIFileEdit[];
         if (edits.length === 0) return;
@@ -1090,6 +1092,7 @@ export function useMiraStream(
 
       if (kernelMessageActionMatches(event, "complete")) {
         if (suppressStreamUntilTurnEndRef.current) return;
+        flushPendingStreamEvents();
         const mediaUrls = payload.mediaUrls;
         const mediaList = payload.media;
         const media = mediaUrls?.length
@@ -1121,6 +1124,7 @@ export function useMiraStream(
           buffer.current = null;
           activeAssistantRef.current = null;
           const filtered = activeId ? prev.filter((m) => m.id !== activeId) : prev;
+          const base = closeReasoningStream(filtered);
           const completion = assistantCompletionFromKernelMetadata(snapshot, {
             content: event.text ?? "",
             ...(hasMedia ? { media } : {}),
@@ -1132,7 +1136,7 @@ export function useMiraStream(
             source?: UIMessageSource;
           };
           return absorbCompleteAssistantMessage(
-            filtered,
+            base,
             {
               ...completion,
               ...turnFieldsFromEvent({
@@ -1151,6 +1155,7 @@ export function useMiraStream(
 
       if (kernelReasoningActionMatches(event, "complete")) {
         if (suppressStreamUntilTurnEndRef.current) return;
+        flushPendingStreamEvents();
         setMessages((prev) => closeReasoningStream(prev));
         return;
       }
@@ -1175,12 +1180,13 @@ export function useMiraStream(
       }
 
       if (kernelStatusMatchesLifecycle(event, "turn_end")) {
+        flushPendingStreamEvents({ closeAnswerSegment: true });
         setRunStartedAt(null);
         cancelStreamEndTimer();
         setIsStreaming(false);
         const completedAt = Date.now();
         setMessages((prev) => {
-          let finalized = prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m));
+          let finalized = finalizeStreamedTurn(prev, turn);
           finalized = pruneReasoningOnlyPlaceholders(finalized);
           finalized = stampLastAssistantCompletion(
             finalized,

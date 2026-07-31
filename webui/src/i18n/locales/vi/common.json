@@ -43,6 +43,7 @@
   "sidebar": {
     "navigation": "Điều hướng thanh bên",
     "collapse": "Thu gọn thanh bên",
+    "workbench": "Công việc",
     "newChat": "Chủ đề mới",
     "searchAria": "Tìm kiếm",
     "searchPlaceholder": "Tìm kiếm",
@@ -885,6 +886,7 @@
         "build": "Hôm nay mình xây dựng gì?",
         "tackle": "Mình cùng xử lý việc gì?"
       },
+      "inputHint": "Nhập bên dưới để trò chuyện, viết mã, kiểm tra tệp hoặc chạy tác vụ.",
       "quickActions": {
         "plan": {
           "title": "Tạo kế hoạch dự án",
@@ -945,6 +947,9 @@
       "settings": "Mở cài đặt",
       "sessionInfo": "Chi tiết phiên"
     },
+    "statusButton": {
+      "label": "Trạng thái"
+    },
     "sessionInfo": {
       "title": "Phiên",
       "untitled": "Chủ đề chưa đặt tên",
@@ -970,6 +975,7 @@
         "none": "Không có lần chạy tiếp theo"
       }
     },
+    "heroSubtitle": "Van hanh kernel thuc thi co the tai su dung voi trang thai runtime, dieu khien va duong host native hoac embedded hien ro.",
     "composer": {
       "placeholderThread": "Nhập tin nhắn…",
       "placeholderHero": "Bạn đang nghĩ gì?",

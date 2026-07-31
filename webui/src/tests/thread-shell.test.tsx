@@ -16,7 +16,7 @@ import type {
 } from "@/lib/types";
 
 const HERO_GREETING_PATTERN =
-  /What should we work on\?|Where should we start\?|What are we building today\?|What should we tackle together\?/;
+  /What should Mira work on\?|Start with a message\.|Give Mira a task\.|What should Mira handle\?/;
 
 function makeClient() {
   const errorHandlers = new Set<(err: { kind: string }) => void>();
@@ -833,7 +833,7 @@ describe("ThreadShell", () => {
     await waitFor(() => {
       expect(screen.queryByText("delete me cleanly")).not.toBeInTheDocument();
     });
-    expect(screen.getByPlaceholderText("Ask anything...")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Message Mira, or describe a task...")).toBeInTheDocument();
   });
 
   it("creates a chat only when the blank landing sends a first message", async () => {
@@ -862,6 +862,29 @@ describe("ThreadShell", () => {
 
     await waitFor(() => expect(onCreateChat).toHaveBeenCalledTimes(1));
     expect(onNewChat).not.toHaveBeenCalled();
+  });
+
+  it("renders the blank landing composer as an obvious chat input", () => {
+    const client = makeClient();
+
+    render(
+      wrap(
+        client,
+        <ThreadShell
+          session={null}
+          title="mira"
+          onToggleSidebar={() => {}}
+          onCreateChat={vi.fn()}
+        />,
+      ),
+    );
+
+    const composerSurface = screen.getByTestId("thread-composer-surface");
+    expect(composerSurface).toHaveClass("border");
+    expect(composerSurface).toHaveClass("bg-white");
+    expect(composerSurface.className).toContain("shadow-");
+    expect(screen.getByLabelText("Message input")).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
   });
 
   it("applies the selected landing preset before sending the first prompt", async () => {
@@ -1141,8 +1164,11 @@ describe("ThreadShell", () => {
 
     const greeting = screen.getByRole("heading", { level: 1, name: HERO_GREETING_PATTERN });
     expect(greeting).toHaveAttribute("data-testid", "hero-greeting");
-    expect(greeting).toHaveClass("whitespace-nowrap");
-    expect(screen.getByPlaceholderText("Ask anything...")).toBeInTheDocument();
+    expect(greeting).toHaveClass("break-words");
+    expect(greeting).not.toHaveClass("truncate");
+    expect(screen.getByText("Type below to chat, code, inspect files, or run a task.")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Message Mira, or describe a task...")).toBeInTheDocument();
+    expect(screen.getByTestId("thread-composer-surface")).toHaveClass("max-w-[54rem]");
     expect(screen.queryByRole("button", { name: "Write code" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create a project plan" })).not.toBeInTheDocument();
   });
@@ -1202,10 +1228,10 @@ describe("ThreadShell", () => {
 
     expect(screen.queryByText("old answer")).not.toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.getByPlaceholderText("Ask anything...")).toBeInTheDocument(),
+      expect(screen.getByPlaceholderText("Message Mira, or describe a task...")).toBeInTheDocument(),
     );
-    const input = screen.getByPlaceholderText("Ask anything...");
-    expect(input.className).toContain("min-h-[78px]");
+    const input = screen.getByPlaceholderText("Message Mira, or describe a task...");
+    expect(input.className).toContain("min-h-[118px]");
     expect(screen.queryByText("old answer")).not.toBeInTheDocument();
   });
 
@@ -1790,9 +1816,8 @@ describe("ThreadShell", () => {
     }
   });
 
-  it("scrolls to the bottom after loading a session from the blank new-chat page", async () => {
+  it("replaces the blank chat landing with the conversation viewport after loading a session", async () => {
     const client = makeClient();
-    const scrollTo = vi.fn();
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -1826,14 +1851,8 @@ describe("ThreadShell", () => {
     );
 
     expect(screen.getByText(HERO_GREETING_PATTERN)).toBeInTheDocument();
-    const scroller = container.querySelector(".thread-viewport-scrollbar") as HTMLElement;
-    Object.defineProperties(scroller, {
-      scrollHeight: { configurable: true, value: 2400 },
-      clientHeight: { configurable: true, value: 600 },
-      scrollTop: { configurable: true, writable: true, value: 0 },
-      scrollTo: { configurable: true, value: scrollTo },
-    });
-    scrollTo.mockClear();
+    expect(container.querySelector(".thread-viewport-scrollbar")).toBeInTheDocument();
+    expect(screen.getByTestId("thread-welcome-layout")).toHaveAttribute("data-layout", "hero");
 
     await act(async () => {
       rerender(
@@ -1850,7 +1869,8 @@ describe("ThreadShell", () => {
     });
 
     await waitFor(() => expect(screen.getByText("loaded answer")).toBeInTheDocument());
-    await waitFor(() => expect(scroller.scrollTop).toBe(1800));
+    expect(container.querySelector(".thread-viewport-scrollbar")).toBeInTheDocument();
+    expect(screen.queryByTestId("thread-welcome-layout")).not.toBeInTheDocument();
   });
 
   it("opens slash commands on the blank welcome page", async () => {
@@ -2081,7 +2101,7 @@ describe("ThreadShell", () => {
     });
 
     expect(screen.queryByText("from chat a")).not.toBeInTheDocument();
-    expect(screen.getByText("Loading conversation…")).toBeInTheDocument();
+    expect(screen.getByText("Loading chat…")).toBeInTheDocument();
 
     await act(async () => {
       resolveChatB?.(

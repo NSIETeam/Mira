@@ -4,19 +4,24 @@ import asyncio
 
 import pytest
 
-from mira.agent.loop import AgentLoop
+from mira.agent.loop import AgentLoop, AgentLoopConfig
 from mira.agent.maturity import (
     ToolMiddlewareStack,
+    VirtualContextManager,
     apply_agent_role_to_task,
     list_agent_role_profiles,
     normalize_media_contract,
     parse_workflow_dsl,
-    VirtualContextManager,
 )
+from mira.agent.subsystems import create_agent_loop_subsystems
 from mira.agent.tools.base import ToolResult
+from mira.bus.events import InboundMessage, OutboundMessage
 from mira.bus.queue import MessageBus
 from mira.config.schema import ModuleConfig, ModulesConfig
+from mira.execution_gate import ExecutionGate
+from mira.kernel.acl import CapabilityAuditEvent
 from mira.providers.base import ToolCallRequest
+from mira.session.manager import SessionManager
 from tests.agent.conftest import make_provider
 
 
@@ -100,6 +105,158 @@ def test_optional_maturity_tools_are_disabled_by_default(tmp_path):
     assert "workflow_dsl" not in loop.tools.tool_names
 
 
+def test_agent_loop_accepts_parameter_object(tmp_path):
+    bus = MessageBus()
+    provider = make_provider(spec=False)
+
+    loop = AgentLoop.from_loop_config(
+        AgentLoopConfig(
+            bus=bus,
+            provider=provider,
+            workspace=tmp_path,
+            model="test-model",
+            restrict_to_workspace=True,
+        )
+    )
+
+    assert loop.bus is bus
+    assert loop.provider is provider
+    assert loop.model == "test-model"
+    assert loop.loop_config.restrict_to_workspace is True
+
+
+def test_agent_loop_subsystem_factory_uses_supplied_session_manager(tmp_path):
+    sessions = SessionManager(tmp_path)
+
+    subsystems = create_agent_loop_subsystems(
+        workspace=tmp_path,
+        bus=MessageBus(),
+        tools_config=None,
+        max_tool_result_chars=4096,
+        restrict_to_workspace=True,
+        disabled_skills=None,
+        max_iterations=4,
+        max_concurrent_subagents=1,
+        fail_on_tool_error=None,
+        execution_gate=ExecutionGate(),
+        session_manager=sessions,
+        timezone=None,
+        consolidation_ratio=0.5,
+        unified_session=False,
+        session_ttl_minutes=0,
+    )
+
+    assert subsystems.sessions is sessions
+    assert subsystems.consolidator.sessions is sessions
+    assert subsystems.auto_compact.sessions is sessions
+    assert subsystems.tools.tool_names == []
+    assert subsystems.process_table.list() == []
+
+
+def test_agent_loop_builds_capability_policy_from_metadata(tmp_path):
+    loop = AgentLoop(
+        bus=MessageBus(),
+        provider=make_provider(spec=False),
+        workspace=tmp_path,
+    )
+
+    policy = loop._capability_policy_for_metadata(
+        {
+            "agent_capabilities": {
+                "/fs/read": {"allow": ["/repo/*"], "deny": ["/repo/private/*"]},
+                "/shell/exec": {"deny": ["*"]},
+            }
+        },
+        sender_id="king",
+    )
+
+    assert policy is not None
+    assert set(policy.rules) == {"/fs/read", "/shell/exec"}
+
+
+def test_agent_loop_persists_capability_audit_event_to_session(tmp_path):
+    loop = AgentLoop(
+        bus=MessageBus(),
+        provider=make_provider(spec=False),
+        workspace=tmp_path,
+    )
+    session = loop.sessions.get_or_create("cli:audit")
+
+    loop._record_capability_audit_event(
+        session,
+        CapabilityAuditEvent(
+            agent="king",
+            capability="/fs/write",
+            target="/repo/app.py",
+            decision="deny",
+            reason="target is outside allow list",
+        ),
+    )
+
+    audit_log = loop.sessions.get_or_create("cli:audit").metadata["capability_audit_log"]
+    assert audit_log[-1]["agent"] == "king"
+    assert audit_log[-1]["capability"] == "/fs/write"
+    assert audit_log[-1]["target"] == "/repo/app.py"
+    assert audit_log[-1]["decision"] == "deny"
+    assert audit_log[-1]["reason"] == "target is outside allow list"
+    assert audit_log[-1]["timestamp"]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_records_completed_agent_process(tmp_path, monkeypatch):
+    loop = AgentLoop(
+        bus=MessageBus(),
+        provider=make_provider(spec=False),
+        workspace=tmp_path,
+    )
+
+    async def fake_process_message(*args, **kwargs):
+        session = loop.sessions.get_or_create("cli:process")
+        session.add_message("user", "run task")
+        session.add_message("assistant", "done")
+        loop.sessions.save(session)
+        return OutboundMessage(channel="cli", chat_id="process", content="done")
+
+    monkeypatch.setattr(loop, "_process_message", fake_process_message)
+
+    await loop._dispatch(InboundMessage(channel="cli", chat_id="process", sender_id="king", content="run task"))
+
+    session = loop.sessions.get_or_create("cli:process")
+    snapshot = session.metadata["agent_process"]
+    assert snapshot["status"] == "terminated"
+    assert snapshot["stopped_reason"] == "completed"
+    assert snapshot["user"] == "king"
+    assert snapshot["context"]["history_window"][-1]["content"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_records_cancelled_agent_process_for_context_swap(tmp_path, monkeypatch):
+    loop = AgentLoop(
+        bus=MessageBus(),
+        provider=make_provider(spec=False),
+        workspace=tmp_path,
+    )
+
+    async def fake_process_message(*args, **kwargs):
+        session = loop.sessions.get_or_create("cli:cancel")
+        session.add_message("user", "long task")
+        loop.sessions.save(session)
+        raise asyncio.CancelledError()
+
+    monkeypatch.setattr(loop, "_process_message", fake_process_message)
+
+    with pytest.raises(asyncio.CancelledError):
+        await loop._dispatch(
+            InboundMessage(channel="cli", chat_id="cancel", sender_id="king", content="long task")
+        )
+
+    session = loop.sessions.get_or_create("cli:cancel")
+    snapshot = session.metadata["agent_process"]
+    assert snapshot["status"] == "stopped"
+    assert snapshot["stopped_reason"] == "cancelled"
+    assert snapshot["context"]["history_window"][-1]["content"] == "long task"
+
+
 def test_optional_workflow_dsl_tool_mounts_when_enabled(tmp_path):
     loop = AgentLoop(
         bus=MessageBus(),
@@ -109,6 +266,17 @@ def test_optional_workflow_dsl_tool_mounts_when_enabled(tmp_path):
     )
 
     assert "workflow_dsl" in loop.tools.tool_names
+
+
+def test_optional_computer_use_tool_mounts_when_enabled(tmp_path):
+    loop = AgentLoop(
+        bus=MessageBus(),
+        provider=make_provider(spec=False),
+        workspace=tmp_path,
+        modules_config=ModulesConfig(registry={"computer_use": ModuleConfig(enabled=True)}),
+    )
+
+    assert "computer_use" in loop.tools.tool_names
 
 
 def test_virtual_context_pages_real_agent_loop_history(tmp_path):

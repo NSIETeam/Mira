@@ -142,13 +142,13 @@ def mira_studio_profile() -> KernelProfile:
     )
 
 
-def mira_embedded_lab_profile() -> KernelProfile:
-    """Experimental profile for embedded-control and firmware-adjacent runtimes."""
+def mira_external_runtime_profile() -> KernelProfile:
+    """Experimental profile for external runtime and bridge-adjacent runtimes."""
     return KernelProfile(
-        name="mira-embedded-lab",
+        name="mira-external-runtime",
         description=(
-            "Experimental Mira profile for constrained runtimes, diagnostics, automation "
-            "pipelines, and operator-supervised embedded control loops."
+            "Experimental Mira profile for external runtimes, diagnostics, automation "
+            "pipelines, and operator-supervised bridge control loops."
         ),
         channels=("webui", "cli", "websocket"),
         tools=(
@@ -166,10 +166,10 @@ def mira_embedded_lab_profile() -> KernelProfile:
             "diagnostics",
             "subagents",
             "workspace_controls",
-            "embedded_ops",
-            "firmware_lab",
+            "external_runtime_ops",
+            "bridge_lab",
         ),
-        runtime_targets=("embedded-lab", "operator-console", "firmware-control"),
+        runtime_targets=("external-runtime", "operator-console", "bridge-control"),
         implementation_languages=("rust", "c", "python"),
         gui_enabled=True,
         api_enabled=True,
@@ -185,7 +185,7 @@ _PROFILE_FACTORIES: dict[str, KernelProfileFactory] = {
     "desktop-customer": desktop_customer_profile,
     "automation-customer": automation_customer_profile,
     "mira-studio": mira_studio_profile,
-    "mira-embedded-lab": mira_embedded_lab_profile,
+    "mira-external-runtime": mira_external_runtime_profile,
 }
 
 

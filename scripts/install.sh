@@ -113,7 +113,7 @@ has_browser_session() {
   if [ -n "${SSH_CONNECTION:-}${SSH_TTY:-}" ]; then
     return 1
   fi
-  if ! : 2>/dev/null < /dev/tty; then
+  if [ ! -r /dev/tty ]; then
     return 1
   fi
 
@@ -311,7 +311,7 @@ fi
 if [ -t 0 ]; then
   info "Starting setup wizard..."
   run_mira onboard --wizard
-elif : 2>/dev/null < /dev/tty; then
+elif [ -r /dev/tty ]; then
   info "Starting setup wizard..."
   run_mira onboard --wizard < /dev/tty
 else

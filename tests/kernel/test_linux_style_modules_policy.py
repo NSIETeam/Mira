@@ -40,6 +40,34 @@ def test_lightweight_modules_disable_heavy_defaults():
     assert subagents["status"] == "disabled"
 
 
+def test_default_disabled_modules_report_disabled_until_configured():
+    config = Config()
+    summary = module_summary(get_profile(config.kernel.profile_name), config.modules)
+    rows = {row["name"]: row for row in summary["modules"]}
+
+    assert rows["workflow_dsl"]["enabled_by_default"] is False
+    assert rows["workflow_dsl"]["status"] == "disabled"
+    assert rows["computer_use"]["enabled_by_default"] is False
+    assert rows["computer_use"]["status"] == "disabled"
+
+    enabled_config = Config.model_validate({
+        "modules": {
+            "registry": {
+                "workflow_dsl": {"enabled": True},
+                "computer_use": {"enabled": True},
+            }
+        }
+    })
+    enabled_summary = module_summary(
+        get_profile(enabled_config.kernel.profile_name),
+        enabled_config.modules,
+    )
+    enabled_rows = {row["name"]: row for row in enabled_summary["modules"]}
+
+    assert enabled_rows["workflow_dsl"]["status"] == "enabled"
+    assert enabled_rows["computer_use"]["status"] == "enabled"
+
+
 def test_temporary_user_policy_denies_dangerous_tools_by_default():
     policy = effective_principal_policy(user_id="alice", group_id="growth")
 

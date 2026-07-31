@@ -42,8 +42,21 @@ class KernelModuleDescriptor:
         }
 
 
-def _status(name: str, profile: KernelProfile, configured: object | None = None) -> str:
-    enabled = name in set(profile.features) or name in set(profile.tools) or name in set(profile.channels)
+def _status(
+    name: str,
+    profile: KernelProfile,
+    configured: object | None = None,
+    *,
+    enabled_by_default: bool = True,
+) -> str:
+    enabled = (
+        enabled_by_default
+        and (
+            name in set(profile.features)
+            or name in set(profile.tools)
+            or name in set(profile.channels)
+        )
+    )
     registry = getattr(configured, "registry", {}) if configured is not None else {}
     module_cfg = registry.get(name) if isinstance(registry, dict) else None
     if module_cfg is not None:
@@ -155,7 +168,7 @@ def list_kernel_modules(
             name="workflow_dsl",
             display_name="Workflow DSL",
             category="workflow",
-            status=_status("workflow_dsl", profile, configured),
+            status=_status("workflow_dsl", profile, configured, enabled_by_default=False),
             kind="runtime",
             lazy=True,
             enabled_by_default=False,
@@ -167,7 +180,7 @@ def list_kernel_modules(
             name="computer_use",
             display_name="Computer Use",
             category="tool",
-            status=_status("computer_use", profile, configured),
+            status=_status("computer_use", profile, configured, enabled_by_default=False),
             kind="tool",
             lazy=True,
             enabled_by_default=False,
@@ -187,26 +200,26 @@ def list_kernel_modules(
             summary="Project scope, access posture, and workspace attachment controls.",
         ),
         KernelModuleDescriptor(
-            name="embedded_ops",
-            display_name="Embedded Ops",
-            category="embedded",
-            status=_status("embedded_ops", profile, configured),
+            name="external_runtime_ops",
+            display_name="External Runtime Ops",
+            category="runtime",
+            status=_status("external_runtime_ops", profile, configured),
             kind="runtime",
             dependencies=("diagnostics",),
             memory_cost_mb=12,
-            operator_actions=("attach_board", "inspect_modules"),
-            summary="Operator-facing embedded control loops for constrained runtimes.",
+            operator_actions=("inspect_modules", "inspect_faults"),
+            summary="Operator-facing runtime bridge inspection for external runtimes.",
         ),
         KernelModuleDescriptor(
-            name="firmware_lab",
-            display_name="Firmware Lab",
-            category="embedded",
-            status=_status("firmware_lab", profile, configured),
+            name="bridge_lab",
+            display_name="Bridge Lab",
+            category="runtime",
+            status=_status("bridge_lab", profile, configured),
             kind="runtime",
-            dependencies=("embedded_ops",),
+            dependencies=("external_runtime_ops",),
             memory_cost_mb=24,
-            operator_actions=("attach_board", "inspect_faults"),
-            summary="Firmware experiment surface for boards, bridges, and validation loops.",
+            operator_actions=("restart_bridge", "inspect_faults"),
+            summary="Runtime bridge validation surface for adapters and fault loops.",
         ),
     ]
     for name in sorted(set(profile.channels)):

@@ -25,12 +25,6 @@ export function useKernelControlState({
   const [selectedModuleName, setSelectedModuleName] = useState<string | null>(
     runtimeControl?.module_focus ?? runtimeModules[0]?.name ?? null,
   );
-  const [selectedBoardTransport, setSelectedBoardTransport] = useState<string | null>(
-    runtimeControl?.board.transport ?? runtimeControl?.board.preferred_transport ?? null,
-  );
-  const [selectedBoardPort, setSelectedBoardPort] = useState<string | null>(
-    runtimeControl?.board.port ?? null,
-  );
 
   useEffect(() => {
     setSelectedPane(operatorConsole?.panes[0] ?? "control_plane");
@@ -39,10 +33,6 @@ export function useKernelControlState({
   useEffect(() => {
     setSelectedAdapterName(runtimeControl?.active_adapter ?? runtimeAdapters[0]?.name ?? null);
     setSelectedModuleName(runtimeControl?.module_focus ?? runtimeModules[0]?.name ?? null);
-    setSelectedBoardTransport(
-      runtimeControl?.board.transport ?? runtimeControl?.board.preferred_transport ?? null,
-    );
-    setSelectedBoardPort(runtimeControl?.board.port ?? null);
   }, [runtimeAdapters, runtimeControl, runtimeModules]);
 
   const runControlAction = async (
@@ -64,19 +54,6 @@ export function useKernelControlState({
     const nextAdapter = runtimeAdapters[nextIndex]?.name ?? runtimeAdapters[0]?.name ?? null;
     if (!nextAdapter) return;
     await runControlAction("switch_adapter", { adapter: nextAdapter });
-  };
-
-  const attachBoard = async ({
-    transport,
-    port,
-  }: {
-    transport?: string | null;
-    port?: string | null;
-  } = {}) => {
-    await runControlAction("attach_board", {
-      transport: transport ?? selectedBoardTransport ?? undefined,
-      port: port ?? selectedBoardPort ?? undefined,
-    }, "adapters");
   };
 
   const focusModule = async (moduleName: string | null) => {
@@ -142,12 +119,7 @@ export function useKernelControlState({
       setSelectedAdapterName,
       selectedModuleName,
       setSelectedModuleName,
-      selectedBoardTransport,
-      setSelectedBoardTransport,
-      selectedBoardPort,
-      setSelectedBoardPort,
       cycleAdapter,
-      attachBoard,
       focusModule,
       clearFault,
       recordFault,
@@ -164,8 +136,6 @@ export function useKernelControlState({
       selectedPane,
       selectedAdapterName,
       selectedModuleName,
-      selectedBoardTransport,
-      selectedBoardPort,
       token,
       onKernelUpdate,
     ],

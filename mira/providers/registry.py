@@ -13,8 +13,11 @@ Every entry writes out all fields so you can copy-paste as a template.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from functools import cache
+from importlib.metadata import entry_points
+from typing import Any, Literal
 
+from loguru import logger
 from pydantic.alias_generators import to_snake
 
 
@@ -50,6 +53,10 @@ class ProviderSpec:
     # "openai_compat" | "anthropic" | "azure_openai" | "openai_codex" | "xai_grok"
     # | "github_copilot" | "bedrock"
     backend: str = "openai_compat"
+    provider_factory: str = ""  # Optional "module:function" factory for split provider packages.
+    implementation_status: Literal["core", "openai_compat_migration", "split_package"] = "core"
+    migration_target: str = ""
+    split_package: str = ""
 
     # extra env vars / request headers supplied by the provider integration.
     env_extras: tuple[tuple[str, str], ...] = ()
@@ -150,6 +157,8 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         env_key="",
         display_name="Azure OpenAI",
         backend="azure_openai",
+        implementation_status="openai_compat_migration",
+        migration_target="openai_compat",
         is_direct=True,
     ),
     # === AWS Bedrock (native Converse API via bedrock-runtime) =============
@@ -173,6 +182,8 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         env_key="AWS_BEARER_TOKEN_BEDROCK",
         display_name="AWS Bedrock",
         backend="bedrock",
+        implementation_status="split_package",
+        split_package="mira-provider-bedrock",
         is_direct=True,
     ),
     # === Gateways (detected by api_key / api_base, not model name) =========
@@ -417,6 +428,8 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
             ),
         ),
         backend="openai_codex",
+        implementation_status="openai_compat_migration",
+        migration_target="openai_compat",
         detect_by_base_keyword="codex",
         default_api_base="https://chatgpt.com/backend-api",
         is_oauth=True,
@@ -437,6 +450,8 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
             ),
         ),
         backend="xai_grok",
+        implementation_status="openai_compat_migration",
+        migration_target="openai_compat",
         default_api_base="https://cli-chat-proxy.grok.com/v1",
         is_oauth=True,
     ),
@@ -447,6 +462,8 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         env_key="",
         display_name="Github Copilot",
         backend="github_copilot",
+        implementation_status="split_package",
+        split_package="mira-provider-copilot",
         default_api_base="https://api.githubcopilot.com",
         strip_model_prefix=True,
         is_oauth=True,
@@ -716,6 +733,59 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
 
 
 # ---------------------------------------------------------------------------
+# Implementation split audit
+# ---------------------------------------------------------------------------
+
+CORE_PROVIDER_BACKENDS: tuple[str, ...] = ("openai_compat", "anthropic")
+
+
+def provider_implementation_violations(
+    specs: tuple[ProviderSpec, ...] | None = None,
+) -> list[str]:
+    """Return registry rows that block the provider split roadmap."""
+    rows = specs if specs is not None else provider_specs()
+    violations: list[str] = []
+    for spec in rows:
+        if spec.implementation_status == "core":
+            if spec.backend not in CORE_PROVIDER_BACKENDS and not spec.provider_factory:
+                violations.append(
+                    f"{spec.name}: backend {spec.backend!r} is not allowed in core"
+                )
+            continue
+        if spec.implementation_status == "openai_compat_migration":
+            if spec.migration_target != "openai_compat":
+                violations.append(f"{spec.name}: missing openai_compat migration target")
+            continue
+        if spec.implementation_status == "split_package" and not spec.split_package:
+            violations.append(f"{spec.name}: missing split package name")
+    return violations
+
+
+def provider_implementation_summary(
+    specs: tuple[ProviderSpec, ...] | None = None,
+) -> dict[str, object]:
+    """Summarise core vs migration provider implementation boundaries."""
+    rows = specs if specs is not None else provider_specs()
+    return {
+        "core_backends": list(CORE_PROVIDER_BACKENDS),
+        "core_provider_specs": [
+            spec.name for spec in rows if spec.implementation_status == "core"
+        ],
+        "openai_compat_migrations": [
+            spec.name
+            for spec in rows
+            if spec.implementation_status == "openai_compat_migration"
+        ],
+        "split_packages": [
+            {"name": spec.name, "package": spec.split_package}
+            for spec in rows
+            if spec.implementation_status == "split_package"
+        ],
+        "violations": provider_implementation_violations(rows),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Lookup helpers
 # ---------------------------------------------------------------------------
 
@@ -723,10 +793,56 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
 def find_by_name(name: str) -> ProviderSpec | None:
     """Find a provider spec by config field name, e.g. "dashscope"."""
     normalized = to_snake(name.replace("-", "_"))
-    for spec in PROVIDERS:
+    for spec in provider_specs():
         if spec.name == normalized:
             return spec
     return None
+
+
+@cache
+def provider_specs() -> tuple[ProviderSpec, ...]:
+    """Return built-in providers plus installed provider plugin specs."""
+    external = _discover_external_provider_specs()
+    if not external:
+        return PROVIDERS
+    builtins = {spec.name for spec in PROVIDERS}
+    merged = list(PROVIDERS)
+    for spec in external:
+        if spec.name in builtins:
+            logger.warning("External provider plugin '{}' skipped: name already exists", spec.name)
+            continue
+        merged.append(spec)
+        builtins.add(spec.name)
+    return tuple(merged)
+
+
+def _discover_external_provider_specs() -> tuple[ProviderSpec, ...]:
+    specs: list[ProviderSpec] = []
+    for group, prefix in (("mira.providers", ""), ("mira.plugins", "provider-")):
+        try:
+            eps = entry_points(group=group)
+        except Exception as exc:
+            logger.debug("Failed to inspect {} entry points: {}", group, exc)
+            continue
+        for ep in eps:
+            if prefix and not ep.name.startswith(prefix):
+                continue
+            try:
+                loaded = ep.load()
+                value = loaded() if callable(loaded) and not isinstance(loaded, ProviderSpec) else loaded
+                if isinstance(value, ProviderSpec):
+                    candidates = (value,)
+                elif isinstance(value, (list, tuple)):
+                    candidates = tuple(value)
+                else:
+                    raise TypeError("entry point did not resolve to ProviderSpec or a sequence")
+                for spec in candidates:
+                    if not isinstance(spec, ProviderSpec):
+                        raise TypeError("provider plugin sequence contains a non-ProviderSpec item")
+                    specs.append(spec)
+            except Exception as exc:
+                logger.warning("Failed to load provider plugin '{}': {}", ep.name, exc)
+    return tuple(specs)
 
 
 def create_dynamic_spec(

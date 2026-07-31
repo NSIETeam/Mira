@@ -28,3 +28,17 @@ def test_package_size_report_groups_files(tmp_path: Path):
     assert report["total_bytes"] == 3072
     assert report["top"][0]["name"] == "tests/fixture.txt"
     assert {row["name"] for row in report["categories"]} == {"docs-tests", "webui-assets"}
+
+
+def test_package_size_report_deduplicates_hardlinks(tmp_path: Path):
+    module = load_report_module()
+    original = tmp_path / "Python"
+    linked = tmp_path / "Resources" / "Python"
+    linked.parent.mkdir()
+    original.write_bytes(b"x" * 1024)
+    linked.hardlink_to(original)
+
+    report = module.build_report(tmp_path, budget_mb=1, top=10)
+
+    assert report["within_budget"] is True
+    assert report["total_bytes"] == 1024

@@ -21,5 +21,6 @@ PLUGIN = ChannelPlugin(
     display_name="Mattermost",
     runtime=f"{__package__}.runtime:MattermostChannel",
     setup=SETUP_SPEC,
+    tier="archive",
     webui="webui/index.ts",
 )

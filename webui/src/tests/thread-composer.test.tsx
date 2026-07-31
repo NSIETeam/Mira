@@ -351,7 +351,7 @@ describe("ThreadComposer", () => {
 
     const input = screen.getByLabelText("Message input");
     await waitFor(() => expect(input).toHaveFocus());
-    expect(screen.getByLabelText("Quoted context")).toHaveTextContent("selected answer excerpt");
+    expect(screen.getByLabelText("Execution context")).toHaveTextContent("selected answer excerpt");
 
     fireEvent.change(input, { target: { value: "What does this mean?" } });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
@@ -375,7 +375,7 @@ describe("ThreadComposer", () => {
 
     const input = screen.getByLabelText("Message input");
     fireEvent.change(input, { target: { value: "keep this draft" } });
-    fireEvent.click(screen.getByRole("button", { name: "Remove quoted context" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove execution context" }));
 
     expect(onQuotedContextChange).toHaveBeenCalledWith(null);
     expect(input).toHaveValue("keep this draft");
@@ -398,12 +398,12 @@ describe("ThreadComposer", () => {
     expect(screen.queryByRole("button", { name: "Voice input" })).not.toBeInTheDocument();
     const input = screen.getByPlaceholderText("Ask anything...");
     expect(input).toBeInTheDocument();
-    expect(input.className).toContain("min-h-[78px]");
-    expect(input.className).toContain("text-[16px]");
-    expect(input.className).toContain("pt-[27px]");
+    expect(input.className).toContain("min-h-[118px]");
+    expect(input.className).toContain("text-[18px]");
+    expect(input.className).toContain("pt-5");
     fireEvent.change(input, { target: { value: "1" } });
-    expect(input.className).toContain("pt-[27px]");
-    expect(input.parentElement?.parentElement?.className).toContain("max-w-[58rem]");
+    expect(input.className).toContain("pt-5");
+    expect(input.parentElement?.parentElement?.className).toContain("max-w-[54rem]");
   });
 
   it("lets long model preset labels use their intrinsic width", () => {
@@ -452,7 +452,7 @@ describe("ThreadComposer", () => {
     expect(input.className).toContain("text-[16px]");
     expect(input.parentElement?.parentElement?.className).toContain("max-w-[49.5rem]");
     expect(input.parentElement?.parentElement?.className).toContain("rounded-[22px]");
-    expect(input.parentElement?.parentElement?.className).not.toContain("shadow-");
+    expect(input.parentElement?.parentElement?.className).toContain("shadow-");
     expect(screen.getByRole("button", { name: "Attach files" }).className).toContain("bg-card");
     expect(screen.getByRole("button", { name: "Send message" }).className).toContain("bg-foreground");
     expect(screen.queryByText(/Enter to send/)).not.toBeInTheDocument();

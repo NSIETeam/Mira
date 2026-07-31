@@ -64,22 +64,29 @@ class ToolLoader:
         if self._plugins is not None:
             return self._plugins
         plugins: dict[str, type[Tool]] = {}
-        try:
-            eps = entry_points(group="mira.tools")
-        except Exception:
-            return plugins
-        for ep in eps:
+        for group, prefix in (("mira.tools", ""), ("mira.plugins", "tool-")):
             try:
-                cls = ep.load()
-                if (
-                    isinstance(cls, type)
-                    and issubclass(cls, Tool)
-                    and not getattr(cls, "__abstractmethods__", None)
-                    and getattr(cls, "_plugin_discoverable", True)
-                ):
-                    plugins[ep.name] = cls
+                eps = entry_points(group=group)
             except Exception:
-                logger.exception("Failed to load tool plugin: %s", ep.name)
+                continue
+            for ep in eps:
+                if prefix and not ep.name.startswith(prefix):
+                    continue
+                name = ep.name.removeprefix(prefix).replace("-", "_")
+                if name in plugins:
+                    logger.warning("Tool plugin entry point skipped: duplicate name %s", name)
+                    continue
+                try:
+                    cls = ep.load()
+                    if (
+                        isinstance(cls, type)
+                        and issubclass(cls, Tool)
+                        and not getattr(cls, "__abstractmethods__", None)
+                        and getattr(cls, "_plugin_discoverable", True)
+                    ):
+                        plugins[name] = cls
+                except Exception:
+                    logger.exception("Failed to load tool plugin: %s", ep.name)
         self._plugins = plugins
         return plugins
 
@@ -93,7 +100,7 @@ class ToolLoader:
             for tool_cls in source:
                 cls_label = tool_cls.__name__
                 try:
-                    if scope not in getattr(tool_cls, "_scopes", {"core"}):
+                    if not _tool_scope_allowed(ctx, tool_cls, scope):
                         continue
                     if not tool_cls.enabled(ctx):
                         continue
@@ -120,6 +127,35 @@ class ToolLoader:
                 except Exception:
                     logger.exception("Failed to register tool: %s", cls_label)
         return registered
+
+
+def _module_explicitly_enabled(ctx: Any, name: str) -> bool:
+    modules = getattr(ctx, "modules", None)
+    if modules is None:
+        modules = getattr(getattr(ctx, "config", None), "modules", None)
+    registry = getattr(modules, "registry", None)
+    if not isinstance(registry, dict):
+        return False
+    module_cfg = registry.get(name)
+    return bool(module_cfg is not None and getattr(module_cfg, "enabled", False))
+
+
+def _tool_scope_allowed(ctx: Any, tool_cls: type[Tool], scope: str) -> bool:
+    scopes = getattr(tool_cls, "_scopes", {"core"})
+    if scope not in scopes:
+        return False
+    if scope != "core" or getattr(tool_cls, "_core_default", True):
+        return True
+    module_name = getattr(tool_cls, "config_key", "") or _tool_name_hint(tool_cls)
+    return bool(module_name and _module_explicitly_enabled(ctx, module_name))
+
+
+def _tool_name_hint(tool_cls: type[Tool]) -> str:
+    try:
+        value = getattr(tool_cls(), "name", "")
+    except Exception:
+        return ""
+    return value if isinstance(value, str) else ""
 
 
 def _tool_module_enabled(ctx: Any, tool_name: str) -> bool:

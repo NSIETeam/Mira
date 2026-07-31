@@ -11,8 +11,11 @@ vi.mock("@/lib/api", async (importOriginal) => {
   return {
     ...actual,
     listSessions: vi.fn(),
+    listExecutions: vi.fn(),
     deleteSession: vi.fn(),
+    deleteExecution: vi.fn(),
     fetchWebuiThread: vi.fn(),
+    fetchExecutionHistory: vi.fn(),
   };
 });
 
@@ -34,8 +37,11 @@ function fakeClient() {
     },
     sendMessage: vi.fn(),
     newChat: vi.fn(),
+    newExecution: vi.fn(),
     forkChat: vi.fn(),
+    forkExecution: vi.fn(),
     attach: vi.fn(),
+    attachExecution: vi.fn(),
     connect: vi.fn(),
     close: vi.fn(),
     updateUrl: vi.fn(),
@@ -58,8 +64,20 @@ function wrap(client: ReturnType<typeof fakeClient>) {
 describe("useSessions", () => {
   beforeEach(() => {
     vi.mocked(api.listSessions).mockReset();
+    vi.mocked(api.listExecutions).mockReset();
     vi.mocked(api.deleteSession).mockReset();
+    vi.mocked(api.deleteExecution).mockReset();
     vi.mocked(api.fetchWebuiThread).mockReset();
+    vi.mocked(api.fetchExecutionHistory).mockReset();
+    vi.mocked(api.listExecutions).mockImplementation((...args) =>
+      vi.mocked(api.listSessions)(...args),
+    );
+    vi.mocked(api.deleteExecution).mockImplementation((...args) =>
+      vi.mocked(api.deleteSession)(...args),
+    );
+    vi.mocked(api.fetchExecutionHistory).mockImplementation((...args) =>
+      vi.mocked(api.fetchWebuiThread)(...args),
+    );
   });
 
   it("does not use low-information greetings as fallback session titles", () => {
@@ -71,7 +89,7 @@ describe("useSessions", () => {
       updatedAt: "2026-04-16T10:00:00Z",
       title: "",
       preview: "hi",
-    })).toBe("New topic");
+    })).toBe("New execution");
 
     expect(sessionTitle({
       key: "websocket:chat-work",
@@ -206,7 +224,7 @@ describe("useSessions", () => {
         },
       ]);
     const client = fakeClient();
-    client.newChat.mockResolvedValue("chat-new");
+    client.newExecution.mockResolvedValue("chat-new");
 
     const { result } = renderHook(() => useSessions(), {
       wrapper: wrap(client),
@@ -219,7 +237,7 @@ describe("useSessions", () => {
       await result.current.createChat();
     });
 
-    expect(client.newChat).toHaveBeenCalledWith(60_000, undefined);
+    expect(client.newExecution).toHaveBeenCalledWith(60_000, undefined);
     expect(result.current.sessions.map((s) => s.key)).toEqual(["websocket:chat-new"]);
 
     await act(async () => {
@@ -241,7 +259,7 @@ describe("useSessions", () => {
   it("stores optimistic workspace scope when creating a chat", async () => {
     vi.mocked(api.listSessions).mockResolvedValue([]);
     const client = fakeClient();
-    client.newChat.mockResolvedValue("chat-workspace");
+    client.newExecution.mockResolvedValue("chat-workspace");
     const workspaceScope = {
       project_path: "/tmp/project",
       project_name: "project",
@@ -258,7 +276,7 @@ describe("useSessions", () => {
       await result.current.createChat(workspaceScope);
     });
 
-    expect(client.newChat).toHaveBeenCalledWith(60_000, workspaceScope);
+    expect(client.newExecution).toHaveBeenCalledWith(60_000, workspaceScope);
     expect(result.current.sessions[0]?.workspaceScope).toEqual(workspaceScope);
   });
 

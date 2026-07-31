@@ -1844,8 +1844,8 @@ export function ThreadComposer({
     "w-full resize-none bg-transparent",
     isHero
       ? cn(
-          "min-h-[78px] px-4 text-[16px] leading-6 sm:px-5",
-          relaxedHeroInput ? "pb-2 pt-[27px]" : "pb-1.5 pt-4",
+          "min-h-[118px] px-4 text-[18px] leading-7 sm:px-5",
+          relaxedHeroInput ? "pb-3 pt-5" : "pb-3 pt-4",
         )
       : "min-h-[50px] px-3.5 pb-1.5 pt-3 text-[16px] leading-5 sm:px-4",
   );
@@ -1884,11 +1884,12 @@ export function ThreadComposer({
         />
       ) : null}
       <div
+        data-testid="thread-composer-surface"
         className={cn(
-          "thread-composer-surface group/composer relative mx-auto flex w-full flex-col overflow-visible transition-all duration-200",
+          "thread-composer-surface group/composer relative mx-auto flex w-full min-w-0 flex-col overflow-visible border border-slate-300/90 bg-white shadow-[0_18px_56px_rgba(15,23,42,0.15)] transition-all duration-200 focus-within:border-slate-950 focus-within:shadow-[0_22px_72px_rgba(15,23,42,0.20)] dark:border-white/15 dark:bg-card",
           isHero
-            ? "max-w-[58rem] rounded-[28px] bg-muted/30 focus-within:bg-muted/50 dark:bg-card dark:focus-within:bg-white/[0.06]"
-            : "max-w-[49.5rem] rounded-[22px] bg-muted/30 focus-within:bg-muted/50 dark:bg-card dark:focus-within:bg-white/[0.06]",
+            ? "max-w-[54rem] rounded-[28px] ring-2 ring-slate-950/10"
+            : "max-w-[49.5rem] rounded-[22px]",
           disabled && "opacity-60",
           isDragging && "ring-2 ring-primary/40 motion-reduce:ring-0 motion-reduce:border-primary",
           goalState?.active &&
@@ -1971,6 +1972,11 @@ export function ThreadComposer({
           </div>
         ) : null}
         <RunElapsedStrip startedAt={runStartedAt} goalState={goalState} />
+        {isHero ? (
+          <div className="px-4 pt-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 sm:px-5">
+            {t("thread.composer.inputAria")}
+          </div>
+        ) : null}
         <div className="relative">
           {hasMentionDecorations ? (
             <ComposerCliMentionOverlay
@@ -2004,7 +2010,7 @@ export function ThreadComposer({
             aria-label={t("thread.composer.inputAria")}
             className={cn(
               inputTextClasses,
-              "relative z-10 caret-foreground placeholder:text-muted-foreground/70",
+              "relative z-10 caret-foreground placeholder:text-slate-500/90 dark:placeholder:text-muted-foreground/80",
               "focus:outline-none focus-visible:outline-none",
               "disabled:cursor-not-allowed",
               hasMentionDecorations && "text-transparent selection:bg-primary/20",
@@ -2025,11 +2031,11 @@ export function ThreadComposer({
         ) : null}
         <div
           className={cn(
-            "thread-composer-footer flex flex-nowrap items-center",
+            "thread-composer-footer flex min-w-0 flex-nowrap items-center",
             isHero
               ? cn(
                   "gap-x-1.5 px-3 sm:px-4",
-                  showProjectPicker ? "pb-1.5" : "pb-3.5",
+                  showProjectPicker ? "pb-1.5" : "pb-3",
                 )
               : "gap-x-2 px-2.5 pb-2 sm:px-3",
           )}

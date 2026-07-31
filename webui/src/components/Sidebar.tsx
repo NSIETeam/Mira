@@ -163,13 +163,13 @@ export function Sidebar(props: SidebarProps) {
 
       <div
         className={cn(
-          "space-y-1.5 border-b border-slate-200/70 px-2 pb-3",
+          "space-y-1 px-2 pb-2",
           collapsed && "flex w-14 flex-col items-center px-0",
         )}
       >
         {!collapsed ? (
-          <div className="px-2 pb-1 pt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Workbench
+          <div className="px-2 pb-1 pt-0.5 text-[11px] font-medium text-muted-foreground">
+            {t("sidebar.workbench", { defaultValue: "Work" })}
           </div>
         ) : null}
         <SidebarActionButton
@@ -221,7 +221,7 @@ export function Sidebar(props: SidebarProps) {
       </div>
       <div
         className={cn(
-          "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-opacity duration-200",
+          "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-slate-200/60 transition-opacity duration-200",
           collapsed && "pointer-events-none opacity-0",
         )}
       >

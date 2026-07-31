@@ -43,6 +43,7 @@
   "sidebar": {
     "navigation": "Navegación de la barra lateral",
     "collapse": "Contraer barra lateral",
+    "workbench": "Trabajo",
     "newChat": "Nuevo tema",
     "searchAria": "Buscar",
     "searchPlaceholder": "Buscar",
@@ -886,6 +887,7 @@
         "build": "¿Qué construimos hoy?",
         "tackle": "¿Qué resolvemos juntos?"
       },
+      "inputHint": "Escribe abajo para chatear, programar, revisar archivos o ejecutar una tarea.",
       "quickActions": {
         "plan": {
           "title": "Crear un plan de proyecto",
@@ -946,6 +948,9 @@
       "settings": "Abrir configuración",
       "sessionInfo": "Detalles de la sesión"
     },
+    "statusButton": {
+      "label": "Estado"
+    },
     "sessionInfo": {
       "title": "Sesión",
       "untitled": "Tema sin título",
@@ -971,6 +976,7 @@
         "none": "Sin próxima ejecución"
       }
     },
+    "heroSubtitle": "Opera un kernel de ejecucion reutilizable con estado de runtime, controles y rutas de hosts nativos o embebidos visibles.",
     "composer": {
       "placeholderThread": "Escribe tu mensaje…",
       "placeholderHero": "¿Qué tienes en mente?",

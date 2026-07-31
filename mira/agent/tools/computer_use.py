@@ -27,7 +27,9 @@ from mira.agent.tools.schema import EnumSchema, StringSchema, tool_parameters_sc
     )
 )
 class ComputerUseTool(Tool):
+    config_key = "computer_use"
     _scopes = {"core"}
+    _core_default = False
 
     @classmethod
     def enabled(cls, ctx: Any) -> bool:

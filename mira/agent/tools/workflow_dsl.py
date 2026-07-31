@@ -19,7 +19,9 @@ from mira.agent.tools.schema import StringSchema, tool_parameters_schema
     )
 )
 class WorkflowDslTool(Tool):
+    config_key = "workflow_dsl"
     _scopes = {"core"}
+    _core_default = False
 
     @classmethod
     def enabled(cls, ctx: Any) -> bool:

@@ -246,7 +246,7 @@ class TestMiraSandboxBackend:
         assert "--timeout-ms" in tokens
         assert "--max-output-bytes" in tokens
         sep = tokens.index("--")
-        assert tokens[sep + 1:] == ["sh", "-c", "cd " + str(ws.resolve()) + " && echo hi"]
+        assert tokens[sep + 1:] == ["sh", "-c", f"cd {shlex.quote(str(ws.resolve()))} && echo hi"]
 
     def test_cwd_outside_workspace_does_not_cd_outside(self, tmp_path):
         ws = tmp_path / "project"

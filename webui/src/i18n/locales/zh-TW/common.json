@@ -43,6 +43,7 @@
   "sidebar": {
     "navigation": "側邊欄導覽",
     "collapse": "收合側邊欄",
+    "workbench": "工作",
     "newChat": "新增執行",
     "searchAria": "搜尋",
     "searchPlaceholder": "搜尋",
@@ -885,6 +886,7 @@
         "build": "今天要一起打造什麼？",
         "tackle": "我們要一起解決什麼？"
       },
+      "inputHint": "在下方輸入：對話、寫程式、檢查檔案或執行任務。",
       "quickActions": {
         "plan": {
           "title": "建立專案計畫",
@@ -940,10 +942,13 @@
     },
     "header": {
       "toggleSidebar": "切換側邊欄",
-      "newChat": "開始新執行",
+      "newChat": "新對話",
       "toggleTheme": "切換佈景主題",
       "settings": "開啟設定",
-      "sessionInfo": "執行詳細資料"
+      "sessionInfo": "對話詳細資料"
+    },
+    "statusButton": {
+      "label": "狀態"
     },
     "sessionInfo": {
       "title": "執行",
@@ -970,6 +975,7 @@
         "none": "沒有下次執行"
       }
     },
+    "heroSubtitle": "和 Mira 對話。",
     "composer": {
       "placeholderThread": "輸入訊息…",
       "placeholderHero": "任何問題都可以問…",

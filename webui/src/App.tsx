@@ -660,6 +660,7 @@ function RuntimeSnapshotPanel({
   planning: BootstrapResponse["planning"] | null;
   runtimeSnapshotAt: number | null;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const schedulerSummary = scheduler && "running" in scheduler
     ? {
         running: scheduler.running ?? 0,
@@ -762,18 +763,37 @@ function RuntimeSnapshotPanel({
 
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-40">
-      <div className="pointer-events-auto rounded-2xl border border-border/60 bg-background/92 px-4 py-3 shadow-xl backdrop-blur">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-            Runtime Snapshot
-          </div>
-          {snapshotLabel ? (
-            <div className="text-[10px] text-muted-foreground">
-              {snapshotLabel}
+      {!expanded ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="pointer-events-auto rounded-full border border-border/60 bg-background/90 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground shadow-lg backdrop-blur transition hover:border-foreground/20 hover:text-foreground"
+        >
+          Runtime
+          {snapshotLabel ? <span className="ml-2 font-normal tracking-normal">{snapshotLabel}</span> : null}
+        </button>
+      ) : (
+        <div className="pointer-events-auto max-w-[min(72rem,calc(100vw-2rem))] rounded-2xl border border-border/60 bg-background/92 px-4 py-3 shadow-xl backdrop-blur">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+              Runtime Snapshot
             </div>
-          ) : null}
-        </div>
-        <div className="mt-3 grid gap-2 text-xs text-foreground">
+            <div className="flex items-center gap-2">
+              {snapshotLabel ? (
+                <div className="text-[10px] text-muted-foreground">
+                  {snapshotLabel}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setExpanded(false)}
+                className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:border-foreground/20 hover:text-foreground"
+              >
+                Hide
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2 text-xs text-foreground">
           {memory ? (
             <div className="flex flex-wrap items-center gap-3">
               <span>memory layers {loadedLayers}</span>
@@ -942,8 +962,9 @@ function RuntimeSnapshotPanel({
               ))}
             </div>
           ) : null}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1159,6 +1180,7 @@ function Shell({
       t("app.restart.completed", { seconds }),
   });
   const { connectionStatus, runtimeModel, recentErrors } = useKernelConsoleState(client);
+  const [kernelConsoleOpen, setKernelConsoleOpen] = useState(false);
   const shellPrivilegeRole = shellDescriptor?.host_contract?.privilege?.role ?? "user";
   const kernelHealthLabel = connectionStatus !== "connected"
     ? "offline"
@@ -1219,9 +1241,6 @@ function Shell({
       switch_adapter: () => {
         kernelControl.setSelectedPane("adapters");
         void kernelControl.cycleAdapter();
-      },
-      attach_board: () => {
-        void kernelControl.attachBoard();
       },
     },
   });
@@ -1565,47 +1584,51 @@ function Shell({
           </Suspense>
         ) : null}
         kernelConsole={executionSurfaceActive && shellKernelConsoleEnabled ? (
-          <MiraKernelConsole
-            kernelManifest={kernelManifest}
-            shellDescriptor={shellDescriptor}
-            activeExecution={activeExecution}
-            activeWorkspaceScope={activeWorkspaceScope}
-            workspaceError={workspaceError}
-            runningExecutionCount={runningExecutionIdList.length}
-            connectionStatus={connectionStatus}
-            runtimeModel={runtimeModel}
-            recentErrors={recentErrors}
-            embeddedTargetHint={
-              kernelManifest?.profile.name === "mira-embedded-lab"
-                ? "Embedded lab kernel profile enabled for constrained targets"
-                : null
-            }
-            operatorActions={operatorActionMap}
-            selectedPane={kernelControl.selectedPane}
-            onSelectPane={kernelControl.setSelectedPane}
-            selectedAdapterName={kernelControl.selectedAdapterName}
-            onSelectAdapter={kernelControl.setSelectedAdapterName}
-            selectedModuleName={kernelControl.selectedModuleName}
-            onSelectModule={(name) => {
-              void kernelControl.focusModule(name);
-            }}
-            selectedBoardTransport={kernelControl.selectedBoardTransport}
-            onSelectBoardTransport={kernelControl.setSelectedBoardTransport}
-            selectedBoardPort={kernelControl.selectedBoardPort}
-            onSelectBoardPort={kernelControl.setSelectedBoardPort}
-            onAttachBoard={(options) => {
-              void kernelControl.attachBoard(options);
-            }}
-            onRunOperatorCommand={async (command) => {
-              const payload = await executeKernelOperatorCommand(token, command);
-              onKernelChange(payload.kernel);
-              return {
-                output: payload.output,
-                targetPane: payload.target_pane ?? null,
-                details: payload.details,
-              };
-            }}
-          />
+          <>
+            {kernelConsoleOpen ? (
+              <MiraKernelConsole
+                kernelManifest={kernelManifest}
+                shellDescriptor={shellDescriptor}
+                activeExecution={activeExecution}
+                activeWorkspaceScope={activeWorkspaceScope}
+                workspaceError={workspaceError}
+                runningExecutionCount={runningExecutionIdList.length}
+                connectionStatus={connectionStatus}
+                runtimeModel={runtimeModel}
+                recentErrors={recentErrors}
+                operatorActions={operatorActionMap}
+                selectedPane={kernelControl.selectedPane}
+                onSelectPane={kernelControl.setSelectedPane}
+                selectedAdapterName={kernelControl.selectedAdapterName}
+                onSelectAdapter={kernelControl.setSelectedAdapterName}
+                selectedModuleName={kernelControl.selectedModuleName}
+                onSelectModule={(name) => {
+                  void kernelControl.focusModule(name);
+                }}
+                onRunOperatorCommand={async (command) => {
+                  const payload = await executeKernelOperatorCommand(token, command);
+                  onKernelChange(payload.kernel);
+                  return {
+                    output: payload.output,
+                    targetPane: payload.target_pane ?? null,
+                    details: payload.details,
+                  };
+                }}
+                onClose={() => setKernelConsoleOpen(false)}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setKernelConsoleOpen(true)}
+                className="fixed bottom-4 right-32 z-40 hidden max-w-[13rem] items-center gap-2 rounded-full border border-slate-200/80 bg-white/90 px-3 py-2 text-[11px] font-semibold text-slate-600 shadow-lg backdrop-blur transition hover:border-slate-300 hover:text-slate-950 lg:inline-flex"
+              >
+                <span className="truncate">{t("thread.statusButton.label")}</span>
+                <span className="rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[10px] text-emerald-700">
+                  {connectionStatus}
+                </span>
+              </button>
+            )}
+          </>
         ) : null}
         executionView={(
           <div

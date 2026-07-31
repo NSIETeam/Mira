@@ -43,6 +43,7 @@
   "sidebar": {
     "navigation": "Navegação da barra lateral",
     "collapse": "Recolher barra lateral",
+    "workbench": "Trabalho",
     "newChat": "Novo tópico",
     "searchAria": "Buscar",
     "searchPlaceholder": "Buscar",
@@ -899,6 +900,7 @@
         "build": "O que vamos construir hoje?",
         "tackle": "O que vamos resolver juntos?"
       },
+      "inputHint": "Digite abaixo para conversar, programar, inspecionar arquivos ou executar uma tarefa.",
       "quickActions": {
         "plan": {
           "title": "Criar um plano de projeto",
@@ -959,6 +961,9 @@
       "settings": "Abrir configurações",
       "sessionInfo": "Detalhes da sessão"
     },
+    "statusButton": {
+      "label": "Status"
+    },
     "sessionInfo": {
       "title": "Sessão",
       "untitled": "Tópico sem título",
@@ -984,6 +989,7 @@
         "none": "Sem próxima execução"
       }
     },
+    "heroSubtitle": "Opere um kernel de execucao reutilizavel com postura de runtime, controles e caminhos para hosts nativos ou embarcados visiveis.",
     "composer": {
       "placeholderThread": "Digite sua mensagem…",
       "placeholderHero": "Pergunte qualquer coisa...",

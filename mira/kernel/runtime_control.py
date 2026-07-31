@@ -13,8 +13,7 @@ def build_runtime_control_state(
     default_adapter: str,
     module_names: list[str],
 ) -> dict[str, object]:
-    embedded_target = "embedded" if "embedded-lab" in profile.runtime_targets else "desktop"
-    preferred_transport = "serial" if embedded_target == "embedded" else "in_process"
+    _ = profile
     return {
         "active_adapter": default_adapter,
         "adapter_failover_order": [
@@ -23,17 +22,6 @@ def build_runtime_control_state(
             "c-serial-bridge",
         ],
         "module_focus": module_names[0] if module_names else None,
-        "board": {
-            "attached": False,
-            "health": "planned",
-            "transport": None,
-            "port": None,
-            "target": embedded_target,
-            "preferred_transport": preferred_transport,
-            "runtime_mode": None,
-            "bridge_artifact": None,
-            "last_error": None,
-        },
         "fault_posture": {
             "supervisor": "userspace-kernel-loop",
             "restart_policy": "operator-confirmed",
@@ -84,38 +72,6 @@ def set_module_focus(
     if module_name not in module_names:
         raise ValueError(f"Unknown module: {module_name}")
     next_state["module_focus"] = module_name
-    return next_state
-
-
-def attach_board(
-    state: dict[str, object],
-    *,
-    transport: str | None = None,
-    port: str | None = None,
-) -> dict[str, object]:
-    next_state = clone_runtime_control_state(state)
-    board = dict(next_state.get("board", {}))
-    preferred_transport = board.get("preferred_transport")
-    board["attached"] = True
-    board["health"] = "ready"
-    board["transport"] = transport or preferred_transport or "serial"
-    board["port"] = port or ("kernel://local" if board["transport"] == "in_process" else "/dev/tty.mira")
-    board["last_error"] = None
-    next_state["board"] = board
-    return next_state
-
-
-def detach_board(state: dict[str, object]) -> dict[str, object]:
-    next_state = clone_runtime_control_state(state)
-    board = dict(next_state.get("board", {}))
-    board["attached"] = False
-    board["health"] = "planned"
-    board["transport"] = None
-    board["port"] = None
-    board["runtime_mode"] = None
-    board["bridge_artifact"] = None
-    board["last_error"] = None
-    next_state["board"] = board
     return next_state
 
 

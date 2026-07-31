@@ -26,7 +26,6 @@ import {
   installedCliAppsFromPayload,
   isCliAppsPayload,
 } from "@/lib/cli-app-events";
-import { cn } from "@/lib/utils";
 import {
   MCP_PRESETS_CHANGED_EVENT,
   installedMcpPresetsFromPayload,
@@ -271,71 +270,26 @@ const HERO_GREETING_KEYS = [
 ] as const;
 
 function HeroGreeting({ text }: { text: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    const heading = headingRef.current;
-    if (!container || !heading) return;
-
-    const fitToWidth = () => {
-      heading.style.removeProperty("font-size");
-      const availableWidth = container.clientWidth;
-      if (availableWidth <= 0) return;
-
-      const naturalWidth = heading.scrollWidth;
-      const maximumFontSize = Number.parseFloat(window.getComputedStyle(heading).fontSize);
-      if (
-        naturalWidth <= availableWidth
-        || !Number.isFinite(maximumFontSize)
-        || maximumFontSize <= 0
-      ) {
-        return;
-      }
-
-      const fittedFontSize = Math.max(
-        12,
-        Math.floor(maximumFontSize * ((availableWidth - 2) / naturalWidth) * 100) / 100,
-      );
-      heading.style.fontSize = `${fittedFontSize}px`;
-    };
-
-    fitToWidth();
-
-    let lastObservedWidth = container.clientWidth;
-    const resizeObserver = typeof ResizeObserver === "undefined"
-      ? null
-      : new ResizeObserver(([entry]) => {
-          const nextWidth = entry?.contentRect.width ?? container.clientWidth;
-          if (nextWidth === lastObservedWidth) return;
-          lastObservedWidth = nextWidth;
-          fitToWidth();
-        });
-    resizeObserver?.observe(container);
-    window.addEventListener("resize", fitToWidth);
-
-    let cancelled = false;
-    void document.fonts?.ready.then(() => {
-      if (!cancelled) fitToWidth();
-    });
-
-    return () => {
-      cancelled = true;
-      resizeObserver?.disconnect();
-      window.removeEventListener("resize", fitToWidth);
-    };
-  }, [text]);
-
   return (
-    <div ref={containerRef} className="min-w-0 w-full max-w-[44rem]">
+    <div className="min-w-0 w-full max-w-[36rem]">
       <h1
-        ref={headingRef}
         data-testid="hero-greeting"
-        className="whitespace-nowrap text-[34px] font-normal leading-[1.08] tracking-normal text-foreground sm:text-[48px] sm:leading-tight"
+        className="text-balance break-words text-[22px] font-semibold leading-tight tracking-[-0.03em] text-slate-950 dark:text-slate-50 sm:text-[28px]"
       >
         {text}
       </h1>
+    </div>
+  );
+}
+
+function EmptyThreadPrompt({ greeting }: { greeting: string }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex w-full flex-col items-center gap-2 text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+      <HeroGreeting text={greeting} />
+      <p className="max-w-[26rem] text-[13px] leading-5 text-muted-foreground sm:text-sm">
+        {t("thread.empty.inputHint")}
+      </p>
     </div>
   );
 }
@@ -437,7 +391,6 @@ export function ThreadShell({
   supportsFileActivity = true,
   allowComposer = true,
   readOnlyExecution = false,
-  shellDescription = null,
   skills = [],
 }: ThreadShellProps) {
   const activeExecution = execution ?? session;
@@ -1087,69 +1040,16 @@ export function ThreadShell({
     </>
   ) : null;
 
-  const capabilityBadges = [
-    supportsThreads ? "multi-session" : "single-session",
-    supportsRuntimeControls ? "runtime-control" : "fixed-runtime",
-    supportsFileActivity ? "file-activity" : "no-file-activity",
-    readOnlyExecution ? "read-only" : "interactive",
-  ];
-  const shellPosture = [
-    shellDescription,
-    allowComposer ? "operator shell" : "observer shell",
-    readOnlyExecution ? "locked execution" : "live execution lane",
-  ].filter(Boolean).join(" · ");
-  const toolingSurface = [
-    {
-      label: "Slash",
-      value: `${slashCommands.length}`,
-      detail: slashCommands.slice(0, 2).map((command) => command.command).join(" · ") || "no commands",
-      action: slashCommands[0]?.command ?? null,
-    },
-    {
-      label: "CLI",
-      value: `${cliApps.length}`,
-      detail: cliApps.slice(0, 2).map((app) => app.name).join(" · ") || "no apps",
-      action: cliApps[0] ? `@${cliApps[0].name}` : null,
-    },
-    {
-      label: "MCP",
-      value: `${mcpPresets.length}`,
-      detail: mcpPresets.slice(0, 2).map((preset) => preset.name).join(" · ") || "no presets",
-      action: mcpPresets[0] ? `@${mcpPresets[0].name}` : null,
-    },
-  ];
-  const primitiveSurface = [
-    supportsRuntimeControls ? "runtime control" : "fixed runtime",
-    supportsFileActivity ? "file activity" : "no file activity",
-    supportsThreads ? "forkable sessions" : "single session",
-    allowComposer ? "live operator input" : "observer only",
-  ];
+  const capabilityBadges: string[] = [];
+  const shellPosture = null;
   const emptyState = loading ? (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
       {t("thread.loadingConversation")}
     </div>
   ) : (
-    <div className="flex w-full flex-col items-center text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
-      <div className="rounded-full border border-cyan-200/80 bg-cyan-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
-        Mira engineering cockpit
-      </div>
-      <div className="mt-5 rounded-[28px] border border-slate-200/80 bg-white/90 px-8 py-8 shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
-        <HeroGreeting text={t(heroGreetingKey)} />
-        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-          Unified execution entry for operator flow, runtime control, and module supervision.
-        </p>
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em]">
-          {capabilityBadges.map((badge) => (
-            <span
-              key={badge}
-              className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-slate-700"
-            >
-              {badge}
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
+    <EmptyThreadPrompt
+      greeting={t(heroGreetingKey)}
+    />
   );
   const sessionInfoAction = supportsThreads && historyKey ? (
     <ExecutionInfoPopover executionKey={historyKey} token={token} title={title} />
@@ -1164,86 +1064,9 @@ export function ThreadShell({
   return (
     <section
       ref={shellRef}
-      className="relative flex min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.08),transparent_28%),linear-gradient(180deg,rgba(248,250,252,0.95)_0%,rgba(241,245,249,0.98)_100%)]"
+      className="relative flex min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_50%_-12%,rgba(148,163,184,0.16),transparent_38%),linear-gradient(180deg,rgba(248,250,252,0.99)_0%,rgba(248,250,252,0.96)_100%)]"
     >
-      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden px-3 pb-3 pt-2">
-        <div className="mb-3 grid shrink-0 gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
-          <div className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Execution cockpit
-                </div>
-                <div className="mt-1 text-sm font-semibold text-foreground">
-                  {title}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {shellPosture || "universal execution shell"}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {capabilityBadges.map((badge) => (
-                  <span
-                    key={badge}
-                    className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700"
-                  >
-                    {badge}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Tooling surface
-            </div>
-            <div className="mt-2 grid gap-2">
-              {toolingSurface.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
-                      {item.label}
-                    </div>
-                    <div className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700">
-                      {item.value}
-                    </div>
-                  </div>
-                  <div className="mt-1 text-xs text-slate-600">
-                    {item.detail}
-                  </div>
-                  <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
-                    {item.action ? `ready: ${item.action}` : "ready: pending install"}
-                  </div>
-                </div>
-              ))}
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Shell posture</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">
-                  {allowComposer ? "operator ready" : "observer only"}
-                </div>
-                <div className="mt-1 text-xs text-slate-600">
-                  {readOnlyExecution ? "locked execution lane" : "live execution lane"}
-                </div>
-              </div>
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Execution primitives</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {primitiveSurface.map((primitive) => (
-                    <span
-                      key={primitive}
-                      className="rounded-full border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700"
-                    >
-                      {primitive}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden px-2 pb-2 pt-1">
         {!hideHeader ? (
           <ThreadHeader
             title={title}
@@ -1263,29 +1086,9 @@ export function ThreadShell({
         <FilePreviewAvailabilityProvider
           resolve={historyKey ? resolveFilePreviewAvailability : undefined}
         >
-          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/88 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-[linear-gradient(180deg,rgba(248,250,252,0.96)_0%,rgba(248,250,252,0)_100%)]" />
-            <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b border-slate-200/70 px-4 py-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Execution stream
-              </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]",
-                    turnActive
-                      ? "border-cyan-300/80 bg-cyan-50 text-cyan-700"
-                      : "border-slate-300/80 bg-slate-50 text-slate-700",
-                  )}
-                >
-                  {turnActive ? "streaming" : "idle"}
-                </span>
-                <span className="rounded-full border border-slate-300/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700">
-                  {historyKey ? "attached" : "standby"}
-                </span>
-              </div>
-            </div>
-            <div className="h-full pt-11">
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[24px] bg-white/58 shadow-[inset_0_1px_0_rgba(255,255,255,0.86)]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 bg-[linear-gradient(180deg,rgba(248,250,252,0.72)_0%,rgba(248,250,252,0)_100%)]" />
+            <div className="flex h-full min-h-0 flex-col">
               <ThreadViewport
                 ref={viewportRef}
                 messages={displayMessages}

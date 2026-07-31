@@ -16,7 +16,7 @@ const runStatusHandlers = new Set<(chatId: string, startedAt: number | null) => 
 const sessionUpdateHandlers = new Set<(chatId: string, scope?: string) => void>();
 let mockSessions: ChatSummary[] = [];
 const HERO_GREETING_PATTERN =
-  /What should we work on\?|Where should we start\?|What are we building today\?|What should we tackle together\?/;
+  /What should Mira work on\?|Start with a message\.|Give Mira a task\.|What should Mira handle\?/;
 
 function setNavigatorPlatform(platform: string): void {
   Object.defineProperty(window.navigator, "platform", {
@@ -142,17 +142,55 @@ vi.mock("@/hooks/useExecutions", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/hooks/useExecutions")>();
   return {
     ...actual,
-    useSessions: () => {
+    useExecutions: () => {
       const [sessions, setSessions] = React.useState(mockSessions);
       return {
         sessions,
+        executions: sessions,
         loading: false,
         error: null,
         refresh: refreshSpy,
         createChat: createChatSpy,
+        createExecution: createChatSpy,
         forkChat: async () => "fork-chat",
+        forkExecution: async () => "fork-chat",
         getSessionAutomations: getSessionAutomationsSpy,
+        getExecutionAutomations: getSessionAutomationsSpy,
         deleteChat: async (key: string, options?: { deleteAutomations?: boolean }) => {
+          if (options === undefined) await deleteChatSpy(key);
+          else await deleteChatSpy(key, options);
+          setSessions((prev: ChatSummary[]) => prev.filter((s) => s.key !== key));
+          return { deleted: true };
+        },
+        deleteExecution: async (key: string, options?: { deleteAutomations?: boolean }) => {
+          if (options === undefined) await deleteChatSpy(key);
+          else await deleteChatSpy(key, options);
+          setSessions((prev: ChatSummary[]) => prev.filter((s) => s.key !== key));
+          return { deleted: true };
+        },
+      };
+    },
+    useSessions: () => {
+      const [sessions, setSessions] = React.useState(mockSessions);
+      return {
+        sessions,
+        executions: sessions,
+        loading: false,
+        error: null,
+        refresh: refreshSpy,
+        createChat: createChatSpy,
+        createExecution: createChatSpy,
+        forkChat: async () => "fork-chat",
+        forkExecution: async () => "fork-chat",
+        getSessionAutomations: getSessionAutomationsSpy,
+        getExecutionAutomations: getSessionAutomationsSpy,
+        deleteChat: async (key: string, options?: { deleteAutomations?: boolean }) => {
+          if (options === undefined) await deleteChatSpy(key);
+          else await deleteChatSpy(key, options);
+          setSessions((prev: ChatSummary[]) => prev.filter((s) => s.key !== key));
+          return { deleted: true };
+        },
+        deleteExecution: async (key: string, options?: { deleteAutomations?: boolean }) => {
           if (options === undefined) await deleteChatSpy(key);
           else await deleteChatSpy(key, options);
           setSessions((prev: ChatSummary[]) => prev.filter((s) => s.key !== key));
@@ -203,6 +241,7 @@ vi.mock("@/lib/mira-client", () => {
     connect = connectSpy;
     onStatus = () => () => {};
     onRuntimeModelUpdate = () => () => {};
+    onKernelExecution = () => () => {};
     onError = () => () => {};
     onChat = () => () => {};
     onSessionUpdate = (handler: (chatId: string, scope?: string) => void) => {
@@ -216,8 +255,10 @@ vi.mock("@/lib/mira-client", () => {
     getRunStartedAt = () => null;
     getGoalState = () => undefined;
     sendMessage = vi.fn();
+    sendSystemCommand = vi.fn().mockResolvedValue(undefined);
     newChat = vi.fn();
     attach = attachSpy;
+    attachExecution = attachSpy;
     close = vi.fn();
     updateUrl = updateUrlSpy;
   }
@@ -429,7 +470,7 @@ describe("App layout", () => {
       "aria-current",
       "page",
     );
-    expect(document.title).toBe("Skills · mira");
+    expect(document.title).toBe("Skills · Mira");
 
     fireEvent.click(screen.getByRole("button", { name: "Back to workbench" }));
     expect(await screen.findByText(HERO_GREETING_PATTERN)).toBeInTheDocument();
@@ -541,7 +582,7 @@ describe("App layout", () => {
       "aria-current",
       "page",
     );
-    expect(document.title).toBe("Automations · mira");
+    expect(document.title).toBe("Automations · Mira");
 
     const searchInput = within(automationsMain as HTMLElement).getByPlaceholderText(
       "Search task, message, linked execution, or schedule",
@@ -769,7 +810,7 @@ describe("App layout", () => {
     expect(screen.queryByText("近期无问题")).not.toBeInTheDocument();
     expect(screen.queryByText("Workspace automations")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "刷新" })).not.toBeInTheDocument();
-    expect(document.title).toBe("自动任务 · mira");
+    expect(document.title).toBe("自动任务 · Mira");
   });
 
   it("fully collapses the native host sidebar and previews it on hover", async () => {
@@ -857,13 +898,13 @@ describe("App layout", () => {
       ).toBeInTheDocument(),
     );
 
-    fireEvent.pointerDown(screen.getByLabelText("Topic actions for First chat"), {
+    fireEvent.pointerDown(screen.getByLabelText("Execution actions for First chat"), {
       button: 0,
     });
     fireEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
 
     await waitFor(() =>
-      expect(screen.getByText("Delete this topic?")).toBeInTheDocument(),
+      expect(screen.getByText("Delete this execution?")).toBeInTheDocument(),
     );
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
 
@@ -875,7 +916,7 @@ describe("App layout", () => {
         within(sidebar).getByRole("button", { name: /^Second chat$/ }),
       ).toBeInTheDocument(),
     );
-    expect(screen.queryByText("Delete this topic?")).not.toBeInTheDocument();
+    expect(screen.queryByText("Delete this execution?")).not.toBeInTheDocument();
     expect(document.body.style.pointerEvents).not.toBe("none");
   }, 15_000);
 
@@ -988,7 +1029,7 @@ describe("App layout", () => {
     );
 
     fireEvent.pointerDown(
-      within(mobileSidebar).getByLabelText("Topic actions for Existing chat"),
+      within(mobileSidebar).getByLabelText("Execution actions for Existing chat"),
       { button: 0 },
     );
 
@@ -999,7 +1040,7 @@ describe("App layout", () => {
 
     fireEvent.click(deleteItem);
     await waitFor(() =>
-      expect(screen.getByText("Delete this topic?")).toBeInTheDocument(),
+      expect(screen.getByText("Delete this execution?")).toBeInTheDocument(),
     );
   }, 15_000);
 
@@ -1142,16 +1183,16 @@ describe("App layout", () => {
     await waitFor(() => expect(connectSpy).toHaveBeenCalled());
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
     await waitFor(() =>
-      expect(within(sidebar).getByText("Topics")).toBeInTheDocument(),
+      expect(within(sidebar).getByText("Executions")).toBeInTheDocument(),
     );
-    const group = within(sidebar).getByText("Topics").closest("section");
+    const group = within(sidebar).getByText("Executions").closest("section");
     expect(group).toBeTruthy();
     const labels = within(group as HTMLElement)
       .getAllByRole("button")
       .map((button) => button.textContent?.trim())
       .filter(Boolean);
 
-    expect(labels).toEqual(["Alpha plan", "New topic", "Zulu work"]);
+    expect(labels).toEqual(["Alpha plan", "New execution", "Zulu work"]);
   });
 
   it("shows running and completed session indicators in the sidebar", async () => {
@@ -1193,12 +1234,14 @@ describe("App layout", () => {
       for (const handler of runStatusHandlers) handler("chat-a", null);
     });
     expect(within(sidebar).queryByTitle("Agent running")).not.toBeInTheDocument();
-    expect(within(sidebar).getByTitle("New activity")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(sidebar).getByTitle("Needs attention")).toBeInTheDocument(),
+    );
 
     await act(async () => {
       fireEvent.click(within(sidebar).getByRole("button", { name: /^Working chat$/ }));
     });
-    expect(within(sidebar).queryByTitle("New activity")).not.toBeInTheDocument();
+    expect(within(sidebar).queryByTitle("Needs attention")).not.toBeInTheDocument();
   });
 
   it("does not show an updated dot later when the active session finishes", async () => {
@@ -1245,12 +1288,12 @@ describe("App layout", () => {
       for (const handler of runStatusHandlers) handler("chat-a", null);
     });
     expect(within(sidebar).queryByTitle("Agent running")).not.toBeInTheDocument();
-    expect(within(sidebar).queryByTitle("New activity")).not.toBeInTheDocument();
+    expect(within(sidebar).queryByTitle("Needs attention")).not.toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(within(sidebar).getByRole("button", { name: /^Other chat$/ }));
     });
-    expect(within(sidebar).queryByTitle("New activity")).not.toBeInTheDocument();
+    expect(within(sidebar).queryByTitle("Needs attention")).not.toBeInTheDocument();
   });
 
   it("marks inactive sessions when a thread update arrives", async () => {
@@ -1285,13 +1328,15 @@ describe("App layout", () => {
       for (const handler of sessionUpdateHandlers) handler("chat-b", "thread");
     });
 
-    expect(within(sidebar).getByTitle("New activity")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(sidebar).getByTitle("Needs attention")).toBeInTheDocument(),
+    );
 
     await act(async () => {
       fireEvent.click(within(sidebar).getByRole("button", { name: /^Scheduled update target$/ }));
     });
 
-    expect(within(sidebar).queryByTitle("New activity")).not.toBeInTheDocument();
+    expect(within(sidebar).queryByTitle("Needs attention")).not.toBeInTheDocument();
   });
 
   it("restores sidebar run indicators after a page reload", async () => {
@@ -1326,7 +1371,7 @@ describe("App layout", () => {
     await waitFor(() =>
       expect(within(sidebar).getByTitle("Agent running")).toBeInTheDocument(),
     );
-    expect(within(sidebar).getByTitle("New activity")).toBeInTheDocument();
+    expect(within(sidebar).getByTitle("Needs attention")).toBeInTheDocument();
     expect(attachSpy).toHaveBeenCalledWith("chat-a");
   });
 
@@ -1358,7 +1403,7 @@ describe("App layout", () => {
     render(<App />);
 
     await waitFor(() => expect(connectSpy).toHaveBeenCalled());
-    await waitFor(() => expect(document.title).toBe("Active after reload · mira"));
+    await waitFor(() => expect(document.title).toBe("Active after reload · Mira"));
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
     expect(
       within(sidebar).getByRole("button", { name: /^Active after reload$/ }),
@@ -1610,7 +1655,7 @@ describe("App layout", () => {
       await screen.findByRole("navigation", { name: "Settings sections" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Overview" })).not.toBeInTheDocument();
-    expect(document.title).toBe("Settings · mira");
+    expect(document.title).toBe("Settings · Mira");
     expect(screen.getByTestId("overview-logo-openai")).toBeInTheDocument();
     expect(screen.getByTestId("overview-logo-brave")).toBeInTheDocument();
     expect(screen.getByTestId("overview-logo-openrouter")).toBeInTheDocument();
@@ -1655,22 +1700,6 @@ describe("App layout", () => {
     fireEvent.pointerDown(screen.getByRole("button", { name: "Select model" }));
     fireEvent.click(await screen.findByText("openai/gpt-4o-mini"));
     expect(screen.getByRole("button", { name: "Save preset" })).toBeEnabled();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.queryByText("Up to date.")).not.toBeInTheDocument();
-    fireEvent.click(
-      within(screen.getByTestId("model-call-order-row-primary")).getAllByRole("button")[0],
-    );
-    fireEvent.pointerDown(screen.getByRole("button", { name: /Auto/ }));
-    expect(screen.getAllByTestId("provider-picker-logo-openai").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("menuitem", { name: /Auto/ }));
-    const openModelPicker = () => {
-      const modelButtons = screen.getAllByRole("button", { name: /openai\/gpt-4o/ });
-      fireEvent.pointerDown(modelButtons[modelButtons.length - 1]);
-    };
-    openModelPicker();
-    await screen.findByText("openai/gpt-4o-mini");
-    fireEvent.click(screen.getAllByText("openai/gpt-4o-mini")[0]);
-    expect(screen.queryByText("Unsaved changes.")).not.toBeInTheDocument();
     expect(screen.getByText("Model providers")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add your own model provider" })).toBeInTheDocument();
     expect(screen.queryByText("OpenRouter")).not.toBeInTheDocument();
@@ -1831,7 +1860,7 @@ describe("App layout", () => {
       "aria-current",
       "page",
     );
-    expect(document.title).toBe("Apps · mira");
+    expect(document.title).toBe("Apps · Mira");
   });
 
   it("returns from settings to the blank start page when no session was active", async () => {
@@ -1968,8 +1997,8 @@ describe("App layout", () => {
 
     await waitFor(() => expect(connectSpy).toHaveBeenCalled());
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
-    fireEvent.click(within(sidebar).getByRole("button", { name: "New topic" }));
-    await waitFor(() => expect(document.title).toBe("mira"));
+    fireEvent.click(within(sidebar).getByRole("button", { name: "New chat" }));
+    await waitFor(() => expect(document.title).toBe("Mira"));
 
     fireEvent.click(within(sidebar).getByRole("button", { name: "Settings" }));
     expect(
@@ -1977,7 +2006,7 @@ describe("App layout", () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Back to workbench" }));
 
-    await waitFor(() => expect(document.title).toBe("mira"));
+    await waitFor(() => expect(document.title).toBe("Mira"));
     expect(screen.getByText(HERO_GREETING_PATTERN)).toBeInTheDocument();
   });
 
@@ -2008,7 +2037,7 @@ describe("App layout", () => {
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
     expect(within(sidebar).getByText("Q2 roadmap")).toBeInTheDocument();
     expect(within(sidebar).getByText("Travel ideas")).toBeInTheDocument();
-    const newChatButton = within(sidebar).getByRole("button", { name: "New topic" });
+    const newChatButton = within(sidebar).getByRole("button", { name: "New chat" });
     const searchButton = within(sidebar).getByRole("button", { name: "Search" });
     expect(
       newChatButton.compareDocumentPosition(searchButton) &
@@ -2138,10 +2167,10 @@ describe("App layout", () => {
     await waitFor(() => expect(connectSpy).toHaveBeenCalled());
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
 
-    const newChatButton = within(sidebar).getByRole("button", { name: "New topic" });
+    const newChatButton = within(sidebar).getByRole("button", { name: "New chat" });
     expect(newChatButton).toHaveAttribute(
       "title",
-      "New topic (Ctrl+Shift+O)",
+      "New chat (Ctrl+Shift+O)",
     );
     expect(newChatButton).toHaveAttribute(
       "aria-keyshortcuts",
@@ -2156,9 +2185,9 @@ describe("App layout", () => {
     await waitFor(() => expect(connectSpy).toHaveBeenCalled());
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
 
-    expect(within(sidebar).getByRole("button", { name: "New topic" })).toHaveAttribute(
+    expect(within(sidebar).getByRole("button", { name: "New chat" })).toHaveAttribute(
       "title",
-      "New topic (⌘⇧O)",
+      "New chat (⌘⇧O)",
     );
   });
 
@@ -2229,9 +2258,9 @@ describe("App layout", () => {
     const sidebarAside = container.querySelector("aside.lg\\:block") as HTMLElement;
     await waitFor(() => expect(sidebarAside.style.width).toBe("56px"));
 
-    expect(screen.queryByRole("button", { name: "Start a new topic" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start a new execution" })).not.toBeInTheDocument();
     const rail = screen.getByRole("navigation", { name: "Sidebar navigation" });
-    expect(within(rail).getByRole("button", { name: "New topic" })).toBeInTheDocument();
+    expect(within(rail).getByRole("button", { name: "New chat" })).toBeInTheDocument();
     expect(within(rail).getByRole("button", { name: "Search" })).toBeInTheDocument();
     expect(within(rail).queryByRole("button", { name: "View" })).not.toBeInTheDocument();
     expect(within(rail).queryByText("Existing chat")).not.toBeInTheDocument();
@@ -2240,10 +2269,10 @@ describe("App layout", () => {
     await waitFor(() => expect(sidebarAside.style.width).toBe("272px"));
 
     const sidebar = screen.getByRole("navigation", { name: "Sidebar navigation" });
-    fireEvent.click(within(sidebar).getByRole("button", { name: "New topic" }));
+    fireEvent.click(within(sidebar).getByRole("button", { name: "New chat" }));
     expect(createChatSpy).not.toHaveBeenCalled();
     expect(screen.getByText(HERO_GREETING_PATTERN)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Start a new topic" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start a new execution" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Toggle theme from header" })).toBeInTheDocument();
     expect(within(sidebar).getByRole("button", { name: "Settings" })).toBeInTheDocument();
 

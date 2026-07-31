@@ -278,6 +278,7 @@ export function kernelFrameSnapshot(metadata: unknown): KernelFrameSnapshot {
 export function readyChatIdFromKernelMetadata(metadata: unknown): string | null {
   const row = metadataRow(metadata);
   if (!row) return null;
+  if (metadataString(row, "event") !== "ready") return null;
   const chatId = metadataChatId(row);
   if (!chatId || "turn_id" in row) return null;
   return chatId;
@@ -286,8 +287,9 @@ export function readyChatIdFromKernelMetadata(metadata: unknown): string | null 
 export function attachedChatIdFromKernelMetadata(metadata: unknown): string | null {
   const row = metadataRow(metadata);
   const chatId = metadataChatId(row);
+  const event = metadataString(row, "event");
   const sessionId = metadataString(row, "session_id");
-  if (!chatId || !sessionId) return null;
+  if (!chatId || (event !== "attached" && !sessionId)) return null;
   return chatId;
 }
 

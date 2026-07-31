@@ -83,10 +83,18 @@ class BaseChannel(ABC):
         """
         pass
 
+    async def connect(self) -> None:
+        """ChannelAdapter lifecycle alias for starting this runtime."""
+        await self.start()
+
     @abstractmethod
     async def stop(self) -> None:
         """Stop the channel and clean up resources."""
         pass
+
+    async def disconnect(self) -> None:
+        """ChannelAdapter lifecycle alias for stopping this runtime."""
+        await self.stop()
 
     @abstractmethod
     async def send(self, msg: OutboundMessage) -> None:
@@ -100,6 +108,22 @@ class BaseChannel(ABC):
         can apply any retry policy in one place.
         """
         pass
+
+    async def send_outbound(self, msg: OutboundMessage) -> None:
+        """ChannelAdapter outbound alias for manager-dispatched messages."""
+        await self.send(msg)
+
+    async def on_inbound(self, msg: InboundMessage) -> None:
+        """Publish an already-normalized inbound message onto the shared bus."""
+        await self.bus.publish_inbound(msg)
+
+    async def health(self) -> dict[str, Any]:
+        """Return a minimal health payload common to all channel runtimes."""
+        return {
+            "name": self.name,
+            "running": self._running,
+            "streaming": self.supports_streaming,
+        }
 
     async def send_delta(
         self,

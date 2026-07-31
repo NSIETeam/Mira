@@ -58,15 +58,22 @@ def build_report(root: Path, budget_mb: float, top: int) -> dict:
     root = root.resolve()
     category_bytes: dict[str, int] = {}
     file_rows: list[SizeRow] = []
+    seen_inodes: set[tuple[int, int]] = set()
 
     for path in iter_files(root):
         try:
-            size = path.stat().st_size
+            stat = path.stat()
         except OSError:
             continue
-        rel = path.relative_to(root) if path != root else path.name
+        inode_key = (stat.st_dev, stat.st_ino)
+        if inode_key in seen_inodes:
+            continue
+        seen_inodes.add(inode_key)
+        size = stat.st_size
+        rel = path.relative_to(root) if path != root else Path(path.name)
+        rel_name = rel.as_posix()
         category_bytes[_category(rel)] = category_bytes.get(_category(rel), 0) + size
-        file_rows.append(SizeRow(str(rel), size, _mb(size)))
+        file_rows.append(SizeRow(rel_name, size, _mb(size)))
 
     total = sum(row.bytes for row in file_rows)
     categories = [

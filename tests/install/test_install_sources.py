@@ -34,7 +34,7 @@ def test_unix_dev_installer_dry_run_uses_nsiteam_repository() -> None:
 
 def test_install_docs_do_not_point_stable_paths_at_unrelated_mira_package() -> None:
     checked = [ROOT / "README.md", ROOT / "docs" / "quick-start.md", ROOT / "docs" / "troubleshooting.md"]
-    text = "\n".join(path.read_text() for path in checked)
+    text = "\n".join(path.read_text(encoding="utf-8") for path in checked)
     forbidden = ["uv tool install mira\n", "pip install mira\n", "python -m pip install mira\n"]
     for command in forbidden:
         assert command not in text

@@ -104,6 +104,8 @@ dev = [
     "python-pptx>=1.0.0,<2.0.0",
     "python-socketio>=5.16.0,<6.0.0",
     "msgpack>=1.1.0,<2.0.0",
+    "hypothesis>=6.100.0,<7.0.0",
+    "pytest-benchmark>=5.0.0,<6.0.0",
 ]
 
 [project.scripts]
@@ -113,8 +115,19 @@ mira = "mira.cli.commands:app"
 # - published package name stays `mira` for now
 # - primary user-facing runtime entrypoint is `mira`
 
-# Third-party tool plugins register here.  Built-in tools are discovered
-# automatically via pkgutil scanning in ToolLoader.discover().
+# Third-party plugin packages should prefer the unified `mira.plugins` group
+# with typed prefixes.  Dedicated legacy groups remain supported where noted:
+# - channel-* entries resolve to dependency-free ChannelPlugin descriptors
+# - provider-* entries resolve to ProviderSpec objects or factories
+# - tool-* entries resolve to Tool subclasses
+# Built-in tools are discovered automatically via pkgutil scanning in
+# ToolLoader.discover().
+# [project.entry-points."mira.plugins"]
+# "channel-example" = "mira_channel_example:plugin"
+# "provider-acme" = "mira_provider_acme:provider_specs"
+# "tool-example" = "mira_tool_example:ExampleTool"
+#
+# Legacy dedicated tool group:
 # [project.entry-points."mira.tools"]
 # my_plugin = "my_package.plugins:MyTool"
 
@@ -168,8 +181,79 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W"]
-ignore = ["E501"]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "C4", "RUF"]
+ignore = [
+    "E501",
+    # Existing codebase debt tracked outside the first strict-lint gate.
+    "B007",
+    "B008",
+    "B009",
+    "B017",
+    "B018",
+    "B023",
+    "B027",
+    "B010",
+    "B904",
+    "B905",
+    "C401",
+    "C408",
+    "C414",
+    "C420",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "RUF005",
+    "RUF006",
+    "RUF007",
+    "RUF009",
+    "RUF010",
+    "RUF012",
+    "RUF015",
+    "RUF019",
+    "RUF022",
+    "RUF034",
+    "RUF036",
+    "RUF043",
+    "RUF046",
+    "RUF059",
+    "RUF100",
+    "SIM101",
+    "SIM102",
+    "SIM103",
+    "SIM105",
+    "SIM108",
+    "SIM110",
+    "SIM112",
+    "SIM113",
+    "SIM114",
+    "SIM115",
+    "SIM117",
+    "SIM300",
+    "UP015",
+    "UP017",
+    "UP033",
+    "UP035",
+    "UP036",
+    "UP037",
+    "UP041",
+    "UP045",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = [
+    "mira/agent/loop.py",
+    "mira/agent/memory.py",
+    "mira/agent/memory_compact.py",
+    "mira/agent/memory_dream.py",
+    "mira/agent/memory_store.py",
+    "mira/agent/runner.py",
+    "mira/agent/subagent.py",
+    "mira/kernel/app.py",
+    "mira/kernel/boot.py",
+    "mira/kernel/shell.py",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -187,4 +271,9 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.0,<1.19.0",
 ]

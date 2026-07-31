@@ -209,6 +209,7 @@ class Tool(ABC):
     config_key: str = ""
     _plugin_discoverable: bool = True
     _scopes: set[str] = {"core"}
+    _core_default: bool = True
 
     @classmethod
     def config_cls(cls) -> type[BaseModel] | None:
