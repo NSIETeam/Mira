@@ -102,7 +102,8 @@ def test_every_channel_is_a_self_contained_package() -> None:
 
     assert not hasattr(channel_setup_module, "CHANNEL_SETUP_SPECS")
     assert package_names == EXPECTED_CHANNELS
-    assert set(discover_plugins()) == EXPECTED_CHANNELS
+    assert set(discover_plugins()) == CORE_CHANNELS
+    assert set(discover_plugins(include_archived=True)) == EXPECTED_CHANNELS
     for name in EXPECTED_CHANNELS:
         package_dir = channel_dir / name
         assert (package_dir / "__init__.py").is_file()

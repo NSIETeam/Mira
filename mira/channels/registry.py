@@ -47,6 +47,8 @@ def _channel_package_names() -> list[str]:
 
 def discover_plugins(
     enabled_names: set[str] | None = None,
+    *,
+    include_archived: bool = False,
 ) -> dict[str, ChannelPlugin]:
     """Load dependency-free descriptors from self-contained channel packages."""
     _warn_legacy_channel_entry_points()
@@ -57,6 +59,8 @@ def discover_plugins(
         try:
             plugin = load_channel_package(name)
             if plugin is not None:
+                if plugin.tier == "archive" and not include_archived:
+                    continue
                 plugins[name] = plugin
         except Exception as exc:
             logger.warning("Failed to load channel package descriptor '{}': {}", name, exc)
@@ -103,7 +107,12 @@ def _discover_external_plugins(
 
 def load_channel_plugin(name: str) -> ChannelPlugin:
     """Load one channel package descriptor."""
-    plugin = discover_plugins({name}).get(name)
+    try:
+        plugin = discover_plugins({name}, include_archived=True).get(name)
+    except TypeError:
+        # Test and extension monkeypatches may still provide the pre-tier
+        # discover_plugins(enabled_names) signature.
+        plugin = discover_plugins({name}).get(name)
     if plugin is None:
         raise ImportError(f"Unknown channel: {name}")
     return plugin
