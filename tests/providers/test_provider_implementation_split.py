@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import inspect
+
+from mira.providers import factory as provider_factory
 from mira.providers.registry import (
     CORE_PROVIDER_BACKENDS,
     ProviderSpec,
@@ -25,6 +28,8 @@ def test_builtin_provider_registry_has_explicit_split_boundary() -> None:
     assert {"name": "github_copilot", "package": "mira-provider-copilot"} in summary[
         "split_packages"
     ]
+    for name in ("azure_openai", "openai_codex", "xai_grok", "bedrock", "github_copilot"):
+        assert find_by_name(name).provider_factory.startswith("mira.providers.builtin_factories:")
 
 
 def test_native_backends_must_not_remain_unmarked_core() -> None:
@@ -49,6 +54,7 @@ def test_split_package_and_external_factory_specs_pass_split_audit() -> None:
             backend="split_test",
             implementation_status="split_package",
             split_package="mira-provider-split-test",
+            provider_factory="mira_provider_split_test:create_provider",
         ),
         ProviderSpec(
             name="factory_test",
@@ -68,3 +74,13 @@ def test_named_split_specs_expose_migration_metadata() -> None:
     assert find_by_name("xai_grok").migration_target == "openai_compat"
     assert find_by_name("bedrock").split_package == "mira-provider-bedrock"
     assert find_by_name("github_copilot").split_package == "mira-provider-copilot"
+
+
+def test_core_factory_does_not_hardcode_split_provider_classes() -> None:
+    source = inspect.getsource(provider_factory._make_provider_core)
+
+    assert "AzureOpenAIProvider" not in source
+    assert "OpenAICodexProvider" not in source
+    assert "XAIGrokProvider" not in source
+    assert "GitHubCopilotProvider" not in source
+    assert "BedrockProvider" not in source

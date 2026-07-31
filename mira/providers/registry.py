@@ -50,8 +50,8 @@ class ProviderSpec:
     settings_alias_for: str = ""  # compatibility alias grouped under this provider in Settings
 
     # which provider implementation to use
-    # "openai_compat" | "anthropic" | "azure_openai" | "openai_codex" | "xai_grok"
-    # | "github_copilot" | "bedrock"
+    # Core factory supports only "openai_compat" and "anthropic" directly.
+    # Non-core backends must provide provider_factory while awaiting package split.
     backend: str = "openai_compat"
     provider_factory: str = ""  # Optional "module:function" factory for split provider packages.
     implementation_status: Literal["core", "openai_compat_migration", "split_package"] = "core"
@@ -157,6 +157,7 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         env_key="",
         display_name="Azure OpenAI",
         backend="azure_openai",
+        provider_factory="mira.providers.builtin_factories:create_azure_openai_provider",
         implementation_status="openai_compat_migration",
         migration_target="openai_compat",
         is_direct=True,
@@ -182,6 +183,7 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         env_key="AWS_BEARER_TOKEN_BEDROCK",
         display_name="AWS Bedrock",
         backend="bedrock",
+        provider_factory="mira.providers.builtin_factories:create_bedrock_provider",
         implementation_status="split_package",
         split_package="mira-provider-bedrock",
         is_direct=True,
@@ -428,6 +430,7 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
             ),
         ),
         backend="openai_codex",
+        provider_factory="mira.providers.builtin_factories:create_openai_codex_provider",
         implementation_status="openai_compat_migration",
         migration_target="openai_compat",
         detect_by_base_keyword="codex",
@@ -450,6 +453,7 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
             ),
         ),
         backend="xai_grok",
+        provider_factory="mira.providers.builtin_factories:create_xai_grok_provider",
         implementation_status="openai_compat_migration",
         migration_target="openai_compat",
         default_api_base="https://cli-chat-proxy.grok.com/v1",
@@ -462,6 +466,7 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         env_key="",
         display_name="Github Copilot",
         backend="github_copilot",
+        provider_factory="mira.providers.builtin_factories:create_github_copilot_provider",
         implementation_status="split_package",
         split_package="mira-provider-copilot",
         default_api_base="https://api.githubcopilot.com",
@@ -755,9 +760,14 @@ def provider_implementation_violations(
         if spec.implementation_status == "openai_compat_migration":
             if spec.migration_target != "openai_compat":
                 violations.append(f"{spec.name}: missing openai_compat migration target")
+            if spec.backend not in CORE_PROVIDER_BACKENDS and not spec.provider_factory:
+                violations.append(f"{spec.name}: missing provider factory for migration backend")
             continue
-        if spec.implementation_status == "split_package" and not spec.split_package:
-            violations.append(f"{spec.name}: missing split package name")
+        if spec.implementation_status == "split_package":
+            if not spec.split_package:
+                violations.append(f"{spec.name}: missing split package name")
+            if spec.backend not in CORE_PROVIDER_BACKENDS and not spec.provider_factory:
+                violations.append(f"{spec.name}: missing provider factory for split backend")
     return violations
 
 
