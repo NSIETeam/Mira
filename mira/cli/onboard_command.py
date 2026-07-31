@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from pathlib import Path
 
@@ -12,6 +13,31 @@ from mira import __cli_name__
 from mira.config.schema import Config
 
 console = Console()
+
+
+def onboard_plugins(config_path: Path) -> None:
+    """Inject default config for all discovered channels (built-in + plugins)."""
+    from mira.channels.contracts import channel_default_config
+    from mira.channels.registry import discover_plugins
+    from mira.config.loader import merge_missing_defaults
+
+    plugins = discover_plugins()
+    if not plugins:
+        return
+
+    with open(config_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    channels = data.setdefault("channels", {})
+    for name, plugin in plugins.items():
+        defaults = channel_default_config(plugin)
+        if name not in channels:
+            channels[name] = defaults
+        else:
+            channels[name] = merge_missing_defaults(channels[name], defaults)
+
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
 
 def run_onboard_command(
