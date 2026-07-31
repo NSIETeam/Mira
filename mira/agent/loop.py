@@ -8,12 +8,11 @@ import time
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
 from contextlib import AbstractContextManager, suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
 from mira.agent import context as agent_context
-from mira.agent import model_presets as preset_helpers
 from mira.agent.agent_event_loop import run_agent_event_loop
 from mira.agent.agent_runner_loop import run_agent_iteration_loop
 from mira.agent.automation_turns import publish_next_deferred_turn
@@ -21,6 +20,7 @@ from mira.agent.context import ContextBuilder
 from mira.agent.dispatch_turn import dispatch_inbound_turn
 from mira.agent.hook import AgentHook, AgentTurnHookFactory
 from mira.agent.loop_config import AgentLoopConfig, agent_loop_config_from_legacy_args
+from mira.agent.loop_construction import agent_loop_from_config, register_default_tools
 from mira.agent.loop_init import initialize_agent_loop
 from mira.agent.memory import Consolidator, MemoryStore
 from mira.agent.process_message import process_inbound_message
@@ -28,8 +28,6 @@ from mira.agent.subagent import SubagentManager
 from mira.agent.tools.context import RequestContext
 from mira.agent.tools.message import MessageTool
 from mira.agent.tools.registry import ToolRegistry
-from mira.agent.tools.runtime_state import RuntimeState
-from mira.agent.tools.self import MyTool
 from mira.agent.turn_context import (
     TurnContext,
     TurnKind,
@@ -60,7 +58,6 @@ from mira.bus.runtime_events import (
 from mira.command import CommandContext
 from mira.config.schema import ModelPresetConfig
 from mira.providers.base import LLMProvider
-from mira.providers.factory import ProviderSnapshot
 from mira.runtime_context import (
     RUNTIME_CONTEXT_HISTORY_META,
     RuntimeContextBlock,
@@ -406,52 +403,7 @@ class AgentLoop:
         allowing callers to override or extend the standard config-derived
         parameters (e.g. ``cron_service``, ``session_manager``).
         """
-        from mira.providers.factory import make_provider
-
-        if bus is None:
-            bus = MessageBus()
-        defaults = config.agents.defaults
-        provider = extra.pop("provider", None) or make_provider(config)
-        resolved = config.resolve_preset()
-        model = extra.pop("model", None) or resolved.model
-        context_window_tokens = extra.pop("context_window_tokens", None) or resolved.context_window_tokens
-        provider_snapshot_loader = extra.pop("provider_snapshot_loader", None)
-        preset_snapshot_loader = extra.pop("preset_snapshot_loader", None) or preset_helpers.make_preset_snapshot_loader(
-            config,
-            provider_snapshot_loader,
-        )
-        return cls(
-            bus=bus,
-            provider=provider,
-            workspace=config.workspace_path,
-            model=model,
-            max_iterations=defaults.max_tool_iterations,
-            max_concurrent_subagents=defaults.max_concurrent_subagents,
-            context_window_tokens=context_window_tokens,
-            context_block_limit=defaults.context_block_limit,
-            max_tool_result_chars=defaults.max_tool_result_chars,
-            fail_on_tool_error=defaults.fail_on_tool_error,
-            provider_retry_mode=defaults.provider_retry_mode,
-            tool_hint_max_length=defaults.tool_hint_max_length,
-            restrict_to_workspace=config.tools.restrict_to_workspace,
-            mcp_servers=config.tools.mcp_servers,
-            channels_config=config.channels,
-            timezone=defaults.timezone,
-            unified_session=defaults.unified_session,
-            disabled_skills=defaults.disabled_skills,
-            session_ttl_minutes=defaults.session_ttl_minutes,
-            idle_compact_check_interval_seconds=defaults.idle_compact_check_interval_seconds,
-            consolidation_ratio=defaults.consolidation_ratio,
-            tools_config=config.tools,
-            modules_config=config.modules,
-            security_config=config.security,
-            model_presets=preset_helpers.configured_model_presets(config),
-            model_preset=defaults.model_preset,
-            restart_mode=config.gateway.restart_mode,
-            provider_snapshot_loader=provider_snapshot_loader,
-            preset_snapshot_loader=preset_snapshot_loader,
-            **extra,
-        )
+        return agent_loop_from_config(cls, config, bus, **extra)
 
     def _sync_subagent_runtime_limits(self) -> None:
         """Keep subagent runtime limits aligned with mutable loop settings."""
@@ -541,47 +493,10 @@ class AgentLoop:
     def _register_default_tools(
         self,
         *,
-        provider_snapshot_loader: Callable[..., ProviderSnapshot] | None,
+        provider_snapshot_loader: Callable[..., Any] | None,
     ) -> None:
         """Register the default set of tools via plugin loader."""
-        from mira.agent.tools.context import ToolContext
-        from mira.agent.tools.loader import ToolLoader
-
-        ctx = ToolContext(
-            config=self.tools_config,
-            modules=self.modules_config,
-            workspace=str(self.workspace),
-            bus=self.bus,
-            subagent_manager=self.subagents,
-            cron_service=self.cron_service,
-            exec_session_manager=self._exec_session_manager,
-            sessions=self.sessions,
-            provider_snapshot_loader=provider_snapshot_loader,
-            image_generation_provider_configs=self._image_generation_provider_configs,
-            timezone=self.context.timezone or "UTC",
-            workspace_sandbox=self.workspace_scopes.sandbox_status,
-            runtime_events=self.runtime_events,
-        )
-        loader = ToolLoader()
-        registered = loader.load(ctx, self.tools)
-
-        # MyTool needs runtime state reference — manual registration
-        if self.tools_config.my.enable:
-            self.tools.register(
-                MyTool(
-                    runtime_state=cast(RuntimeState, self),
-                    modify_allowed=self.tools_config.my.allow_set,
-                )
-            )
-            registered.append("my")
-
-        for name in list(self.tools.tool_names):
-            if not self._module_enabled(name, default=True):
-                self.tools.unregister(name)
-                if name in registered:
-                    registered.remove(name)
-
-        session_logger(None).info("Registered {} tools: {}", len(registered), registered)
+        register_default_tools(self, provider_snapshot_loader=provider_snapshot_loader)
 
     async def _connect_mcp(self) -> None:
         """Connect configured MCP servers."""
