@@ -22,6 +22,9 @@ def test_docker_gateway_smoke_checks_gateway_and_webui() -> None:
     script = (ROOT / "scripts" / "docker_gateway_smoke.sh").read_text()
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
     assert "MIRA_CHANNELS=websocket" in script
+    assert "Verify default WebSocket channel" in workflow
+    assert "scripts.install_channel_dependencies websocket" in workflow
+    assert "Verify default WhatsApp dependencies" not in workflow
     assert "/health" in script
     assert "/webui/bootstrap" in script
     assert "test -f /app/mira/web/dist/index.html" in script

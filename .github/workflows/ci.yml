@@ -172,8 +172,8 @@ jobs:
       - name: Build image with default channel dependencies
         run: docker build -t mira:test .
 
-      - name: Verify default WhatsApp dependencies
-        run: docker run --rm --entrypoint python mira:test -c "import neonize, segno"
+      - name: Verify default WebSocket channel
+        run: docker run --rm --entrypoint python mira:test -m scripts.install_channel_dependencies websocket
 
       - name: Verify runtime dependency permissions
         run: >-
